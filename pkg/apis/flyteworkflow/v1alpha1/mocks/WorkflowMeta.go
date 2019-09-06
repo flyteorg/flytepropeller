@@ -114,6 +114,20 @@ func (_m *WorkflowMeta) GetNamespace() string {
 	return r0
 }
 
+// GetOwnerReference provides a mock function with given fields:
+func (_m *WorkflowMeta) GetOwnerReference() v1.OwnerReference {
+	ret := _m.Called()
+
+	var r0 v1.OwnerReference
+	if rf, ok := ret.Get(0).(func() v1.OwnerReference); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(v1.OwnerReference)
+	}
+
+	return r0
+}
+
 // GetServiceAccountName provides a mock function with given fields:
 func (_m *WorkflowMeta) GetServiceAccountName() string {
 	ret := _m.Called()
@@ -123,20 +137,6 @@ func (_m *WorkflowMeta) GetServiceAccountName() string {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
-// NewControllerRef provides a mock function with given fields:
-func (_m *WorkflowMeta) NewControllerRef() v1.OwnerReference {
-	ret := _m.Called()
-
-	var r0 v1.OwnerReference
-	if rf, ok := ret.Get(0).(func() v1.OwnerReference); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(v1.OwnerReference)
 	}
 
 	return r0

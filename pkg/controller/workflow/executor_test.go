@@ -8,36 +8,34 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
+
+	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 
 	mocks2 "github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 
 	eventsErr "github.com/lyft/flyteidl/clients/go/events/errors"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
+
 	wfErrors "github.com/lyft/flytepropeller/pkg/controller/workflow/errors"
-
-	"time"
-
-	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
-	pluginV1 "github.com/lyft/flyteplugins/go/tasks/v1/types"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types/mocks"
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/lyft/flytepropeller/pkg/controller/catalog"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task"
-	"github.com/lyft/flytepropeller/pkg/utils"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/lyft/flytestdlib/yamlutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/tools/record"
+
+	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/lyft/flytepropeller/pkg/controller/catalog"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task"
+	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
 var (
@@ -73,7 +71,7 @@ func StdOutEventRecorder() record.EventRecorder {
 	return recorder
 }
 
-func createHappyPathTaskExecutor(t assert.TestingT, store *storage.DataStore, enableAsserts bool) pluginV1.Executor {
+func createHappyPathTaskExecutor(t assert.TestingT, store *storage.DataStore, enableAsserts bool) pluginCore.PluginEntry {
 	exec := &mocks.Executor{}
 	exec.On("GetID").Return("task")
 	exec.On("GetProperties").Return(pluginV1.ExecutorProperties{})
@@ -88,7 +86,7 @@ func createHappyPathTaskExecutor(t assert.TestingT, store *storage.DataStore, en
 		mock.Anything,
 	).
 		Return(func(ctx context.Context, taskCtx pluginV1.TaskContext, varNames ...string) (values map[string]*core.Literal) {
-			d := &handler.Data{}
+			d := &core.LiteralMap{}
 			outputsFileRef := v1alpha1.GetOutputsFile(taskCtx.GetDataDir())
 			assert.NoError(t, store.ReadProtobuf(ctx, outputsFileRef, d))
 			assert.NotNil(t, d.Literals)
@@ -145,7 +143,7 @@ func createHappyPathTaskExecutor(t assert.TestingT, store *storage.DataStore, en
 	return exec
 }
 
-func createFailingTaskExecutor() pluginV1.Executor {
+func createFailingTaskExecutor() pluginCore.PluginEntry {
 	exec := &mocks.Executor{}
 	exec.On("GetID").Return("task")
 	exec.On("GetProperties").Return(pluginV1.ExecutorProperties{})
@@ -176,7 +174,7 @@ func createFailingTaskExecutor() pluginV1.Executor {
 	return exec
 }
 
-func createTaskExecutorErrorInCheck() pluginV1.Executor {
+func createTaskExecutorErrorInCheck() pluginCore.PluginEntry {
 	exec := &mocks.Executor{}
 	exec.On("GetID").Return("task")
 	exec.On("GetProperties").Return(pluginV1.ExecutorProperties{})
@@ -199,21 +197,6 @@ func createTaskExecutorErrorInCheck() pluginV1.Executor {
 	).Return(pluginV1.TaskStatusUndefined, errors.New("check failed"))
 
 	return exec
-}
-
-func createSingletonTaskExecutorFactory(te pluginV1.Executor) task.Factory {
-	return &task.FactoryFuncs{
-		GetTaskExecutorCb: func(taskType v1alpha1.TaskType) (pluginV1.Executor, error) {
-			return te, nil
-		},
-		ListAllTaskExecutorsCb: func() []pluginV1.Executor {
-			return []pluginV1.Executor{te}
-		},
-	}
-}
-
-func init() {
-	flytek8s.InitializeFake()
 }
 
 func TestWorkflowExecutor_HandleFlyteWorkflow_Error(t *testing.T) {
@@ -274,8 +257,6 @@ func TestWorkflowExecutor_HandleFlyteWorkflow(t *testing.T) {
 
 	te := createHappyPathTaskExecutor(t, store, true)
 	tf := createSingletonTaskExecutorFactory(te)
-	task.SetTestFactory(tf)
-	assert.True(t, task.IsTestModeEnabled())
 
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 

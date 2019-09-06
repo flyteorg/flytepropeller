@@ -1,4 +1,4 @@
-package common
+package nodes
 
 import (
 	"testing"

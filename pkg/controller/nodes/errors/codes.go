@@ -3,6 +3,7 @@ package errors
 type ErrorCode string
 
 const (
+	InitializationError                ErrorCode = "InitializationError"
 	NotYetImplementedError             ErrorCode = "NotYetImplementedError"
 	DownstreamNodeNotFoundError        ErrorCode = "DownstreamNodeNotFound"
 	UserProvidedError                  ErrorCode = "UserProvidedError"

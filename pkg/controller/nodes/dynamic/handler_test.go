@@ -7,7 +7,6 @@ import (
 
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types/mocks"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	pluginsV1 "github.com/lyft/flyteplugins/go/tasks/v1/types"
 	typesV1 "k8s.io/api/core/v1"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -65,7 +63,7 @@ func createTask(id string, ttype string, discoverable bool) *v1alpha1.TaskSpec {
 				Inputs: &core.VariableMap{},
 				Outputs: &core.VariableMap{
 					Variables: map[string]*core.Variable{
-						"out1": &core.Variable{
+						"out1": {
 							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 						},
 					},
@@ -132,7 +130,7 @@ func createInmemoryDataStore(t testing.TB, scope promutils.Scope) *storage.DataS
 	return d
 }
 
-func TestTaskHandler_CheckNodeStatusDiscovery(t *testing.T) {
+func TestDynamicHandler_Handle(t *testing.T) {
 	ctx := context.Background()
 
 	taskID := "t1"

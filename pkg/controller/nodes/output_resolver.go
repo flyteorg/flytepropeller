@@ -1,4 +1,4 @@
-package common
+package nodes
 
 import (
 	"context"
@@ -9,8 +9,17 @@ import (
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 )
+
+type VarName = string
+
+//go:generate mockery -name=OutputResolver -case=underscore
+
+type OutputResolver interface {
+	// Extracts a subset of node outputs to literals.
+	ExtractOutput(ctx context.Context, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode,
+		bindToVar VarName) (values *core.Literal, err error)
+}
 
 func CreateAliasMap(aliases []v1alpha1.Alias) map[string]string {
 	aliasToVarMap := make(map[string]string, len(aliases))
@@ -21,13 +30,13 @@ func CreateAliasMap(aliases []v1alpha1.Alias) map[string]string {
 }
 
 // A simple output resolver that expects an outputs.pb at the data directory of the node.
-type SimpleOutputsResolver struct {
+type remoteFileOutputResolver struct {
 	store storage.ProtobufStore
 }
 
-func (r SimpleOutputsResolver) ExtractOutput(ctx context.Context, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode,
-	bindToVar handler.VarName) (values *core.Literal, err error) {
-	d := &handler.Data{}
+func (r remoteFileOutputResolver) ExtractOutput(ctx context.Context, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode,
+	bindToVar VarName) (values *core.Literal, err error) {
+	d := &core.LiteralMap{}
 	nodeStatus := w.GetNodeExecutionStatus(n.GetID())
 	outputsFileRef := v1alpha1.GetOutputsFile(nodeStatus.GetDataDir())
 	if err := r.store.ReadProtobuf(ctx, outputsFileRef, d); err != nil {
@@ -55,8 +64,8 @@ func (r SimpleOutputsResolver) ExtractOutput(ctx context.Context, w v1alpha1.Exe
 }
 
 // Creates a simple output resolver that expects an outputs.pb at the data directory of the node.
-func NewSimpleOutputsResolver(store storage.ProtobufStore) SimpleOutputsResolver {
-	return SimpleOutputsResolver{
+func NewRemoteFileOutputResolver(store storage.ProtobufStore) remoteFileOutputResolver {
+	return remoteFileOutputResolver{
 		store: store,
 	}
 }

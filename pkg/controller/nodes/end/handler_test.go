@@ -48,36 +48,14 @@ func (t TestProtoDataStore) WriteProtobuf(ctx context.Context, reference storage
 	return t.WriteProtobufCb(ctx, reference, opts, msg)
 }
 
-func TestEndHandler_CheckNodeStatus(t *testing.T) {
+func TestEndHandler_Setup(t *testing.T) {
 	e := endHandler{}
-	s, err := e.CheckNodeStatus(context.TODO(), nil, nil, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, handler.StatusSuccess, s)
+	assert.NoError(t, e.Setup(context.TODO(), nil))
 }
 
-func TestEndHandler_HandleFailingNode(t *testing.T) {
-	e := endHandler{}
-	node := &v1alpha1.NodeSpec{
-		ID: v1alpha1.EndNodeID,
-	}
-	w := &v1alpha1.FlyteWorkflow{
-		WorkflowSpec: &v1alpha1.WorkflowSpec{
-			ID: v1alpha1.WorkflowID("w1"),
-		},
-	}
-	s, err := e.HandleFailingNode(context.TODO(), w, node)
-	assert.NoError(t, err)
-	assert.Equal(t, errors.IllegalStateError, s.Err.(*errors.NodeError).Code)
-}
-
-func TestEndHandler_Initialize(t *testing.T) {
-	e := endHandler{}
-	assert.NoError(t, e.Initialize(context.TODO()))
-}
-
-func TestEndHandler_StartNode(t *testing.T) {
+func TestEndHandler_Handle(t *testing.T) {
 	inMem := createInmemoryDataStore(t, testScope.NewSubScope("x"))
-	e := New(inMem)
+	e := New()
 	ctx := context.Background()
 
 	inputs := &core.LiteralMap{
@@ -104,16 +82,16 @@ func TestEndHandler_StartNode(t *testing.T) {
 	}
 
 	t.Run("NoInputs", func(t *testing.T) {
-		s, err := e.StartNode(ctx, w, node, nil)
+		s, err := e.Handle(ctx, w, node, nil)
 		assert.NoError(t, err)
-		assert.Equal(t, handler.StatusSuccess, s)
+		assert.Equal(t, handler.EPhaseSuccess, s.Info().Phase)
 	})
 
 	outputLoc := v1alpha1.GetOutputsFile(outputRef)
 	t.Run("WithInputs", func(t *testing.T) {
-		s, err := e.StartNode(ctx, w, node, inputs)
+		s, err := e.Handle(ctx, w, node, inputs)
 		assert.NoError(t, err)
-		assert.Equal(t, handler.StatusSuccess, s)
+		assert.Equal(t, handler.EPhaseSuccess, s.Info().Phase)
 		actual := &core.LiteralMap{}
 		if assert.NoError(t, inMem.ReadProtobuf(ctx, outputLoc, actual)) {
 			flyteassert.EqualLiteralMap(t, inputs, actual)
@@ -126,10 +104,10 @@ func TestEndHandler_StartNode(t *testing.T) {
 				return regErrors.Errorf("Fail")
 			},
 		}
-		e := New(store)
-		s, err := e.StartNode(ctx, w, node, inputs)
+		e := New()
+		s, err := e.Handle(ctx, w, node, inputs)
 		assert.Error(t, err)
 		assert.True(t, errors.Matches(err, errors.CausedByError))
-		assert.Equal(t, handler.StatusUndefined, s)
+		assert.Equal(t, handler.UnknownTransition, s)
 	})
 }

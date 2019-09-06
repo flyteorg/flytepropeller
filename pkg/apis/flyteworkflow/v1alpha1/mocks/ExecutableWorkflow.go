@@ -302,6 +302,20 @@ func (_m *ExecutableWorkflow) GetOutputs() *v1alpha1.OutputVarMap {
 	return r0
 }
 
+// GetOwnerReference provides a mock function with given fields:
+func (_m *ExecutableWorkflow) GetOwnerReference() v1.OwnerReference {
+	ret := _m.Called()
+
+	var r0 v1.OwnerReference
+	if rf, ok := ret.Get(0).(func() v1.OwnerReference); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(v1.OwnerReference)
+	}
+
+	return r0
+}
+
 // GetServiceAccountName provides a mock function with given fields:
 func (_m *ExecutableWorkflow) GetServiceAccountName() string {
 	ret := _m.Called()
@@ -337,20 +351,6 @@ func (_m *ExecutableWorkflow) GetTask(id string) (v1alpha1.ExecutableTask, error
 	}
 
 	return r0, r1
-}
-
-// NewControllerRef provides a mock function with given fields:
-func (_m *ExecutableWorkflow) NewControllerRef() v1.OwnerReference {
-	ret := _m.Called()
-
-	var r0 v1.OwnerReference
-	if rf, ok := ret.Get(0).(func() v1.OwnerReference); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(v1.OwnerReference)
-	}
-
-	return r0
 }
 
 // StartNode provides a mock function with given fields:

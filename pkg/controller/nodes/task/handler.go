@@ -3,121 +3,28 @@ package task
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"runtime/debug"
-	"strconv"
-	"time"
 
-	"github.com/lyft/flytepropeller/pkg/controller/executors"
-
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-
-	"github.com/lyft/flytestdlib/promutils"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
-	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	pluginsV1 "github.com/lyft/flyteplugins/go/tasks/v1/types"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
+	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
+	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	pluginK8s "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
 	"github.com/lyft/flytestdlib/storage"
-	errors2 "github.com/pkg/errors"
+	regErrors "github.com/pkg/errors"
 
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/lyft/flytepropeller/pkg/controller/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/lyft/flytepropeller/pkg/utils"
-
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/k8s"
 )
 
-const IDMaxLength = 50
-
-// TODO handle retries
-type taskContext struct {
-	taskExecutionID    taskExecutionID
-	dataDir            storage.DataReference
-	workflow           v1alpha1.WorkflowMeta
-	node               v1alpha1.ExecutableNode
-	status             v1alpha1.ExecutableTaskNodeStatus
-	serviceAccountName string
-}
-
-func (t *taskContext) GetCustomState() pluginsV1.CustomState {
-	return t.status.GetCustomState()
-}
-
-func (t *taskContext) GetPhase() pluginsV1.TaskPhase {
-	return t.status.GetPhase()
-}
-
-func (t *taskContext) GetPhaseVersion() uint32 {
-	return t.status.GetPhaseVersion()
-}
-
-type taskExecutionID struct {
-	execName string
-	id       core.TaskExecutionIdentifier
-}
-
-func (te taskExecutionID) GetID() core.TaskExecutionIdentifier {
-	return te.id
-}
-
-func (te taskExecutionID) GetGeneratedName() string {
-	return te.execName
-}
-
-func (t *taskContext) GetOwnerID() types.NamespacedName {
-	return t.workflow.GetK8sWorkflowID()
-}
-
-func (t *taskContext) GetTaskExecutionID() pluginsV1.TaskExecutionID {
-	return t.taskExecutionID
-}
-
-func (t *taskContext) GetDataDir() storage.DataReference {
-	return t.dataDir
-}
-
-func (t *taskContext) GetInputsFile() storage.DataReference {
-	return v1alpha1.GetInputsFile(t.dataDir)
-}
-
-func (t *taskContext) GetOutputsFile() storage.DataReference {
-	return v1alpha1.GetOutputsFile(t.dataDir)
-}
-
-func (t *taskContext) GetErrorFile() storage.DataReference {
-	return v1alpha1.GetOutputErrorFile(t.dataDir)
-}
-
-func (t *taskContext) GetNamespace() string {
-	return t.workflow.GetNamespace()
-}
-
-func (t *taskContext) GetOwnerReference() v1.OwnerReference {
-	return t.workflow.NewControllerRef()
-}
-
-func (t *taskContext) GetOverrides() pluginsV1.TaskOverrides {
-	return t.node
-}
-
-func (t *taskContext) GetLabels() map[string]string {
-	return t.workflow.GetLabels()
-}
-
-func (t *taskContext) GetAnnotations() map[string]string {
-	return t.workflow.GetAnnotations()
-}
-
-func (t *taskContext) GetK8sServiceAccount() string {
-	return t.serviceAccountName
-}
+const maxPluginPhaseVersions = 10
 
 type metrics struct {
 	pluginPanics             labeled.Counter
@@ -130,310 +37,389 @@ type metrics struct {
 	// TODO We should have a metric to capture custom state size
 }
 
-type taskHandler struct {
-	taskFactory   Factory
-	recorder      events.TaskEventRecorder
-	enqueueWf     v1alpha1.EnqueueWorkflow
-	store         *storage.DataStore
-	scope         promutils.Scope
-	catalogClient catalog.Client
-	kubeClient    executors.Client
-	metrics       *metrics
+type pluginRequestedTransition struct {
+	ttype              handler.TransitionType
+	pInfo              pluginCore.PhaseInfo
+	previouslyObserved bool
+	execInfo           handler.ExecutionInfo
 }
 
-func (h *taskHandler) GetTaskExecutorContext(ctx context.Context, w v1alpha1.ExecutableWorkflow,
-	node v1alpha1.ExecutableNode) (pluginsV1.Executor, v1alpha1.ExecutableTask, pluginsV1.TaskContext, error) {
-
-	taskID := node.GetTaskID()
-	if taskID == nil {
-		return nil, nil, nil, errors.Errorf(errors.BadSpecificationError, node.GetID(), "Task Id not set for NodeKind `Task`")
+func (p *pluginRequestedTransition) CacheHit() {
+	p.ttype = handler.TransitionTypeEphemeral
+	p.pInfo = pluginCore.PhaseInfoSuccess(nil)
+	p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
+		CacheHit: true,
 	}
-	task, err := w.GetTask(*taskID)
-	if err != nil {
-		return nil, nil, nil, errors.Wrapf(errors.BadSpecificationError, node.GetID(), err, "Unable to find task for taskId: [%v]", *taskID)
-	}
-
-	exec, err := h.taskFactory.GetTaskExecutor(task.TaskType())
-	if err != nil {
-		h.metrics.unsupportedTaskType.Inc(ctx)
-		return nil, nil, nil, errors.Wrapf(errors.UnsupportedTaskTypeError, node.GetID(), err,
-			"Unable to find taskExecutor for taskId: [%v]. TaskType: [%v]", *taskID, task.TaskType())
-	}
-
-	nodeStatus := w.GetNodeExecutionStatus(node.GetID())
-	id := core.TaskExecutionIdentifier{
-		TaskId:       task.CoreTask().Id,
-		RetryAttempt: nodeStatus.GetAttempts(),
-		NodeExecutionId: &core.NodeExecutionIdentifier{
-			NodeId:      node.GetID(),
-			ExecutionId: w.GetExecutionID().WorkflowExecutionIdentifier,
-		},
-	}
-
-	uniqueID, err := utils.FixedLengthUniqueIDForParts(IDMaxLength, w.GetName(), node.GetID(), strconv.Itoa(int(id.RetryAttempt)))
-	if err != nil {
-		// SHOULD never really happen
-		return nil, nil, nil, err
-	}
-
-	taskNodeStatus := nodeStatus.GetTaskNodeStatus()
-	if taskNodeStatus == nil {
-		mutableTaskNodeStatus := nodeStatus.GetOrCreateTaskStatus()
-		taskNodeStatus = mutableTaskNodeStatus
-	}
-
-	return exec, task, &taskContext{
-		taskExecutionID:    taskExecutionID{execName: uniqueID, id: id},
-		dataDir:            nodeStatus.GetDataDir(),
-		workflow:           w,
-		node:               node,
-		status:             taskNodeStatus,
-		serviceAccountName: w.GetServiceAccountName(),
-	}, nil
 }
 
-func (h *taskHandler) ExtractOutput(ctx context.Context, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode,
-	bindToVar handler.VarName) (values *core.Literal, err error) {
-	t, task, taskCtx, err := h.GetTaskExecutorContext(ctx, w, n)
-	if err != nil {
-		return nil, errors.Wrapf(errors.CausedByError, n.GetID(), err, "failed to create TaskCtx")
-	}
-
-	l, err := t.ResolveOutputs(ctx, taskCtx, bindToVar)
-	if err != nil {
-		return nil, errors.Wrapf(errors.CausedByError, n.GetID(), err,
-			"failed to resolve output [%v] from task of type [%v]", bindToVar, task.TaskType())
-	}
-
-	return l[bindToVar], nil
+func (p *pluginRequestedTransition) ObservedTransition(trns pluginCore.Transition) {
+	p.ttype = ToTransitionType(trns.Type())
+	p.pInfo = trns.Info()
 }
 
-func (h *taskHandler) StartNode(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeInputs *handler.Data) (handler.Status, error) {
-	t, task, taskCtx, err := h.GetTaskExecutorContext(ctx, w, node)
-	if err != nil {
-		return handler.StatusFailed(errors.Wrapf(errors.CausedByError, node.GetID(), err, "failed to create TaskCtx")), nil
+func (p *pluginRequestedTransition) ObservedExecutionError(executionError *io.ExecutionError) {
+	if executionError.IsRecoverable {
+		p.pInfo = pluginCore.PhaseInfoFailed(pluginCore.PhaseRetryableFailure, executionError.ExecutionError, p.pInfo.Info())
+	} else {
+		p.pInfo = pluginCore.PhaseInfoFailed(pluginCore.PhasePermanentFailure, executionError.ExecutionError, p.pInfo.Info())
+	}
+}
+
+func (p *pluginRequestedTransition) TransitionPreviouslyRecorded() {
+	p.previouslyObserved = true
+}
+
+func (p *pluginRequestedTransition) FinalTaskEvent(id *core.Identifier) (*event.TaskExecutionEvent, error) {
+	if p.previouslyObserved {
+		return nil, nil
+	}
+	return ToTaskExecutionEvent(id, p.pInfo)
+}
+
+func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference) {
+	p.execInfo.OutputInfo = &handler.OutputInfo{OutputURI: outputPath}
+}
+
+func (p *pluginRequestedTransition) FinalTransition(ctx context.Context) (handler.Transition, error) {
+	switch p.pInfo.Phase() {
+	case pluginCore.PhaseSuccess:
+		logger.Debugf(ctx, "Transitioning to Success")
+		return handler.DoTransition(p.ttype, handler.PhaseInfoSuccess(&p.execInfo)), nil
+	case pluginCore.PhaseRetryableFailure:
+		logger.Debugf(ctx, "Transitioning to RetryableFailure")
+		return handler.DoTransition(p.ttype, handler.PhaseInfoRetryableFailureErr(p.pInfo.Err(), nil)), nil
+	case pluginCore.PhasePermanentFailure:
+		logger.Debugf(ctx, "Transitioning to Failure")
+		return handler.DoTransition(p.ttype, handler.PhaseInfoFailureErr(p.pInfo.Err(), nil)), nil
 	}
 
-	logger.Infof(ctx, "Executor type: [%v]. Properties: finalizer[%v]. disable[%v].", reflect.TypeOf(t).String(), t.GetProperties().RequiresFinalizer, t.GetProperties().DisableNodeLevelCaching)
-	if task.CoreTask().Metadata.Discoverable {
-		if t.GetProperties().DisableNodeLevelCaching {
-			logger.Infof(ctx, "Executor has Node-Level caching disabled. Skipping.")
-		} else if resp, err := h.catalogClient.Get(ctx, task.CoreTask(), taskCtx.GetInputsFile()); err != nil {
-			if taskStatus, ok := status.FromError(err); ok && taskStatus.Code() == codes.NotFound {
-				h.metrics.discoveryMissCount.Inc(ctx)
-				logger.Infof(ctx, "Artifact not found in Discovery. Executing Task.")
-			} else {
-				h.metrics.discoveryGetFailureCount.Inc(ctx)
-				logger.Errorf(ctx, "Discovery check failed. Executing Task. Err: %v", err.Error())
+	logger.Debugf(ctx, "Task still running")
+	return handler.DoTransition(p.ttype, handler.PhaseInfoRunning(nil)), nil
+}
+
+// The plugin interface available especially for testing.
+type PluginRegistryIface interface {
+	GetCorePlugins() []pluginCore.PluginEntry
+	GetK8sPlugins() []pluginK8s.PluginEntry
+}
+
+type Handler struct {
+	catalog        catalog.Client
+	plugins        map[pluginCore.TaskType]pluginCore.Plugin
+	defaultPlugin  pluginCore.Plugin
+	metrics        *metrics
+	pluginRegistry PluginRegistryIface
+}
+
+func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
+	if t.defaultPlugin != nil {
+		logger.Errorf(ctx, "cannot set plugin [%s] as default as plugin [%s] is already configured as default", p.GetID(), t.defaultPlugin.GetID())
+	} else {
+		logger.Infof(ctx, "Plugin [%s] registered as default plugin", p.GetID())
+		t.defaultPlugin = p
+	}
+	return nil
+}
+
+func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
+	tSCtx := &setupContext{
+		SetupContext: sCtx,
+	}
+	logger.Infof(ctx, "Loading core Plugins")
+	for _, cpe := range t.pluginRegistry.GetCorePlugins() {
+		logger.Infof(ctx, "Loading Plugin [%s]", cpe.ID)
+		cp, err := cpe.LoadPlugin(ctx, tSCtx)
+		if err != nil {
+			return regErrors.Wrapf(err, "failed to load plugin - %s", cpe.ID)
+		}
+		for _, tt := range cpe.RegisteredTaskTypes {
+			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cpe.ID, tt)
+			t.plugins[tt] = cp
+		}
+		if cpe.IsDefault {
+			if err := t.setDefault(ctx, cp); err != nil {
+				return err
 			}
-		} else if resp != nil {
-			h.metrics.discoveryHitCount.Inc(ctx)
-			if iface := task.CoreTask().Interface; iface != nil && iface.Outputs != nil && len(iface.Outputs.Variables) > 0 {
-				if err := h.store.WriteProtobuf(ctx, taskCtx.GetOutputsFile(), storage.Options{}, resp); err != nil {
-					logger.Errorf(ctx, "failed to write data to Storage, err: %v", err.Error())
-					return handler.StatusUndefined, errors.Wrapf(errors.CausedByError, node.GetID(), err, "failed to copy cached results for task.")
+		}
+	}
+	for _, kpe := range t.pluginRegistry.GetK8sPlugins() {
+		if kp, err := k8s.NewPluginManager(ctx, tSCtx, kpe); err != nil {
+			return regErrors.Wrapf(err, "failed to load plugin - %s", kpe.ID)
+		} else {
+			for _, tt := range kpe.RegisteredTaskTypes {
+				t.plugins[tt] = kp
+			}
+			if kpe.IsDefault {
+				if err := t.setDefault(ctx, kp); err != nil {
+					return err
 				}
 			}
-			// SetCached.
-			w.GetNodeExecutionStatus(node.GetID()).SetCached()
-			return handler.StatusSuccess, nil
-		} else {
-			// Nil response and Nil error
-			h.metrics.discoveryGetFailureCount.Inc(ctx)
-			return handler.StatusUndefined, errors.Wrapf(errors.CatalogCallFailed, node.GetID(), err, "Nil catalog response. Failed to check Catalog for previous results")
 		}
 	}
+	return nil
+}
 
-	var taskStatus pluginsV1.TaskStatus
-	func() {
+func (t Handler) ResolvePlugin(ctx context.Context, ttype string) (pluginCore.Plugin, error) {
+	p, ok := t.plugins[ttype]
+	if ok {
+		logger.Debugf(ctx, "Plugin [%s] resolved for Handler type [%s]", p.GetID(), ttype)
+		return p, nil
+	}
+	if t.defaultPlugin != nil {
+		logger.Warnf(ctx, "No plugin found for Handler-type [%s], defaulting to [%s]", ttype, t.defaultPlugin.GetID())
+		return t.defaultPlugin, nil
+	}
+	return nil, fmt.Errorf("no plugin defined for Handler type [%s] and no defaultPlugin configured", ttype)
+}
+
+func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *taskExecutionContext, ts handler.TaskNodeState) (*pluginRequestedTransition, error) {
+	trns, err := func() (trns pluginCore.Transition, err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				h.metrics.pluginPanics.Inc(ctx)
+				t.metrics.pluginPanics.Inc(ctx)
 				stack := debug.Stack()
-				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", task.TaskType(), string(stack))
-				logger.Errorf(ctx, "Panic in plugin for TaskType [%s]", task.TaskType())
+				logger.Errorf(ctx, "Panic in plugin[%s]", p.GetID())
+				err = fmt.Errorf("panic when executing a plugin [%s]. Stack: [%s]", p.GetID(), string(stack))
+				trns = pluginCore.UnknownTransition
 			}
 		}()
-		taskStatus, err = t.StartTask(ctx, taskCtx, task.CoreTask(), nodeInputs)
+		childCtx := context.WithValue(ctx, "plugin", p.GetID())
+		trns, err = p.Handle(childCtx, tCtx)
+		return
 	}()
-
 	if err != nil {
-		return handler.StatusUndefined, errors.Wrapf(errors.CausedByError, node.GetID(), err, "failed to start task [retry attempt: %d]", taskCtx.GetTaskExecutionID().GetID().RetryAttempt)
+		logger.Warnf(ctx, "Runtime error from plugin [%s]. Error: %s", p.GetID(), err.Error())
+		return nil, regErrors.Wrapf(err, "failed to execute handle for plugin [%s]", p.GetID())
 	}
 
-	nodeStatus := w.GetNodeExecutionStatus(node.GetID())
-	taskNodeStatus := nodeStatus.GetOrCreateTaskStatus()
-	taskNodeStatus.SetPhase(taskStatus.Phase)
-	taskNodeStatus.SetPhaseVersion(taskStatus.PhaseVersion)
-	taskNodeStatus.SetCustomState(taskStatus.State)
+	pluginTrns := &pluginRequestedTransition{}
+	pluginTrns.ObservedTransition(trns)
 
-	logger.Debugf(ctx, "Started Task Node")
-	return ConvertTaskPhaseToHandlerStatus(taskStatus)
-}
-
-func ConvertTaskPhaseToHandlerStatus(taskStatus pluginsV1.TaskStatus) (handler.Status, error) {
-	// TODO handle retryable failure
-	switch taskStatus.Phase {
-	case pluginsV1.TaskPhaseNotReady:
-		return handler.StatusQueued.WithOccurredAt(taskStatus.OccurredAt), nil
-	case pluginsV1.TaskPhaseQueued, pluginsV1.TaskPhaseRunning:
-		return handler.StatusRunning.WithOccurredAt(taskStatus.OccurredAt), nil
-	case pluginsV1.TaskPhasePermanentFailure:
-		return handler.StatusFailed(taskStatus.Err).WithOccurredAt(taskStatus.OccurredAt), nil
-	case pluginsV1.TaskPhaseRetryableFailure:
-		return handler.StatusRetryableFailure(taskStatus.Err).WithOccurredAt(taskStatus.OccurredAt), nil
-	case pluginsV1.TaskPhaseSucceeded:
-		return handler.StatusSuccess.WithOccurredAt(taskStatus.OccurredAt), nil
-	default:
-		return handler.StatusUndefined, errors.Errorf(errors.IllegalStateError, "received unknown task phase. [%s]", taskStatus.Phase.String())
-	}
-}
-
-func (h *taskHandler) CheckNodeStatus(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, prevNodeStatus v1alpha1.ExecutableNodeStatus) (handler.Status, error) {
-	t, task, taskCtx, err := h.GetTaskExecutorContext(ctx, w, node)
-	if err != nil {
-		return handler.StatusFailed(errors.Wrapf(errors.CausedByError, node.GetID(), err, "Failed to create TaskCtx")), nil
-	}
-
-	var taskStatus pluginsV1.TaskStatus
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				h.metrics.pluginPanics.Inc(ctx)
-				stack := debug.Stack()
-				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", task.TaskType(), string(stack))
-				logger.Errorf(ctx, "Panic in plugin for TaskType [%s]", task.TaskType())
-			}
-		}()
-		taskStatus, err = t.CheckTaskStatus(ctx, taskCtx, task.CoreTask())
-	}()
-
-	if err != nil {
-		logger.Warnf(ctx, "Failed to check status")
-		return handler.StatusUndefined, errors.Wrapf(errors.CausedByError, node.GetID(), err, "failed to check status")
-	}
-
-	nodeStatus := w.GetNodeExecutionStatus(node.GetID())
-	taskNodeStatus := nodeStatus.GetOrCreateTaskStatus()
-	taskNodeStatus.SetPhase(taskStatus.Phase)
-	taskNodeStatus.SetPhaseVersion(taskStatus.PhaseVersion)
-	taskNodeStatus.SetCustomState(taskStatus.State)
-
-	return ConvertTaskPhaseToHandlerStatus(taskStatus)
-}
-
-func (h *taskHandler) HandleNodeSuccess(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode) (handler.Status, error) {
-	t, task, taskCtx, err := h.GetTaskExecutorContext(ctx, w, node)
-	if err != nil {
-		return handler.StatusFailed(errors.Wrapf(errors.CausedByError, node.GetID(), err, "Failed to create TaskCtx")), nil
-	}
-
-	// If the task interface has outputs, validate that the outputs file was written.
-	if iface := task.CoreTask().Interface; task.TaskType() != "container_array" && iface != nil && iface.Outputs != nil && len(iface.Outputs.Variables) > 0 {
-		if metadata, err := h.store.Head(ctx, taskCtx.GetOutputsFile()); err != nil {
-			return handler.StatusUndefined, errors.Wrapf(errors.CausedByError, node.GetID(), err, "failed to HEAD task outputs file.")
-		} else if !metadata.Exists() {
-			return handler.StatusRetryableFailure(errors.Errorf(errors.OutputsNotFoundError, node.GetID(),
-				"Outputs not found for task type %s, looking for output file %s", task.TaskType(), taskCtx.GetOutputsFile())), nil
+	if trns.Info().Phase() == ts.PluginPhase {
+		if trns.Info().Version() == ts.PluginPhaseVersion {
+			logger.Debugf(ctx, "Phase+Version previously seen .. no event will be sent")
+			pluginTrns.TransitionPreviouslyRecorded()
+			return pluginTrns, nil
 		}
-
-		// ignores discovery write failures
-		if task.CoreTask().Metadata.Discoverable && !t.GetProperties().DisableNodeLevelCaching {
-			taskExecutionID := taskCtx.GetTaskExecutionID().GetID()
-			if err2 := h.catalogClient.Put(ctx, task.CoreTask(), &taskExecutionID, taskCtx.GetInputsFile(), taskCtx.GetOutputsFile()); err2 != nil {
-				h.metrics.discoveryPutFailureCount.Inc(ctx)
-				logger.Errorf(ctx, "Failed to write results to catalog. Err: %v", err2)
-			} else {
-				logger.Debugf(ctx, "Successfully cached results to discovery - Task [%s]", task.CoreTask().GetId())
-			}
+		if trns.Info().Version() > maxPluginPhaseVersions {
+			logger.Errorf(ctx, "Too many Plugin Phase versions for plugin [%s]. Phase versions [%d/%d]", p.GetID(), trns.Info().Version(), maxPluginPhaseVersions)
+			pluginTrns.ObservedExecutionError(&io.ExecutionError{
+				ExecutionError: &core.ExecutionError{
+					Code:    "TooManyPluginPhaseVersions",
+					Message: fmt.Sprintf("Total number of phase versions exceeded for Phase [%s] in Plugin [%s], max allowed [%d]", trns.Info().Phase().String(), p.GetID(), maxPluginPhaseVersions),
+				},
+				IsRecoverable: false,
+			})
+			return pluginTrns, nil
 		}
 	}
-	return handler.StatusSuccess, nil
-}
 
-func (h *taskHandler) HandleFailingNode(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode) (handler.Status, error) {
-	return handler.StatusFailed(errors.Errorf(errors.IllegalStateError, node.GetID(), "A regular Task node cannot enter a failing state")), nil
-}
+	if trns.Info().Phase() == pluginCore.PhaseSuccess {
+		// -------------------------------------
+		// TODO: @kumare create Issue# Remove the code after we use closures to handle dynamic nodes
+		// This code only exists to support Dynamic tasks. Eventually dynamic tasks will use closure nodes to execute
+		// Until then we have to check if the Handler executed resulted in a dynamic node being generated, if so, then
+		// we will not check for outputs or call onTaskSuccess. The reason is that outputs have not yet been materialized.
+		// Outputs for the parent node will only get generated after the subtasks complete. We have to wait for the completion
+		// the dynamic.handler will call onTaskSuccess for the parent node
 
-func (h *taskHandler) Initialize(ctx context.Context) error {
-	logger.Infof(ctx, "Initializing taskHandler")
-	enqueueFn := func(ownerId types.NamespacedName) error {
-		h.enqueueWf(ownerId.String())
-		return nil
-	}
-
-	initParams := pluginsV1.ExecutorInitializationParameters{
-		CatalogClient: h.catalogClient,
-		EventRecorder: h.recorder,
-		DataStore:     h.store,
-		EnqueueOwner:  enqueueFn,
-		OwnerKind:     v1alpha1.FlyteWorkflowKind,
-		MetricsScope:  h.scope,
-	}
-
-	for _, r := range h.taskFactory.ListAllTaskExecutors() {
-		logger.Infof(ctx, "Initializing Executor [%v]", r.GetID())
-		// Inject a RuntimeClient if the executor needs one.
-		if _, err := inject.ClientInto(h.kubeClient.GetClient(), r); err != nil {
-			return errors2.Wrapf(err, "Failed to initialize [%v]", r.GetID())
-		}
-
-		if _, err := inject.CacheInto(h.kubeClient.GetCache(), r); err != nil {
-			return errors2.Wrapf(err, "Failed to initialize [%v]", r.GetID())
-		}
-
-		err := r.Initialize(ctx, initParams)
+		f, err := NewRemoteFutureFileReader(ctx, tCtx.ow.dataDir, tCtx.DataStore())
 		if err != nil {
-			return errors2.Wrapf(err, "Failed to Initialize TaskExecutor [%v]", r.GetID())
+			return nil, regErrors.Wrapf(err, "failed to create remote file reader")
+		}
+		if ok, err := f.Exists(ctx); err != nil {
+			logger.Errorf(ctx, "failed to check existence of futures file")
+			return nil, regErrors.Wrapf(err, "failed to check existence of futures file")
+		} else if ok {
+			logger.Infof(ctx, "Futures file exists, this is a dynamic parent-Handler will not run onTaskSuccess")
+			return pluginTrns, nil
+		}
+		// End TODO
+		// -------------------------------------
+		logger.Debugf(ctx, "Task success detected, calling on Task success")
+		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.outReader, tCtx.tr, catalog.Metadata{
+			WorkflowExecutionIdentifier: nil,
+			TaskExecutionIdentifier: &core.TaskExecutionIdentifier{
+				TaskId: tCtx.tr.GetTaskID(),
+				// TODO @kumare required before checking in
+				NodeExecutionId: nil,
+				RetryAttempt:    0,
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		if ee != nil {
+			pluginTrns.ObservedExecutionError(ee)
+		} else {
+			pluginTrns.ObserveSuccess(tCtx.ow.outPath)
+		}
+	}
+	return pluginTrns, nil
+}
+
+func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
+
+	tCtx, err := t.newTaskExecutionContext(ctx, nCtx)
+	if err != nil {
+		return handler.UnknownTransition, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
+	}
+
+	ttype := tCtx.tr.GetTaskType()
+	ctx = contextutils.WithTaskType(ctx, ttype)
+	p, err := t.ResolvePlugin(ctx, ttype)
+	if err != nil {
+		return handler.UnknownTransition, errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
+	}
+
+	ts := nCtx.NodeStateReader().GetTaskNodeState()
+
+	var pluginTrns *pluginRequestedTransition
+
+	// NOTE: Ideally we should use a taskExecution state for this handler. But, doing that will make it completely backwards incompatible
+	// So now we will derive this from the plugin phase
+	// TODO @kumare re-evaluate this decision
+
+	// STEP 1: Check Cache
+	if ts.PluginPhase == pluginCore.PhaseUndefined {
+		// This is assumed to be first time. we will check catalog and call handle
+		if ok, err := t.CheckCatalogCache(ctx, tCtx.tr, nCtx.InputReader(), tCtx.ow); err != nil {
+			logger.Errorf(ctx, "failed to check catalog cache with error")
+			return handler.UnknownTransition, err
+		} else if ok {
+			pluginTrns = &pluginRequestedTransition{}
+			pluginTrns.CacheHit()
 		}
 	}
 
-	logger.Infof(ctx, "taskHandler Initialization complete")
-	return nil
-}
-
-func (h *taskHandler) AbortNode(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode) error {
-	t, _, taskCtx, err := h.GetTaskExecutorContext(ctx, w, node)
-	if err != nil {
-		return errors.Wrapf(errors.CausedByError, node.GetID(), err, "failed to create TaskCtx")
+	// STEP 2: If no cache-hit, then lets invoke the plugin and wait for a transition out of undefined
+	if pluginTrns == nil {
+		var err error
+		pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
+		if err != nil {
+			return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
+		}
 	}
 
-	err = t.KillTask(ctx, taskCtx, "Node aborted")
-	if err != nil {
-		return errors.Wrapf(errors.CausedByError, node.GetID(), err, "failed to abort task")
+	// STEP 3: Sanity check
+	if pluginTrns == nil {
+		// Still nil, this should never happen!!!
+		return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "plugin transition is not observed and no error as well.")
 	}
-	// TODO: Do we need to update the Node status to Failed here as well ?
-	logger.Infof(ctx, "Invoked KillTask on Task Node.")
-	return nil
+
+	// STEP 4: Send buffered events!
+	logger.Debugf(ctx, "Sending buffered Task events.")
+	for _, ev := range tCtx.ber.GetAll(ctx) {
+		evInfo, err := ToTaskExecutionEvent(tCtx.tr.GetTaskID(), ev)
+		if err != nil {
+			return handler.UnknownTransition, err
+		}
+		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo); err != nil {
+			logger.Errorf(ctx, "Event recording failed for Plugin [%s], eventPhase [%s], error :%s", p.GetID(), evInfo.Phase.String(), err.Error())
+			// Check for idempotency
+			// Check for terminate state error
+			return handler.UnknownTransition, err
+		}
+	}
+
+	// STEP 5: Send Transition events
+	logger.Debugf(ctx, "Sending transition event for plugin phase [%s]", pluginTrns.pInfo.Phase().String())
+	evInfo, err := pluginTrns.FinalTaskEvent(tCtx.tr.GetTaskID())
+	if err != nil {
+		logger.Errorf(ctx, "failed to convert plugin transition to TaskExecutionEvent. Error: %s", err.Error())
+		return handler.UnknownTransition, err
+	}
+	if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo); err != nil {
+		// Check for idempotency
+		// Check for terminate state error
+		logger.Errorf(ctx, "failed to send event to Admin. error: %s", err.Error())
+		return handler.UnknownTransition, err
+	}
+
+	// STEP 6: Persist the plugin state
+	var b []byte
+	if tCtx.psm.newState != nil {
+		b = tCtx.psm.newState.Bytes()
+	}
+	err = nCtx.NodeStateWriter().PutTaskNodeState(handler.TaskNodeState{
+		PluginState:        b,
+		PluginStateVersion: uint32(tCtx.psm.newStateVersion),
+		PluginPhase:        pluginTrns.pInfo.Phase(),
+		PluginPhaseVersion: pluginTrns.pInfo.Version(),
+	})
+	if err != nil {
+		logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())
+		return handler.UnknownTransition, err
+	}
+
+	return pluginTrns.FinalTransition(ctx)
 }
 
-func NewTaskHandlerForFactory(eventSink events.EventSink, store *storage.DataStore, enqueueWf v1alpha1.EnqueueWorkflow,
-	tf Factory, catalogClient catalog.Client, kubeClient executors.Client, scope promutils.Scope) handler.IFace {
+func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext) error {
+	logger.Debugf(ctx, "Abort invoked.")
+	tCtx, err := t.newTaskExecutionContext(ctx, nCtx)
+	if err != nil {
+		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
+	}
 
-	// create a recorder for the plugins
-	eventsRecorder := utils.NewPluginTaskEventRecorder(events.NewTaskEventRecorder(eventSink, scope))
-	return &taskHandler{
-		taskFactory:   tf,
-		recorder:      eventsRecorder,
-		enqueueWf:     enqueueWf,
-		store:         store,
-		scope:         scope,
-		catalogClient: catalogClient,
-		kubeClient:    kubeClient,
+	p, err := t.ResolvePlugin(ctx, tCtx.tr.GetTaskType())
+	if err != nil {
+		return errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
+	}
+
+	return func() (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.metrics.pluginPanics.Inc(ctx)
+				stack := debug.Stack()
+				logger.Errorf(ctx, "Panic in plugin.Abort for TaskType [%s]", tCtx.tr.GetTaskType())
+				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", tCtx.tr.GetTaskType(), string(stack))
+			}
+		}()
+		childCtx := context.WithValue(ctx, "plugin", p.GetID())
+		err = p.Abort(childCtx, tCtx)
+		return
+	}()
+}
+
+func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
+	logger.Debugf(ctx, "Finalize invoked.")
+	tCtx, err := t.newTaskExecutionContext(ctx, nCtx)
+	if err != nil {
+		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
+	}
+
+	p, err := t.ResolvePlugin(ctx, tCtx.tr.GetTaskType())
+	if err != nil {
+		return errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
+	}
+
+	return func() (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.metrics.pluginPanics.Inc(ctx)
+				stack := debug.Stack()
+				logger.Errorf(ctx, "Panic in plugin.Abort for TaskType [%s]", tCtx.tr.GetTaskType())
+				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", tCtx.tr.GetTaskType(), string(stack))
+			}
+		}()
+		childCtx := context.WithValue(ctx, "plugin", p.GetID())
+		err = p.Finalize(childCtx, tCtx)
+		return
+	}()
+}
+
+func New(_ context.Context, scope promutils.Scope) *Handler {
+	return &Handler{
+		pluginRegistry: pluginMachinery.PluginRegistry(),
+		plugins:        make(map[pluginCore.TaskType]pluginCore.Plugin),
 		metrics: &metrics{
-			pluginPanics:             labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a task.", scope),
-			unsupportedTaskType:      labeled.NewCounter("unsupported_tasktype", "No task plugin configured for task type", scope),
+			pluginPanics:             labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),
+			unsupportedTaskType:      labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),
 			discoveryHitCount:        labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", scope),
 			discoveryMissCount:       labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
 			discoveryPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			discoveryGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
 		},
 	}
-}
-
-func New(eventSink events.EventSink, store *storage.DataStore, enqueueWf v1alpha1.EnqueueWorkflow, revalPeriod time.Duration,
-	catalogClient catalog.Client, kubeClient executors.Client, scope promutils.Scope) handler.IFace {
-
-	return NewTaskHandlerForFactory(eventSink, store, enqueueWf, NewFactory(revalPeriod),
-		catalogClient, kubeClient, scope.NewSubScope("task"))
 }

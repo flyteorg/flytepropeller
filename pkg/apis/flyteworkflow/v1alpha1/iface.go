@@ -8,7 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	types2 "github.com/lyft/flyteplugins/go/tasks/v1/types"
 	"github.com/lyft/flytestdlib/storage"
 )
 
@@ -249,16 +248,22 @@ type MutableSubWorkflowNodeStatus interface {
 }
 
 type ExecutableTaskNodeStatus interface {
-	GetPhase() types2.TaskPhase
+	GetPhase() int
 	GetPhaseVersion() uint32
-	GetCustomState() types2.CustomState
+	GetPluginState() []byte
+	GetPluginStateVersion() uint32
+
+	// Delete after migration is complete
+	UsePluginState() bool
+	GetCustomState() map[string]interface{}
 }
 
 type MutableTaskNodeStatus interface {
 	ExecutableTaskNodeStatus
-	SetPhase(phase types2.TaskPhase)
+	SetPhase(phase int)
 	SetPhaseVersion(version uint32)
-	SetCustomState(state types2.CustomState)
+	SetPluginState([]byte)
+	SetPluginStateVersion(uint32)
 }
 
 // Interface for a Child Workflow Node
@@ -336,7 +341,7 @@ type ExecutableSubWorkflow interface {
 type WorkflowMeta interface {
 	GetExecutionID() ExecutionID
 	GetK8sWorkflowID() types.NamespacedName
-	NewControllerRef() metav1.OwnerReference
+	GetOwnerReference() metav1.OwnerReference
 	GetNamespace() string
 	GetCreationTimestamp() metav1.Time
 	GetAnnotations() map[string]string
@@ -345,9 +350,13 @@ type WorkflowMeta interface {
 	GetServiceAccountName() string
 }
 
+type TaskDetailsGetter interface {
+	GetTask(id TaskID) (ExecutableTask, error)
+}
+
 type WorkflowMetaExtended interface {
 	WorkflowMeta
-	GetTask(id TaskID) (ExecutableTask, error)
+	TaskDetailsGetter
 	FindSubWorkflow(subID WorkflowID) ExecutableSubWorkflow
 	GetExecutionStatus() ExecutableWorkflowStatus
 }

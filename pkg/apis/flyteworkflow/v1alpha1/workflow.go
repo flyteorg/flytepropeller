@@ -43,7 +43,7 @@ type FlyteWorkflow struct {
 
 var FlyteWorkflowGVK = SchemeGroupVersion.WithKind(FlyteWorkflowKind)
 
-func (in *FlyteWorkflow) NewControllerRef() metav1.OwnerReference {
+func (in *FlyteWorkflow) GetOwnerReference() metav1.OwnerReference {
 	// TODO Open Issue - https://github.com/kubernetes/client-go/issues/308
 	// For some reason the CRD does not have the GVK correctly populated. So we will fake it.
 	if len(in.GroupVersionKind().Group) == 0 || len(in.GroupVersionKind().Kind) == 0 || len(in.GroupVersionKind().Version) == 0 {

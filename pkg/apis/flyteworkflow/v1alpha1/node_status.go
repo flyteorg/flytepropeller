@@ -5,7 +5,6 @@ import (
 	"reflect"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -122,8 +121,10 @@ type NodeStatus struct {
 	SubNodeStatus map[NodeID]*NodeStatus   `json:"subNodeStatus,omitempty"`
 	// We can store the outputs at this layer
 
-	WorkflowNodeStatus    *WorkflowNodeStatus    `json:"workflowNodeStatus,omitempty"`
-	TaskNodeStatus        *TaskNodeStatus        `json:",omitempty"`
+	// TODO not used delete
+	WorkflowNodeStatus *WorkflowNodeStatus `json:"workflowNodeStatus,omitempty"`
+	TaskNodeStatus     *TaskNodeStatus     `json:",omitempty"`
+	// TODO not used delete
 	SubWorkflowNodeStatus *SubWorkflowNodeStatus `json:"subWorkflowStatus,omitempty"`
 	DynamicNodeStatus     *DynamicNodeStatus     `json:"dynamicNodeStatus,omitempty"`
 }
@@ -447,12 +448,38 @@ func (in *CustomState) DeepCopy() *CustomState {
 }
 
 type TaskNodeStatus struct {
-	Phase        types.TaskPhase   `json:"phase,omitempty"`
-	PhaseVersion uint32            `json:"phaseVersion,omitempty"`
-	CustomState  types.CustomState `json:"custom,omitempty"`
+	Phase              int                    `json:"phase,omitempty"`
+	PhaseVersion       uint32                 `json:"phaseVersion,omitempty"`
+	PluginState        []byte                 `json:"pState,omitempty"`
+	PluginStateVersion uint32                 `json:"psv,omitempty"`
+	// The default case would be false, which indicates that we are not using plugin state. this would be useful in migration
+	PluginStateInUse   bool                   `json:"psvUsed"`
+	// Delete after migration is complete
+	CustomState        map[string]interface{} `json:"custom,omitempty"`
 }
 
-func (in *TaskNodeStatus) SetPhase(phase types.TaskPhase) {
+func (in *TaskNodeStatus) UsePluginState() bool {
+	return in.PluginStateInUse
+}
+
+func (in *TaskNodeStatus) SetPluginState(s []byte) {
+	in.PluginStateInUse = true
+	in.PluginState = s
+}
+
+func (in *TaskNodeStatus) SetPluginStateVersion(v uint32) {
+	in.PluginStateVersion = v
+}
+
+func (in *TaskNodeStatus) GetPluginState() []byte {
+	return in.PluginState
+}
+
+func (in *TaskNodeStatus) GetPluginStateVersion() uint32 {
+	return in.PluginStateVersion
+}
+
+func (in *TaskNodeStatus) SetPhase(phase int) {
 	in.Phase = phase
 }
 
@@ -460,11 +487,11 @@ func (in *TaskNodeStatus) SetPhaseVersion(version uint32) {
 	in.PhaseVersion = version
 }
 
-func (in *TaskNodeStatus) SetCustomState(state types.CustomState) {
+func (in *TaskNodeStatus) SetCustomState(state map[string]interface{}) {
 	in.CustomState = state
 }
 
-func (in TaskNodeStatus) GetPhase() types.TaskPhase {
+func (in TaskNodeStatus) GetPhase() int {
 	return in.Phase
 }
 
@@ -472,16 +499,16 @@ func (in TaskNodeStatus) GetPhaseVersion() uint32 {
 	return in.PhaseVersion
 }
 
-func (in TaskNodeStatus) GetCustomState() types.CustomState {
+func (in TaskNodeStatus) GetCustomState() map[string]interface{} {
 	return in.CustomState
 }
 
-func (in *TaskNodeStatus) UpdatePhase(phase types.TaskPhase, phaseVersion uint32) {
+func (in *TaskNodeStatus) UpdatePhase(phase int, phaseVersion uint32) {
 	in.Phase = phase
 	in.PhaseVersion = phaseVersion
 }
 
-func (in *TaskNodeStatus) UpdateCustomState(state types.CustomState) {
+func (in *TaskNodeStatus) UpdateCustomState(state map[string]interface{}) {
 	in.CustomState = state
 }
 
