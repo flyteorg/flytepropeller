@@ -127,6 +127,9 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 			return trns.WithInfo(handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().GetInfo())), nil
 		}
 	}
+}
+
+func (d dynamicNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext) error {
 
 	return trns, nil
 }
@@ -149,6 +152,7 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 			return trns, err
 		}
 	}
+}
 
 	if err := nCtx.NodeStateWriter().PutDynamicNodeState(newState); err != nil {
 		return handler.UnknownTransition, err

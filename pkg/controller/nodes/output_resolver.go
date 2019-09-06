@@ -2,15 +2,12 @@ package nodes
 
 import (
 	"context"
-	"reflect"
 
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
-
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
@@ -34,91 +31,40 @@ func CreateAliasMap(aliases []v1alpha1.Alias) map[string]string {
 
 // A simple output resolver that expects an outputs.pb at the data directory of the node.
 type remoteFileOutputResolver struct {
-	store *storage.DataStore
+	store storage.ProtobufStore
 }
 
 func (r remoteFileOutputResolver) ExtractOutput(ctx context.Context, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode,
 	bindToVar VarName) (values *core.Literal, err error) {
+	d := &core.LiteralMap{}
 	nodeStatus := w.GetNodeExecutionStatus(n.GetID())
 	outputsFileRef := v1alpha1.GetOutputsFile(nodeStatus.GetDataDir())
+	if err := r.store.ReadProtobuf(ctx, outputsFileRef, d); err != nil {
+		return nil, errors.Wrapf(errors.CausedByError, n.GetID(), err, "Failed to GetPrevious data from dataDir [%v]", nodeStatus.GetDataDir())
+	}
 
-	index, actualVar, err := ParseVarName(bindToVar)
-	if err != nil {
-		return nil, err
+	if d.Literals == nil {
+		return nil, errors.Errorf(errors.OutputsNotFoundError, n.GetID(),
+			"Outputs not found at [%v]", outputsFileRef)
 	}
 
 	aliasMap := CreateAliasMap(n.GetOutputAlias())
-	if variable, ok := aliasMap[actualVar]; ok {
+	if variable, ok := aliasMap[bindToVar]; ok {
 		logger.Debugf(ctx, "Mapping [%v].[%v] -> [%v].[%v]", n.GetID(), variable, n.GetID(), bindToVar)
-		actualVar = variable
+		bindToVar = variable
 	}
 
-	if index == nil {
-		return resolveSingleOutput(ctx, r.store, n.GetID(), outputsFileRef, actualVar)
-	}
-
-	return resolveSubtaskOutput(ctx, r.store, n.GetID(), outputsFileRef, *index, actualVar)
-}
-
-func resolveSubtaskOutput(ctx context.Context, store storage.ProtobufStore, nodeID string, outputsFileRef storage.DataReference,
-	idx int, varName string) (*core.Literal, error) {
-	d := &core.LiteralMap{}
-	// TODO we should do a head before read and if head results in not found then fail
-	if err := store.ReadProtobuf(ctx, outputsFileRef, d); err != nil {
-		return nil, errors.Wrapf(errors.CausedByError, nodeID, err, "Failed to GetPrevious data from dataDir [%v]",
-			outputsFileRef)
-	}
-
-	if d.Literals == nil {
-		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeID,
-			"Outputs not found at [%v]", outputsFileRef)
-	}
-
-	l, ok := d.Literals[varName]
+	l, ok := d.Literals[bindToVar]
 	if !ok {
-		return nil, errors.Errorf(errors.BadSpecificationError, nodeID, "Output of array tasks is expected to be "+
-			"a single literal map entry named 'array' of type LiteralCollection.")
-	}
-
-	if l.GetCollection() == nil {
-		return nil, errors.Errorf(errors.BadSpecificationError, nodeID, "Output of array tasks of key 'array' "+
-			"is of type [%v]. LiteralCollection is expected.", reflect.TypeOf(l.GetValue()))
-	}
-
-	literals := l.GetCollection().Literals
-	if idx >= len(literals) {
-		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeID, "Failed to find [%v[%v].%v]",
-			nodeID, idx, varName)
-	}
-
-	return literals[idx], nil
-}
-
-func resolveSingleOutput(ctx context.Context, store storage.ProtobufStore, nodeID string, outputsFileRef storage.DataReference,
-	varName string) (*core.Literal, error) {
-
-	d := &core.LiteralMap{}
-	if err := store.ReadProtobuf(ctx, outputsFileRef, d); err != nil {
-		return nil, errors.Wrapf(errors.CausedByError, nodeID, err, "Failed to GetPrevious data from dataDir [%v]",
-			outputsFileRef)
-	}
-
-	if d.Literals == nil {
-		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeID,
-			"Outputs not found at [%v]", outputsFileRef)
-	}
-
-	l, ok := d.Literals[varName]
-	if !ok {
-		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeID,
-			"Failed to find [%v].[%v]", nodeID, varName)
+		return nil, errors.Errorf(errors.OutputsNotFoundError, n.GetID(),
+			"Failed to find [%v].[%v]", n.GetID(), bindToVar)
 	}
 
 	return l, nil
 }
 
 // Creates a simple output resolver that expects an outputs.pb at the data directory of the node.
-func NewRemoteFileOutputResolver(store *storage.DataStore) OutputResolver {
+func NewRemoteFileOutputResolver(store storage.ProtobufStore) remoteFileOutputResolver {
 	return remoteFileOutputResolver{
 		store: store,
 	}

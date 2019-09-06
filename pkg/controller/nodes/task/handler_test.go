@@ -1286,6 +1286,14 @@ func Test_task_Finalize(t *testing.T) {
 			if m != nil {
 				m.(*pluginCoreMocks.Plugin).AssertNumberOfCalls(t, "Finalize", c)
 			}
+			if err := tk.Finalize(context.TODO(), tt.args.nCtx); (err != nil) != tt.wantErr {
+				t.Errorf("Handler.Finalize() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			c := 0
+			if tt.finalize {
+				c = 1
+			}
+			m.AssertNumberOfCalls(t, "Finalize", c)
 		})
 	}
 }
