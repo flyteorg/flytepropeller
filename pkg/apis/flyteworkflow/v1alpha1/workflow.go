@@ -17,6 +17,7 @@ const EndNodeID = "end-node"
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 
 // FlyteWorkflow: represents one Execution Workflow object
 type FlyteWorkflow struct {
@@ -168,6 +169,7 @@ type WorkflowSpec struct {
 	// Defines the data links used to construct the final outputs of the workflow. Bindings will typically
 	// refer to specific outputs of a subset of the nodes executed in the Workflow. When executing the end-node,
 	// the execution engine will traverse these bindings and assemble the final set of outputs of the workflow.
+	// +listType=atomic
 	OutputBindings []*Binding `json:"outputBindings,omitempty"`
 }
 
@@ -224,9 +226,11 @@ func (in *WorkflowSpec) GetNodes() []NodeID {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen:true
 // FlyteWorkflowList is a list of FlyteWorkflow resources
 type FlyteWorkflowList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
+	// +listType=atomic
 	Items           []FlyteWorkflow `json:"items"`
 }

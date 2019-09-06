@@ -98,6 +98,7 @@ func NewFlyteCommand() *cobra.Command {
 	command.AddCommand(NewGetCommand(rootOpts))
 	command.AddCommand(NewVisualizeCommand(rootOpts))
 	command.AddCommand(NewCreateCommand(rootOpts))
+	command.AddCommand(NewCrdValidationCommand(rootOpts))
 	command.AddCommand(NewCompileCommand(rootOpts))
 
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()

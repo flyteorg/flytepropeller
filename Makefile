@@ -25,6 +25,7 @@ cross_compile:
 
 op_code_generate:
 	@RESOURCE_NAME=flyteworkflow OPERATOR_PKG=github.com/lyft/flytepropeller ./hack/update-codegen.sh
+	@openapi-gen -i github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1 -p github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1
 
 benchmark:
 	mkdir -p ./bin/benchmark 
