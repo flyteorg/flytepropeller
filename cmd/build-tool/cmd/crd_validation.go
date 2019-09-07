@@ -43,8 +43,7 @@ func NewCrdValidationCommand(opts *RootOptions) *cobra.Command {
 			if err := requiredFlags(cmd, baseCrdKey); err != nil {
 				return err
 			}
-
-			log.Println("Line numbers in errors enabled")
+			
 			compilerErrors.SetIncludeSource()
 
 			return crdValidationOpts.generateValidation()
