@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kubeflow/crd-validation/pkg/config"
-	"github.com/lyft/flytepropeller/cmd/kubectl-flyte/cmd/crd"
+	"github.com/lyft/flytepropeller/cmd/build-tool/cmd/crd"
 )
 
 const (
