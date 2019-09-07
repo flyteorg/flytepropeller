@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -15,9 +16,6 @@ import (
 
 	config2 "github.com/lyft/flytepropeller/pkg/controller/config"
 
-	"github.com/lyft/flyteplugins/go/tasks"
-
-	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lyft/flytestdlib/config/viper"
@@ -36,11 +34,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
+	restclient "k8s.io/client-go/rest"
+
 	clientset "github.com/lyft/flytepropeller/pkg/client/clientset/versioned"
 	informers "github.com/lyft/flytepropeller/pkg/client/informers/externalversions"
 	"github.com/lyft/flytepropeller/pkg/controller"
 	"github.com/lyft/flytepropeller/pkg/signals"
-	restclient "k8s.io/client-go/rest"
 )
 
 const (
@@ -185,15 +184,6 @@ func executeRootCmd(cfg *config2.Config) {
 	limitNamespace := ""
 	if cfg.LimitNamespace != defaultNamespace {
 		limitNamespace = cfg.LimitNamespace
-	}
-
-	err = flytek8s.Initialize(ctx, limitNamespace, cfg.DownstreamEval.Duration)
-	if err != nil {
-		logger.Panicf(ctx, "Failed to initialize k8s plugins. Error: %v", err)
-	}
-
-	if err := tasks.Load(ctx); err != nil {
-		logger.Fatalf(ctx, "Failed to load task plugins. [%v]", err)
 	}
 
 	mgr, err := manager.New(kubecfg, manager.Options{
