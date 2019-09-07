@@ -52,7 +52,7 @@ func ToTaskExecutionEvent(tk *core.Identifier, info pluginCore.PhaseInfo) (*even
 
 	return &event.TaskExecutionEvent{
 		Phase:        ToTaskEventPhase(info.Phase()),
-		PhaseVersion: uint32(info.Version()),
+		PhaseVersion: info.Version(),
 		OccurredAt:   tm,
 		Logs:         info.Info().Logs,
 		CustomInfo:   info.Info().CustomInfo,

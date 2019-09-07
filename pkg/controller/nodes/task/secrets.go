@@ -23,9 +23,8 @@ func (f fileEnvSecretManager) Get(ctx context.Context, key string) (string, erro
 	if _, err := os.Stat(secretFile); err != nil {
 		if os.IsNotExist(err) {
 			return "", fmt.Errorf("secrets not found")
-		} else {
-			return "", err
 		}
+		return "", err
 	}
 	logger.Debugf(ctx, "reading secrets from filePath [%s]", secretFile)
 	b, err := ioutil.ReadFile(secretFile)

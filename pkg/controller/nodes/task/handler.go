@@ -26,6 +26,8 @@ import (
 
 const maxPluginPhaseVersions = 10
 
+const pluginContextKey = contextutils.Key("plugin")
+
 type metrics struct {
 	pluginPanics             labeled.Counter
 	unsupportedTaskType      labeled.Counter
@@ -143,16 +145,16 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		}
 	}
 	for _, kpe := range t.pluginRegistry.GetK8sPlugins() {
-		if kp, err := k8s.NewPluginManager(ctx, tSCtx, kpe); err != nil {
+		kp, err := k8s.NewPluginManager(ctx, tSCtx, kpe)
+		if err != nil {
 			return regErrors.Wrapf(err, "failed to load plugin - %s", kpe.ID)
-		} else {
-			for _, tt := range kpe.RegisteredTaskTypes {
-				t.plugins[tt] = kp
-			}
-			if kpe.IsDefault {
-				if err := t.setDefault(ctx, kp); err != nil {
-					return err
-				}
+		}
+		for _, tt := range kpe.RegisteredTaskTypes {
+			t.plugins[tt] = kp
+		}
+		if kpe.IsDefault {
+			if err := t.setDefault(ctx, kp); err != nil {
+				return err
 			}
 		}
 	}
@@ -183,7 +185,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 				trns = pluginCore.UnknownTransition
 			}
 		}()
-		childCtx := context.WithValue(ctx, "plugin", p.GetID())
+		childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
 		trns, err = p.Handle(childCtx, tCtx)
 		return
 	}()
@@ -376,7 +378,7 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext) e
 				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", tCtx.tr.GetTaskType(), string(stack))
 			}
 		}()
-		childCtx := context.WithValue(ctx, "plugin", p.GetID())
+		childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
 		err = p.Abort(childCtx, tCtx)
 		return
 	}()
@@ -403,7 +405,7 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", tCtx.tr.GetTaskType(), string(stack))
 			}
 		}()
-		childCtx := context.WithValue(ctx, "plugin", p.GetID())
+		childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
 		err = p.Finalize(childCtx, tCtx)
 		return
 	}()

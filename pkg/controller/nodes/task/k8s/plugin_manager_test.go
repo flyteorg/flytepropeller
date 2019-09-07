@@ -17,14 +17,15 @@ import (
 
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/mock"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
-	k8sBatch "k8s.io/api/batch/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 )
 
 type k8sSampleHandler struct {
@@ -42,15 +43,20 @@ func (k8sSampleHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.Plug
 	panic("implement me")
 }
 
-func ExampleNewK8sTaskExecutorForResource() {
+func ExampleNewPluginManager() {
 	sCtx := &pluginsCoreMock.SetupContext{}
+	fakeKubeClient := mocks.NewFakeKubeClient()
+	sCtx.On("KubeClient").Return(fakeKubeClient)
+	sCtx.On("OwnerKind").Return("test")
+	sCtx.On("EnqueueOwner").Return(pluginsCore.EnqueueOwner(func(name k8stypes.NamespacedName) error { return nil }))
+	sCtx.On("MetricsScope").Return(promutils.NewTestScope())
 	exec, err := NewPluginManager(
 		context.TODO(),
 		sCtx,
 		k8s.PluginEntry{
 			ID:                  "SampleHandler",
-			RegisteredTaskTypes: []pluginsCore.TaskType{"k8sbatch"},
-			ResourceToWatch:     &k8sBatch.Job{},
+			RegisteredTaskTypes: []pluginsCore.TaskType{"container"},
+			ResourceToWatch:     &v1.Pod{},
 			Plugin:              k8sSampleHandler{},
 		})
 	if err == nil {

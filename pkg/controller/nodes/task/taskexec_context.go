@@ -7,8 +7,8 @@ import (
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
-	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginCatalog "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
+	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
@@ -47,14 +47,13 @@ func (t taskExecutionMetadata) GetOverrides() pluginCore.TaskOverrides {
 
 type taskExecutionContext struct {
 	handler.NodeExecutionContext
-	tm      taskExecutionMetadata
-	rm      pluginCore.ResourceManager
-	psm     *pluginStateManager
-	tr      handler.TaskReader
-	ow      *outputWriter
-	ber     *bufferedEventRecorder
-	sm      pluginCore.SecretManager
-	catalog *catalogClient
+	tm  taskExecutionMetadata
+	rm  pluginCore.ResourceManager
+	psm *pluginStateManager
+	tr  handler.TaskReader
+	ow  *OutputWriter
+	ber *bufferedEventRecorder
+	sm  pluginCore.SecretManager
 }
 
 func (t taskExecutionContext) EventsRecorder() pluginCore.EventsRecorder {

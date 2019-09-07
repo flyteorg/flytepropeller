@@ -7,7 +7,7 @@ import (
 )
 
 type bufferedEventRecorder struct {
-	ev         []pluginCore.PhaseInfo
+	ev []pluginCore.PhaseInfo
 }
 
 func (b *bufferedEventRecorder) RecordRaw(ctx context.Context, ev pluginCore.PhaseInfo) error {
@@ -21,6 +21,6 @@ func (b *bufferedEventRecorder) GetAll(ctx context.Context) []pluginCore.PhaseIn
 
 func newBufferedEventRecorder() *bufferedEventRecorder {
 	return &bufferedEventRecorder{
-		ev:         make([]pluginCore.PhaseInfo, 0, 1),
+		ev: make([]pluginCore.PhaseInfo, 0, 1),
 	}
 }

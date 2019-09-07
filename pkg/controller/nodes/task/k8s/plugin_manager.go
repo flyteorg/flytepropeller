@@ -3,10 +3,10 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
 	"strings"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
 	"github.com/lyft/flytestdlib/contextutils"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -92,13 +92,8 @@ type PluginManager struct {
 	id              string
 	plugin          k8s.Plugin
 	resourceToWatch runtime.Object
-
-	// Supplied on Initialization
-	// TODO decide the right place to put these interfaces or late-bind them?
-	kubeClient   pluginsCore.KubeClient
-	enqueueOwner pluginsCore.EnqueueOwner
-	ownerKind    string
-	metrics      PluginMetrics
+	kubeClient      pluginsCore.KubeClient
+	metrics         PluginMetrics
 }
 
 func (e *PluginManager) GetProperties() pluginsCore.PluginProperties {
@@ -278,15 +273,6 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		Type: entry.ResourceToWatch,
 	}
 
-	/*
-		if _, err := inject.CacheInto(instance.informersCache, &src); err != nil {
-			return err
-		}*/
-
-	// TODO: a more unique workqueue name
-	q := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(),
-		entry.ResourceToWatch.GetObjectKind().GroupVersionKind().Kind)
-
 	ownerKind := iCtx.OwnerKind()
 	workflowParentPredicate := func(o metav1.Object) bool {
 		ownerReference := metav1.GetControllerOf(o)
@@ -298,43 +284,56 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		return false
 	}
 
+	if err := src.InjectCache(iCtx.KubeClient().GetCache()); err != nil {
+		logger.Errorf(ctx, "failed to set informers for ObjectType %s", src.String())
+		return nil, err
+	}
+
 	enqueueOwner := iCtx.EnqueueOwner()
-	err := src.Start(handler.Funcs{
-		CreateFunc: func(evt event.CreateEvent, q2 workqueue.RateLimitingInterface) {
-			if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
-				logger.Warnf(ctx, "Failed to handle Create event for object [%v]", evt.Meta.GetName())
-			}
+	err := src.Start(
+		// Handlers
+		handler.Funcs{
+			CreateFunc: func(evt event.CreateEvent, q2 workqueue.RateLimitingInterface) {
+				if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
+					logger.Warnf(ctx, "Failed to handle Create event for object [%v]", evt.Meta.GetName())
+				}
+			},
+			UpdateFunc: func(evt event.UpdateEvent, q2 workqueue.RateLimitingInterface) {
+				if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.MetaNew.GetName(), Namespace: evt.MetaNew.GetNamespace()}); err != nil {
+					logger.Warnf(ctx, "Failed to handle Update event for object [%v]", evt.MetaNew.GetName())
+				}
+			},
+			DeleteFunc: func(evt event.DeleteEvent, q2 workqueue.RateLimitingInterface) {
+				if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
+					logger.Warnf(ctx, "Failed to handle Delete event for object [%v]", evt.Meta.GetName())
+				}
+			},
+			GenericFunc: func(evt event.GenericEvent, q2 workqueue.RateLimitingInterface) {
+				if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
+					logger.Warnf(ctx, "Failed to handle Generic event for object [%v]", evt.Meta.GetName())
+				}
+			},
 		},
-		UpdateFunc: func(evt event.UpdateEvent, q2 workqueue.RateLimitingInterface) {
-			if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.MetaNew.GetName(), Namespace: evt.MetaNew.GetNamespace()}); err != nil {
-				logger.Warnf(ctx, "Failed to handle Update event for object [%v]", evt.MetaNew.GetName())
-			}
-		},
-		DeleteFunc: func(evt event.DeleteEvent, q2 workqueue.RateLimitingInterface) {
-			if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
-				logger.Warnf(ctx, "Failed to handle Delete event for object [%v]", evt.Meta.GetName())
-			}
-		},
-		GenericFunc: func(evt event.GenericEvent, q2 workqueue.RateLimitingInterface) {
-			if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
-				logger.Warnf(ctx, "Failed to handle Generic event for object [%v]", evt.Meta.GetName())
-			}
-		},
-	}, q, predicate.Funcs{
-		CreateFunc: func(createEvent event.CreateEvent) bool {
-			return workflowParentPredicate(createEvent.Meta)
-		},
-		UpdateFunc: func(updateEvent event.UpdateEvent) bool {
-			// TODO we should filter out events in case there are no updates observed between the old and new?
-			return workflowParentPredicate(updateEvent.MetaNew)
-		},
-		DeleteFunc: func(deleteEvent event.DeleteEvent) bool {
-			return workflowParentPredicate(deleteEvent.Meta)
-		},
-		GenericFunc: func(genericEvent event.GenericEvent) bool {
-			return workflowParentPredicate(genericEvent.Meta)
-		},
-	})
+		// Queue
+		// TODO: a more unique workqueue name
+		workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(),
+			entry.ResourceToWatch.GetObjectKind().GroupVersionKind().Kind),
+		// Predicates
+		predicate.Funcs{
+			CreateFunc: func(createEvent event.CreateEvent) bool {
+				return workflowParentPredicate(createEvent.Meta)
+			},
+			UpdateFunc: func(updateEvent event.UpdateEvent) bool {
+				// TODO we should filter out events in case there are no updates observed between the old and new?
+				return workflowParentPredicate(updateEvent.MetaNew)
+			},
+			DeleteFunc: func(deleteEvent event.DeleteEvent) bool {
+				return workflowParentPredicate(deleteEvent.Meta)
+			},
+			GenericFunc: func(genericEvent event.GenericEvent) bool {
+				return workflowParentPredicate(genericEvent.Meta)
+			},
+		})
 
 	if err != nil {
 		return nil, err

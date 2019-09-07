@@ -67,7 +67,7 @@ func (p pluginStateManager) GetCodeVersion() CodecVersion {
 	return p.codecVersion
 }
 
-func newPluginStateManager(ctx context.Context, prevCodecVersion CodecVersion, prevStateVersion uint32, prevState *bytes.Buffer) (*pluginStateManager, error) {
+func newPluginStateManager(_ context.Context, prevCodecVersion CodecVersion, prevStateVersion uint32, prevState *bytes.Buffer) (*pluginStateManager, error) {
 	if prevCodecVersion != currentCodec {
 		return nil, errors.Errorf(errors.IllegalStateError, "x", "prev codec [%d] != current codec [%d]", prevCodecVersion, currentCodec)
 	}

@@ -10,11 +10,10 @@ import (
 
 type setupContext struct {
 	handler.SetupContext
-	subScopeName string
 }
 
 func (s setupContext) MetricsScope() promutils.Scope {
-	return s.SetupContext.MetricsScope().NewSubScope(s.subScopeName)
+	return s.SetupContext.MetricsScope()
 }
 
 func (s setupContext) KubeClient() pluginCore.KubeClient {
