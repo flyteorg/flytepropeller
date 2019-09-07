@@ -450,7 +450,6 @@
     "gen/pb-go/flyteidl/admin",
     "gen/pb-go/flyteidl/core",
     "gen/pb-go/flyteidl/event",
-    "gen/pb-go/flyteidl/plugins",
     "gen/pb-go/flyteidl/service",
   ]
   pruneopts = ""
