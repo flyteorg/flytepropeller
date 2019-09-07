@@ -11,12 +11,12 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/catalog"
 )
 
-type catalogClient struct {
+type CatalogClient struct {
 	// TODO change catalog client to match this structure
 	catalog.Client
 }
 
-func (c catalogClient) Get(ctx context.Context, tr pluginCore.TaskReader, input io.InputReader) (*core.LiteralMap, error) {
+func (c CatalogClient) Get(ctx context.Context, tr pluginCore.TaskReader, input io.InputReader) (*core.LiteralMap, error) {
 	tk, err := tr.Read(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read Handler template definition")
@@ -26,7 +26,7 @@ func (c catalogClient) Get(ctx context.Context, tr pluginCore.TaskReader, input 
 	return c.Client.Get(ctx, tk, in)
 }
 
-func (c catalogClient) Put(ctx context.Context, tCtx pluginCore.TaskExecutionContext, op io.OutputReader) error {
+func (c CatalogClient) Put(ctx context.Context, tCtx pluginCore.TaskExecutionContext, op io.OutputReader) error {
 	tk, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to read Handler template definition")
@@ -35,4 +35,8 @@ func (c catalogClient) Put(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 	execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 
 	return c.Client.Put(ctx, tk, &execID, tCtx.InputReader().GetInputPath(), tCtx.OutputWriter().GetOutputPath())
+}
+
+func NewCatalogClient() CatalogClient {
+	return CatalogClient{}
 }

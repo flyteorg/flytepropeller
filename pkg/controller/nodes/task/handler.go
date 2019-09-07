@@ -35,6 +35,8 @@ import (
 
 const pluginContextKey = contextutils.Key("plugin")
 
+const pluginContextKey = contextutils.Key("plugin")
+
 type metrics struct {
 	pluginPanics           labeled.Counter
 	unsupportedTaskType    labeled.Counter
