@@ -254,11 +254,10 @@ func Test_task_ResolvePlugin(t *testing.T) {
 
 func Test_task_Handle(t *testing.T) {
 	type fields struct {
-		plugins       map[pluginCore.TaskType]pluginCore.Plugin
-		defaultPlugin pluginCore.Plugin
+		ttype  pluginCore.TaskType
+		plugin pluginCore.Plugin
 	}
 	type args struct {
-		ctx  context.Context
 		nCtx handler.NodeExecutionContext
 	}
 	tests := []struct {
@@ -268,15 +267,21 @@ func Test_task_Handle(t *testing.T) {
 		want    handler.Transition
 		wantErr bool
 	}{
-		{},
+		{
+			// "immediate-success", fields{
+			// ttype:  "test",
+			// plugin: nil,
+			// },
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tk := Handler{
-				plugins:       tt.fields.plugins,
-				defaultPlugin: tt.fields.defaultPlugin,
+				plugins: map[pluginCore.TaskType]pluginCore.Plugin{
+					tt.fields.ttype: tt.fields.plugin,
+				},
 			}
-			got, err := tk.Handle(tt.args.ctx, tt.args.nCtx)
+			got, err := tk.Handle(context.TODO(), tt.args.nCtx)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Handler.Handle() error = %v, wantErr %v", err, tt.wantErr)
 				return

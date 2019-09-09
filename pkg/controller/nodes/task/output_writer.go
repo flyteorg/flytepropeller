@@ -60,8 +60,8 @@ func NewRemoteFileOutputPaths(ctx context.Context, baseDir storage.DataReference
 	}, nil
 }
 
-func NewRemoteFileOutputWriter(ctx context.Context, baseDir storage.DataReference, store *storage.DataStore) (*OutputWriter, error) {
-	p, err := NewRemoteFileOutputPaths(ctx, baseDir, store)
+func NewRemoteFileOutputWriter(ctx context.Context, baseDir storage.DataReference, constructor storage.ReferenceConstructor) (*OutputWriter, error) {
+	p, err := NewRemoteFileOutputPaths(ctx, baseDir, constructor)
 	if err != nil {
 		return nil, err
 	}

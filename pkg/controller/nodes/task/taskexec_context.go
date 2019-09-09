@@ -13,6 +13,7 @@ import (
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
@@ -54,6 +55,7 @@ type taskExecutionContext struct {
 	ow  *OutputWriter
 	ber *bufferedEventRecorder
 	sm  pluginCore.SecretManager
+	c   catalog.Client
 }
 
 func (t taskExecutionContext) EventsRecorder() pluginCore.EventsRecorder {
@@ -85,7 +87,6 @@ func (t *taskExecutionContext) PluginStateWriter() pluginCore.PluginStateWriter 
 }
 
 func (t *taskExecutionContext) Catalog() pluginCatalog.Client {
-	// TODO @kumare need to fix this
 	return nil
 }
 
@@ -97,7 +98,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 
 	id := core.TaskExecutionIdentifier{
 		TaskId:       nCtx.TaskReader().GetTaskID(),
-		RetryAttempt: nCtx.NodeStatus().GetAttempts(),
+		RetryAttempt: nCtx.CurrentAttempt(),
 		NodeExecutionId: &core.NodeExecutionIdentifier{
 			NodeId:      nCtx.NodeID(),
 			ExecutionId: nCtx.NodeExecutionMetadata().GetExecutionID().WorkflowExecutionIdentifier,
@@ -138,6 +139,8 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		tr:  nCtx.TaskReader(),
 		ow:  ow,
 		ber: newBufferedEventRecorder(),
-		sm:  fileEnvSecretManager{"/etc/secrets"},
+		c:   t.catalog,
+		// TODO @kumare path should be configurable
+		sm: fileEnvSecretManager{"/etc/secrets"},
 	}, nil
 }
