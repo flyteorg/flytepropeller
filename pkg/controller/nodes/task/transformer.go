@@ -55,12 +55,16 @@ func ToTaskExecutionEvent(tk *core.Identifier, info pluginCore.PhaseInfo) (*even
 		}
 	}
 
-	return &event.TaskExecutionEvent{
+	tev := &event.TaskExecutionEvent{
 		Phase:        ToTaskEventPhase(info.Phase()),
 		PhaseVersion: info.Version(),
 		OccurredAt:   tm,
-		Logs:         info.Info().Logs,
-		CustomInfo:   info.Info().CustomInfo,
 		TaskId:       tk,
-	}, nil
+	}
+
+	if info.Info() != nil {
+		tev.Logs = info.Info().Logs
+		tev.CustomInfo = info.Info().CustomInfo
+	}
+	return tev, nil
 }
