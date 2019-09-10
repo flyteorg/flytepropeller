@@ -427,7 +427,7 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:7277a23550d34da257c01f91c8d8adf573e1213e55d511249df3934a1d482c54"
+  digest = "1:0f9becc3d213a916448331bb189b834827f0d8bb6535d3487beeada0a32bda4c"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/array/bitarray",
@@ -439,6 +439,7 @@
     "go/tasks/pluginmachinery/core",
     "go/tasks/pluginmachinery/core/mocks",
     "go/tasks/pluginmachinery/io",
+    "go/tasks/pluginmachinery/io/mocks",
     "go/tasks/pluginmachinery/ioutils",
     "go/tasks/pluginmachinery/k8s",
     "go/tasks/pluginmachinery/k8s/mocks",
@@ -446,7 +447,7 @@
     "go/tasks/pluginmachinery/workqueue",
   ]
   pruneopts = ""
-  revision = "7e42862a1f3f40ce3453f2d964f5141f193bfb6f"
+  revision = "c24adb1210e7ed428d1250ba7d30f89fe95fd2d9"
   source = "https://github.com/lyft/flyteplugins"
 
 [[projects]]
@@ -1304,6 +1305,7 @@
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io",
+    "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s/mocks",

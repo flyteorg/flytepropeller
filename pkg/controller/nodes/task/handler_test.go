@@ -1,25 +1,36 @@
 package task
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"reflect"
 	"testing"
 
+	"github.com/lyft/flyteidl/clients/go/events"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginCoreMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	ioMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	pluginK8s "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
 	pluginK8sMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s/mocks"
 	"github.com/lyft/flytestdlib/promutils"
+	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	flyteMocks "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
+	catalogMock "github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog/mocks"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/fakeplugins"
 )
 
 func Test_task_setDefault(t *testing.T) {
@@ -252,42 +263,503 @@ func Test_task_ResolvePlugin(t *testing.T) {
 	}
 }
 
-func Test_task_Handle(t *testing.T) {
-	type fields struct {
-		ttype  pluginCore.TaskType
-		plugin pluginCore.Plugin
+type fakeBufferedTaskEventRecorder struct {
+	evs []*event.TaskExecutionEvent
+}
+
+func (f *fakeBufferedTaskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskExecutionEvent) error {
+	f.evs = append(f.evs, ev)
+	return nil
+}
+
+type taskNodeStateHolder struct {
+	s handler.TaskNodeState
+}
+
+func (t *taskNodeStateHolder) PutTaskNodeState(s handler.TaskNodeState) error {
+	t.s = s
+	return nil
+}
+
+func (t taskNodeStateHolder) PutBranchNode(s handler.BranchNodeState) error {
+	panic("not implemented")
+}
+
+func (t taskNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) error {
+	panic("not implemented")
+}
+
+func Test_task_Handle_NoCatalog(t *testing.T) {
+
+	createNodeContext := func(pluginPhase pluginCore.Phase, pluginVer uint32, pluginResp fakeplugins.NextPhaseState, recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder) *nodeMocks.NodeExecutionContext {
+		wfExecID := &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		}
+
+		nm := &nodeMocks.NodeExecutionMetadata{}
+		nm.On("GetAnnotations").Return(map[string]string{})
+		nm.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{
+			WorkflowExecutionIdentifier: wfExecID,
+		})
+		nm.On("GetK8sServiceAccount").Return("service-account")
+		nm.On("GetLabels").Return(map[string]string{})
+		nm.On("GetNamespace").Return("namespace")
+		nm.On("GetOwnerID").Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
+		nm.On("GetOwnerReference").Return(v12.OwnerReference{
+			Kind: "sample",
+			Name: "name",
+		})
+
+		tk := &core.TaskTemplate{
+			Id:   nil,
+			Type: "test",
+			Metadata: &core.TaskMetadata{
+				Discoverable: false,
+			},
+			Interface: &core.TypedInterface{
+				Outputs: &core.VariableMap{
+					Variables: map[string]*core.Variable{
+						"x": {
+							Type: &core.LiteralType{
+								Type: &core.LiteralType_Simple{
+									Simple: core.SimpleType_BOOLEAN,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		taskID := &core.Identifier{}
+		tr := &nodeMocks.TaskReader{}
+		tr.On("GetTaskID").Return(taskID)
+		tr.On("GetTaskType").Return(ttype)
+		tr.On("Read", mock.Anything).Return(tk, nil)
+
+		ns := &flyteMocks.ExecutableNodeStatus{}
+		ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
+
+		res := &v1.ResourceRequirements{}
+		n := &flyteMocks.ExecutableNode{}
+		n.On("GetResources").Return(res)
+
+		ir := &ioMocks.InputReader{}
+		nCtx := &nodeMocks.NodeExecutionContext{}
+		nCtx.On("NodeExecutionMetadata").Return(nm)
+		nCtx.On("Node").Return(n)
+		nCtx.On("InputReader").Return(ir)
+		nCtx.On("DataStore").Return(storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope()))
+		nCtx.On("CurrentAttempt").Return(uint32(1))
+		nCtx.On("TaskReader").Return(tr)
+		nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
+		nCtx.On("NodeStatus").Return(ns)
+		nCtx.On("NodeID").Return("n1")
+		nCtx.On("EventsRecorder").Return(recorder)
+		nCtx.On("EnqueueOwner").Return(nil)
+
+		st := bytes.NewBuffer([]byte{})
+		codex := GobStateCodec{}
+		assert.NoError(t, codex.Encode(pluginResp, st))
+		nr := &nodeMocks.NodeStateReader{}
+		nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
+			PluginState:        st.Bytes(),
+			PluginPhase:        pluginPhase,
+			PluginPhaseVersion: pluginVer,
+		})
+		nCtx.On("NodeStateReader").Return(nr)
+		nCtx.On("NodeStateWriter").Return(s)
+		return nCtx
 	}
+
 	type args struct {
-		nCtx handler.NodeExecutionContext
+		startingPluginPhase        pluginCore.Phase
+		startingPluginPhaseVersion int
+		expectedState              fakeplugins.NextPhaseState
+	}
+	type want struct {
+		handlerPhase handler.EPhase
+		wantErr      bool
+		event        bool
+		eventPhase   core.TaskExecution_Phase
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    handler.Transition
-		wantErr bool
+		name string
+		args args
+		want want
 	}{
 		{
-			// "immediate-success", fields{
-			// ttype:  "test",
-			// plugin: nil,
-			// },
+			"success",
+			args{
+				startingPluginPhase:        pluginCore.PhaseUndefined,
+				startingPluginPhaseVersion: 0,
+				expectedState: fakeplugins.NextPhaseState{
+					Phase:        pluginCore.PhaseSuccess,
+					PhaseVersion: 0,
+					TaskInfo:     nil,
+					TaskErr:      nil,
+					OutputExists: true,
+					OrError:      false,
+				},
+			},
+			want{
+				handlerPhase: handler.EPhaseSuccess,
+				event:        true,
+				eventPhase:   core.TaskExecution_SUCCEEDED,
+			},
+		},
+		{
+			"success-output-missing",
+			args{
+				startingPluginPhase:        pluginCore.PhaseUndefined,
+				startingPluginPhaseVersion: 0,
+				expectedState: fakeplugins.NextPhaseState{
+					Phase:        pluginCore.PhaseSuccess,
+					PhaseVersion: 0,
+					OutputExists: false,
+				},
+			},
+			want{
+				handlerPhase: handler.EPhaseRetryableFailure,
+				event:        true,
+				eventPhase:   core.TaskExecution_FAILED,
+			},
+		},
+		{
+			"success-output-err-recoverable",
+			args{
+				startingPluginPhase:        pluginCore.PhaseUndefined,
+				startingPluginPhaseVersion: 0,
+				expectedState: fakeplugins.NextPhaseState{
+					Phase:        pluginCore.PhaseSuccess,
+					PhaseVersion: 0,
+					TaskInfo:     nil,
+					TaskErr: &io.ExecutionError{
+						IsRecoverable: true,
+					},
+					OutputExists: false,
+					OrError:      false,
+				},
+			},
+			want{
+				handlerPhase: handler.EPhaseRetryableFailure,
+				event:        true,
+				eventPhase:   core.TaskExecution_FAILED,
+			},
+		},
+		{
+			"success-output-err-non-recoverable",
+			args{
+				startingPluginPhase:        pluginCore.PhaseUndefined,
+				startingPluginPhaseVersion: 0,
+				expectedState: fakeplugins.NextPhaseState{
+					Phase:        pluginCore.PhaseSuccess,
+					PhaseVersion: 0,
+					TaskInfo:     nil,
+					TaskErr: &io.ExecutionError{
+						IsRecoverable: false,
+					},
+					OutputExists: false,
+					OrError:      false,
+				},
+			},
+			want{
+				handlerPhase: handler.EPhaseFailed,
+				event:        true,
+				eventPhase:   core.TaskExecution_FAILED,
+			},
+		},
+		{
+			"running",
+			args{
+				startingPluginPhase:        pluginCore.PhaseUndefined,
+				startingPluginPhaseVersion: 0,
+				expectedState: fakeplugins.NextPhaseState{
+					Phase:        pluginCore.PhaseRunning,
+					PhaseVersion: 0,
+					TaskInfo: &pluginCore.TaskInfo{
+						Logs: []*core.TaskLog{
+							{Name: "x", Uri: "y"},
+						},
+					},
+				},
+			},
+			want{
+				handlerPhase: handler.EPhaseRunning,
+				event:        true,
+				eventPhase:   core.TaskExecution_RUNNING,
+			},
+		},
+		{
+			"running-no-event-phaseversion",
+			args{
+				startingPluginPhase:        pluginCore.PhaseRunning,
+				startingPluginPhaseVersion: 1,
+				expectedState: fakeplugins.NextPhaseState{
+					Phase:        pluginCore.PhaseRunning,
+					PhaseVersion: 1,
+					TaskInfo: &pluginCore.TaskInfo{
+						Logs: []*core.TaskLog{
+							{Name: "x", Uri: "y"},
+						},
+					},
+				},
+			},
+			want{
+				handlerPhase: handler.EPhaseRunning,
+				event:        false,
+			},
+		},
+		{
+			"running-error",
+			args{
+				startingPluginPhase:        pluginCore.PhaseRunning,
+				startingPluginPhaseVersion: 1,
+				expectedState: fakeplugins.NextPhaseState{
+					OrError: true,
+				},
+			},
+			want{
+				handlerPhase: handler.EPhaseUndefined,
+				event:        false,
+				wantErr:      true,
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			state := &taskNodeStateHolder{}
+			ev := &fakeBufferedTaskEventRecorder{}
+			nCtx := createNodeContext(tt.args.startingPluginPhase, uint32(tt.args.startingPluginPhaseVersion), tt.args.expectedState, ev, "test", state)
+			c := &catalogMock.Client{}
 			tk := Handler{
 				plugins: map[pluginCore.TaskType]pluginCore.Plugin{
-					tt.fields.ttype: tt.fields.plugin,
+					"test": fakeplugins.NewPhaseBasedPlugin(),
 				},
+				catalog: c,
 			}
-			got, err := tk.Handle(context.TODO(), tt.args.nCtx)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Handler.Handle() error = %v, wantErr %v", err, tt.wantErr)
+			got, err := tk.Handle(context.TODO(), nCtx)
+			if (err != nil) != tt.want.wantErr {
+				t.Errorf("Handler.Handle() error = %v, wantErr %v", err, tt.want.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handler.Handle() = %v, want %v", got, tt.want)
+			if err == nil {
+				assert.Equal(t, tt.want.handlerPhase.String(), got.Info().Phase.String())
+				if tt.want.event {
+					if assert.Equal(t, 1, len(ev.evs)) {
+						e := ev.evs[0]
+						assert.Equal(t, tt.want.eventPhase.String(), e.Phase.String())
+						if tt.args.expectedState.TaskInfo != nil {
+							assert.Equal(t, tt.args.expectedState.TaskInfo.Logs, e.Logs)
+						}
+					}
+				} else {
+					assert.Equal(t, 0, len(ev.evs))
+				}
+				expectedPhase := tt.args.expectedState.Phase
+				if tt.args.expectedState.Phase.IsSuccess() && !tt.args.expectedState.OutputExists {
+					expectedPhase = pluginCore.PhaseRetryableFailure
+				}
+				if tt.args.expectedState.TaskErr != nil {
+					if tt.args.expectedState.TaskErr.IsRecoverable {
+						expectedPhase = pluginCore.PhaseRetryableFailure
+					} else {
+						expectedPhase = pluginCore.PhasePermanentFailure
+					}
+				}
+				assert.Equal(t, expectedPhase.String(), state.s.PluginPhase.String())
+				assert.Equal(t, tt.args.expectedState.PhaseVersion, state.s.PluginPhaseVersion)
+			}
+		})
+	}
+}
+
+func Test_task_Handle_Catalog(t *testing.T) {
+
+	createNodeContext := func(recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder) *nodeMocks.NodeExecutionContext {
+		wfExecID := &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		}
+
+		nm := &nodeMocks.NodeExecutionMetadata{}
+		nm.On("GetAnnotations").Return(map[string]string{})
+		nm.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{
+			WorkflowExecutionIdentifier: wfExecID,
+		})
+		nm.On("GetK8sServiceAccount").Return("service-account")
+		nm.On("GetLabels").Return(map[string]string{})
+		nm.On("GetNamespace").Return("namespace")
+		nm.On("GetOwnerID").Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
+		nm.On("GetOwnerReference").Return(v12.OwnerReference{
+			Kind: "sample",
+			Name: "name",
+		})
+
+		taskID := &core.Identifier{}
+		tk := &core.TaskTemplate{
+			Id:   taskID,
+			Type: "test",
+			Metadata: &core.TaskMetadata{
+				Discoverable: true,
+			},
+			Interface: &core.TypedInterface{
+				Outputs: &core.VariableMap{
+					Variables: map[string]*core.Variable{
+						"x": {
+							Type: &core.LiteralType{
+								Type: &core.LiteralType_Simple{
+									Simple: core.SimpleType_BOOLEAN,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		tr := &nodeMocks.TaskReader{}
+		tr.On("GetTaskID").Return(taskID)
+		tr.On("GetTaskType").Return(ttype)
+		tr.On("Read", mock.Anything).Return(tk, nil)
+
+		ns := &flyteMocks.ExecutableNodeStatus{}
+		ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
+
+		res := &v1.ResourceRequirements{}
+		n := &flyteMocks.ExecutableNode{}
+		n.On("GetResources").Return(res)
+
+		ir := &ioMocks.InputReader{}
+		nCtx := &nodeMocks.NodeExecutionContext{}
+		nCtx.On("NodeExecutionMetadata").Return(nm)
+		nCtx.On("Node").Return(n)
+		nCtx.On("InputReader").Return(ir)
+		nCtx.On("DataStore").Return(storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope()))
+		nCtx.On("CurrentAttempt").Return(uint32(1))
+		nCtx.On("TaskReader").Return(tr)
+		nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
+		nCtx.On("NodeStatus").Return(ns)
+		nCtx.On("NodeID").Return("n1")
+		nCtx.On("EventsRecorder").Return(recorder)
+		nCtx.On("EnqueueOwner").Return(nil)
+
+		st := bytes.NewBuffer([]byte{})
+		codex := GobStateCodec{}
+		assert.NoError(t, codex.Encode(&fakeplugins.NextPhaseState{
+			Phase:        pluginCore.PhaseSuccess,
+			OutputExists: true,
+		}, st))
+		nr := &nodeMocks.NodeStateReader{}
+		nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
+			PluginState: st.Bytes(),
+		})
+		nCtx.On("NodeStateReader").Return(nr)
+		nCtx.On("NodeStateWriter").Return(s)
+		return nCtx
+	}
+
+	type args struct {
+		catalogFetch      bool
+		catalogFetchError bool
+		catalogWriteError bool
+	}
+	type want struct {
+		handlerPhase handler.EPhase
+		wantErr      bool
+		eventPhase   core.TaskExecution_Phase
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			"cache-hit",
+			args{
+				catalogFetch:      true,
+				catalogWriteError: true,
+			},
+			want{
+				handlerPhase: handler.EPhaseSuccess,
+				eventPhase:   core.TaskExecution_SUCCEEDED,
+			},
+		},
+		{
+			"cache-err",
+			args{
+				catalogFetchError: true,
+				catalogWriteError: true,
+			},
+			want{
+				handlerPhase: handler.EPhaseSuccess,
+				eventPhase:   core.TaskExecution_SUCCEEDED,
+			},
+		},
+		{
+			"cache-write",
+			args{},
+			want{
+				handlerPhase: handler.EPhaseSuccess,
+				eventPhase:   core.TaskExecution_SUCCEEDED,
+			},
+		},
+		{
+			"cache-write-err",
+			args{
+				catalogWriteError: true,
+			},
+			want{
+				handlerPhase: handler.EPhaseSuccess,
+				eventPhase:   core.TaskExecution_SUCCEEDED,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := &taskNodeStateHolder{}
+			ev := &fakeBufferedTaskEventRecorder{}
+			nCtx := createNodeContext(ev, "test", state)
+			c := &catalogMock.Client{}
+			if tt.args.catalogFetch {
+				or := &ioMocks.OutputReader{}
+				or.On("Read", mock.Anything).Return(&core.LiteralMap{}, nil, nil)
+				c.On("Get", mock.Anything, mock.Anything).Return(or, nil)
+			} else {
+				c.On("Get", mock.Anything, mock.Anything).Return(nil, nil)
+			}
+			if tt.args.catalogFetchError {
+				c.On("Get", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("failed to read from catalog"))
+			}
+			if tt.args.catalogWriteError {
+				c.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("failed to write to catalog"))
+			} else {
+				c.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+			}
+			tk := New(context.TODO(), promutils.NewTestScope())
+			tk.plugins = map[pluginCore.TaskType]pluginCore.Plugin{
+				"test": fakeplugins.NewPhaseBasedPlugin(),
+			}
+			tk.catalog = c
+			got, err := tk.Handle(context.TODO(), nCtx)
+			if (err != nil) != tt.want.wantErr {
+				t.Errorf("Handler.Handle() error = %v, wantErr %v", err, tt.want.wantErr)
+				return
+			}
+			if err == nil {
+				assert.Equal(t, tt.want.handlerPhase.String(), got.Info().Phase.String())
+				if assert.Equal(t, 1, len(ev.evs)) {
+					e := ev.evs[0]
+					assert.Equal(t, tt.want.eventPhase.String(), e.Phase.String())
+				}
+				assert.Equal(t, pluginCore.PhaseSuccess.String(), state.s.PluginPhase.String())
+				assert.Equal(t, uint32(0), state.s.PluginPhaseVersion)
+				if tt.args.catalogFetch {
+					if assert.NotNil(t, got.Info().Info.TaskNodeInfo) {
+						assert.True(t, got.Info().Info.TaskNodeInfo.CacheHit)
+					}
+				}
 			}
 		})
 	}
@@ -300,7 +772,6 @@ func Test_task_Abort(t *testing.T) {
 	type args struct {
 		nCtx handler.NodeExecutionContext
 	}
-
 	nCtx := &nodeMocks.NodeExecutionContext{}
 	tests := []struct {
 		name        string

@@ -60,7 +60,6 @@ type BranchNodeInfo struct {
 
 type TaskNodeInfo struct {
 	CacheHit      bool
-	RetryAttempts uint32
 	// TaskPhase etc
 }
 

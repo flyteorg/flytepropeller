@@ -49,9 +49,10 @@ type pluginRequestedTransition struct {
 func (p *pluginRequestedTransition) CacheHit() {
 	p.ttype = handler.TransitionTypeEphemeral
 	p.pInfo = pluginCore.PhaseInfoSuccess(nil)
-	p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
-		CacheHit: true,
+	if p.execInfo.TaskNodeInfo == nil {
+		p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{}
 	}
+	p.execInfo.TaskNodeInfo.CacheHit = true
 }
 
 func (p *pluginRequestedTransition) ObservedTransition(trns pluginCore.Transition) {
@@ -93,6 +94,8 @@ func (p *pluginRequestedTransition) FinalTransition(ctx context.Context) (handle
 	case pluginCore.PhasePermanentFailure:
 		logger.Debugf(ctx, "Transitioning to Failure")
 		return handler.DoTransition(p.ttype, handler.PhaseInfoFailureErr(p.pInfo.Err(), nil)), nil
+	case pluginCore.PhaseUndefined:
+		return handler.UnknownTransition, fmt.Errorf("error converting plugin phase, received [Undefined]")
 	}
 
 	logger.Debugf(ctx, "Task still running")
@@ -289,8 +292,27 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			logger.Errorf(ctx, "failed to check catalog cache with error")
 			return handler.UnknownTransition, err
 		} else if ok {
-			pluginTrns = &pluginRequestedTransition{}
-			pluginTrns.CacheHit()
+			r := tCtx.ow.GetReader()
+			if r != nil {
+				// TODO @kumare this can be optimized, if we have paths then the reader could be pipelined to a sync
+				o, ee, err := r.Read(ctx)
+				if err != nil {
+					logger.Errorf(ctx, "failed to read from catalog, err: %s", err.Error())
+					return handler.UnknownTransition, err
+				}
+				if ee != nil {
+					logger.Errorf(ctx, "got execution error from catalog output reader? This should not happen, err: %s", ee.String())
+					return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
+				}
+				if err := nCtx.DataStore().WriteProtobuf(ctx, tCtx.ow.outPath, storage.Options{}, o); err != nil {
+					logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
+					return handler.UnknownTransition, err
+				}
+				pluginTrns = &pluginRequestedTransition{}
+				pluginTrns.CacheHit()
+			} else {
+				logger.Errorf(ctx, "no output reader found after a catalog cache hit!")
+			}
 		}
 	}
 
@@ -331,11 +353,15 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		logger.Errorf(ctx, "failed to convert plugin transition to TaskExecutionEvent. Error: %s", err.Error())
 		return handler.UnknownTransition, err
 	}
-	if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo); err != nil {
-		// Check for idempotency
-		// Check for terminate state error
-		logger.Errorf(ctx, "failed to send event to Admin. error: %s", err.Error())
-		return handler.UnknownTransition, err
+	if evInfo != nil {
+		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo); err != nil {
+			// Check for idempotency
+			// Check for terminate state error
+			logger.Errorf(ctx, "failed to send event to Admin. error: %s", err.Error())
+			return handler.UnknownTransition, err
+		}
+	} else {
+		logger.Debugf(ctx, "Received no event to record.")
 	}
 
 	// STEP 6: Persist the plugin state
