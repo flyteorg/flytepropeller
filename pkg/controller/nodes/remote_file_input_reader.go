@@ -8,8 +8,13 @@ import (
 )
 
 type remoteFileInputReader struct {
-	store     *storage.DataStore
-	inputPath storage.DataReference
+	store           *storage.DataStore
+	inputPath       storage.DataReference
+	inputPrefixPath storage.DataReference
+}
+
+func (r *remoteFileInputReader) GetInputPrefixPath() storage.DataReference {
+	panic("implement me")
 }
 
 func (r *remoteFileInputReader) GetInputPath() storage.DataReference {

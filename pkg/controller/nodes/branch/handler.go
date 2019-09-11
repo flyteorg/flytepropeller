@@ -25,6 +25,10 @@ func (b *branchHandler) FinalizeRequired() bool {
 	return false
 }
 
+func (b *branchHandler) FinalizeRequired() bool {
+	return true
+}
+
 func (b *branchHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
 	logger.Debugf(ctx, "BranchNode::Setup: nothing to do")
 	return nil

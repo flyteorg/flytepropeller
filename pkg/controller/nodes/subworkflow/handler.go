@@ -34,6 +34,10 @@ func (w *workflowNodeHandler) FinalizeRequired() bool {
 	return false
 }
 
+func (w *workflowNodeHandler) FinalizeRequired() bool {
+	return true
+}
+
 func (w *workflowNodeHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
 	return nil
 }
