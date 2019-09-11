@@ -148,6 +148,10 @@ func (t *Handler) FinalizeRequired() bool {
 	return true
 }
 
+func (t *Handler) FinalizeRequired() bool {
+	return true
+}
+
 func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
 	if t.defaultPlugin != nil {
 		logger.Errorf(ctx, "cannot set plugin [%s] as default as plugin [%s] is already configured as default", p.GetID(), t.defaultPlugin.GetID())
