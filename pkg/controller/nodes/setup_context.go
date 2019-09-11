@@ -32,9 +32,9 @@ func (s *setupContext) KubeClient() executors.Client {
 	panic("implement me")
 }
 
-func (c *nodeExecutor) newSetupContext(_ context.Context) (handler.SetupContext, error) {
+func (c *nodeExecutor) newSetupContext(_ context.Context) handler.SetupContext {
 	return &setupContext{
 		enq:   c.enqueueWorkflow,
 		scope: c.metrics.Scope,
-	}, nil
+	}
 }

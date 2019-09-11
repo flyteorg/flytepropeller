@@ -438,10 +438,7 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWo
 
 func (c *nodeExecutor) Initialize(ctx context.Context) error {
 	logger.Infof(ctx, "Initializing Core Node Executor")
-	s, err := c.newSetupContext(ctx)
-	if err != nil {
-		return err
-	}
+	s := c.newSetupContext(ctx)
 	return c.nodeHandlerFactory.Setup(ctx, s)
 }
 
