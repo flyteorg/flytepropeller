@@ -121,20 +121,20 @@ func ToK8sTime(t time.Time) v1.Time {
 	return v1.Time{Time: t}
 }
 
-func UpdateNodeStatus(p handler.PhaseInfo, n *nodeStateManager, s v1alpha1.ExecutableNodeStatus) {
-	np, err := ToNodePhase(p.Phase)
-	if err != nil {
-		// Err should never happen, do not call this method for undefined
-		logger.Errorf(context.TODO(), "Bad Invocation to update node status, phase conversion failed. error: %s", err.Error())
-		return
+func ToError(executionError *core.ExecutionError, reason string) string {
+	if executionError != nil {
+		return fmt.Sprintf("[%s]: %s", executionError.Code, executionError.Message)
 	}
+	if reason != "" {
+		return reason
+	}
+	return "unknown error"
+}
+
+func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateManager, s v1alpha1.ExecutableNodeStatus) {
 	// We update the phase only if it is not already updated
 	if np != s.GetPhase() {
-		r := p.Reason
-		if p.Err != nil {
-			r = fmt.Sprintf("[%s]: %s", p.Err.Code, p.Err.Message)
-		}
-		s.UpdatePhase(np, ToK8sTime(p.OccurredAt), r)
+		s.UpdatePhase(np, ToK8sTime(p.OccurredAt), ToError(p.Err, p.Reason))
 	}
 	// Update TaskStatus
 	if n.t != nil {

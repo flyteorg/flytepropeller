@@ -197,14 +197,17 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusUndefined, err
 	}
 
-	switch nodeStatus.GetPhase() {
-	case v1alpha1.NodePhaseNotYetStarted:
+	currentPhase := nodeStatus.GetPhase()
+
+	// Optimization!
+	// If it is start node we directly move it to Queued without needing to run preExecute
+	if currentPhase == v1alpha1.NodePhaseNotYetStarted && !node.IsStartNode() {
 		p, err := c.preExecute(ctx, w, node, nodeStatus)
 		if err != nil {
 			logger.Errorf(ctx, "failed preExecute for node. Error: %s", err.Error())
 			return executors.NodeStatusUndefined, err
 		}
-		if p.Phase != handler.EPhaseUndefined {
+		if p.Phase == handler.EPhaseUndefined {
 			return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "received undefined phase from ")
 		}
 		np, err := ToNodePhase(p.Phase)
@@ -228,7 +231,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 				logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
 				return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, node.GetID(), err, "failed to record node event")
 			}
-			UpdateNodeStatus(p, nCtx.nsm, nodeStatus)
+			UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
 			c.RecordTransitionLatency(ctx, w, node, nodeStatus)
 		}
 		if np == v1alpha1.NodePhaseQueued {
@@ -237,68 +240,82 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			return executors.NodeStatusSuccess, nil
 		}
 		return executors.NodeStatusPending, nil
-	case v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseRetryableFailure:
-		p, err := c.execute(ctx, h, nCtx, nodeStatus)
-		if err != nil {
-			logger.Errorf(ctx, "failed Execute for node. Error: %s", err.Error())
-			return executors.NodeStatusUndefined, err
-		}
-		if p.Phase != handler.EPhaseUndefined {
-			return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "received undefined phase from ")
-		}
-		np, err := ToNodePhase(p.Phase)
-		if err != nil {
-			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "failed to move from queued")
-		}
-		if np != nodeStatus.GetPhase() {
-			// assert np == skipped, succeeding or failing
-			logger.Infof(ctx, "Change in node state detected from [%s] -> [%s]", nodeStatus.GetPhase().String(), np.String())
-			nev, err := ToNodeExecutionEvent(&nodeExecID, p, nCtx.InputReader())
-			if err != nil {
-				return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "could not convert phase info to event")
-			}
-			err = c.IdempotentRecordEvent(ctx, nev)
-			if err != nil {
-				if eventsErr.IsEventAlreadyInTerminalStateError(err) {
-					logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
-					return executors.NodeStatusFailed(errors.Wrapf(errors.IllegalStateError, node.GetID(), err,
-						"phase mis-match mismatch between propeller and control plane; Propeller Node Phase: %s", np.String())), nil
-				}
-				logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
-				return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, node.GetID(), err, "failed to record node event")
-			}
+	}
 
-			if np == v1alpha1.NodePhaseRunning {
-				if nodeStatus.GetQueuedAt() != nil && nodeStatus.GetStartedAt() != nil {
-					c.metrics.QueuingLatency.Observe(ctx, nodeStatus.GetQueuedAt().Time, nodeStatus.GetStartedAt().Time)
-				}
-			}
-		}
-		UpdateNodeStatus(p, nCtx.nsm, nodeStatus)
-		return executors.NodeStatusRunning, nil
-
-	case v1alpha1.NodePhaseFailing:
+	if currentPhase == v1alpha1.NodePhaseFailing {
 		if err := c.finalize(ctx, h, nCtx); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
 		c.metrics.FailureDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		// TODO we need to have a way to find the error message from failing to failed!
 		return executors.NodeStatusFailed(fmt.Errorf(nodeStatus.GetMessage())), nil
-	case v1alpha1.NodePhaseSucceeding:
+	}
+
+	if currentPhase == v1alpha1.NodePhaseSucceeding {
 		if err := c.finalize(ctx, h, nCtx); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
 		c.metrics.SuccessDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		return executors.NodeStatusSuccess, nil
+	}
 
-	case v1alpha1.NodePhaseFailed:
+	if currentPhase == v1alpha1.NodePhaseFailed {
 		// This should never happen
 		return executors.NodeStatusFailed(fmt.Errorf(nodeStatus.GetMessage())), nil
-	case v1alpha1.NodePhaseSucceeded:
+	}
+
+	if currentPhase == v1alpha1.NodePhaseFailed {
 		// This should never happen
 		return executors.NodeStatusSuccess, nil
 	}
-	return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "")
+	// case v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseRetryableFailure:
+	p, err := c.execute(ctx, h, nCtx, nodeStatus)
+	if err != nil {
+		logger.Errorf(ctx, "failed Execute for node. Error: %s", err.Error())
+		return executors.NodeStatusUndefined, err
+	}
+	if p.Phase == handler.EPhaseUndefined {
+		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "received undefined phase from ")
+	}
+	np, err := ToNodePhase(p.Phase)
+	if err != nil {
+		return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "failed to move from queued")
+	}
+	finalStatus := executors.NodeStatusRunning
+	if np == v1alpha1.NodePhaseFailing && !h.FinalizeRequired() {
+		np = v1alpha1.NodePhaseFailed
+		finalStatus = executors.NodeStatusFailed(fmt.Errorf(ToError(p.Err, p.Reason)))
+	}
+	if np == v1alpha1.NodePhaseSucceeding && !h.FinalizeRequired() {
+		np = v1alpha1.NodePhaseSucceeded
+		finalStatus = executors.NodeStatusSuccess
+	}
+	if np != nodeStatus.GetPhase() {
+		// assert np == skipped, succeeding or failing
+		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s]", nodeStatus.GetPhase().String(), np.String())
+		nev, err := ToNodeExecutionEvent(&nodeExecID, p, nCtx.InputReader())
+		if err != nil {
+			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "could not convert phase info to event")
+		}
+		err = c.IdempotentRecordEvent(ctx, nev)
+		if err != nil {
+			if eventsErr.IsEventAlreadyInTerminalStateError(err) {
+				logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
+				return executors.NodeStatusFailed(errors.Wrapf(errors.IllegalStateError, node.GetID(), err,
+					"phase mis-match mismatch between propeller and control plane; Propeller Node Phase: %s", np.String())), nil
+			}
+			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
+			return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, node.GetID(), err, "failed to record node event")
+		}
+
+		if np == v1alpha1.NodePhaseRunning {
+			if nodeStatus.GetQueuedAt() != nil && nodeStatus.GetStartedAt() != nil {
+				c.metrics.QueuingLatency.Observe(ctx, nodeStatus.GetQueuedAt().Time, nodeStatus.GetStartedAt().Time)
+			}
+		}
+	}
+	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
+	return finalStatus, nil
 }
 
 // The space search for the next node to execute is implemented like a DFS algorithm. handleDownstream visits all the nodes downstream from

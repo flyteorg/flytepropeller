@@ -59,7 +59,7 @@ type BranchNodeInfo struct {
 }
 
 type TaskNodeInfo struct {
-	CacheHit      bool
+	CacheHit bool
 	// TaskPhase etc
 }
 

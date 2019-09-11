@@ -408,6 +408,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 					mock.MatchedBy(func(ctx context.Context) bool { return true }),
 					mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
 				).Return(test.handlerReturn())
+				h.On("FinalizeRequired").Return(false)
 
 				hf.On("GetHandler", v1alpha1.NodeKindStart).Return(h, nil)
 
@@ -426,16 +427,11 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 	}
 }
 
-/*
 func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
 	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
-
-	factory := createSingletonTaskExecutorFactory()
-	task.SetTestFactory(factory)
-	assert.True(t, task.IsTestModeEnabled())
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 	catalogClient := catalog.NewCatalogClient(store)
@@ -496,9 +492,8 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				hf := &mocks2.HandlerFactory{}
 				exec.nodeHandlerFactory = hf
-				h := &mocks3.IFace{}
+				h := &mocks2.Node{}
 				hf.On("GetHandler", v1alpha1.NodeKindEnd).Return(h, nil)
-				h.On("StartNode", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(handler.StatusQueued, nil)
 
 				mockWf, mockNode, mockNodeStatus := createSingleNodeWf(test.parentNodePhase, 0)
 				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockNode)
@@ -561,24 +556,24 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 			currentNodePhase  v1alpha1.NodePhase
 			expectedNodePhase v1alpha1.NodePhase
 			expectedPhase     executors.NodePhase
-			handlerReturn     func() (handler.Status, error)
+			handlerReturn     func() (handler.Transition, error)
 			expectedError     bool
 		}{
 			// Starting at Queued
-			{"queued->success", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseSucceeded, executors.NodePhaseSuccess, func() (handler.Status, error) {
-				return handler.StatusSuccess, nil
+			{"queued->success", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseSucceeded, executors.NodePhaseSuccess, func() (handler.Transition, error) {
+				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(nil)), nil
 			}, false},
 
-			{"queued->failed", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseFailed, executors.NodePhaseFailed, func() (handler.Status, error) {
-				return handler.StatusFailed(fmt.Errorf("err")), nil
+			{"queued->failed", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseFailed, executors.NodePhaseFailed, func() (handler.Transition, error) {
+				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure("code", "mesage", nil)), nil
 			}, false},
 
-			{"queued->failing", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseFailing, executors.NodePhasePending, func() (handler.Status, error) {
-				return handler.StatusFailing(fmt.Errorf("err")), nil
+			{"queued->running", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, executors.NodePhasePending, func() (handler.Transition, error) {
+				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)), nil
 			}, false},
 
-			{"queued->error", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseQueued, executors.NodePhaseUndefined, func() (handler.Status, error) {
-				return handler.StatusUndefined, fmt.Errorf("err")
+			{"queued->error", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseQueued, executors.NodePhaseUndefined, func() (handler.Transition, error) {
+				return handler.UnknownTransition, fmt.Errorf("err")
 			}, true},
 		}
 		for _, test := range tests {
@@ -586,13 +581,12 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 				hf := &mocks2.HandlerFactory{}
 				exec.nodeHandlerFactory = hf
 
-				h := &mocks3.IFace{}
-				h.On("StartNode",
+				h := &mocks2.Node{}
+				h.On("Handle",
 					mock.MatchedBy(func(ctx context.Context) bool { return true }),
-					mock.MatchedBy(func(o v1alpha1.ExecutableWorkflow) bool { return true }),
-					mock.MatchedBy(func(o v1alpha1.ExecutableNode) bool { return true }),
-					mock.MatchedBy(func(o *handler.Data) bool { return true }),
+					mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
 				).Return(test.handlerReturn())
+				h.On("FinalizeRequired").Return(false)
 
 				hf.On("GetHandler", v1alpha1.NodeKindEnd).Return(h, nil)
 
@@ -615,6 +609,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 
 }
 
+/*
 func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {

@@ -8,8 +8,8 @@ const (
 )
 
 type Transition struct {
-	ttype        TransitionType
-	info         PhaseInfo
+	ttype TransitionType
+	info  PhaseInfo
 }
 
 func (t Transition) Type() TransitionType {
