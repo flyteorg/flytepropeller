@@ -13,6 +13,10 @@ type branchHandler struct {
 	nodeExecutor executors.Node
 }
 
+func (b *branchHandler) FinalizeRequired() bool {
+	return true
+}
+
 func (b *branchHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
 	panic("implement me")
 }

@@ -64,7 +64,7 @@ func (r remoteFileOutputResolver) ExtractOutput(ctx context.Context, w v1alpha1.
 }
 
 // Creates a simple output resolver that expects an outputs.pb at the data directory of the node.
-func NewRemoteFileOutputResolver(store storage.ProtobufStore) remoteFileOutputResolver {
+func NewRemoteFileOutputResolver(store storage.ProtobufStore) OutputResolver {
 	return remoteFileOutputResolver{
 		store: store,
 	}

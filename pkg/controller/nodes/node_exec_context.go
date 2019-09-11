@@ -132,8 +132,9 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1
 
 	return newNodeExecContext(ctx, c.store, w, n, s,
 		&remoteFileInputReader{
-			inputPath: inFile,
-			store:     c.store,
+			inputPath:       inFile,
+			store:           c.store,
+			inputPrefixPath: s.GetDataDir(),
 		},
 		c.maxDatasetSizeBytes,
 		&taskEventRecorder{TaskEventRecorder: c.taskRecorder},

@@ -7,9 +7,6 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	mocks2 "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/mocks"
-
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -19,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/mocks"
 	"github.com/lyft/flytepropeller/pkg/utils"
 	flyteassert "github.com/lyft/flytepropeller/pkg/utils/assert"
 )
@@ -197,6 +195,7 @@ func TestResolveBindingData(t *testing.T) {
 		},
 	}
 
+	r := &mocks.OutputResolver{}
 	r.On("ExtractOutput", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 
 	t.Run("StaticBinding", func(t *testing.T) {
@@ -371,7 +370,7 @@ func TestResolve(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, store.WriteProtobuf(ctx, outputPath, storage.Options{}, m))
 
-		//bindings
+		// bindings
 		b := []*v1alpha1.Binding{
 			{
 				Binding: utils.MakeBinding("map", utils.MakeBindingDataMap(
@@ -390,6 +389,7 @@ func TestResolve(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
+		r := &mocks.OutputResolver{}
 		r.On("ExtractOutput", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(expected, nil)
 
 		l, err := Resolve(ctx, r, w, "n2", b, store)
@@ -405,7 +405,7 @@ func TestResolve(t *testing.T) {
 		store := createInmemoryDataStore(t, testScope.NewSubScope("10"))
 		// Store has no previous output
 
-		//bindings
+		// bindings
 		b := []*v1alpha1.Binding{
 			{
 				Binding: utils.MakeBinding("map", utils.MakeBindingDataMap(
@@ -418,6 +418,7 @@ func TestResolve(t *testing.T) {
 			},
 		}
 
+		r := &mocks.OutputResolver{}
 		r.On("ExtractOutput", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("No outputs"))
 
 		_, err := Resolve(ctx, r, w, "n2", b, store)
