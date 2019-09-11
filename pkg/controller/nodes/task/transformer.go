@@ -68,3 +68,15 @@ func ToTaskExecutionEvent(tk *core.Identifier, info pluginCore.PhaseInfo) (*even
 	}
 	return tev, nil
 }
+
+func GetTaskExecutionIdentifier(nCtx handler.NodeExecutionContext) *core.TaskExecutionIdentifier {
+
+	return &core.TaskExecutionIdentifier{
+		TaskId:       nCtx.TaskReader().GetTaskID(),
+		RetryAttempt: nCtx.CurrentAttempt(),
+		NodeExecutionId: &core.NodeExecutionIdentifier{
+			NodeId:      nCtx.NodeID(),
+			ExecutionId: nCtx.NodeExecutionMetadata().GetExecutionID().WorkflowExecutionIdentifier,
+		},
+	}
+}

@@ -116,6 +116,10 @@ type Handler struct {
 	pluginRegistry PluginRegistryIface
 }
 
+func (t *Handler) FinalizeRequired() bool {
+	return true
+}
+
 func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
 	if t.defaultPlugin != nil {
 		logger.Errorf(ctx, "cannot set plugin [%s] as default as plugin [%s] is already configured as default", p.GetID(), t.defaultPlugin.GetID())
@@ -366,12 +370,18 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 	// STEP 6: Persist the plugin state
 	var b []byte
+	var v uint32
 	if tCtx.psm.newState != nil {
 		b = tCtx.psm.newState.Bytes()
+		v = uint32(tCtx.psm.newStateVersion)
+	} else {
+		// New state was not mutated, so we should write back the existing state
+		b = ts.PluginState
+		v = ts.PluginPhaseVersion
 	}
 	err = nCtx.NodeStateWriter().PutTaskNodeState(handler.TaskNodeState{
 		PluginState:        b,
-		PluginStateVersion: uint32(tCtx.psm.newStateVersion),
+		PluginStateVersion: v,
 		PluginPhase:        pluginTrns.pInfo.Phase(),
 		PluginPhaseVersion: pluginTrns.pInfo.Version(),
 	})

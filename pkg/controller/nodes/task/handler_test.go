@@ -766,13 +766,71 @@ func Test_task_Handle_Catalog(t *testing.T) {
 }
 
 func Test_task_Abort(t *testing.T) {
+	wfExecID := &core.WorkflowExecutionIdentifier{
+		Project: "project",
+		Domain:  "domain",
+		Name:    "name",
+	}
+
+	nm := &nodeMocks.NodeExecutionMetadata{}
+	nm.On("GetAnnotations").Return(map[string]string{})
+	nm.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{
+		WorkflowExecutionIdentifier: wfExecID,
+	})
+	nm.On("GetK8sServiceAccount").Return("service-account")
+	nm.On("GetLabels").Return(map[string]string{})
+	nm.On("GetNamespace").Return("namespace")
+	nm.On("GetOwnerID").Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
+	nm.On("GetOwnerReference").Return(v12.OwnerReference{
+		Kind: "sample",
+		Name: "name",
+	})
+
+	taskID := &core.Identifier{}
+	tr := &nodeMocks.TaskReader{}
+	tr.On("GetTaskID").Return(taskID)
+	tr.On("GetTaskType").Return("x")
+
+	ns := &flyteMocks.ExecutableNodeStatus{}
+	ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
+
+	res := &v1.ResourceRequirements{}
+	n := &flyteMocks.ExecutableNode{}
+	n.On("GetResources").Return(res)
+
+	ir := &ioMocks.InputReader{}
+	nCtx := &nodeMocks.NodeExecutionContext{}
+	nCtx.On("NodeExecutionMetadata").Return(nm)
+	nCtx.On("Node").Return(n)
+	nCtx.On("InputReader").Return(ir)
+	nCtx.On("DataStore").Return(storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope()))
+	nCtx.On("CurrentAttempt").Return(uint32(1))
+	nCtx.On("TaskReader").Return(tr)
+	nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
+	nCtx.On("NodeStatus").Return(ns)
+	nCtx.On("NodeID").Return("n1")
+	nCtx.On("EventsRecorder").Return(nil)
+	nCtx.On("EnqueueOwner").Return(nil)
+
+	st := bytes.NewBuffer([]byte{})
+	a := 45
+	type test struct {
+		A int
+	}
+	codex := GobStateCodec{}
+	assert.NoError(t, codex.Encode(test{A: a}, st))
+	nr := &nodeMocks.NodeStateReader{}
+	nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
+		PluginState: st.Bytes(),
+	})
+	nCtx.On("NodeStateReader").Return(nr)
+
 	type fields struct {
-		defaultPluginCallback func() *pluginCoreMocks.Plugin
+		defaultPluginCallback func() pluginCore.Plugin
 	}
 	type args struct {
 		nCtx handler.NodeExecutionContext
 	}
-	nCtx := &nodeMocks.NodeExecutionContext{}
 	tests := []struct {
 		name        string
 		fields      fields
@@ -780,17 +838,19 @@ func Test_task_Abort(t *testing.T) {
 		wantErr     bool
 		abortCalled bool
 	}{
-		{"no-plugin", fields{defaultPluginCallback: func() *pluginCoreMocks.Plugin {
+		{"no-plugin", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			return nil
 		}}, args{nCtx: nCtx}, true, false},
 
-		{"abort-fails", fields{defaultPluginCallback: func() *pluginCoreMocks.Plugin {
+		{"abort-fails", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
+			p.On("GetID").Return("id")
 			p.On("Abort", mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
 			return p
 		}}, args{nCtx: nCtx}, true, true},
-		{"abort-success", fields{defaultPluginCallback: func() *pluginCoreMocks.Plugin {
+		{"abort-success", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
+			p.On("GetID").Return("id")
 			p.On("Abort", mock.Anything, mock.Anything).Return(nil)
 			return p
 		}}, args{nCtx: nCtx}, false, true},
@@ -808,19 +868,80 @@ func Test_task_Abort(t *testing.T) {
 			if tt.abortCalled {
 				c = 1
 			}
-			m.AssertNumberOfCalls(t, "Abort", c)
+			if m != nil {
+				m.(*pluginCoreMocks.Plugin).AssertNumberOfCalls(t, "Abort", c)
+			}
 		})
 	}
 }
 
 func Test_task_Finalize(t *testing.T) {
+
+	wfExecID := &core.WorkflowExecutionIdentifier{
+		Project: "project",
+		Domain:  "domain",
+		Name:    "name",
+	}
+
+	nm := &nodeMocks.NodeExecutionMetadata{}
+	nm.On("GetAnnotations").Return(map[string]string{})
+	nm.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{
+		WorkflowExecutionIdentifier: wfExecID,
+	})
+	nm.On("GetK8sServiceAccount").Return("service-account")
+	nm.On("GetLabels").Return(map[string]string{})
+	nm.On("GetNamespace").Return("namespace")
+	nm.On("GetOwnerID").Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
+	nm.On("GetOwnerReference").Return(v12.OwnerReference{
+		Kind: "sample",
+		Name: "name",
+	})
+
+	taskID := &core.Identifier{}
+	tr := &nodeMocks.TaskReader{}
+	tr.On("GetTaskID").Return(taskID)
+	tr.On("GetTaskType").Return("x")
+
+	ns := &flyteMocks.ExecutableNodeStatus{}
+	ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
+
+	res := &v1.ResourceRequirements{}
+	n := &flyteMocks.ExecutableNode{}
+	n.On("GetResources").Return(res)
+
+	ir := &ioMocks.InputReader{}
+	nCtx := &nodeMocks.NodeExecutionContext{}
+	nCtx.On("NodeExecutionMetadata").Return(nm)
+	nCtx.On("Node").Return(n)
+	nCtx.On("InputReader").Return(ir)
+	nCtx.On("DataStore").Return(storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope()))
+	nCtx.On("CurrentAttempt").Return(uint32(1))
+	nCtx.On("TaskReader").Return(tr)
+	nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
+	nCtx.On("NodeStatus").Return(ns)
+	nCtx.On("NodeID").Return("n1")
+	nCtx.On("EventsRecorder").Return(nil)
+	nCtx.On("EnqueueOwner").Return(nil)
+
+	st := bytes.NewBuffer([]byte{})
+	a := 45
+	type test struct {
+		A int
+	}
+	codex := GobStateCodec{}
+	assert.NoError(t, codex.Encode(test{A: a}, st))
+	nr := &nodeMocks.NodeStateReader{}
+	nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
+		PluginState: st.Bytes(),
+	})
+	nCtx.On("NodeStateReader").Return(nr)
+
 	type fields struct {
-		defaultPluginCallback func() *pluginCoreMocks.Plugin
+		defaultPluginCallback func() pluginCore.Plugin
 	}
 	type args struct {
 		nCtx handler.NodeExecutionContext
 	}
-	nCtx := &nodeMocks.NodeExecutionContext{}
 	tests := []struct {
 		name     string
 		fields   fields
@@ -828,17 +949,19 @@ func Test_task_Finalize(t *testing.T) {
 		wantErr  bool
 		finalize bool
 	}{
-		{"no-plugin", fields{defaultPluginCallback: func() *pluginCoreMocks.Plugin {
+		{"no-plugin", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			return nil
 		}}, args{nCtx: nCtx}, true, false},
 
-		{"finalize-fails", fields{defaultPluginCallback: func() *pluginCoreMocks.Plugin {
+		{"finalize-fails", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
+			p.On("GetID").Return("id")
 			p.On("Finalize", mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
 			return p
 		}}, args{nCtx: nCtx}, true, true},
-		{"finalize-success", fields{defaultPluginCallback: func() *pluginCoreMocks.Plugin {
+		{"finalize-success", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
+			p.On("GetID").Return("id")
 			p.On("Finalize", mock.Anything, mock.Anything).Return(nil)
 			return p
 		}}, args{nCtx: nCtx}, false, true},
@@ -856,7 +979,9 @@ func Test_task_Finalize(t *testing.T) {
 			if tt.finalize {
 				c = 1
 			}
-			m.AssertNumberOfCalls(t, "Finalize", c)
+			if m != nil {
+				m.(*pluginCoreMocks.Plugin).AssertNumberOfCalls(t, "Finalize", c)
+			}
 		})
 	}
 }

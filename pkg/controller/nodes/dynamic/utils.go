@@ -6,51 +6,24 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+
 	"github.com/lyft/flytepropeller/pkg/compiler"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
 // Constructs the expected interface of a given node.
-func underlyingInterface(w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode) (*core.TypedInterface, error) {
+func underlyingInterface(ctx context.Context, taskReader handler.TaskReader) (*core.TypedInterface, error) {
+	t, err := taskReader.Read(ctx)
 	iface := &core.TypedInterface{}
-	if node.GetTaskID() != nil {
-		t, err := w.GetTask(*node.GetTaskID())
-		if err != nil {
-			// Should never happen
-			return nil, err
-		}
-
-		iface.Outputs = t.CoreTask().GetInterface().Outputs
-	} else if wfNode := node.GetWorkflowNode(); wfNode != nil {
-		if wfRef := wfNode.GetSubWorkflowRef(); wfRef != nil {
-			t := w.FindSubWorkflow(*wfRef)
-			if t == nil {
-				// Should never happen
-				return nil, errors.Errorf(errors.IllegalStateError, node.GetID(), "Couldn't find subworkflow [%v].", wfRef)
-			}
-
-			iface.Outputs = t.GetOutputs().VariableMap
-		} else {
-			return nil, errors.Errorf(errors.IllegalStateError, node.GetID(), "Unknown interface")
-		}
-	} else if node.GetBranchNode() != nil {
-		if ifBlock := node.GetBranchNode().GetIf(); ifBlock != nil && ifBlock.GetThenNode() != nil {
-			bn, found := w.GetNode(*ifBlock.GetThenNode())
-			if !found {
-				return nil, errors.Errorf(errors.IllegalStateError, node.GetID(), "Couldn't find branch node [%v]",
-					*ifBlock.GetThenNode())
-			}
-
-			return underlyingInterface(w, bn)
-		}
-
-		return nil, errors.Errorf(errors.IllegalStateError, node.GetID(), "Empty branch detected.")
-	} else {
-		return nil, errors.Errorf(errors.IllegalStateError, node.GetID(), "Unknown interface.")
+	if err != nil {
+		// Should never happen
+		return nil, err
 	}
 
+	if t.GetInterface() != nil {
+		iface.Outputs = t.GetInterface().Outputs
+	}
 	return iface, nil
 }
 

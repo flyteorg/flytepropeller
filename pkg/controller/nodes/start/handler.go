@@ -9,6 +9,10 @@ import (
 type startHandler struct {
 }
 
+func (s startHandler) FinalizeRequired() bool {
+	return false
+}
+
 func (s startHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
 	return nil
 }

@@ -8,6 +8,8 @@ import (
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
+//go:generate mockery -all -case=underscore
+
 // Phase of the node
 type NodePhase int
 

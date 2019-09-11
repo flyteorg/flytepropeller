@@ -8,8 +8,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//go:generate mockery -name Client
-
 // A friendly controller-runtime client that gets passed to executors
 type Client interface {
 	// GetClient returns a client configured with the Config

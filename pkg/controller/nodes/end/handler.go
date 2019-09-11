@@ -13,11 +13,15 @@ import (
 type endHandler struct {
 }
 
-func (e *endHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
+func (e endHandler) FinalizeRequired() bool {
+	return false
+}
+
+func (e endHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
 	return nil
 }
 
-func (e *endHandler) Handle(ctx context.Context, executionContext handler.NodeExecutionContext) (handler.Transition, error) {
+func (e endHandler) Handle(ctx context.Context, executionContext handler.NodeExecutionContext) (handler.Transition, error) {
 	inputs, err := executionContext.InputReader().Get(ctx)
 	if err != nil {
 		return handler.UnknownTransition, err
@@ -37,11 +41,11 @@ func (e *endHandler) Handle(ctx context.Context, executionContext handler.NodeEx
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(nil)), nil
 }
 
-func (e *endHandler) Abort(ctx context.Context, executionContext handler.NodeExecutionContext) error {
+func (e endHandler) Abort(ctx context.Context, executionContext handler.NodeExecutionContext) error {
 	return nil
 }
 
-func (e *endHandler) Finalize(ctx context.Context, executionContext handler.NodeExecutionContext) error {
+func (e endHandler) Finalize(ctx context.Context, executionContext handler.NodeExecutionContext) error {
 	return nil
 }
 

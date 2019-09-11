@@ -31,10 +31,11 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 			if taskStatus, ok := status.FromError(err); ok && taskStatus.Code() == codes.NotFound {
 				t.metrics.discoveryMissCount.Inc(ctx)
 				logger.Infof(ctx, "Artifact not found in Discovery. Executing Task.")
-			} else {
-				t.metrics.discoveryGetFailureCount.Inc(ctx)
-				logger.Errorf(ctx, "Discovery check failed. Executing Task. Err: %v", err.Error())
+				return false, nil
 			}
+			t.metrics.discoveryGetFailureCount.Inc(ctx)
+			logger.Errorf(ctx, "Discovery check failed. Err: %v", err.Error())
+			return false, errors.Wrapf(err, "Failed to check Catalog for previous results")
 		} else if resp != nil {
 			t.metrics.discoveryHitCount.Inc(ctx)
 			if iface := tk.Interface; iface != nil && iface.Outputs != nil && len(iface.Outputs.Variables) > 0 {

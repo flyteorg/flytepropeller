@@ -21,11 +21,11 @@ const IDMaxLength = 50
 
 type taskExecutionID struct {
 	execName string
-	id       core.TaskExecutionIdentifier
+	id       *core.TaskExecutionIdentifier
 }
 
 func (te taskExecutionID) GetID() core.TaskExecutionIdentifier {
-	return te.id
+	return *te.id
 }
 
 func (te taskExecutionID) GetGeneratedName() string {
@@ -96,14 +96,7 @@ func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 
 func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.NodeExecutionContext) (*taskExecutionContext, error) {
 
-	id := core.TaskExecutionIdentifier{
-		TaskId:       nCtx.TaskReader().GetTaskID(),
-		RetryAttempt: nCtx.CurrentAttempt(),
-		NodeExecutionId: &core.NodeExecutionIdentifier{
-			NodeId:      nCtx.NodeID(),
-			ExecutionId: nCtx.NodeExecutionMetadata().GetExecutionID().WorkflowExecutionIdentifier,
-		},
-	}
+	id := GetTaskExecutionIdentifier(nCtx)
 
 	uniqueID, err := utils.FixedLengthUniqueIDForParts(IDMaxLength, nCtx.NodeExecutionMetadata().GetOwnerID().Name, nCtx.NodeID(), strconv.Itoa(int(id.RetryAttempt)))
 	if err != nil {
