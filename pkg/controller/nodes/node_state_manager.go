@@ -90,10 +90,13 @@ func (n nodeStateManager) GetTaskNodeState() handler.TaskNodeState {
 }
 
 func (n nodeStateManager) GetBranchNode() handler.BranchNodeState {
+	bn := n.nodeStatus.GetOrCreateBranchStatus()
+	// TODO maybe we should have a get and check if it is nil, as we can now easily create it!
 	panic("implement me")
 }
 
 func (n nodeStateManager) GetDynamicNodeState() handler.DynamicNodeState {
+	// TODO maybe we should have a get and check if it is nil, as we can now easily create it!
 	panic("implement me")
 }
 

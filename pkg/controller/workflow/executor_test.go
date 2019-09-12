@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 
 	mocks2 "github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/fakeplugins"
 
 	eventsErr "github.com/lyft/flyteidl/clients/go/events/errors"
 
@@ -27,14 +28,12 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/lyft/flytestdlib/yamlutils"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/tools/record"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task"
 	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
@@ -42,6 +41,36 @@ var (
 	testScope      = promutils.NewScope("test_wfexec")
 	fakeKubeClient = mocks2.NewFakeKubeClient()
 )
+
+type fakeRemoteWritePlugin struct {
+	pluginCore.Plugin
+	enableAsserts bool
+	t             assert.TestingT
+}
+
+func (f fakeRemoteWritePlugin) Handle(ctx context.Context, tCtx pluginCore.TaskExecutionContext) (pluginCore.Transition, error) {
+	trns, err := f.Plugin.Handle(ctx, tCtx)
+	if err != nil {
+		return trns, err
+	}
+	if trns.Info().Phase() == pluginCore.PhaseSuccess {
+		tk, err := tCtx.TaskReader().Read(ctx)
+		assert.NoError(f.t, err)
+		outputVars := tk.GetInterface().Outputs.Variables
+		o := &core.LiteralMap{
+			Literals: make(map[string]*core.Literal, len(outputVars)),
+		}
+		for k, v := range outputVars {
+			l, err := utils.MakeDefaultLiteralForType(v.Type)
+			if f.enableAsserts && !assert.NoError(f.t, err) {
+				assert.FailNow(f.t, "Failed to create default output for node [%v] Type [%v]", tCtx.TaskExecutionMetadata().GetTaskExecutionID(), v.Type)
+			}
+			o.Literals[k] = l
+		}
+		assert.NoError(f.t, tCtx.DataStore().WriteProtobuf(ctx, tCtx.OutputWriter().GetOutputPath(), storage.Options{}, o))
+	}
+	return trns, err
+}
 
 func createInmemoryDataStore(t testing.TB, scope promutils.Scope) *storage.DataStore {
 	cfg := storage.Config{
@@ -71,132 +100,91 @@ func StdOutEventRecorder() record.EventRecorder {
 	return recorder
 }
 
-func createHappyPathTaskExecutor(t assert.TestingT, store *storage.DataStore, enableAsserts bool) pluginCore.PluginEntry {
-	exec := &mocks.Executor{}
-	exec.On("GetID").Return("task")
-	exec.On("GetProperties").Return(pluginV1.ExecutorProperties{})
-	exec.On("Initialize",
-		mock.AnythingOfType(reflect.TypeOf(context.TODO()).String()),
-		mock.AnythingOfType(reflect.TypeOf(pluginV1.ExecutorInitializationParameters{}).String()),
-	).Return(nil)
-
-	exec.On("ResolveOutputs",
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-	).
-		Return(func(ctx context.Context, taskCtx pluginV1.TaskContext, varNames ...string) (values map[string]*core.Literal) {
-			d := &core.LiteralMap{}
-			outputsFileRef := v1alpha1.GetOutputsFile(taskCtx.GetDataDir())
-			assert.NoError(t, store.ReadProtobuf(ctx, outputsFileRef, d))
-			assert.NotNil(t, d.Literals)
-
-			values = make(map[string]*core.Literal, len(varNames))
-			for _, varName := range varNames {
-				l, ok := d.Literals[varName]
-				assert.True(t, ok, "Expect var %v in task outputs.", varName)
-
-				values[varName] = l
-			}
-
-			return values
-		}, func(ctx context.Context, taskCtx pluginV1.TaskContext, varNames ...string) error {
-			return nil
-		})
-
-	startFn := func(ctx context.Context, taskCtx pluginV1.TaskContext, task *core.TaskTemplate, _ *core.LiteralMap) pluginV1.TaskStatus {
-		outputVars := task.GetInterface().Outputs.Variables
-		o := &core.LiteralMap{
-			Literals: make(map[string]*core.Literal, len(outputVars)),
-		}
-		for k, v := range outputVars {
-			l, err := utils.MakeDefaultLiteralForType(v.Type)
-			if enableAsserts && !assert.NoError(t, err) {
-				assert.FailNow(t, "Failed to create default output for node [%v] Type [%v]", taskCtx.GetTaskExecutionID(), v.Type)
-			}
-			o.Literals[k] = l
-		}
-		assert.NoError(t, store.WriteProtobuf(ctx, v1alpha1.GetOutputsFile(taskCtx.GetDataDir()), storage.Options{}, o))
-
-		return pluginV1.TaskStatusRunning
+func createHappyPathTaskExecutor(t assert.TestingT, enableAsserts bool) pluginCore.PluginEntry {
+	f := func(ctx context.Context, iCtx pluginCore.SetupContext) (plugin pluginCore.Plugin, e error) {
+		return fakeRemoteWritePlugin{
+			Plugin: fakeplugins.NewReplayer(
+				"test",
+				pluginCore.PluginProperties{},
+				[]fakeplugins.HandleResponse{
+					fakeplugins.NewHandleTransition(pluginCore.DoTransition(pluginCore.PhaseInfoRunning(1, nil))),
+					fakeplugins.NewHandleTransition(pluginCore.DoTransition(pluginCore.PhaseInfoSuccess(nil))),
+				},
+				[]error{
+					nil,
+				},
+				[]error{
+					nil,
+				},
+			),
+			enableAsserts: enableAsserts,
+			t:             t,
+		}, nil
 	}
-
-	exec.On("StartTask",
-		mock.MatchedBy(func(ctx context.Context) bool { return true }),
-		mock.MatchedBy(func(o pluginV1.TaskContext) bool { return true }),
-		mock.MatchedBy(func(o *core.TaskTemplate) bool { return true }),
-		mock.MatchedBy(func(o *core.LiteralMap) bool { return true }),
-	).Return(startFn, nil)
-
-	checkStatusFn := func(_ context.Context, taskCtx pluginV1.TaskContext, _ *core.TaskTemplate) pluginV1.TaskStatus {
-		if enableAsserts {
-			assert.NotEmpty(t, taskCtx.GetDataDir())
-		}
-		return pluginV1.TaskStatusSucceeded
+	return pluginCore.PluginEntry{
+		ID:                  "test",
+		RegisteredTaskTypes: []string{"7"},
+		LoadPlugin:          f,
+		IsDefault:           true,
 	}
-	exec.On("CheckTaskStatus",
-		mock.MatchedBy(func(ctx context.Context) bool { return true }),
-		mock.MatchedBy(func(o pluginV1.TaskContext) bool { return true }),
-		mock.MatchedBy(func(o *core.TaskTemplate) bool { return true }),
-	).Return(checkStatusFn, nil)
-
-	return exec
 }
 
-func createFailingTaskExecutor() pluginCore.PluginEntry {
-	exec := &mocks.Executor{}
-	exec.On("GetID").Return("task")
-	exec.On("GetProperties").Return(pluginV1.ExecutorProperties{})
-	exec.On("Initialize",
-		mock.AnythingOfType(reflect.TypeOf(context.TODO()).String()),
-		mock.AnythingOfType(reflect.TypeOf(pluginV1.ExecutorInitializationParameters{}).String()),
-	).Return(nil)
-
-	exec.On("StartTask",
-		mock.MatchedBy(func(ctx context.Context) bool { return true }),
-		mock.MatchedBy(func(o pluginV1.TaskContext) bool { return true }),
-		mock.MatchedBy(func(o *core.TaskTemplate) bool { return true }),
-		mock.MatchedBy(func(o *core.LiteralMap) bool { return true }),
-	).Return(pluginV1.TaskStatusRunning, nil)
-
-	exec.On("CheckTaskStatus",
-		mock.MatchedBy(func(ctx context.Context) bool { return true }),
-		mock.MatchedBy(func(o pluginV1.TaskContext) bool { return true }),
-		mock.MatchedBy(func(o *core.TaskTemplate) bool { return true }),
-	).Return(pluginV1.TaskStatusPermanentFailure(errors.New("failed")), nil)
-
-	exec.On("KillTask",
-		mock.MatchedBy(func(ctx context.Context) bool { return true }),
-		mock.MatchedBy(func(o pluginV1.TaskContext) bool { return true }),
-		mock.Anything,
-	).Return(nil)
-
-	return exec
+func createFailingTaskExecutor(t assert.TestingT) pluginCore.PluginEntry {
+	f := func(ctx context.Context, iCtx pluginCore.SetupContext) (plugin pluginCore.Plugin, e error) {
+		return fakeRemoteWritePlugin{
+			Plugin: fakeplugins.NewReplayer(
+				"test",
+				pluginCore.PluginProperties{},
+				[]fakeplugins.HandleResponse{
+					fakeplugins.NewHandleTransition(pluginCore.DoTransition(pluginCore.PhaseInfoRunning(1, nil))),
+					fakeplugins.NewHandleTransition(pluginCore.DoTransition(pluginCore.PhaseInfoFailure("code", "message", nil))),
+				},
+				[]error{
+					nil,
+				},
+				[]error{
+					nil,
+				},
+			),
+			enableAsserts: false,
+			t:             t,
+		}, nil
+	}
+	return pluginCore.PluginEntry{
+		ID:                  "test",
+		RegisteredTaskTypes: []string{"7"},
+		LoadPlugin:          f,
+		IsDefault:           true,
+	}
 }
 
-func createTaskExecutorErrorInCheck() pluginCore.PluginEntry {
-	exec := &mocks.Executor{}
-	exec.On("GetID").Return("task")
-	exec.On("GetProperties").Return(pluginV1.ExecutorProperties{})
-	exec.On("Initialize",
-		mock.AnythingOfType(reflect.TypeOf(context.TODO()).String()),
-		mock.AnythingOfType(reflect.TypeOf(pluginV1.ExecutorInitializationParameters{}).String()),
-	).Return(nil)
-
-	exec.On("StartTask",
-		mock.MatchedBy(func(ctx context.Context) bool { return true }),
-		mock.MatchedBy(func(o pluginV1.TaskContext) bool { return true }),
-		mock.MatchedBy(func(o *core.TaskTemplate) bool { return true }),
-		mock.MatchedBy(func(o *core.LiteralMap) bool { return true }),
-	).Return(pluginV1.TaskStatusRunning, nil)
-
-	exec.On("CheckTaskStatus",
-		mock.MatchedBy(func(ctx context.Context) bool { return true }),
-		mock.MatchedBy(func(o pluginV1.TaskContext) bool { return true }),
-		mock.MatchedBy(func(o *core.TaskTemplate) bool { return true }),
-	).Return(pluginV1.TaskStatusUndefined, errors.New("check failed"))
-
-	return exec
+func createTaskExecutorErrorInCheck(t assert.TestingT) pluginCore.PluginEntry {
+	f := func(ctx context.Context, iCtx pluginCore.SetupContext) (plugin pluginCore.Plugin, e error) {
+		return fakeRemoteWritePlugin{
+			Plugin: fakeplugins.NewReplayer(
+				"test",
+				pluginCore.PluginProperties{},
+				[]fakeplugins.HandleResponse{
+					fakeplugins.NewHandleTransition(pluginCore.DoTransition(pluginCore.PhaseInfoRunning(1, nil))),
+					fakeplugins.NewHandleError(fmt.Errorf("error")),
+				},
+				[]error{
+					nil,
+				},
+				[]error{
+					nil,
+				},
+			),
+			enableAsserts: false,
+			t:             t,
+		}, nil
+	}
+	return pluginCore.PluginEntry{
+		ID:                  "test",
+		RegisteredTaskTypes: []string{"7"},
+		LoadPlugin:          f,
+		IsDefault:           true,
+	}
 }
 
 func TestWorkflowExecutor_HandleFlyteWorkflow_Error(t *testing.T) {
@@ -206,11 +194,8 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Error(t *testing.T) {
 	_, err := events.ConstructEventSink(ctx, events.GetConfig(ctx))
 	assert.NoError(t, err)
 
-	te := createTaskExecutorErrorInCheck()
-	tf := createSingletonTaskExecutorFactory(te)
-	task.SetTestFactory(tf)
-	assert.True(t, task.IsTestModeEnabled())
-
+	te := createTaskExecutorErrorInCheck(t)
+	pluginmachinery.PluginRegistry().RegisterCorePlugin(te)
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 
 	eventSink := events.NewMockEventSink()
@@ -256,8 +241,8 @@ func TestWorkflowExecutor_HandleFlyteWorkflow(t *testing.T) {
 	_, err := events.ConstructEventSink(ctx, events.GetConfig(ctx))
 	assert.NoError(t, err)
 
-	te := createHappyPathTaskExecutor(t, store, true)
-	tf := createSingletonTaskExecutorFactory(te)
+	te := createHappyPathTaskExecutor(t, true)
+	pluginmachinery.PluginRegistry().RegisterCorePlugin(te)
 
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 
@@ -306,10 +291,8 @@ func BenchmarkWorkflowExecutor(b *testing.B) {
 	_, err := events.ConstructEventSink(ctx, events.GetConfig(ctx))
 	assert.NoError(b, err)
 
-	te := createHappyPathTaskExecutor(b, store, false)
-	tf := createSingletonTaskExecutorFactory(te)
-	task.SetTestFactory(tf)
-	assert.True(b, task.IsTestModeEnabled())
+	te := createHappyPathTaskExecutor(b, false)
+	pluginmachinery.PluginRegistry().RegisterCorePlugin(te)
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 
 	eventSink := events.NewMockEventSink()
@@ -357,10 +340,8 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Failing(t *testing.T) {
 	_, err := events.ConstructEventSink(ctx, events.GetConfig(ctx))
 	assert.NoError(t, err)
 
-	te := createFailingTaskExecutor()
-	tf := createSingletonTaskExecutorFactory(te)
-	task.SetTestFactory(tf)
-	assert.True(t, task.IsTestModeEnabled())
+	te := createFailingTaskExecutor(t)
+	pluginmachinery.PluginRegistry().RegisterCorePlugin(te)
 
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 
@@ -447,10 +428,8 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Events(t *testing.T) {
 	_, err := events.ConstructEventSink(ctx, events.GetConfig(ctx))
 	assert.NoError(t, err)
 
-	te := createHappyPathTaskExecutor(t, store, true)
-	tf := createSingletonTaskExecutorFactory(te)
-	task.SetTestFactory(tf)
-	assert.True(t, task.IsTestModeEnabled())
+	te := createHappyPathTaskExecutor(t, true)
+	pluginmachinery.PluginRegistry().RegisterCorePlugin(te)
 
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 
@@ -528,10 +507,8 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_EventFailure(t *testing.T) {
 	_, err := events.ConstructEventSink(ctx, events.GetConfig(ctx))
 	assert.NoError(t, err)
 
-	te := createHappyPathTaskExecutor(t, store, true)
-	tf := createSingletonTaskExecutorFactory(te)
-	task.SetTestFactory(tf)
-	assert.True(t, task.IsTestModeEnabled())
+	te := createHappyPathTaskExecutor(t, true)
+	pluginmachinery.PluginRegistry().RegisterCorePlugin(te)
 
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 

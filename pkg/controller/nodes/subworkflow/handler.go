@@ -18,7 +18,7 @@ func (w *workflowNodeHandler) FinalizeRequired() bool {
 }
 
 func (w *workflowNodeHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
-	panic("implement me")
+	return nil
 }
 
 func (w *workflowNodeHandler) Handle(ctx context.Context, executionContext handler.NodeExecutionContext) (handler.Transition, error) {
