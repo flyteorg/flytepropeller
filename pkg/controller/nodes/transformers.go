@@ -144,7 +144,7 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 		t.SetPluginState(t.GetPluginState())
 		t.SetPluginStateVersion(t.GetPluginStateVersion())
 
-	} else {
+	} else if s.GetTaskNodeStatus() != nil {
 		s.ClearTaskStatus()
 	}
 

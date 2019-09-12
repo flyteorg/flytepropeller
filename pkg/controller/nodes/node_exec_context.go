@@ -116,7 +116,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1
 	var tr handler.TaskReader
 	if n.GetKind() == v1alpha1.NodeKindTask {
 		if n.GetTaskID() == nil {
-			return nil, fmt.Errorf("bad state, not task-id defined for node [%s]", n.GetID())
+			return nil, fmt.Errorf("bad state, no task-id defined for node [%s]", n.GetID())
 		}
 		tk, err := w.GetTask(*n.GetTaskID())
 		if err != nil {
