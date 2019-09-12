@@ -36,7 +36,7 @@ var fakeKubeClient = mocks4.NewFakeKubeClient()
 func TestSetInputsForStartNode(t *testing.T) {
 	ctx := context.Background()
 	mockStorage := createInmemoryDataStore(t, testScope.NewSubScope("f"))
-	catalogClient := catalog.NewCatalogClient(mockStorage)
+	catalogClient, _ := catalog.NewCatalogClient(ctx, mockStorage)
 	enQWf := func(workflowID v1alpha1.WorkflowID) {}
 
 	exec, err := NewExecutor(ctx, mockStorage, enQWf, time.Second, events.NewMockEventSink(), launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
@@ -107,11 +107,11 @@ func TestNodeExecutor_Initialize(t *testing.T) {
 	assert.NoError(t, err)
 
 	catalogClient := catalog.NewCatalogClient(memStore)
-
-	t.Run("no-error", func(t *testing.T) {
-		execIface, err := NewExecutor(ctx, memStore, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
-		assert.NoError(t, err)
-		exec := execIface.(*nodeExecutor)
+	execIface, err := NewExecutor(ctx, memStore, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	assert.NoError(t, err)
+	exec := execIface.(*nodeExecutor)
+	execID := &core.WorkflowExecutionIdentifier{}
+	nodeID := "n1"
 
 		hf := &mocks2.HandlerFactory{}
 		exec.nodeHandlerFactory = hf
@@ -142,7 +142,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
-	catalogClient := catalog.NewCatalogClient(store)
+	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
 
 	execIface, err := NewExecutor(ctx, store, enQWf, time.Second, mockEventSink,
 		launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
@@ -241,7 +241,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
-	catalogClient := catalog.NewCatalogClient(store)
+	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
 
 	execIface, err := NewExecutor(ctx, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
@@ -422,7 +422,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
-	catalogClient := catalog.NewCatalogClient(store)
+	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
 
 	execIface, err := NewExecutor(ctx, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
@@ -798,7 +798,7 @@ func TestNodeExecutor_RecursiveNodeHandler_NoDownstream(t *testing.T) {
 	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
-	catalogClient := catalog.NewCatalogClient(store)
+	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
 
 	execIface, err := NewExecutor(ctx, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
@@ -906,7 +906,7 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
-	catalogClient := catalog.NewCatalogClient(store)
+	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
 
 	execIface, err := NewExecutor(ctx, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
