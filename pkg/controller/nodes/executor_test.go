@@ -419,7 +419,6 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 	}
 }
 
-/*
 func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
@@ -1119,4 +1118,3 @@ func Test_nodeExecutor_RecordTransitionLatency(t *testing.T) {
 		})
 	}
 }
-*/
