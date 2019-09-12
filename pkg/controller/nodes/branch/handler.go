@@ -18,7 +18,7 @@ func (b *branchHandler) FinalizeRequired() bool {
 }
 
 func (b *branchHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
-	panic("implement me")
+	return nil
 }
 
 func (b *branchHandler) Handle(ctx context.Context, executionContext handler.NodeExecutionContext) (handler.Transition, error) {
