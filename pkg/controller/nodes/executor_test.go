@@ -97,6 +97,7 @@ func TestSetInputsForStartNode(t *testing.T) {
 		assert.Equal(t, executors.NodeStatusUndefined, s)
 	})
 }
+
 func TestNodeExecutor_Initialize(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
@@ -106,12 +107,12 @@ func TestNodeExecutor_Initialize(t *testing.T) {
 	memStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 	assert.NoError(t, err)
 
-	catalogClient := catalog.NewCatalogClient(memStore)
-	execIface, err := NewExecutor(ctx, memStore, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
-	assert.NoError(t, err)
-	exec := execIface.(*nodeExecutor)
-	execID := &core.WorkflowExecutionIdentifier{}
-	nodeID := "n1"
+	catalogClient, _ := catalog.NewCatalogClient(ctx, memStore)
+
+	t.Run("happy", func(t *testing.T) {
+		execIface, err := NewExecutor(ctx, memStore, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+		assert.NoError(t, err)
+		exec := execIface.(*nodeExecutor)
 
 		hf := &mocks2.HandlerFactory{}
 		exec.nodeHandlerFactory = hf
