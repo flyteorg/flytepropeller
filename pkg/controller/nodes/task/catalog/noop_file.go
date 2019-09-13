@@ -16,4 +16,3 @@ func (n NOOPCatalog) Get(ctx context.Context, key Key) (io.OutputReader, error) 
 func (n NOOPCatalog) Put(ctx context.Context, key Key, reader io.OutputReader, metadata Metadata) error {
 	return nil
 }
-

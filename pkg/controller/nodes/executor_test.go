@@ -39,6 +39,8 @@ var catalogClient = catalog.NOOPCatalog{}
 
 const taskID = "tID"
 
+const taskID = "tID"
+
 func TestSetInputsForStartNode(t *testing.T) {
 	ctx := context.Background()
 	mockStorage := createInmemoryDataStore(t, testScope.NewSubScope("f"))
