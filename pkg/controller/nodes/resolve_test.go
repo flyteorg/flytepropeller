@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/mocks"
 	"github.com/lyft/flytepropeller/pkg/utils"
 	flyteassert "github.com/lyft/flytepropeller/pkg/utils/assert"
 )

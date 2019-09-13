@@ -15,6 +15,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
+	"github.com/lyft/flytepropeller/pkg/controller/catalog"
 	mocks4 "github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	nodeHandlerMocks "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
