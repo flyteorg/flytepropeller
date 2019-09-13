@@ -4,46 +4,10 @@ import (
 	"context"
 
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 )
-
-type legacyTaskPhase = int
-
-const (
-	legacyTaskPhaseQueued legacyTaskPhase = iota
-	legacyTaskPhaseRunning
-	legacyTaskPhaseRetryableFailure
-	legacyTaskPhasePermanentFailure
-	legacyTaskPhaseSucceeded
-	legacyTaskPhaseUndefined
-	legacyTaskPhaseNotReady
-	legacyTaskPhaseUnknown
-)
-
-func legacyPluginPhaseToNew(p int) pluginCore.Phase {
-	switch p {
-	case legacyTaskPhaseQueued:
-		return pluginCore.PhaseQueued
-	case legacyTaskPhaseRunning:
-		return pluginCore.PhaseRunning
-	case legacyTaskPhaseRetryableFailure:
-		return pluginCore.PhaseRetryableFailure
-	case legacyTaskPhasePermanentFailure:
-		return pluginCore.PhasePermanentFailure
-	case legacyTaskPhaseSucceeded:
-		return pluginCore.PhaseSuccess
-	case legacyTaskPhaseUndefined:
-		return pluginCore.PhaseUndefined
-	case legacyTaskPhaseNotReady:
-		return pluginCore.PhaseNotReady
-	case legacyTaskPhaseUnknown:
-		return pluginCore.PhaseUndefined
-	}
-	return pluginCore.PhaseUndefined
-}
 
 type nodeStateManager struct {
 	nodeStatus v1alpha1.ExecutableNodeStatus
@@ -70,19 +34,8 @@ func (n nodeStateManager) PutDynamicNodeState(s handler.DynamicNodeState) error 
 func (n nodeStateManager) GetTaskNodeState() handler.TaskNodeState {
 	tn := n.nodeStatus.GetTaskNodeStatus()
 	if tn != nil {
-		var p pluginCore.Phase
-		var legacyState map[string]interface{}
-		// Compatibility code, delete after migration
-		if !tn.UsePluginState() {
-			logger.Warnf(context.TODO(), "old task node state retrieved. ")
-			p = legacyPluginPhaseToNew(tn.GetPhase())
-			legacyState = tn.GetCustomState()
-		} else {
-			p = pluginCore.Phase(tn.GetPhase())
-		}
 		return handler.TaskNodeState{
-			PluginStateLegacy:  legacyState,
-			PluginPhase:        p,
+			PluginPhase:        pluginCore.Phase(tn.GetPhase()),
 			PluginPhaseVersion: tn.GetPhaseVersion(),
 			PluginStateVersion: tn.GetPluginStateVersion(),
 			PluginState:        tn.GetPluginState(),
