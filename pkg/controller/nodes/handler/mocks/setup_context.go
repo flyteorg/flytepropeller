@@ -2,8 +2,6 @@
 
 package mocks
 
-import executors "github.com/lyft/flytepropeller/pkg/controller/executors"
-
 import mock "github.com/stretchr/testify/mock"
 import promutils "github.com/lyft/flytestdlib/promutils"
 
@@ -22,22 +20,6 @@ func (_m *SetupContext) EnqueueOwner() func(string) {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(func(string))
-		}
-	}
-
-	return r0
-}
-
-// KubeClient provides a mock function with given fields:
-func (_m *SetupContext) KubeClient() executors.Client {
-	ret := _m.Called()
-
-	var r0 executors.Client
-	if rf, ok := ret.Get(0).(func() executors.Client); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(executors.Client)
 		}
 	}
 

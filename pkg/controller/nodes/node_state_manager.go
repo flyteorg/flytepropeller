@@ -13,31 +13,31 @@ import (
 type legacyTaskPhase = int
 
 const (
-	TaskPhaseQueued legacyTaskPhase = iota
-	TaskPhaseRunning
-	TaskPhaseRetryableFailure
-	TaskPhasePermanentFailure
-	TaskPhaseSucceeded
-	TaskPhaseUndefined
-	TaskPhaseNotReady
-	TaskPhaseUnknown
+	legacyTaskPhaseQueued legacyTaskPhase = iota
+	legacyTaskPhaseRunning
+	legacyTaskPhaseRetryableFailure
+	legacyTaskPhasePermanentFailure
+	legacyTaskPhaseSucceeded
+	legacyTaskPhaseUndefined
+	legacyTaskPhaseNotReady
+	legacyTaskPhaseUnknown
 )
 
 func legacyPluginPhaseToNew(p int) pluginCore.Phase {
 	switch p {
-	case TaskPhaseQueued:
+	case legacyTaskPhaseQueued:
 		return pluginCore.PhaseQueued
-	case TaskPhaseRunning:
+	case legacyTaskPhaseRunning:
 		return pluginCore.PhaseRunning
-	case TaskPhaseRetryableFailure:
+	case legacyTaskPhaseRetryableFailure:
 		return pluginCore.PhaseRetryableFailure
-	case TaskPhasePermanentFailure:
+	case legacyTaskPhasePermanentFailure:
 		return pluginCore.PhasePermanentFailure
-	case TaskPhaseSucceeded:
+	case legacyTaskPhaseSucceeded:
 		return pluginCore.PhaseSuccess
-	case TaskPhaseUndefined:
+	case legacyTaskPhaseUndefined:
 		return pluginCore.PhaseUndefined
-	case TaskPhaseNotReady:
+	case legacyTaskPhaseNotReady:
 		return pluginCore.PhaseNotReady
 	}
 	return pluginCore.PhaseUndefined
@@ -90,14 +90,22 @@ func (n nodeStateManager) GetTaskNodeState() handler.TaskNodeState {
 }
 
 func (n nodeStateManager) GetBranchNode() handler.BranchNodeState {
-	bn := n.nodeStatus.GetOrCreateBranchStatus()
-	// TODO maybe we should have a get and check if it is nil, as we can now easily create it!
-	panic("implement me")
+	bn := n.nodeStatus.GetBranchStatus()
+	bs := handler.BranchNodeState{}
+	if bn != nil {
+		bs.Phase = bn.GetPhase()
+		bs.FinalizedNodeID = bn.GetFinalizedNode()
+	}
+	return bs
 }
 
 func (n nodeStateManager) GetDynamicNodeState() handler.DynamicNodeState {
-	// TODO maybe we should have a get and check if it is nil, as we can now easily create it!
-	panic("implement me")
+	dn := n.nodeStatus.GetDynamicNodeStatus()
+	ds := handler.DynamicNodeState{}
+	if dn != nil {
+		ds.Phase = dn.GetDynamicNodePhase()
+	}
+	return ds
 }
 
 func (n nodeStateManager) clearNodeStatus() {

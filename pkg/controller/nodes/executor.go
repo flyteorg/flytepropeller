@@ -107,7 +107,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 		if !node.IsStartNode() {
 			// Can execute
 			var err error
-			nodeInputs, err = Resolve(ctx, c.outputResolver, w, node.GetID(), node.GetInputBindings(), c.store)
+			nodeInputs, err = Resolve(ctx, c.outputResolver, w, node.GetID(), node.GetInputBindings())
 			// TODO we need to handle retryable, network errors here!!
 			if err != nil {
 				c.metrics.ResolutionFailure.Inc(ctx)
@@ -132,7 +132,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 	// Now that we have resolved the inputs, we can record as a transition latency. This is because we have completed
 	// all the overhead that we have to compute. Any failures after this will incur this penalty, but it could be due
 	// to various external reasons - like queuing, overuse of quota, plugin overhead etc.
-	logger.Infof(ctx, "preExecute completed in phase [%s]", predicatePhase.String())
+	logger.Debugf(ctx, "preExecute completed in phase [%s]", predicatePhase.String())
 	if predicatePhase == PredicatePhaseSkip {
 		return handler.PhaseInfoSkip(nil, "Node Skipped as parent node was skipped"), nil
 	}
@@ -140,6 +140,8 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 }
 
 func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execContext, nodeStatus v1alpha1.ExecutableNodeStatus) (handler.PhaseInfo, error) {
+	logger.Debugf(ctx, "Executing node")
+	defer logger.Debugf(ctx, "Node execution round complete")
 
 	t, err := h.Handle(ctx, nCtx)
 	if err != nil {
@@ -203,6 +205,8 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	// Optimization!
 	// If it is start node we directly move it to Queued without needing to run preExecute
 	if currentPhase == v1alpha1.NodePhaseNotYetStarted && !node.IsStartNode() {
+		logger.Debugf(ctx, "Node not yet started, running pre-execute")
+		defer logger.Debugf(ctx, "Node pre-execute completed")
 		p, err := c.preExecute(ctx, w, node, nodeStatus)
 		if err != nil {
 			logger.Errorf(ctx, "failed preExecute for node. Error: %s", err.Error())
@@ -244,6 +248,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	}
 
 	if currentPhase == v1alpha1.NodePhaseFailing {
+		logger.Debugf(ctx, "node failing")
 		if err := c.finalize(ctx, h, nCtx); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
@@ -254,10 +259,11 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	}
 
 	if currentPhase == v1alpha1.NodePhaseSucceeding {
+		logger.Debugf(ctx, "node succeeding")
 		if err := c.finalize(ctx, h, nCtx); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "node failed and finalized")
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully")
 		c.metrics.SuccessDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		return executors.NodeStatusSuccess, nil
 	}
@@ -271,7 +277,10 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		// This should never happen
 		return executors.NodeStatusSuccess, nil
 	}
+
 	// case v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseRetryableFailure:
+	logger.Debugf(ctx, "node executing, current phase [%s]", currentPhase)
+	defer logger.Debugf(ctx, "node execution completed")
 	p, err := c.execute(ctx, h, nCtx, nodeStatus)
 	if err != nil {
 		logger.Errorf(ctx, "failed Execute for node. Error: %s", err.Error())
@@ -462,9 +471,7 @@ func (c *nodeExecutor) Initialize(ctx context.Context) error {
 	return c.nodeHandlerFactory.Setup(ctx, s)
 }
 
-func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow,
-	revalPeriod time.Duration, eventSink events.EventSink, workflowLauncher launchplan.Executor,
-	catalogClient catalog.Client, kubeClient executors.Client, scope promutils.Scope) (executors.Node, error) {
+func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink, workflowLauncher launchplan.Executor, maxDatasetSize int64, kubeClient executors.Client, catalogClient catalog.Client, scope promutils.Scope) (executors.Node, error) {
 
 	nodeScope := scope.NewSubScope("node")
 	exec := &nodeExecutor{
@@ -472,7 +479,7 @@ func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1al
 		enqueueWorkflow:     enQWorkflow,
 		nodeRecorder:        events.NewNodeEventRecorder(eventSink, nodeScope),
 		taskRecorder:        events.NewTaskEventRecorder(eventSink, scope.NewSubScope("task")),
-		maxDatasetSizeBytes: 0,
+		maxDatasetSizeBytes: maxDatasetSize,
 		metrics: &nodeMetrics{
 			Scope:              nodeScope,
 			FailureDuration:    labeled.NewStopWatch("failure_duration", "Indicates the total execution time of a failed workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
@@ -484,7 +491,7 @@ func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1al
 		},
 		outputResolver: NewRemoteFileOutputResolver(store),
 	}
-	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, nodeScope)
+	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, kubeClient, catalogClient, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory
 	return exec, err
 }

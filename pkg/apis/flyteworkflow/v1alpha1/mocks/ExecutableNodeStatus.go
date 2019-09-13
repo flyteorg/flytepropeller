@@ -47,6 +47,22 @@ func (_m *ExecutableNodeStatus) GetAttempts() uint32 {
 	return r0
 }
 
+// GetBranchStatus provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) GetBranchStatus() v1alpha1.MutableBranchNodeStatus {
+	ret := _m.Called()
+
+	var r0 v1alpha1.MutableBranchNodeStatus
+	if rf, ok := ret.Get(0).(func() v1alpha1.MutableBranchNodeStatus); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha1.MutableBranchNodeStatus)
+		}
+	}
+
+	return r0
+}
+
 // GetDataDir provides a mock function with given fields:
 func (_m *ExecutableNodeStatus) GetDataDir() storage.DataReference {
 	ret := _m.Called()
@@ -56,6 +72,22 @@ func (_m *ExecutableNodeStatus) GetDataDir() storage.DataReference {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(storage.DataReference)
+	}
+
+	return r0
+}
+
+// GetDynamicNodeStatus provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) GetDynamicNodeStatus() v1alpha1.MutableDynamicNodeStatus {
+	ret := _m.Called()
+
+	var r0 v1alpha1.MutableDynamicNodeStatus
+	if rf, ok := ret.Get(0).(func() v1alpha1.MutableDynamicNodeStatus); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha1.MutableDynamicNodeStatus)
+		}
 	}
 
 	return r0
@@ -313,6 +345,22 @@ func (_m *ExecutableNodeStatus) GetTaskNodeStatus() v1alpha1.ExecutableTaskNodeS
 	return r0
 }
 
+// GetTaskStatus provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) GetTaskStatus() v1alpha1.MutableTaskNodeStatus {
+	ret := _m.Called()
+
+	var r0 v1alpha1.MutableTaskNodeStatus
+	if rf, ok := ret.Get(0).(func() v1alpha1.MutableTaskNodeStatus); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha1.MutableTaskNodeStatus)
+		}
+	}
+
+	return r0
+}
+
 // GetWorkflowNodeStatus provides a mock function with given fields:
 func (_m *ExecutableNodeStatus) GetWorkflowNodeStatus() v1alpha1.ExecutableWorkflowNodeStatus {
 	ret := _m.Called()
@@ -323,6 +371,22 @@ func (_m *ExecutableNodeStatus) GetWorkflowNodeStatus() v1alpha1.ExecutableWorkf
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(v1alpha1.ExecutableWorkflowNodeStatus)
+		}
+	}
+
+	return r0
+}
+
+// GetWorkflowStatus provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) GetWorkflowStatus() v1alpha1.MutableWorkflowNodeStatus {
+	ret := _m.Called()
+
+	var r0 v1alpha1.MutableWorkflowNodeStatus
+	if rf, ok := ret.Get(0).(func() v1alpha1.MutableWorkflowNodeStatus); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha1.MutableWorkflowNodeStatus)
 		}
 	}
 

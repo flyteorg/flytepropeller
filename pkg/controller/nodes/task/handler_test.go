@@ -26,6 +26,7 @@ import (
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	flyteMocks "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
+	"github.com/lyft/flytepropeller/pkg/controller/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
@@ -185,7 +186,7 @@ func Test_task_Setup(t *testing.T) {
 			sCtx.On("EnqueueOwner").Return(pluginCore.EnqueueOwner(func(name types.NamespacedName) error { return nil }))
 			sCtx.On("MetricsScope").Return(promutils.NewTestScope())
 
-			tk := New(context.TODO(), promutils.NewTestScope())
+			tk := New(context.TODO(), mocks.NewFakeKubeClient(), &catalog.MockCatalogClient{}, promutils.NewTestScope())
 			tk.pluginRegistry = tt.registry
 			if err := tk.Setup(context.TODO(), sCtx); err != nil {
 				if !tt.wantErr {
@@ -737,7 +738,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			} else {
 				c.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			}
-			tk := New(context.TODO(), promutils.NewTestScope())
+			tk := New(context.TODO(),  mocks.NewFakeKubeClient(), &catalog.MockCatalogClient{}, promutils.NewTestScope())
 			tk.plugins = map[pluginCore.TaskType]pluginCore.Plugin{
 				"test": fakeplugins.NewPhaseBasedPlugin(),
 			}
@@ -987,7 +988,7 @@ func Test_task_Finalize(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	got := New(context.TODO(), promutils.NewTestScope())
+	got := New(context.TODO(),  mocks.NewFakeKubeClient(), &catalog.MockCatalogClient{}, promutils.NewTestScope())
 	assert.NotNil(t, got)
 	assert.NotNil(t, got.plugins)
 	assert.NotNil(t, got.metrics)

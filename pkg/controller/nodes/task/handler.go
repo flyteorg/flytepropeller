@@ -18,6 +18,8 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	regErrors "github.com/pkg/errors"
 
+	catalog2 "github.com/lyft/flytepropeller/pkg/controller/catalog"
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
@@ -114,6 +116,7 @@ type Handler struct {
 	defaultPlugin  pluginCore.Plugin
 	metrics        *metrics
 	pluginRegistry PluginRegistryIface
+	kubeClient     pluginCore.KubeClient
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -133,6 +136,7 @@ func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
 func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	tSCtx := &setupContext{
 		SetupContext: sCtx,
+		kubeClient:   t.kubeClient,
 	}
 	logger.Infof(ctx, "Loading core Plugins")
 	for _, cpe := range t.pluginRegistry.GetCorePlugins() {
@@ -447,7 +451,8 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 	}()
 }
 
-func New(_ context.Context, scope promutils.Scope) *Handler {
+func New(_ context.Context, kubeClient executors.Client, client catalog2.Client, scope promutils.Scope) *Handler {
+
 	return &Handler{
 		pluginRegistry: pluginMachinery.PluginRegistry(),
 		plugins:        make(map[pluginCore.TaskType]pluginCore.Plugin),
@@ -459,5 +464,7 @@ func New(_ context.Context, scope promutils.Scope) *Handler {
 			discoveryPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			discoveryGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
 		},
+		kubeClient: kubeClient,
+		catalog:    catalog.NOOPCatalog{},
 	}
 }

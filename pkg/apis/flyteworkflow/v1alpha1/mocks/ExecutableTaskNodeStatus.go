@@ -52,3 +52,47 @@ func (_m *ExecutableTaskNodeStatus) GetPhaseVersion() uint32 {
 
 	return r0
 }
+
+// GetPluginState provides a mock function with given fields:
+func (_m *ExecutableTaskNodeStatus) GetPluginState() []byte {
+	ret := _m.Called()
+
+	var r0 []byte
+	if rf, ok := ret.Get(0).(func() []byte); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	return r0
+}
+
+// GetPluginStateVersion provides a mock function with given fields:
+func (_m *ExecutableTaskNodeStatus) GetPluginStateVersion() uint32 {
+	ret := _m.Called()
+
+	var r0 uint32
+	if rf, ok := ret.Get(0).(func() uint32); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(uint32)
+	}
+
+	return r0
+}
+
+// UsePluginState provides a mock function with given fields:
+func (_m *ExecutableTaskNodeStatus) UsePluginState() bool {
+	ret := _m.Called()
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
