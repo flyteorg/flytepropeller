@@ -421,6 +421,7 @@
     "clients/go/admin",
     "clients/go/admin/mocks",
     "clients/go/coreutils",
+    "clients/go/coreutils/logs",
     "clients/go/datacatalog/mocks",
     "clients/go/events",
     "clients/go/events/errors",
@@ -436,17 +437,19 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:19da97083afd31632ddd3548f2fefc81f6b67d6572ad41fb519085faa622bcaf"
+  digest = "1:d1a1440641e65735c7186d12f87bb171bb8d4d5c6a6cdb313b1c669190b2b298"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/array/bitarray",
     "go/tasks/config",
     "go/tasks/errors",
-    "go/tasks/flytek8s/config",
+    "go/tasks/logs",
     "go/tasks/pluginmachinery",
     "go/tasks/pluginmachinery/catalog",
     "go/tasks/pluginmachinery/core",
     "go/tasks/pluginmachinery/core/mocks",
+    "go/tasks/pluginmachinery/flytek8s",
+    "go/tasks/pluginmachinery/flytek8s/config",
     "go/tasks/pluginmachinery/io",
     "go/tasks/pluginmachinery/io/mocks",
     "go/tasks/pluginmachinery/ioutils",
@@ -454,9 +457,10 @@
     "go/tasks/pluginmachinery/k8s/mocks",
     "go/tasks/pluginmachinery/utils",
     "go/tasks/pluginmachinery/workqueue",
+    "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "cc3ab41e5ae306570258906870c4cf667e3b28bd"
+  revision = "4397847c26ccd2dbb05988ac03e9ee815d3537b7"
   source = "https://github.com/lyft/flyteplugins"
 
 [[projects]]
@@ -484,6 +488,14 @@
   revision = "7292f20ec17b42f104fd61d7f0120e17bcacf751"
   source = "https://github.com/lyft/flytestdlib"
   version = "v0.2.16"
+
+[[projects]]
+  branch = "master"
+  digest = "1:f3e877ab2713ae4ed70cd3bb5b17e48b65396a0044fcb17b573dd55159579b66"
+  name = "github.com/lyft/modelbuilderadmin"
+  packages = ["workflow/sets"]
+  pruneopts = ""
+  revision = "51050b0a64aa3e9b264d82d502b2ec68634d2aba"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
@@ -1311,17 +1323,18 @@
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/event",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/service",
     "github.com/lyft/flyteplugins/go/tasks/errors",
-    "github.com/lyft/flyteplugins/go/tasks/flytek8s/config",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks",
+    "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s/mocks",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils",
+    "github.com/lyft/flyteplugins/go/tasks/plugins/k8s/container",
     "github.com/lyft/flytestdlib/config",
     "github.com/lyft/flytestdlib/config/viper",
     "github.com/lyft/flytestdlib/contextutils",
@@ -1334,6 +1347,7 @@
     "github.com/lyft/flytestdlib/utils",
     "github.com/lyft/flytestdlib/version",
     "github.com/lyft/flytestdlib/yamlutils",
+    "github.com/lyft/modelbuilderadmin/workflow/sets",
     "github.com/magiconair/properties/assert",
     "github.com/mitchellh/mapstructure",
     "github.com/operator-framework/operator-sdk/pkg/util/k8sutil",

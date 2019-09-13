@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/lyft/flytestdlib/contextutils"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
