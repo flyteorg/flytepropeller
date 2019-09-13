@@ -256,10 +256,6 @@ type ExecutableTaskNodeStatus interface {
 	GetPhaseVersion() uint32
 	GetPluginState() []byte
 	GetPluginStateVersion() uint32
-
-	// Delete after migration is complete
-	UsePluginState() bool
-	GetCustomState() map[string]interface{}
 }
 
 type MutableTaskNodeStatus interface {
