@@ -154,7 +154,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 			maxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
 		}
 		attempts := nodeStatus.IncrementAttempts()
-		if attempts >= maxAttempts {
+		if attempts > maxAttempts {
 			return handler.PhaseInfoFailure(
 				fmt.Sprintf("RetriesExhausted|%s", t.Info().Err.Code),
 				fmt.Sprintf("[%d/%d] retries done. Last Error: %s", attempts, maxAttempts, t.Info().Err.Message),
@@ -268,6 +268,15 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusSuccess, nil
 	}
 
+	if currentPhase == v1alpha1.NodePhaseRetryableFailure {
+		logger.Debugf(ctx, "node failed with retryable failure, finalizing")
+		if err := c.finalize(ctx, h, nCtx); err != nil {
+			return executors.NodeStatusUndefined, err
+		}
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying")
+		return executors.NodeStatusPending, nil
+	}
+
 	if currentPhase == v1alpha1.NodePhaseFailed {
 		// This should never happen
 		return executors.NodeStatusFailed(fmt.Errorf(nodeStatus.GetMessage())), nil
@@ -302,9 +311,10 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		np = v1alpha1.NodePhaseSucceeded
 		finalStatus = executors.NodeStatusSuccess
 	}
-	if np != nodeStatus.GetPhase() {
+	// If it is retryable failure, we do no want to send any events, as the node is essentially still running
+	if np != nodeStatus.GetPhase() && np != v1alpha1.NodePhaseRetryableFailure {
 		// assert np == skipped, succeeding or failing
-		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s]", nodeStatus.GetPhase().String(), np.String())
+		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s], (handler phase [%s])", nodeStatus.GetPhase().String(), np.String(), p.Phase.String())
 		nev, err := ToNodeExecutionEvent(&nodeExecID, p, nCtx.InputReader())
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "could not convert phase info to event")
