@@ -34,6 +34,8 @@ import (
 var fakeKubeClient = mocks4.NewFakeKubeClient()
 var catalogClient = catalog.NewNoOpDiscovery()
 
+const taskID = "tID"
+
 func TestSetInputsForStartNode(t *testing.T) {
 	ctx := context.Background()
 	mockStorage := createInmemoryDataStore(t, testScope.NewSubScope("f"))
@@ -425,7 +427,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	exec := execIface.(*nodeExecutor)
 
 	defaultNodeID := "n1"
-	taskID := "tID"
+	taskID := taskID
 
 	createSingleNodeWf := func(p v1alpha1.NodePhase, maxAttempts int) (v1alpha1.ExecutableWorkflow, v1alpha1.ExecutableNode, v1alpha1.ExecutableNodeStatus) {
 		n := &v1alpha1.NodeSpec{
@@ -907,7 +909,7 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 	exec := execIface.(*nodeExecutor)
 
 	defaultNodeID := "n1"
-	taskID := "tID"
+	taskID := taskID
 
 	createSingleNodeWf := func(parentPhase v1alpha1.NodePhase, maxAttempts int) (v1alpha1.ExecutableWorkflow, v1alpha1.ExecutableNode, v1alpha1.ExecutableNodeStatus) {
 		n := &v1alpha1.NodeSpec{

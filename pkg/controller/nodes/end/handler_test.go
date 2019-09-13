@@ -74,7 +74,7 @@ func TestEndHandler_Handle(t *testing.T) {
 
 	createNodeCtx := func(inputs *core.LiteralMap, store *storage.DataStore) *mocks.NodeExecutionContext {
 		ir := &mocks2.InputReader{}
-		ir.On("Get",  mock.Anything).Return(inputs, nil)
+		ir.On("Get", mock.Anything).Return(inputs, nil)
 		nCtx := &mocks.NodeExecutionContext{}
 		nCtx.On("InputReader").Return(ir)
 		nCtx.On("DataStore").Return(store)

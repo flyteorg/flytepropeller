@@ -10,7 +10,7 @@ import (
 const configSectionKey = "propeller"
 
 var ConfigSection = config.MustRegisterSection(configSectionKey, &Config{
-	MaxDatasetSizeBytes: 10*1024*1024,
+	MaxDatasetSizeBytes: 10 * 1024 * 1024,
 })
 
 // NOTE: when adding new fields, do not mark them as "omitempty" if it's desirable to read the value from env variables.
