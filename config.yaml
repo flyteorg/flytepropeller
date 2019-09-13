@@ -89,7 +89,7 @@ admin:
   endpoint: localhost:8089
   insecure: true
 catalog-cache:
-  type: catalog
+  type: noop
   endpoint: datacatalog:8089
   insecure: true
 errors:

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"sigs.k8s.io/controller-runtime/pkg/cache/informertest"
 
 	"github.com/lyft/flytestdlib/promutils"
