@@ -534,6 +534,14 @@
   revision = "51050b0a64aa3e9b264d82d502b2ec68634d2aba"
 
 [[projects]]
+  branch = "master"
+  digest = "1:f3e877ab2713ae4ed70cd3bb5b17e48b65396a0044fcb17b573dd55159579b66"
+  name = "github.com/lyft/modelbuilderadmin"
+  packages = ["workflow/sets"]
+  pruneopts = ""
+  revision = "51050b0a64aa3e9b264d82d502b2ec68634d2aba"
+
+[[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
   name = "github.com/magiconair/properties"
   packages = [
