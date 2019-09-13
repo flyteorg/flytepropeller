@@ -252,7 +252,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Error(t *testing.T) {
 func walkAndPrint(conns v1alpha1.Connections, ns map[v1alpha1.NodeID]*v1alpha1.NodeStatus) {
 	ds := []v1alpha1.NodeID{v1alpha1.StartNodeID}
 	visited := map[v1alpha1.NodeID]bool{}
-	for k, _ := range ns {
+	for k := range ns {
 		visited[k] = false
 	}
 	for ; len(ds) > 0; {

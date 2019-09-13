@@ -39,6 +39,8 @@ func legacyPluginPhaseToNew(p int) pluginCore.Phase {
 		return pluginCore.PhaseUndefined
 	case legacyTaskPhaseNotReady:
 		return pluginCore.PhaseNotReady
+	case legacyTaskPhaseUnknown:
+		return pluginCore.PhaseUndefined
 	}
 	return pluginCore.PhaseUndefined
 }

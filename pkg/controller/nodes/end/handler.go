@@ -49,6 +49,5 @@ func (e endHandler) Finalize(ctx context.Context, executionContext handler.NodeE
 }
 
 func New() handler.Node {
-	return &endHandler{
-	}
+	return &endHandler{}
 }

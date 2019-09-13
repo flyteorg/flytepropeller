@@ -476,14 +476,14 @@ func (in *CustomState) DeepCopy() *CustomState {
 }
 
 type TaskNodeStatus struct {
-	Phase              int                    `json:"phase,omitempty"`
-	PhaseVersion       uint32                 `json:"phaseVersion,omitempty"`
-	PluginState        []byte                 `json:"pState,omitempty"`
-	PluginStateVersion uint32                 `json:"psv,omitempty"`
+	Phase              int    `json:"phase,omitempty"`
+	PhaseVersion       uint32 `json:"phaseVersion,omitempty"`
+	PluginState        []byte `json:"pState,omitempty"`
+	PluginStateVersion uint32 `json:"psv,omitempty"`
 	// The default case would be false, which indicates that we are not using plugin state. this would be useful in migration
-	PluginStateInUse   bool                   `json:"psvUsed"`
+	PluginStateInUse bool `json:"psvUsed"`
 	// Delete after migration is complete
-	CustomState        map[string]interface{} `json:"custom,omitempty"`
+	CustomState map[string]interface{} `json:"custom,omitempty"`
 }
 
 func (in *TaskNodeStatus) UsePluginState() bool {
