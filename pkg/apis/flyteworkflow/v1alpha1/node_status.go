@@ -166,6 +166,27 @@ func (in *NodeStatus) GetTaskStatus() MutableTaskNodeStatus {
 	return in.TaskNodeStatus
 }
 
+func (in *NodeStatus) GetBranchStatus() MutableBranchNodeStatus {
+	if in.BranchStatus == nil {
+		return nil
+	}
+	return in.BranchStatus
+}
+
+func (in *NodeStatus) GetWorkflowStatus() MutableWorkflowNodeStatus {
+	if in.WorkflowNodeStatus == nil {
+		return nil
+	}
+	return in.WorkflowNodeStatus
+}
+
+func (in *NodeStatus) GetTaskStatus() MutableTaskNodeStatus {
+	if in.TaskNodeStatus == nil {
+		return nil
+	}
+	return in.TaskNodeStatus
+}
+
 func (in NodeStatus) VisitNodeStatuses(visitor NodeStatusVisitFn) {
 	for n, s := range in.SubNodeStatus {
 		visitor(n, s)
