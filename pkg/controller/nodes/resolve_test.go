@@ -2,10 +2,7 @@ package nodes
 
 import (
 	"context"
-	"fmt"
 	"testing"
-
-	"github.com/stretchr/testify/mock"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -16,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/mocks"
 	"github.com/lyft/flytepropeller/pkg/utils"
 	flyteassert "github.com/lyft/flytepropeller/pkg/utils/assert"
 )
@@ -195,13 +191,10 @@ func TestResolveBindingData(t *testing.T) {
 		},
 	}
 
-	r := &mocks.OutputResolver{}
-	r.On("ExtractOutput", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
-
 	t.Run("StaticBinding", func(t *testing.T) {
 		w := &dummyBaseWorkflow{}
 		b := utils.MustMakePrimitiveBindingData(1)
-		l, err := ResolveBindingData(ctx, r, w, b, nil)
+		l, err := ResolveBindingData(ctx, nil, w, b)
 		assert.NoError(t, err)
 		flyteassert.EqualLiterals(t, utils.MustMakeLiteral(1), l)
 	})
@@ -213,69 +206,68 @@ func TestResolveBindingData(t *testing.T) {
 			},
 		}
 		b := utils.MakeBindingDataPromise("n1", "x")
-		_, err := ResolveBindingData(ctx, nil, w, b, nil)
-		assert.Error(t, err)
-	})
-
-	t.Run("PromiseMissingStore", func(t *testing.T) {
-		b := utils.MakeBindingDataPromise("n1", "x")
-		_, err := ResolveBindingData(ctx, r, w, b, nil)
+		_, err := ResolveBindingData(ctx, nil, w, b)
 		assert.Error(t, err)
 	})
 
 	t.Run("PromiseMissing", func(t *testing.T) {
 		store := createInmemoryDataStore(t, testScope.NewSubScope("1"))
+		r := remoteFileOutputResolver{store: store}
 		b := utils.MakeBindingDataPromise("n1", "x")
-		_, err := ResolveBindingData(ctx, r, w, b, store)
+		_, err := ResolveBindingData(ctx, r, w, b)
 		assert.Error(t, err)
 	})
 
 	t.Run("PromiseMissingWithData", func(t *testing.T) {
 		store := createInmemoryDataStore(t, testScope.NewSubScope("2"))
+		r := remoteFileOutputResolver{store: store}
 		m, err := utils.MakeLiteralMap(map[string]interface{}{"z": 1})
 		assert.NoError(t, err)
 		assert.NoError(t, store.WriteProtobuf(ctx, outputPath, storage.Options{}, m))
 		b := utils.MakeBindingDataPromise("n1", "x")
-		_, err = ResolveBindingData(ctx, r, w, b, store)
+		_, err = ResolveBindingData(ctx, r, w, b)
 		assert.Error(t, err)
 	})
 
 	t.Run("PromiseFound", func(t *testing.T) {
 		store := createInmemoryDataStore(t, testScope.NewSubScope("3"))
+		r := remoteFileOutputResolver{store: store}
 		m, err := utils.MakeLiteralMap(map[string]interface{}{"x": 1})
 		assert.NoError(t, err)
 		assert.NoError(t, store.WriteProtobuf(ctx, outputPath, storage.Options{}, m))
 
 		b := utils.MakeBindingDataPromise("n2", "x")
-		l, err := ResolveBindingData(ctx, r, w, b, store)
+		l, err := ResolveBindingData(ctx, r, w, b)
 		if assert.NoError(t, err) {
 			flyteassert.EqualLiterals(t, utils.MustMakeLiteral(1), l)
 		}
 	})
 
 	t.Run("NullBinding", func(t *testing.T) {
-		l, err := ResolveBindingData(ctx, r, w, nil, nil)
+		l, err := ResolveBindingData(ctx, nil, w, nil)
 		assert.NoError(t, err)
 		assert.Nil(t, l)
 	})
 
 	t.Run("NullWorkflowPromise", func(t *testing.T) {
 		store := createInmemoryDataStore(t, testScope.NewSubScope("4"))
+		r := remoteFileOutputResolver{store: store}
 		m, err := utils.MakeLiteralMap(map[string]interface{}{"x": 1})
 		assert.NoError(t, err)
 		assert.NoError(t, store.WriteProtobuf(ctx, outputPath, storage.Options{}, m))
 		b := utils.MakeBindingDataPromise("n1", "x")
-		_, err = ResolveBindingData(ctx, nil, nil, b, store)
+		_, err = ResolveBindingData(ctx, r, nil, b)
 		assert.Error(t, err)
 	})
 
 	t.Run("PromiseFoundAlias", func(t *testing.T) {
 		store := createInmemoryDataStore(t, testScope.NewSubScope("5"))
+		r := remoteFileOutputResolver{store: store}
 		m, err := utils.MakeLiteralMap(map[string]interface{}{"x": 1})
 		assert.NoError(t, err)
 		assert.NoError(t, store.WriteProtobuf(ctx, outputPath, storage.Options{}, m))
 		b := utils.MakeBindingDataPromise("n2", "m")
-		l, err := ResolveBindingData(ctx, r, w, b, store)
+		l, err := ResolveBindingData(ctx, r, w, b)
 		if assert.NoError(t, err) {
 			flyteassert.EqualLiterals(t, utils.MustMakeLiteral(1), l)
 		}
@@ -283,6 +275,7 @@ func TestResolveBindingData(t *testing.T) {
 
 	t.Run("BindingDataMap", func(t *testing.T) {
 		store := createInmemoryDataStore(t, testScope.NewSubScope("6"))
+		r := remoteFileOutputResolver{store: store}
 		// Store output of previous
 		m, err := utils.MakeLiteralMap(map[string]interface{}{"x": 1})
 		assert.NoError(t, err)
@@ -294,7 +287,7 @@ func TestResolveBindingData(t *testing.T) {
 			utils.NewPair("x", utils.MakeBindingDataPromise("n2", "x")),
 			utils.NewPair("z", utils.MustMakePrimitiveBindingData(5)),
 		)
-		l, err := ResolveBindingData(ctx, r, w, b, store)
+		l, err := ResolveBindingData(ctx, r, w, b)
 		if assert.NoError(t, err) {
 			expected, err := utils.MakeLiteralMap(map[string]interface{}{"x": 1, "z": 5})
 			assert.NoError(t, err)
@@ -305,6 +298,7 @@ func TestResolveBindingData(t *testing.T) {
 
 	t.Run("BindingDataMapFailedPromise", func(t *testing.T) {
 		store := createInmemoryDataStore(t, testScope.NewSubScope("7"))
+		r := remoteFileOutputResolver{store: store}
 		// do not store anything
 
 		// Output of current
@@ -312,12 +306,13 @@ func TestResolveBindingData(t *testing.T) {
 			utils.NewPair("x", utils.MakeBindingDataPromise("n1", "x")),
 			utils.NewPair("z", utils.MustMakePrimitiveBindingData(5)),
 		)
-		_, err := ResolveBindingData(ctx, r, w, b, store)
+		_, err := ResolveBindingData(ctx, r, w, b)
 		assert.Error(t, err)
 	})
 
 	t.Run("BindingDataCollection", func(t *testing.T) {
 		store := createInmemoryDataStore(t, testScope.NewSubScope("8"))
+		r := remoteFileOutputResolver{store: store}
 		// Store random value
 		m, err := utils.MakeLiteralMap(map[string]interface{}{"jj": 1})
 		assert.NoError(t, err)
@@ -328,7 +323,7 @@ func TestResolveBindingData(t *testing.T) {
 			utils.MakeBindingDataPromise("n1", "x"),
 			utils.MustMakePrimitiveBindingData(5),
 		)
-		_, err = ResolveBindingData(ctx, r, w, b, store)
+		_, err = ResolveBindingData(ctx, r, w, b)
 		assert.Error(t, err)
 
 	})
@@ -365,6 +360,7 @@ func TestResolve(t *testing.T) {
 
 	t.Run("SimpleResolve", func(t *testing.T) {
 		store := createInmemoryDataStore(t, testScope.NewSubScope("9"))
+		r := remoteFileOutputResolver{store: store}
 		// Store output of previous
 		m, err := utils.MakeLiteralMap(map[string]interface{}{"x": 1})
 		assert.NoError(t, err)
@@ -389,10 +385,7 @@ func TestResolve(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		r := &mocks.OutputResolver{}
-		r.On("ExtractOutput", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(expected, nil)
-
-		l, err := Resolve(ctx, r, w, "n2", b, store)
+		l, err := Resolve(ctx, r, w, "n2", b)
 		if assert.NoError(t, err) {
 			assert.NotNil(t, l)
 			if assert.NoError(t, err) {
@@ -403,6 +396,7 @@ func TestResolve(t *testing.T) {
 
 	t.Run("SimpleResolveFail", func(t *testing.T) {
 		store := createInmemoryDataStore(t, testScope.NewSubScope("10"))
+		r := remoteFileOutputResolver{store: store}
 		// Store has no previous output
 
 		// bindings
@@ -418,10 +412,7 @@ func TestResolve(t *testing.T) {
 			},
 		}
 
-		r := &mocks.OutputResolver{}
-		r.On("ExtractOutput", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("No outputs"))
-
-		_, err := Resolve(ctx, r, w, "n2", b, store)
+		_, err := Resolve(ctx, r, w, "n2", b)
 		assert.Error(t, err)
 	})
 

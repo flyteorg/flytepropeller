@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/lyft/flytepropeller/pkg/controller/executors"
 )
 
 //go:generate mockery -all -case=underscore
@@ -27,7 +26,6 @@ type SetupContext interface {
 	EnqueueOwner() func(string)
 	OwnerKind() string
 	MetricsScope() promutils.Scope
-	KubeClient() executors.Client
 }
 
 type NodeExecutionMetadata interface {

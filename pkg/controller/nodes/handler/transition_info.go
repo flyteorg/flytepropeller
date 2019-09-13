@@ -104,11 +104,11 @@ func PhaseInfoQueued(reason string) PhaseInfo {
 }
 
 func PhaseInfoRunning(info *ExecutionInfo) PhaseInfo {
-	return phaseInfo(EPhaseRunning, nil, info, "")
+	return phaseInfo(EPhaseRunning, nil, info, "running")
 }
 
 func PhaseInfoSuccess(info *ExecutionInfo) PhaseInfo {
-	return phaseInfo(EPhaseSuccess, nil, info, "")
+	return phaseInfo(EPhaseSuccess, nil, info, "successfully completed")
 }
 
 func PhaseInfoSkip(info *ExecutionInfo, reason string) PhaseInfo {

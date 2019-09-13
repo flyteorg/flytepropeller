@@ -10,6 +10,7 @@ import (
 
 type setupContext struct {
 	handler.SetupContext
+	kubeClient pluginCore.KubeClient
 }
 
 func (s setupContext) MetricsScope() promutils.Scope {
@@ -17,7 +18,7 @@ func (s setupContext) MetricsScope() promutils.Scope {
 }
 
 func (s setupContext) KubeClient() pluginCore.KubeClient {
-	return s.SetupContext.KubeClient()
+	return s.kubeClient
 }
 
 func (s setupContext) EnqueueOwner() pluginCore.EnqueueOwner {

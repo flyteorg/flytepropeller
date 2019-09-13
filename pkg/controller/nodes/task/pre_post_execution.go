@@ -56,7 +56,30 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 }
 
 func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReader, r io.OutputReader, tr pluginCore.TaskReader, m catalog.Metadata) (*io.ExecutionError, error) {
-	// access w
+
+	tk, err := tr.Read(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
+		return nil, err
+	}
+
+	iface := tk.Interface
+	outputsDeclared := iface != nil && iface.Outputs != nil && len(iface.Outputs.Variables) > 0
+
+	if r == nil {
+		if outputsDeclared {
+			// Whack! plugin did not return any outputs for this task
+			return &io.ExecutionError{
+				ExecutionError: &core.ExecutionError{
+					Code:    "OutputsNotGenerated",
+					Message: "Output Reader was nil. Plugin/Platform problem.",
+				},
+				IsRecoverable: true,
+			}, nil
+		}
+		return nil, nil
+	}
+	// Reader exists, we can check for error, even if this task may not have any outputs declared
 	y, err := r.IsError(ctx)
 	if err != nil {
 		return nil, err
@@ -69,13 +92,8 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReade
 		return &taskErr, nil
 	}
 
-	tk, err := tr.Read(ctx)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
-		return nil, err
-	}
 	// Do this if we have outputs declared for the Handler interface!
-	if iface := tk.Interface; iface != nil && iface.Outputs != nil && len(iface.Outputs.Variables) > 0 {
+	if outputsDeclared {
 		ok, err := r.Exists(ctx)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to check if the output file exists. Error: %s", err.Error())

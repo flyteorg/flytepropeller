@@ -4,13 +4,12 @@ import (
 	"context"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytestdlib/storage"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 )
 
-func ResolveBindingData(ctx context.Context, outputResolver OutputResolver, w v1alpha1.ExecutableWorkflow, bindingData *core.BindingData, store storage.ProtobufStore) (*core.Literal, error) {
+func ResolveBindingData(ctx context.Context, outputResolver OutputResolver, w v1alpha1.ExecutableWorkflow, bindingData *core.BindingData) (*core.Literal, error) {
 	literal := &core.Literal{}
 	if bindingData == nil {
 		return nil, nil
@@ -19,7 +18,7 @@ func ResolveBindingData(ctx context.Context, outputResolver OutputResolver, w v1
 	case *core.BindingData_Collection:
 		literalCollection := make([]*core.Literal, 0, len(bindingData.GetCollection().GetBindings()))
 		for _, b := range bindingData.GetCollection().GetBindings() {
-			l, err := ResolveBindingData(ctx, outputResolver, w, b, store)
+			l, err := ResolveBindingData(ctx, outputResolver, w, b)
 			if err != nil {
 				return nil, err
 			}
@@ -34,7 +33,7 @@ func ResolveBindingData(ctx context.Context, outputResolver OutputResolver, w v1
 	case *core.BindingData_Map:
 		literalMap := make(map[string]*core.Literal, len(bindingData.GetMap().GetBindings()))
 		for k, v := range bindingData.GetMap().GetBindings() {
-			l, err := ResolveBindingData(ctx, outputResolver, w, v, store)
+			l, err := ResolveBindingData(ctx, outputResolver, w, v)
 			if err != nil {
 				return nil, err
 			}
@@ -71,10 +70,10 @@ func ResolveBindingData(ctx context.Context, outputResolver OutputResolver, w v1
 	return literal, nil
 }
 
-func Resolve(ctx context.Context, outputResolver OutputResolver, w v1alpha1.ExecutableWorkflow, nodeID v1alpha1.NodeID, bindings []*v1alpha1.Binding, store storage.ProtobufStore) (*core.LiteralMap, error) {
+func Resolve(ctx context.Context, outputResolver OutputResolver, w v1alpha1.ExecutableWorkflow, nodeID v1alpha1.NodeID, bindings []*v1alpha1.Binding) (*core.LiteralMap, error) {
 	literalMap := make(map[string]*core.Literal, len(bindings))
 	for _, binding := range bindings {
-		l, err := ResolveBindingData(ctx, outputResolver, w, binding.GetBinding(), store)
+		l, err := ResolveBindingData(ctx, outputResolver, w, binding.GetBinding())
 		if err != nil {
 			return nil, errors.Wrapf(errors.BindingResolutionError, nodeID, err, "Error binding Var [%v].[%v]", w.GetID(), binding.GetVar())
 		}

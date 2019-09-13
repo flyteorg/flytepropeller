@@ -3,6 +3,7 @@ package nodes
 import (
 	"context"
 
+	"github.com/lyft/flytepropeller/pkg/controller/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/dynamic"
 
 	"github.com/lyft/flytestdlib/promutils"
@@ -48,13 +49,13 @@ func (f handlerFactory) Setup(ctx context.Context, setup handler.SetupContext) e
 	return nil
 }
 
-func NewHandlerFactory(ctx context.Context, executor executors.Node, workflowLauncher launchplan.Executor, scope promutils.Scope) (HandlerFactory, error) {
+func NewHandlerFactory(ctx context.Context, executor executors.Node, workflowLauncher launchplan.Executor, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) (HandlerFactory, error) {
 
 	f := &handlerFactory{
 		handlers: map[v1alpha1.NodeKind]handler.Node{
 			v1alpha1.NodeKindBranch: branch.New(executor, scope),
 			v1alpha1.NodeKindTask: dynamic.New(
-				task.New(ctx, scope),
+				task.New(ctx, kubeClient, client, scope),
 				executor,
 				scope),
 			v1alpha1.NodeKindWorkflow: subworkflow.New(executor, workflowLauncher, scope),
