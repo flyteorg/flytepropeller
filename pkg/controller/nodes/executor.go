@@ -66,12 +66,25 @@ func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, w v1alpha1.E
 }
 
 func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *event.NodeExecutionEvent) error {
+	if nodeEvent == nil {
+		return fmt.Errorf("event recording attempt of Nil Node execution event")
+	}
+
+	if nodeEvent.Id == nil {
+		return fmt.Errorf("event recording attempt of with nil node Event ID")
+	}
+
+	logger.Infof(ctx, "Recording event Phase[%+v]", nodeEvent)
 	err := c.nodeRecorder.RecordNodeEvent(ctx, nodeEvent)
-	// TODO: add unit tests for this specific path
-	if err != nil && eventsErr.IsAlreadyExists(err) {
-		logger.Infof(ctx, "Node event phase: %s, nodeId %s already exist",
-			nodeEvent.Phase.String(), nodeEvent.GetId().NodeId)
-		return nil
+	if err != nil {
+		if eventsErr.IsAlreadyExists(err) {
+			logger.Infof(ctx, "Node event phase: %s, nodeId %s already exist",
+				nodeEvent.Phase.String(), nodeEvent.GetId().NodeId)
+			return nil
+		} else if eventsErr.IsEventAlreadyInTerminalStateError(err) {
+			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
+			return errors.Wrapf(errors.IllegalStateError, nodeEvent.Id.NodeId, err, "phase mis-match mismatch between propeller and control plane; Trying to record Node Phase: %s", nodeEvent.Phase)
+		}
 	}
 	return err
 }
@@ -183,7 +196,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	logger.Debugf(ctx, "Handling Node [%s]", node.GetID())
 	defer logger.Debugf(ctx, "Completed node [%s]", node.GetID())
 
-	nodeExecID := core.NodeExecutionIdentifier{
+	nodeExecID := &core.NodeExecutionIdentifier{
 		NodeId:      node.GetID(),
 		ExecutionId: w.GetExecutionID().WorkflowExecutionIdentifier,
 	}
@@ -215,6 +228,9 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		if p.Phase == handler.EPhaseUndefined {
 			return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "received undefined phase from ")
 		}
+		if p.Phase == handler.EPhaseNotReady {
+			return executors.NodeStatusPending, nil
+		}
 		np, err := ToNodePhase(p.Phase)
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "failed to move from queued")
@@ -222,17 +238,12 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		if np != nodeStatus.GetPhase() {
 			// assert np == Queued!
 			logger.Infof(ctx, "Change in node state detected from [%s] -> [%s]", nodeStatus.GetPhase().String(), np.String())
-			nev, err := ToNodeExecutionEvent(&nodeExecID, p, nCtx.InputReader())
+			nev, err := ToNodeExecutionEvent(nodeExecID, p, nCtx.InputReader())
 			if err != nil {
 				return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "could not convert phase info to event")
 			}
 			err = c.IdempotentRecordEvent(ctx, nev)
 			if err != nil {
-				if eventsErr.IsEventAlreadyInTerminalStateError(err) {
-					logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
-					return executors.NodeStatusFailed(errors.Wrapf(errors.IllegalStateError, node.GetID(), err,
-						"phase mis-match mismatch between propeller and control plane; Propeller Node Phase: %s", np.String())), nil
-				}
 				logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
 				return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, node.GetID(), err, "failed to record node event")
 			}
@@ -252,7 +263,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		if err := c.finalize(ctx, h, nCtx); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), "node failed and finalized")
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), nodeStatus.GetMessage())
 		c.metrics.FailureDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		// TODO we need to have a way to find the error message from failing to failed!
 		return executors.NodeStatusFailed(fmt.Errorf(nodeStatus.GetMessage())), nil
@@ -304,10 +315,12 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	}
 	finalStatus := executors.NodeStatusRunning
 	if np == v1alpha1.NodePhaseFailing && !h.FinalizeRequired() {
+		logger.Infof(ctx, "Finalize not required, moving node to Failed")
 		np = v1alpha1.NodePhaseFailed
 		finalStatus = executors.NodeStatusFailed(fmt.Errorf(ToError(p.Err, p.Reason)))
 	}
 	if np == v1alpha1.NodePhaseSucceeding && !h.FinalizeRequired() {
+		logger.Infof(ctx, "Finalize not required, moving node to Succeeded")
 		np = v1alpha1.NodePhaseSucceeded
 		finalStatus = executors.NodeStatusSuccess
 	}
@@ -315,17 +328,12 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	if np != nodeStatus.GetPhase() && np != v1alpha1.NodePhaseRetryableFailure {
 		// assert np == skipped, succeeding or failing
 		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s], (handler phase [%s])", nodeStatus.GetPhase().String(), np.String(), p.Phase.String())
-		nev, err := ToNodeExecutionEvent(&nodeExecID, p, nCtx.InputReader())
+		nev, err := ToNodeExecutionEvent(nodeExecID, p, nCtx.InputReader())
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "could not convert phase info to event")
 		}
 		err = c.IdempotentRecordEvent(ctx, nev)
 		if err != nil {
-			if eventsErr.IsEventAlreadyInTerminalStateError(err) {
-				logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
-				return executors.NodeStatusFailed(errors.Wrapf(errors.IllegalStateError, node.GetID(), err,
-					"phase mis-match mismatch between propeller and control plane; Propeller Node Phase: %s", np.String())), nil
-			}
 			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, node.GetID(), err, "failed to record node event")
 		}

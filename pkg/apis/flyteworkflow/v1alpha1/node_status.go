@@ -74,10 +74,10 @@ func (s *DynamicNodeStatus) Equals(o *DynamicNodeStatus) bool {
 	if s == nil && o == nil {
 		return true
 	}
-	if s != nil && o != nil {
-		return s.Phase == o.Phase
+	if s == nil || o == nil {
+		return false
 	}
-	return false
+	return s.Phase == o.Phase
 }
 
 type SubWorkflowNodeStatus struct {
@@ -403,6 +403,12 @@ func (in *NodeStatus) Equals(other *NodeStatus) bool {
 		return false
 	}
 
+	if in.Phase == other.Phase {
+		if in.Phase == NodePhaseSucceeded || in.Phase == NodePhaseFailed {
+			return true
+		}
+	}
+
 	if in.Attempts != other.Attempts {
 		return false
 	}
@@ -411,7 +417,7 @@ func (in *NodeStatus) Equals(other *NodeStatus) bool {
 		return false
 	}
 
-	if !reflect.DeepEqual(in.TaskNodeStatus, other.TaskNodeStatus) {
+	if !in.TaskNodeStatus.Equals(other.TaskNodeStatus) {
 		return false
 	}
 
@@ -446,7 +452,7 @@ func (in *NodeStatus) Equals(other *NodeStatus) bool {
 		}
 	}
 
-	return in.BranchStatus.Equals(other.BranchStatus)  && in.DynamicNodeStatus.Equals(other.DynamicNodeStatus) && in.TaskNodeStatus.Equals(other.TaskNodeStatus)
+	return in.BranchStatus.Equals(other.BranchStatus) && in.DynamicNodeStatus.Equals(other.DynamicNodeStatus)
 }
 
 // THIS IS NOT AUTO GENERATED
@@ -546,7 +552,7 @@ func (in *TaskNodeStatus) DeepCopy() *TaskNodeStatus {
 	return out
 }
 
-func (in *TaskNodeStatus) Equals(other *TaskNodeStatus) bool  {
+func (in *TaskNodeStatus) Equals(other *TaskNodeStatus) bool {
 	if in == nil && other == nil {
 		return true
 	}

@@ -74,11 +74,11 @@ func (p *pluginRequestedTransition) TransitionPreviouslyRecorded() {
 	p.previouslyObserved = true
 }
 
-func (p *pluginRequestedTransition) FinalTaskEvent(id *core.Identifier) (*event.TaskExecutionEvent, error) {
+func (p *pluginRequestedTransition) FinalTaskEvent(id *core.TaskExecutionIdentifier, in io.InputFilePaths, out io.OutputFilePaths) (*event.TaskExecutionEvent, error) {
 	if p.previouslyObserved {
 		return nil, nil
 	}
-	return ToTaskExecutionEvent(id, p.pInfo)
+	return ToTaskExecutionEvent(id, in, out, p.pInfo)
 }
 
 func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference) {
@@ -339,10 +339,11 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "plugin transition is not observed and no error as well.")
 	}
 
+	execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	// STEP 4: Send buffered events!
 	logger.Debugf(ctx, "Sending buffered Task events.")
 	for _, ev := range tCtx.ber.GetAll(ctx) {
-		evInfo, err := ToTaskExecutionEvent(tCtx.tr.GetTaskID(), ev)
+		evInfo, err := ToTaskExecutionEvent(&execID, nCtx.InputReader(), tCtx.ow, ev)
 		if err != nil {
 			return handler.UnknownTransition, err
 		}
@@ -356,7 +357,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 	// STEP 5: Send Transition events
 	logger.Debugf(ctx, "Sending transition event for plugin phase [%s]", pluginTrns.pInfo.Phase().String())
-	evInfo, err := pluginTrns.FinalTaskEvent(tCtx.tr.GetTaskID())
+	evInfo, err := pluginTrns.FinalTaskEvent(&execID, nCtx.InputReader(), tCtx.ow)
 	if err != nil {
 		logger.Errorf(ctx, "failed to convert plugin transition to TaskExecutionEvent. Error: %s", err.Error())
 		return handler.UnknownTransition, err

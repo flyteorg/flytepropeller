@@ -84,7 +84,10 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler
 
 	if info.Info != nil {
 		nev.ParentTaskMetadata = ToParentMetadata(info.Info.DynamicNodeInfo)
-		nev.TargetMetadata = ToNodeExecTargetMetadata(info.Info.WorkflowNodeInfo)
+		v := ToNodeExecTargetMetadata(info.Info.WorkflowNodeInfo)
+		if v != nil {
+			nev.TargetMetadata = v
+		}
 
 		if info.Err != nil {
 			nev.OutputResult = &event.NodeExecutionEvent_Error{
@@ -141,8 +144,8 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 		t := s.GetOrCreateTaskStatus()
 		t.SetPhaseVersion(n.t.PluginPhaseVersion)
 		t.SetPhase(int(n.t.PluginPhase))
-		t.SetPluginState(t.GetPluginState())
-		t.SetPluginStateVersion(t.GetPluginStateVersion())
+		t.SetPluginState(n.t.PluginState)
+		t.SetPluginStateVersion(n.t.PluginStateVersion)
 
 	} else if s.GetTaskNodeStatus() != nil {
 		s.ClearTaskStatus()
