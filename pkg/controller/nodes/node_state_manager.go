@@ -16,17 +16,17 @@ type nodeStateManager struct {
 	d          *handler.DynamicNodeState
 }
 
-func (n nodeStateManager) PutTaskNodeState(s handler.TaskNodeState) error {
+func (n *nodeStateManager) PutTaskNodeState(s handler.TaskNodeState) error {
 	n.t = &s
 	return nil
 }
 
-func (n nodeStateManager) PutBranchNode(s handler.BranchNodeState) error {
+func (n *nodeStateManager) PutBranchNode(s handler.BranchNodeState) error {
 	n.b = &s
 	return nil
 }
 
-func (n nodeStateManager) PutDynamicNodeState(s handler.DynamicNodeState) error {
+func (n *nodeStateManager) PutDynamicNodeState(s handler.DynamicNodeState) error {
 	n.d = &s
 	return nil
 }
