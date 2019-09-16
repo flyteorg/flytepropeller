@@ -89,7 +89,7 @@ func TestEndHandler_Handle(t *testing.T) {
 		nCtx := createNodeCtx(nil, nil)
 		s, err := e.Handle(ctx, nCtx)
 		assert.NoError(t, err)
-		assert.Equal(t, handler.EPhaseSuccess, s.Info().Phase)
+		assert.Equal(t, handler.EPhaseSuccess, s.Info().GetPhase())
 	})
 
 	outputLoc := v1alpha1.GetOutputsFile(outputRef)
@@ -98,7 +98,7 @@ func TestEndHandler_Handle(t *testing.T) {
 		nCtx := createNodeCtx(inputs, inMem)
 		s, err := e.Handle(ctx, nCtx)
 		assert.NoError(t, err)
-		assert.Equal(t, handler.EPhaseSuccess, s.Info().Phase)
+		assert.Equal(t, handler.EPhaseSuccess, s.Info().GetPhase())
 		actual := &core.LiteralMap{}
 		if assert.NoError(t, inMem.ReadProtobuf(ctx, outputLoc, actual)) {
 			flyteassert.EqualLiteralMap(t, inputs, actual)

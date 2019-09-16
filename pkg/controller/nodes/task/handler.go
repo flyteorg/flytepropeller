@@ -210,16 +210,16 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 
 	if trns.Info().Phase() == ts.PluginPhase {
 		if trns.Info().Version() == ts.PluginPhaseVersion {
-			logger.Debugf(ctx, "Phase+Version previously seen .. no event will be sent")
+			logger.Debugf(ctx, "p+Version previously seen .. no event will be sent")
 			pluginTrns.TransitionPreviouslyRecorded()
 			return pluginTrns, nil
 		}
 		if trns.Info().Version() > maxPluginPhaseVersions {
-			logger.Errorf(ctx, "Too many Plugin Phase versions for plugin [%s]. Phase versions [%d/%d]", p.GetID(), trns.Info().Version(), maxPluginPhaseVersions)
+			logger.Errorf(ctx, "Too many Plugin p versions for plugin [%s]. p versions [%d/%d]", p.GetID(), trns.Info().Version(), maxPluginPhaseVersions)
 			pluginTrns.ObservedExecutionError(&io.ExecutionError{
 				ExecutionError: &core.ExecutionError{
 					Code:    "TooManyPluginPhaseVersions",
-					Message: fmt.Sprintf("Total number of phase versions exceeded for Phase [%s] in Plugin [%s], max allowed [%d]", trns.Info().Phase().String(), p.GetID(), maxPluginPhaseVersions),
+					Message: fmt.Sprintf("Total number of phase versions exceeded for p [%s] in Plugin [%s], max allowed [%d]", trns.Info().Phase().String(), p.GetID(), maxPluginPhaseVersions),
 				},
 				IsRecoverable: false,
 			})

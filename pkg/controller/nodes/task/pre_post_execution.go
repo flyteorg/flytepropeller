@@ -34,7 +34,7 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 				return false, nil
 			}
 			t.metrics.discoveryGetFailureCount.Inc(ctx)
-			logger.Errorf(ctx, "Discovery check failed. Err: %v", err.Error())
+			logger.Errorf(ctx, "Discovery check failed. err: %v", err.Error())
 			return false, errors.Wrapf(err, "Failed to check Catalog for previous results")
 		} else if resp != nil {
 			t.metrics.discoveryHitCount.Inc(ctx)
@@ -125,7 +125,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReade
 			}
 			if err2 := t.catalog.Put(ctx, key, r, m); err2 != nil {
 				t.metrics.discoveryPutFailureCount.Inc(ctx)
-				logger.Errorf(ctx, "Failed to write results to catalog. Err: %v", err2)
+				logger.Errorf(ctx, "Failed to write results to catalog. err: %v", err2)
 			} else {
 				logger.Debugf(ctx, "Successfully cached results to discovery - Task [%s]", tk.GetId())
 			}

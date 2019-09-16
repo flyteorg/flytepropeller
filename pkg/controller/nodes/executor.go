@@ -74,7 +74,7 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 		return fmt.Errorf("event recording attempt of with nil node Event ID")
 	}
 
-	logger.Infof(ctx, "Recording event Phase[%+v]", nodeEvent)
+	logger.Infof(ctx, "Recording event p[%+v]", nodeEvent)
 	err := c.nodeRecorder.RecordNodeEvent(ctx, nodeEvent)
 	if err != nil {
 		if eventsErr.IsAlreadyExists(err) {
@@ -83,7 +83,7 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 			return nil
 		} else if eventsErr.IsEventAlreadyInTerminalStateError(err) {
 			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
-			return errors.Wrapf(errors.IllegalStateError, nodeEvent.Id.NodeId, err, "phase mis-match mismatch between propeller and control plane; Trying to record Node Phase: %s", nodeEvent.Phase)
+			return errors.Wrapf(errors.IllegalStateError, nodeEvent.Id.NodeId, err, "phase mis-match mismatch between propeller and control plane; Trying to record Node p: %s", nodeEvent.Phase)
 		}
 	}
 	return err
@@ -161,7 +161,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 		return handler.PhaseInfoUndefined, err
 	}
 
-	if t.Info().Phase == handler.EPhaseRetryableFailure {
+	if t.Info().GetPhase() == handler.EPhaseRetryableFailure {
 		maxAttempts := uint32(0)
 		if nCtx.Node().GetRetryStrategy() != nil && nCtx.Node().GetRetryStrategy().MinAttempts != nil {
 			maxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
@@ -169,9 +169,9 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 		attempts := nodeStatus.IncrementAttempts()
 		if attempts > maxAttempts {
 			return handler.PhaseInfoFailure(
-				fmt.Sprintf("RetriesExhausted|%s", t.Info().Err.Code),
-				fmt.Sprintf("[%d/%d] retries done. Last Error: %s", attempts, maxAttempts, t.Info().Err.Message),
-				t.Info().Info,
+				fmt.Sprintf("RetriesExhausted|%s", t.Info().GetErr().Code),
+				fmt.Sprintf("[%d/%d] retries done. Last Error: %s", attempts, maxAttempts, t.Info().GetErr().Message),
+				t.Info().GetInfo(),
 			), nil
 		}
 		// Retrying to clearing all status
@@ -225,20 +225,21 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			logger.Errorf(ctx, "failed preExecute for node. Error: %s", err.Error())
 			return executors.NodeStatusUndefined, err
 		}
-		if p.Phase == handler.EPhaseUndefined {
+		if p.GetPhase() == handler.EPhaseUndefined {
 			return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "received undefined phase from ")
 		}
-		if p.Phase == handler.EPhaseNotReady {
+		if p.GetPhase() == handler.EPhaseNotReady {
 			return executors.NodeStatusPending, nil
 		}
-		np, err := ToNodePhase(p.Phase)
+
+		np, err := ToNodePhase(p.GetPhase())
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "failed to move from queued")
 		}
 		if np != nodeStatus.GetPhase() {
 			// assert np == Queued!
 			logger.Infof(ctx, "Change in node state detected from [%s] -> [%s]", nodeStatus.GetPhase().String(), np.String())
-			nev, err := ToNodeExecutionEvent(nodeExecID, p, nCtx.InputReader())
+			nev, err := ToNodeExecutionEvent(nodeExecID, p, nCtx.InputReader(), nCtx.NodeStatus())
 			if err != nil {
 				return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "could not convert phase info to event")
 			}
@@ -306,10 +307,10 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		logger.Errorf(ctx, "failed Execute for node. Error: %s", err.Error())
 		return executors.NodeStatusUndefined, err
 	}
-	if p.Phase == handler.EPhaseUndefined {
+	if p.GetPhase() == handler.EPhaseUndefined {
 		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "received undefined phase from ")
 	}
-	np, err := ToNodePhase(p.Phase)
+	np, err := ToNodePhase(p.GetPhase())
 	if err != nil {
 		return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "failed to move from queued")
 	}
@@ -317,7 +318,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	if np == v1alpha1.NodePhaseFailing && !h.FinalizeRequired() {
 		logger.Infof(ctx, "Finalize not required, moving node to Failed")
 		np = v1alpha1.NodePhaseFailed
-		finalStatus = executors.NodeStatusFailed(fmt.Errorf(ToError(p.Err, p.Reason)))
+		finalStatus = executors.NodeStatusFailed(fmt.Errorf(ToError(p.GetErr(), p.GetReason())))
 	}
 	if np == v1alpha1.NodePhaseSucceeding && !h.FinalizeRequired() {
 		logger.Infof(ctx, "Finalize not required, moving node to Succeeded")
@@ -327,8 +328,8 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	// If it is retryable failure, we do no want to send any events, as the node is essentially still running
 	if np != nodeStatus.GetPhase() && np != v1alpha1.NodePhaseRetryableFailure {
 		// assert np == skipped, succeeding or failing
-		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s], (handler phase [%s])", nodeStatus.GetPhase().String(), np.String(), p.Phase.String())
-		nev, err := ToNodeExecutionEvent(nodeExecID, p, nCtx.InputReader())
+		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s], (handler phase [%s])", nodeStatus.GetPhase().String(), np.String(), p.GetPhase().String())
+		nev, err := ToNodeExecutionEvent(nodeExecID, p, nCtx.InputReader(), nCtx.NodeStatus())
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "could not convert phase info to event")
 		}

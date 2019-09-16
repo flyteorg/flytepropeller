@@ -95,7 +95,7 @@ func (e execContext) MaxDatasetSizeBytes() int64 {
 	return e.maxDatasetSizeBytes
 }
 
-func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.WorkflowMeta, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error) *execContext {
+func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error) *execContext {
 	return &execContext{
 		md:                  execMetadata{WorkflowMeta: w},
 		store:               store,
@@ -107,6 +107,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.
 		tr:                  tr,
 		nsm:                 nsm,
 		enqueueOwner:        enqueueOwner,
+		w:                   w,
 	}
 }
 

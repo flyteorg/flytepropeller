@@ -31,6 +31,9 @@ import (
 
 //go:generate mockery -all -case=underscore
 
+
+const dynamicNodeID = "dynamic-node"
+
 type TaskNodeHandler interface {
 	handler.Node
 	ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReader, r io.OutputReader, tr pluginCore.TaskReader, m catalog.Metadata) (*io.ExecutionError, error)
@@ -61,7 +64,7 @@ func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevSt
 		return trns, prevState, err
 	}
 
-	if trns.Info().Phase == handler.EPhaseSuccess {
+	if trns.Info().GetPhase() == handler.EPhaseSuccess {
 		f, err := task.NewRemoteFutureFileReader(ctx, nCtx.NodeStatus().GetDataDir(), nCtx.DataStore())
 		if err != nil {
 			return handler.UnknownTransition, prevState, err
@@ -76,7 +79,7 @@ func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevSt
 			// directly to progress the dynamically generated workflow.
 			logger.Infof(ctx, "future file detected, assuming dynamic node")
 			// There is a futures file, so we need to continue running the node with the modified state
-			return handler.DoTransition(trns.Type(), handler.PhaseInfoRunning(trns.Info().Info)), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}, nil
+			return trns.WithInfo(handler.PhaseInfoRunning(trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}, nil
 		}
 	}
 	logger.Infof(ctx, "regular node detected, (no future file found)")
@@ -94,23 +97,14 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 		return handler.UnknownTransition, err
 	}
 
-	// TODO: This is a hack to set parent task execution id, we should move to node-node relationship.
-	execID := task.GetTaskExecutionIdentifier(nCtx)
-	// TODO we need to set parentTaskID in this case
-	if trns.Info().Info == nil {
-		pInfo := trns.Info()
-		pInfo.Info = &handler.ExecutionInfo{}
-		trns = handler.DoTransition(trns.Type(), pInfo)
-	}
-	trns.Info().Info.DynamicNodeInfo = &handler.DynamicNodeInfo{
-		ParentTaskID: execID,
-	}
-	if trns.Info().Phase == handler.EPhaseSuccess {
+
+	if trns.Info().GetPhase() == handler.EPhaseSuccess {
 		logger.Infof(ctx, "dynamic workflow node has succeeded, will call on success handler for parent node [%s]", nCtx.NodeID())
 		outputPaths, err := task.NewRemoteFileOutputPaths(ctx, nCtx.NodeStatus().GetDataDir(), nCtx.DataStore())
 		if err != nil {
 			return handler.UnknownTransition, err
 		}
+		execID := task.GetTaskExecutionIdentifier(nCtx)
 		outputReader := ioutils.NewRemoteFileOutputReader(ctx, nCtx.DataStore(), outputPaths, nCtx.MaxDatasetSizeBytes())
 		ee, err := d.TaskNodeHandler.ValidateOutputAndCacheAdd(ctx, nCtx.InputReader(), outputReader, nCtx.TaskReader(), catalog.Metadata{
 			TaskExecutionIdentifier: execID,
@@ -120,9 +114,9 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 		}
 		if ee != nil {
 			if ee.IsRecoverable {
-				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailureErr(ee.ExecutionError, trns.Info().Info)), nil
+				return trns.WithInfo(handler.PhaseInfoRetryableFailureErr(ee.ExecutionError, trns.Info().GetInfo())), nil
 			}
-			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().Info)), nil
+			return trns.WithInfo(handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().GetInfo())), nil
 		}
 	}
 	return trns, nil
@@ -259,6 +253,12 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 		return nil, false, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to read futures file, maybe corrupted")
 	}
 
+	// TODO: This is a hack to set parent task execution id, we should move to node-node relationship.
+	execID := task.GetTaskExecutionIdentifier(nCtx)
+	nStatus := nCtx.NodeStatus().GetNodeExecutionStatus(dynamicNodeID)
+	nStatus.SetDataDir(nCtx.NodeStatus().GetDataDir())
+	nStatus.SetParentTaskID(execID)
+
 	var closure *core.CompiledWorkflowClosure
 	wf, err := d.buildDynamicWorkflowTemplate(ctx, djSpec, nCtx)
 	if err != nil {
@@ -281,7 +281,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 		return nil, true, err
 	}
 
-	return newContextualWorkflow(nCtx.Workflow(), subwf, nCtx.NodeStatus(), subwf.Tasks, subwf.SubWorkflows), true, nil
+	return newContextualWorkflow(nCtx.Workflow(), subwf, nStatus, subwf.Tasks, subwf.SubWorkflows), true, nil
 }
 
 func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context, dynamicWorkflow v1alpha1.ExecutableWorkflow, nCtx handler.NodeExecutionContext) (handler.Transition, error) {

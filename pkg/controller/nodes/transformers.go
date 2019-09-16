@@ -37,15 +37,6 @@ func ToNodeExecTargetMetadata(info *handler.WorkflowNodeInfo) *event.NodeExecuti
 	}
 }
 
-func ToParentMetadata(info *handler.DynamicNodeInfo) *event.ParentTaskExecutionMetadata {
-	if info == nil || info.ParentTaskID == nil {
-		return nil
-	}
-	return &event.ParentTaskExecutionMetadata{
-		Id: info.ParentTaskID,
-	}
-}
-
 func ToNodeExecEventPhase(p handler.EPhase) core.NodeExecution_Phase {
 	switch p {
 	case handler.EPhaseQueued:
@@ -63,38 +54,44 @@ func ToNodeExecEventPhase(p handler.EPhase) core.NodeExecution_Phase {
 	}
 }
 
-func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler.PhaseInfo, reader io.InputReader) (*event.NodeExecutionEvent, error) {
-	if info.Phase == handler.EPhaseNotReady {
+func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler.PhaseInfo, reader io.InputReader, status v1alpha1.ExecutableNodeStatus) (*event.NodeExecutionEvent, error) {
+	if info.GetPhase() == handler.EPhaseNotReady {
 		return nil, nil
 	}
-	if info.Phase == handler.EPhaseUndefined {
+	if info.GetPhase() == handler.EPhaseUndefined {
 		return nil, fmt.Errorf("illegal state, undefined phase received for node [%s]", nodeExecID.NodeId)
 	}
-	occurredTime, err := ptypes.TimestampProto(info.OccurredAt)
+	occurredTime, err := ptypes.TimestampProto(info.GetOccurredAt())
 	if err != nil {
 		return nil, err
 	}
 
 	nev := &event.NodeExecutionEvent{
 		Id:         nodeExecID,
-		Phase:      ToNodeExecEventPhase(info.Phase),
+		Phase:      ToNodeExecEventPhase(info.GetPhase()),
 		InputUri:   reader.GetInputPath().String(),
 		OccurredAt: occurredTime,
 	}
 
-	if info.Info != nil {
-		nev.ParentTaskMetadata = ToParentMetadata(info.Info.DynamicNodeInfo)
-		v := ToNodeExecTargetMetadata(info.Info.WorkflowNodeInfo)
+	// TODO this should use node-node relationship instead of taskID
+	if status.GetParentTaskID() != nil {
+		nev.ParentTaskMetadata = &event.ParentTaskExecutionMetadata{
+			Id: status.GetParentTaskID(),
+		}
+	}
+
+	eInfo := info.GetInfo()
+	if eInfo != nil {
+		v := ToNodeExecTargetMetadata(eInfo.WorkflowNodeInfo)
 		if v != nil {
 			nev.TargetMetadata = v
 		}
-
-		if info.Err != nil {
-			nev.OutputResult = &event.NodeExecutionEvent_Error{
-				Error: info.Err,
-			}
-		} else if info.Info.OutputInfo != nil {
-			nev.OutputResult = ToNodeExecOutput(info.Info.OutputInfo)
+	}
+	if eInfo != nil && eInfo.OutputInfo != nil {
+		nev.OutputResult = ToNodeExecOutput(eInfo.OutputInfo)
+	} else if info.GetErr() != nil {
+		nev.OutputResult = &event.NodeExecutionEvent_Error{
+			Error: info.GetErr(),
 		}
 	}
 	return nev, nil
@@ -137,7 +134,7 @@ func ToError(executionError *core.ExecutionError, reason string) string {
 func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateManager, s v1alpha1.ExecutableNodeStatus) {
 	// We update the phase only if it is not already updated
 	if np != s.GetPhase() {
-		s.UpdatePhase(np, ToK8sTime(p.OccurredAt), ToError(p.Err, p.Reason))
+		s.UpdatePhase(np, ToK8sTime(p.GetOccurredAt()), ToError(p.GetErr(), p.GetReason()))
 	}
 	// Update TaskStatus
 	if n.t != nil {

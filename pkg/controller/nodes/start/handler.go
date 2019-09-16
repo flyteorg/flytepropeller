@@ -30,6 +30,5 @@ func (s startHandler) Finalize(ctx context.Context, executionContext handler.Nod
 }
 
 func New() handler.Node {
-	return &startHandler{
-	}
+	return &startHandler{}
 }
