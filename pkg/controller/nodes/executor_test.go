@@ -493,6 +493,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockN2Status := &mocks.ExecutableNodeStatus{}
 			// No parent node
 			mockN2Status.On("GetParentNodeID").Return(nil)
+			mockN2Status.On("GetParentTaskID").Return(nil)
 			mockN2Status.On("GetPhase").Return(n2Phase)
 			mockN2Status.On("SetDataDir", mock.AnythingOfType(reflect.TypeOf(storage.DataReference("x")).String()))
 			mockN2Status.On("GetDataDir").Return(storage.DataReference("blah"))
@@ -522,6 +523,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockN0Status := &mocks.ExecutableNodeStatus{}
 			mockN0Status.On("GetPhase").Return(n0Phase)
 			mockN0Status.On("IsDirty").Return(false)
+			mockN0Status.On("GetParentTaskID").Return(nil)
 			n := v1.Now()
 			mockN0Status.On("GetStoppedAt").Return(&n)
 
@@ -704,7 +706,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			expectedError     bool
 			eventRecorded     bool
 			eventPhase        core.NodeExecution_Phase
-			attempts 	      int
+			attempts          int
 		}{
 			{"running->running", v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseRunning, executors.NodePhasePending, func() (handler.Transition, error) {
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)), nil

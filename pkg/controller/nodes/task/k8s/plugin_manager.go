@@ -119,12 +119,12 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 		if k8serrors.IsForbidden(err) {
 			if strings.Contains(err.Error(), "exceeded quota") {
 				// TODO: Quota errors are retried forever, it would be good to have support for backoff strategy.
-				logger.Warnf(ctx, "Failed to launch job, resource quota exceeded. Err: %v", err)
+				logger.Warnf(ctx, "Failed to launch job, resource quota exceeded. err: %v", err)
 				return pluginsCore.DoTransition(pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "failed to launch job, resource quota exceeded.")), nil
 			}
 			return pluginsCore.DoTransition(pluginsCore.PhaseInfoRetryableFailure("RuntimeFailure", err.Error(), nil)), nil
 		}
-		logger.Errorf(ctx, "Failed to launch job, system error. Err: %v", err)
+		logger.Errorf(ctx, "Failed to launch job, system error. err: %v", err)
 		return pluginsCore.UnknownTransition, err
 	}
 

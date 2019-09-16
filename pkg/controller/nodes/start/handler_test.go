@@ -26,8 +26,8 @@ func TestStartNodeHandler_StartNode(t *testing.T) {
 	ctx := context.Background()
 	h := New()
 	t.Run("Any", func(t *testing.T) {
-		s, err := h.Handle(ctx,  nil)
+		s, err := h.Handle(ctx, nil)
 		assert.NoError(t, err)
-		assert.Equal(t, handler.EPhaseSuccess, s.Info().Phase)
+		assert.Equal(t, handler.EPhaseSuccess, s.Info().GetPhase())
 	})
 }

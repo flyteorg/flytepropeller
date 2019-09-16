@@ -347,6 +347,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 		n.On("GetResources").Return(res)
 
 		ir := &ioMocks.InputReader{}
+		ir.On("GetInputPath").Return(storage.DataReference("input"))
 		nCtx := &nodeMocks.NodeExecutionContext{}
 		nCtx.On("NodeExecutionMetadata").Return(nm)
 		nCtx.On("Node").Return(n)
@@ -546,7 +547,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 				return
 			}
 			if err == nil {
-				assert.Equal(t, tt.want.handlerPhase.String(), got.Info().Phase.String())
+				assert.Equal(t, tt.want.handlerPhase.String(), got.Info().GetPhase().String())
 				if tt.want.event {
 					if assert.Equal(t, 1, len(ev.evs)) {
 						e := ev.evs[0]
@@ -633,6 +634,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 		n.On("GetResources").Return(res)
 
 		ir := &ioMocks.InputReader{}
+		ir.On("GetInputPath").Return(storage.DataReference("input"))
 		nCtx := &nodeMocks.NodeExecutionContext{}
 		nCtx.On("NodeExecutionMetadata").Return(nm)
 		nCtx.On("Node").Return(n)
@@ -749,7 +751,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 				return
 			}
 			if err == nil {
-				assert.Equal(t, tt.want.handlerPhase.String(), got.Info().Phase.String())
+				assert.Equal(t, tt.want.handlerPhase.String(), got.Info().GetPhase().String())
 				if assert.Equal(t, 1, len(ev.evs)) {
 					e := ev.evs[0]
 					assert.Equal(t, tt.want.eventPhase.String(), e.Phase.String())
@@ -757,8 +759,8 @@ func Test_task_Handle_Catalog(t *testing.T) {
 				assert.Equal(t, pluginCore.PhaseSuccess.String(), state.s.PluginPhase.String())
 				assert.Equal(t, uint32(0), state.s.PluginPhaseVersion)
 				if tt.args.catalogFetch {
-					if assert.NotNil(t, got.Info().Info.TaskNodeInfo) {
-						assert.True(t, got.Info().Info.TaskNodeInfo.CacheHit)
+					if assert.NotNil(t, got.Info().GetInfo().TaskNodeInfo) {
+						assert.True(t, got.Info().GetInfo().TaskNodeInfo.CacheHit)
 					}
 				}
 			}
