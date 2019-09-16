@@ -450,6 +450,7 @@
     "gen/pb-go/flyteidl/admin",
     "gen/pb-go/flyteidl/core",
     "gen/pb-go/flyteidl/event",
+    "gen/pb-go/flyteidl/plugins",
     "gen/pb-go/flyteidl/service",
   ]
   pruneopts = ""
@@ -1363,6 +1364,7 @@
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/event",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/service",
+    "github.com/lyft/flyteplugins/go/tasks/array/k8s",
     "github.com/lyft/flyteplugins/go/tasks/errors",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog",
