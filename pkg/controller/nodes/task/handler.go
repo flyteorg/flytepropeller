@@ -26,7 +26,7 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/k8s"
 )
 
-const maxPluginPhaseVersions = 10
+const maxPluginPhaseVersions = 1000
 
 const pluginContextKey = contextutils.Key("plugin")
 
@@ -302,7 +302,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		} else if ok {
 			r := tCtx.ow.GetReader()
 			if r != nil {
-				// TODO @kumare this can be optimized, if we have paths then the reader could be pipelined to a sync
+				// TODO @kumare this can be optimized, if we have paths then the reader could be pipelined to a sink
 				o, ee, err := r.Read(ctx)
 				if err != nil {
 					logger.Errorf(ctx, "failed to read from catalog, err: %s", err.Error())

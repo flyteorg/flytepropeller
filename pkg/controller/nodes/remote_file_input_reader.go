@@ -14,7 +14,7 @@ type remoteFileInputReader struct {
 }
 
 func (r *remoteFileInputReader) GetInputPrefixPath() storage.DataReference {
-	panic("implement me")
+	return r.inputPrefixPath
 }
 
 func (r *remoteFileInputReader) GetInputPath() storage.DataReference {
