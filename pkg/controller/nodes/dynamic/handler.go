@@ -309,6 +309,12 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 		return nil, false, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to read futures file, maybe corrupted")
 	}
 
+	// TODO: This is a hack to set parent task execution id, we should move to node-node relationship.
+	execID := task.GetTaskExecutionIdentifier(nCtx)
+	nStatus := nCtx.NodeStatus().GetNodeExecutionStatus(dynamicNodeID)
+	nStatus.SetDataDir(nCtx.NodeStatus().GetDataDir())
+	nStatus.SetParentTaskID(execID)
+
 	var closure *core.CompiledWorkflowClosure
 	wf, err := d.buildDynamicWorkflowTemplate(ctx, djSpec, nCtx, nStatus)
 	if err != nil {
