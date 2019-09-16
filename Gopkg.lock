@@ -429,6 +429,7 @@
     "gen/pb-go/flyteidl/core",
     "gen/pb-go/flyteidl/datacatalog",
     "gen/pb-go/flyteidl/event",
+    "gen/pb-go/flyteidl/plugins",
     "gen/pb-go/flyteidl/service",
   ]
   pruneopts = ""
@@ -437,10 +438,14 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:949b0f1fab3eb1674de3e758986d28c410dba707acf15a672eba48ab63cb484f"
+  digest = "1:f9b4371b8fe51795529675ae685eea1a2b746e50e6afae41af7e6465f6fa113e"
   name = "github.com/lyft/flyteplugins"
   packages = [
+    "go/tasks/array",
+    "go/tasks/array/arraystatus",
     "go/tasks/array/bitarray",
+    "go/tasks/array/errorcollector",
+    "go/tasks/array/k8s",
     "go/tasks/config",
     "go/tasks/errors",
     "go/tasks/logs",
@@ -460,7 +465,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "aa4bf6a1e320ab5427d4e2542cba5e59618c9a87"
+  revision = "56734c53a10b561d496055ee107bf124a968a1d7"
   source = "https://github.com/lyft/flyteplugins"
 
 [[projects]]
@@ -1322,6 +1327,7 @@
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/datacatalog",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/event",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/service",
+    "github.com/lyft/flyteplugins/go/tasks/array/k8s",
     "github.com/lyft/flyteplugins/go/tasks/errors",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog",
