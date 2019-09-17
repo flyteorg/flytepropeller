@@ -18,6 +18,7 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/secretmanager"
 	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
