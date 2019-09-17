@@ -22,7 +22,7 @@ var (
 
 type Config struct {
 	TaskPlugins            TaskPluginConfig `json:"task-plugins" pflag:",Task plugin configuration"`
-	MaxPluginPhaseVersions uint32           `json:"max-plugin-phase-versions" pflag:",Maximum number of plugin phase versions allowed for one phase."`
+	MaxPluginPhaseVersions int32            `json:"max-plugin-phase-versions" pflag:",Maximum number of plugin phase versions allowed for one phase."`
 }
 
 type TaskPluginConfig struct {

@@ -13,6 +13,7 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/secretmanager"
 	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
@@ -133,6 +134,6 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		ber: newBufferedEventRecorder(),
 		c:   t.catalog,
 		// TODO @kumare path should be configurable
-		sm: fileEnvSecretManager{"/etc/secrets"},
+		sm: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
 	}, nil
 }
