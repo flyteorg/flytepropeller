@@ -126,5 +126,6 @@ func NewReplayer(forPluginID string, props pluginCore.PluginProperties, orderedO
 		orderedOnHandleResponses: orderedOnHandleResponses,
 		orderedAbortResponses:    orderedAbortResponses,
 		orderedFinalizeResponses: orderedFinalizeResponses,
+		taskReplayState:          make(map[string]*taskReplayer),
 	}
 }

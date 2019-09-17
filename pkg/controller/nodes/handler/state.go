@@ -12,7 +12,6 @@ import (
 type TaskNodeState struct {
 	PluginPhase        pluginCore.Phase
 	PluginPhaseVersion uint32
-	PluginStateLegacy  map[string]interface{}
 	PluginState        []byte
 	PluginStateVersion uint32
 }

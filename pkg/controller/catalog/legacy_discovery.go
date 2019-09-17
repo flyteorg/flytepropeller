@@ -27,7 +27,7 @@ type LegacyDiscovery struct {
 
 // Hash each value in the map and return it as the parameter value to be used to generate the Provenance.
 func TransformToInputParameters(ctx context.Context, m *core.LiteralMap) ([]*datacatalog.Parameter, error) {
-	var params = []*datacatalog.Parameter{}
+	var params []*datacatalog.Parameter
 
 	//  Note: The Discovery service will ensure that the output parameters are sorted so the hash is consistent.
 	// If the values of the literalmap are also a map, pbhash ensures that maps are deterministically hashed as well
@@ -46,7 +46,7 @@ func TransformToInputParameters(ctx context.Context, m *core.LiteralMap) ([]*dat
 }
 
 func TransformToOutputParameters(ctx context.Context, m *core.LiteralMap) ([]*datacatalog.Parameter, error) {
-	var params = []*datacatalog.Parameter{}
+	var params []*datacatalog.Parameter
 	for k, typedValue := range m.GetLiterals() {
 		bytes, err := proto.Marshal(typedValue)
 

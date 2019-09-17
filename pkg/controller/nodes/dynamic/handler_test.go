@@ -169,8 +169,8 @@ func Test_dynamicNodeHandler_Handle_Parent(t *testing.T) {
 				return
 			}
 			if err == nil {
-				assert.Equal(t, tt.want.p.String(), got.Info().Phase.String())
-				assert.Equal(t, tt.want.info, got.Info().Info)
+				assert.Equal(t, tt.want.p.String(), got.Info().GetPhase().String())
+				assert.Equal(t, tt.want.info, got.Info().GetInfo())
 				assert.Equal(t, tt.want.phase, s.s.Phase)
 			}
 		})
@@ -399,8 +399,7 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			if err == nil {
-				assert.Equal(t, tt.want.p.String(), got.Info().Phase.String())
-				assert.NotNil(t, got.Info().Info.DynamicNodeInfo)
+				assert.Equal(t, tt.want.p.String(), got.Info().GetPhase().String())
 				assert.Equal(t, tt.want.phase, s.s.Phase)
 			}
 		})

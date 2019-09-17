@@ -11,7 +11,7 @@ func TestDoTransition(t *testing.T) {
 	t.Run("ephemeral", func(t *testing.T) {
 		tr := DoTransition(TransitionTypeEphemeral, PhaseInfoQueued("queued"))
 		assert.Equal(t, TransitionTypeEphemeral, tr.Type())
-		assert.Equal(t, EPhaseQueued, tr.Info().Phase)
+		assert.Equal(t, EPhaseQueued, tr.Info().p)
 	})
 
 	t.Run("barrier", func(t *testing.T) {
@@ -19,7 +19,7 @@ func TestDoTransition(t *testing.T) {
 			OutputInfo: &OutputInfo{OutputURI: "uri"},
 		}))
 		assert.Equal(t, TransitionTypeBarrier, tr.Type())
-		assert.Equal(t, EPhaseSuccess, tr.Info().Phase)
-		assert.Equal(t, storage.DataReference("uri"), tr.Info().Info.OutputInfo.OutputURI)
+		assert.Equal(t, EPhaseSuccess, tr.Info().p)
+		assert.Equal(t, storage.DataReference("uri"), tr.Info().GetInfo().OutputInfo.OutputURI)
 	})
 }

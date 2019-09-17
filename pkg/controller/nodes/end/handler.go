@@ -28,11 +28,10 @@ func (e endHandler) Handle(ctx context.Context, executionContext handler.NodeExe
 	}
 	if inputs != nil {
 		logger.Debugf(ctx, "Workflow has outputs. Storing them.")
-		nodeStatus := executionContext.NodeStatus()
-		o := v1alpha1.GetOutputsFile(nodeStatus.GetDataDir())
+		// TODO we should use OutputWriter here
+		o := v1alpha1.GetOutputsFile(executionContext.NodeStatus().GetDataDir())
 		so := storage.Options{}
-		store := executionContext.DataStore()
-		if err := store.WriteProtobuf(ctx, o, so, inputs); err != nil {
+		if err := executionContext.DataStore().WriteProtobuf(ctx, o, so, inputs); err != nil {
 			logger.Errorf(ctx, "Failed to store workflow outputs. Error [%s]", err)
 			return handler.UnknownTransition, errors.Wrapf(errors.CausedByError, executionContext.NodeID(), err, "Failed to store workflow outputs, as end-node")
 		}
@@ -50,6 +49,5 @@ func (e endHandler) Finalize(ctx context.Context, executionContext handler.NodeE
 }
 
 func New() handler.Node {
-	return &endHandler{
-	}
+	return &endHandler{}
 }

@@ -172,7 +172,7 @@ type MutableDynamicNodeStatus interface {
 }
 
 // Interface for Branch node. All the methods are purely read only except for the GetExecutionStatus.
-// Phase returns ExecutableBranchNodeStatus, which permits some mutations
+// p returns ExecutableBranchNodeStatus, which permits some mutations
 type ExecutableBranchNode interface {
 	GetIf() ExecutableIfBlock
 	GetElse() *NodeID
@@ -204,18 +204,22 @@ type MutableNodeStatus interface {
 	SetCached()
 	ResetDirty()
 
+	GetBranchStatus() MutableBranchNodeStatus
 	GetOrCreateBranchStatus() MutableBranchNodeStatus
+	GetWorkflowStatus() MutableWorkflowNodeStatus
 	GetOrCreateWorkflowStatus() MutableWorkflowNodeStatus
 	ClearWorkflowStatus()
 	GetOrCreateTaskStatus() MutableTaskNodeStatus
+	GetTaskStatus() MutableTaskNodeStatus
 	ClearTaskStatus()
 	GetOrCreateSubWorkflowStatus() MutableSubWorkflowNodeStatus
 	ClearSubWorkflowStatus()
 	GetOrCreateDynamicNodeStatus() MutableDynamicNodeStatus
+	GetDynamicNodeStatus() MutableDynamicNodeStatus
 	ClearDynamicNodeStatus()
 }
 
-// Interface for a Node Phase. This provides a mutable API.
+// Interface for a Node p. This provides a mutable API.
 type ExecutableNodeStatus interface {
 	NodeStatusGetter
 	MutableNodeStatus
@@ -252,10 +256,6 @@ type ExecutableTaskNodeStatus interface {
 	GetPhaseVersion() uint32
 	GetPluginState() []byte
 	GetPluginStateVersion() uint32
-
-	// Delete after migration is complete
-	UsePluginState() bool
-	GetCustomState() map[string]interface{}
 }
 
 type MutableTaskNodeStatus interface {
@@ -292,7 +292,7 @@ type ExecutableNode interface {
 	GetRetryStrategy() *RetryStrategy
 }
 
-// Interface for the Workflow Phase. This is the mutable portion for a Workflow
+// Interface for the Workflow p. This is the mutable portion for a Workflow
 type ExecutableWorkflowStatus interface {
 	NodeStatusGetter
 	UpdatePhase(p WorkflowPhase, msg string)

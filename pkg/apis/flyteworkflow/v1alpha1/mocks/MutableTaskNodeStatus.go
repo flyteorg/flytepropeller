@@ -53,9 +53,34 @@ func (_m *MutableTaskNodeStatus) GetPhaseVersion() uint32 {
 	return r0
 }
 
-// SetCustomState provides a mock function with given fields: state
-func (_m *MutableTaskNodeStatus) SetCustomState(state map[string]interface{}) {
-	_m.Called(state)
+// GetPluginState provides a mock function with given fields:
+func (_m *MutableTaskNodeStatus) GetPluginState() []byte {
+	ret := _m.Called()
+
+	var r0 []byte
+	if rf, ok := ret.Get(0).(func() []byte); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	return r0
+}
+
+// GetPluginStateVersion provides a mock function with given fields:
+func (_m *MutableTaskNodeStatus) GetPluginStateVersion() uint32 {
+	ret := _m.Called()
+
+	var r0 uint32
+	if rf, ok := ret.Get(0).(func() uint32); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(uint32)
+	}
+
+	return r0
 }
 
 // SetPhase provides a mock function with given fields: phase
@@ -66,4 +91,28 @@ func (_m *MutableTaskNodeStatus) SetPhase(phase int) {
 // SetPhaseVersion provides a mock function with given fields: version
 func (_m *MutableTaskNodeStatus) SetPhaseVersion(version uint32) {
 	_m.Called(version)
+}
+
+// SetPluginState provides a mock function with given fields: _a0
+func (_m *MutableTaskNodeStatus) SetPluginState(_a0 []byte) {
+	_m.Called(_a0)
+}
+
+// SetPluginStateVersion provides a mock function with given fields: _a0
+func (_m *MutableTaskNodeStatus) SetPluginStateVersion(_a0 uint32) {
+	_m.Called(_a0)
+}
+
+// UsePluginState provides a mock function with given fields:
+func (_m *MutableTaskNodeStatus) UsePluginState() bool {
+	ret := _m.Called()
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
 }

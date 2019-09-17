@@ -10,7 +10,7 @@ import (
 
 //go:generate mockery -all -case=underscore
 
-// Phase of the node
+// p of the node
 type NodePhase int
 
 const (

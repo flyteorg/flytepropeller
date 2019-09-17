@@ -18,13 +18,14 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	regErrors "github.com/pkg/errors"
 
+	catalog2 "github.com/lyft/flytepropeller/pkg/controller/catalog"
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/config"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/k8s"
 )
-
-const maxPluginPhaseVersions = 10
 
 const pluginContextKey = contextutils.Key("plugin")
 
@@ -72,11 +73,11 @@ func (p *pluginRequestedTransition) TransitionPreviouslyRecorded() {
 	p.previouslyObserved = true
 }
 
-func (p *pluginRequestedTransition) FinalTaskEvent(id *core.Identifier) (*event.TaskExecutionEvent, error) {
+func (p *pluginRequestedTransition) FinalTaskEvent(id *core.TaskExecutionIdentifier, in io.InputFilePaths, out io.OutputFilePaths) (*event.TaskExecutionEvent, error) {
 	if p.previouslyObserved {
 		return nil, nil
 	}
-	return ToTaskExecutionEvent(id, p.pInfo)
+	return ToTaskExecutionEvent(id, in, out, p.pInfo)
 }
 
 func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference) {
@@ -114,6 +115,8 @@ type Handler struct {
 	defaultPlugin  pluginCore.Plugin
 	metrics        *metrics
 	pluginRegistry PluginRegistryIface
+	kubeClient     pluginCore.KubeClient
+	cfg            *config.Config
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -133,35 +136,51 @@ func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
 func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	tSCtx := &setupContext{
 		SetupContext: sCtx,
+		kubeClient:   t.kubeClient,
 	}
-	logger.Infof(ctx, "Loading core Plugins")
+
+	enabledPlugins := t.cfg.TaskPlugins.GetEnabledPluginsSet()
+	allPluginsEnabled := false
+	if enabledPlugins.Len() == 0 {
+		allPluginsEnabled = true
+	}
+
+	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all plugins enabled: %s]", allPluginsEnabled)
 	for _, cpe := range t.pluginRegistry.GetCorePlugins() {
-		logger.Infof(ctx, "Loading Plugin [%s]", cpe.ID)
-		cp, err := cpe.LoadPlugin(ctx, tSCtx)
-		if err != nil {
-			return regErrors.Wrapf(err, "failed to load plugin - %s", cpe.ID)
-		}
-		for _, tt := range cpe.RegisteredTaskTypes {
-			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cpe.ID, tt)
-			t.plugins[tt] = cp
-		}
-		if cpe.IsDefault {
-			if err := t.setDefault(ctx, cp); err != nil {
-				return err
+		if !allPluginsEnabled && enabledPlugins.Has(cpe.ID) {
+			logger.Infof(ctx, "Plugin [%s] is DISABLED.", cpe.ID)
+		} else {
+			logger.Infof(ctx, "Loading Plugin [%s] ENABLED", cpe.ID)
+			cp, err := cpe.LoadPlugin(ctx, tSCtx)
+			if err != nil {
+				return regErrors.Wrapf(err, "failed to load plugin - %s", cpe.ID)
+			}
+			for _, tt := range cpe.RegisteredTaskTypes {
+				logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cpe.ID, tt)
+				t.plugins[tt] = cp
+			}
+			if cpe.IsDefault {
+				if err := t.setDefault(ctx, cp); err != nil {
+					return err
+				}
 			}
 		}
 	}
 	for _, kpe := range t.pluginRegistry.GetK8sPlugins() {
-		kp, err := k8s.NewPluginManager(ctx, tSCtx, kpe)
-		if err != nil {
-			return regErrors.Wrapf(err, "failed to load plugin - %s", kpe.ID)
-		}
-		for _, tt := range kpe.RegisteredTaskTypes {
-			t.plugins[tt] = kp
-		}
-		if kpe.IsDefault {
-			if err := t.setDefault(ctx, kp); err != nil {
-				return err
+		if !allPluginsEnabled && enabledPlugins.Has(kpe.ID) {
+			logger.Infof(ctx, "K8s Plugin [%s] is DISABLED.", kpe.ID)
+		} else {
+			kp, err := k8s.NewPluginManager(ctx, tSCtx, kpe)
+			if err != nil {
+				return regErrors.Wrapf(err, "failed to load plugin - %s", kpe.ID)
+			}
+			for _, tt := range kpe.RegisteredTaskTypes {
+				t.plugins[tt] = kp
+			}
+			if kpe.IsDefault {
+				if err := t.setDefault(ctx, kp); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -206,16 +225,16 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 
 	if trns.Info().Phase() == ts.PluginPhase {
 		if trns.Info().Version() == ts.PluginPhaseVersion {
-			logger.Debugf(ctx, "Phase+Version previously seen .. no event will be sent")
+			logger.Debugf(ctx, "p+Version previously seen .. no event will be sent")
 			pluginTrns.TransitionPreviouslyRecorded()
 			return pluginTrns, nil
 		}
-		if trns.Info().Version() > maxPluginPhaseVersions {
-			logger.Errorf(ctx, "Too many Plugin Phase versions for plugin [%s]. Phase versions [%d/%d]", p.GetID(), trns.Info().Version(), maxPluginPhaseVersions)
+		if trns.Info().Version() > uint32(t.cfg.MaxPluginPhaseVersions) {
+			logger.Errorf(ctx, "Too many Plugin p versions for plugin [%s]. p versions [%d/%d]", p.GetID(), trns.Info().Version(), t.cfg.MaxPluginPhaseVersions)
 			pluginTrns.ObservedExecutionError(&io.ExecutionError{
 				ExecutionError: &core.ExecutionError{
 					Code:    "TooManyPluginPhaseVersions",
-					Message: fmt.Sprintf("Total number of phase versions exceeded for Phase [%s] in Plugin [%s], max allowed [%d]", trns.Info().Phase().String(), p.GetID(), maxPluginPhaseVersions),
+					Message: fmt.Sprintf("Total number of phase versions exceeded for p [%s] in Plugin [%s], max allowed [%d]", trns.Info().Phase().String(), p.GetID(), t.cfg.MaxPluginPhaseVersions),
 				},
 				IsRecoverable: false,
 			})
@@ -298,7 +317,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		} else if ok {
 			r := tCtx.ow.GetReader()
 			if r != nil {
-				// TODO @kumare this can be optimized, if we have paths then the reader could be pipelined to a sync
+				// TODO @kumare this can be optimized, if we have paths then the reader could be pipelined to a sink
 				o, ee, err := r.Read(ctx)
 				if err != nil {
 					logger.Errorf(ctx, "failed to read from catalog, err: %s", err.Error())
@@ -335,10 +354,11 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "plugin transition is not observed and no error as well.")
 	}
 
+	execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	// STEP 4: Send buffered events!
 	logger.Debugf(ctx, "Sending buffered Task events.")
 	for _, ev := range tCtx.ber.GetAll(ctx) {
-		evInfo, err := ToTaskExecutionEvent(tCtx.tr.GetTaskID(), ev)
+		evInfo, err := ToTaskExecutionEvent(&execID, nCtx.InputReader(), tCtx.ow, ev)
 		if err != nil {
 			return handler.UnknownTransition, err
 		}
@@ -352,7 +372,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 	// STEP 5: Send Transition events
 	logger.Debugf(ctx, "Sending transition event for plugin phase [%s]", pluginTrns.pInfo.Phase().String())
-	evInfo, err := pluginTrns.FinalTaskEvent(tCtx.tr.GetTaskID())
+	evInfo, err := pluginTrns.FinalTaskEvent(&execID, nCtx.InputReader(), tCtx.ow)
 	if err != nil {
 		logger.Errorf(ctx, "failed to convert plugin transition to TaskExecutionEvent. Error: %s", err.Error())
 		return handler.UnknownTransition, err
@@ -447,7 +467,8 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 	}()
 }
 
-func New(_ context.Context, scope promutils.Scope) *Handler {
+func New(_ context.Context, kubeClient executors.Client, client catalog2.Client, scope promutils.Scope) *Handler {
+
 	return &Handler{
 		pluginRegistry: pluginMachinery.PluginRegistry(),
 		plugins:        make(map[pluginCore.TaskType]pluginCore.Plugin),
@@ -459,5 +480,8 @@ func New(_ context.Context, scope promutils.Scope) *Handler {
 			discoveryPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			discoveryGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
 		},
+		kubeClient: kubeClient,
+		catalog:    catalog.NOOPCatalog{},
+		cfg:        config.GetConfig(),
 	}
 }

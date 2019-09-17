@@ -4,44 +4,10 @@ import (
 	"context"
 
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 )
-
-type legacyTaskPhase = int
-
-const (
-	TaskPhaseQueued legacyTaskPhase = iota
-	TaskPhaseRunning
-	TaskPhaseRetryableFailure
-	TaskPhasePermanentFailure
-	TaskPhaseSucceeded
-	TaskPhaseUndefined
-	TaskPhaseNotReady
-	TaskPhaseUnknown
-)
-
-func legacyPluginPhaseToNew(p int) pluginCore.Phase {
-	switch p {
-	case TaskPhaseQueued:
-		return pluginCore.PhaseQueued
-	case TaskPhaseRunning:
-		return pluginCore.PhaseRunning
-	case TaskPhaseRetryableFailure:
-		return pluginCore.PhaseRetryableFailure
-	case TaskPhasePermanentFailure:
-		return pluginCore.PhasePermanentFailure
-	case TaskPhaseSucceeded:
-		return pluginCore.PhaseSuccess
-	case TaskPhaseUndefined:
-		return pluginCore.PhaseUndefined
-	case TaskPhaseNotReady:
-		return pluginCore.PhaseNotReady
-	}
-	return pluginCore.PhaseUndefined
-}
 
 type nodeStateManager struct {
 	nodeStatus v1alpha1.ExecutableNodeStatus
@@ -50,17 +16,17 @@ type nodeStateManager struct {
 	d          *handler.DynamicNodeState
 }
 
-func (n nodeStateManager) PutTaskNodeState(s handler.TaskNodeState) error {
+func (n *nodeStateManager) PutTaskNodeState(s handler.TaskNodeState) error {
 	n.t = &s
 	return nil
 }
 
-func (n nodeStateManager) PutBranchNode(s handler.BranchNodeState) error {
+func (n *nodeStateManager) PutBranchNode(s handler.BranchNodeState) error {
 	n.b = &s
 	return nil
 }
 
-func (n nodeStateManager) PutDynamicNodeState(s handler.DynamicNodeState) error {
+func (n *nodeStateManager) PutDynamicNodeState(s handler.DynamicNodeState) error {
 	n.d = &s
 	return nil
 }
@@ -68,19 +34,8 @@ func (n nodeStateManager) PutDynamicNodeState(s handler.DynamicNodeState) error 
 func (n nodeStateManager) GetTaskNodeState() handler.TaskNodeState {
 	tn := n.nodeStatus.GetTaskNodeStatus()
 	if tn != nil {
-		var p pluginCore.Phase
-		var legacyState map[string]interface{}
-		// Compatibility code, delete after migration
-		if !tn.UsePluginState() {
-			logger.Warnf(context.TODO(), "old task node state retrieved. ")
-			p = legacyPluginPhaseToNew(tn.GetPhase())
-			legacyState = tn.GetCustomState()
-		} else {
-			p = pluginCore.Phase(tn.GetPhase())
-		}
 		return handler.TaskNodeState{
-			PluginStateLegacy:  legacyState,
-			PluginPhase:        p,
+			PluginPhase:        pluginCore.Phase(tn.GetPhase()),
 			PluginPhaseVersion: tn.GetPhaseVersion(),
 			PluginStateVersion: tn.GetPluginStateVersion(),
 			PluginState:        tn.GetPluginState(),
@@ -90,14 +45,22 @@ func (n nodeStateManager) GetTaskNodeState() handler.TaskNodeState {
 }
 
 func (n nodeStateManager) GetBranchNode() handler.BranchNodeState {
-	bn := n.nodeStatus.GetOrCreateBranchStatus()
-	// TODO maybe we should have a get and check if it is nil, as we can now easily create it!
-	panic("implement me")
+	bn := n.nodeStatus.GetBranchStatus()
+	bs := handler.BranchNodeState{}
+	if bn != nil {
+		bs.Phase = bn.GetPhase()
+		bs.FinalizedNodeID = bn.GetFinalizedNode()
+	}
+	return bs
 }
 
 func (n nodeStateManager) GetDynamicNodeState() handler.DynamicNodeState {
-	// TODO maybe we should have a get and check if it is nil, as we can now easily create it!
-	panic("implement me")
+	dn := n.nodeStatus.GetDynamicNodeStatus()
+	ds := handler.DynamicNodeState{}
+	if dn != nil {
+		ds.Phase = dn.GetDynamicNodePhase()
+	}
+	return ds
 }
 
 func (n nodeStateManager) clearNodeStatus() {

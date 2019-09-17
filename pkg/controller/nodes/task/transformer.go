@@ -5,6 +5,7 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 )
@@ -43,7 +44,7 @@ func ToTaskEventPhase(p pluginCore.Phase) core.TaskExecution_Phase {
 	}
 }
 
-func ToTaskExecutionEvent(tk *core.Identifier, info pluginCore.PhaseInfo) (*event.TaskExecutionEvent, error) {
+func ToTaskExecutionEvent(taskExecID *core.TaskExecutionIdentifier, in io.InputFilePaths, out io.OutputFilePaths, info pluginCore.PhaseInfo) (*event.TaskExecutionEvent, error) {
 	// Transitions to a new phase
 
 	tm := ptypes.TimestampNow()
@@ -56,10 +57,20 @@ func ToTaskExecutionEvent(tk *core.Identifier, info pluginCore.PhaseInfo) (*even
 	}
 
 	tev := &event.TaskExecutionEvent{
-		Phase:        ToTaskEventPhase(info.Phase()),
-		PhaseVersion: info.Version(),
-		OccurredAt:   tm,
-		TaskId:       tk,
+		TaskId:                taskExecID.TaskId,
+		ParentNodeExecutionId: taskExecID.NodeExecutionId,
+		RetryAttempt:          taskExecID.RetryAttempt,
+		Phase:                 ToTaskEventPhase(info.Phase()),
+		PhaseVersion:          info.Version(),
+		ProducerId:            "propeller",
+		OccurredAt:            tm,
+		InputUri:              in.GetInputPath().String(),
+	}
+
+	if info.Phase().IsSuccess() && out != nil {
+		if out.GetOutputPath() != "" {
+			tev.OutputResult = &event.TaskExecutionEvent_OutputUri{OutputUri: out.GetOutputPath().String()}
+		}
 	}
 
 	if info.Info() != nil {
