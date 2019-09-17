@@ -19,6 +19,7 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog/mocks"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/codex"
 )
 
 func TestHandler_newTaskExecutionContext(t *testing.T) {
@@ -72,7 +73,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	type test struct {
 		A int
 	}
-	codex := GobStateCodec{}
+	codex := codex.GobStateCodec{}
 	assert.NoError(t, codex.Encode(test{A: a}, st))
 	nr := &nodeMocks.NodeStateReader{}
 	nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
@@ -118,7 +119,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	assert.Equal(t, got.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId(), wfExecID)
 
 	// TODO @kumare fix this test
-	assert.Nil(t, got.ResourceManager())
+	assert.NotNil(t, got.ResourceManager())
 	assert.Nil(t, got.Catalog())
 	// assert.Equal(t, got.InputReader(), ir)
 }
