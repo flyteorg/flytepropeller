@@ -124,8 +124,8 @@ func TestConfig_SetFlags(t *testing.T) {
 	t.Run("Test_max-plugin-phase-versions", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("max-plugin-phase-versions"); err == nil {
-				assert.Equal(t, int(defaultConfig.MaxPluginPhaseVersions), vInt)
+			if vInt32, err := cmdFlags.GetInt32("max-plugin-phase-versions"); err == nil {
+				assert.Equal(t, int32(defaultConfig.MaxPluginPhaseVersions), vInt32)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -135,8 +135,8 @@ func TestConfig_SetFlags(t *testing.T) {
 			testValue := "1"
 
 			cmdFlags.Set("max-plugin-phase-versions", testValue)
-			if vInt, err := cmdFlags.GetInt("max-plugin-phase-versions"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.MaxPluginPhaseVersions)
+			if vInt32, err := cmdFlags.GetInt32("max-plugin-phase-versions"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt32), &actual.MaxPluginPhaseVersions)
 
 			} else {
 				assert.FailNow(t, err.Error())
