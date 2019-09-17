@@ -23,10 +23,9 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/config"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/k8s"
 )
-
-const maxPluginPhaseVersions = 1000
 
 const pluginContextKey = contextutils.Key("plugin")
 
@@ -117,6 +116,7 @@ type Handler struct {
 	metrics        *metrics
 	pluginRegistry PluginRegistryIface
 	kubeClient     pluginCore.KubeClient
+	cfg            *config.Config
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -138,34 +138,49 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		SetupContext: sCtx,
 		kubeClient:   t.kubeClient,
 	}
-	logger.Infof(ctx, "Loading core Plugins")
+
+	enabledPlugins := t.cfg.TaskPlugins.GetEnabledPluginsSet()
+	allPluginsEnabled := false
+	if enabledPlugins.Len() == 0 {
+		allPluginsEnabled = true
+	}
+
+	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all plugins enabled: %s]", allPluginsEnabled)
 	for _, cpe := range t.pluginRegistry.GetCorePlugins() {
-		logger.Infof(ctx, "Loading Plugin [%s]", cpe.ID)
-		cp, err := cpe.LoadPlugin(ctx, tSCtx)
-		if err != nil {
-			return regErrors.Wrapf(err, "failed to load plugin - %s", cpe.ID)
-		}
-		for _, tt := range cpe.RegisteredTaskTypes {
-			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cpe.ID, tt)
-			t.plugins[tt] = cp
-		}
-		if cpe.IsDefault {
-			if err := t.setDefault(ctx, cp); err != nil {
-				return err
+		if !allPluginsEnabled && enabledPlugins.Has(cpe.ID) {
+			logger.Infof(ctx, "Plugin [%s] is DISABLED.", cpe.ID)
+		} else {
+			logger.Infof(ctx, "Loading Plugin [%s] ENABLED", cpe.ID)
+			cp, err := cpe.LoadPlugin(ctx, tSCtx)
+			if err != nil {
+				return regErrors.Wrapf(err, "failed to load plugin - %s", cpe.ID)
+			}
+			for _, tt := range cpe.RegisteredTaskTypes {
+				logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cpe.ID, tt)
+				t.plugins[tt] = cp
+			}
+			if cpe.IsDefault {
+				if err := t.setDefault(ctx, cp); err != nil {
+					return err
+				}
 			}
 		}
 	}
 	for _, kpe := range t.pluginRegistry.GetK8sPlugins() {
-		kp, err := k8s.NewPluginManager(ctx, tSCtx, kpe)
-		if err != nil {
-			return regErrors.Wrapf(err, "failed to load plugin - %s", kpe.ID)
-		}
-		for _, tt := range kpe.RegisteredTaskTypes {
-			t.plugins[tt] = kp
-		}
-		if kpe.IsDefault {
-			if err := t.setDefault(ctx, kp); err != nil {
-				return err
+		if !allPluginsEnabled && enabledPlugins.Has(kpe.ID) {
+			logger.Infof(ctx, "K8s Plugin [%s] is DISABLED.", kpe.ID)
+		} else {
+			kp, err := k8s.NewPluginManager(ctx, tSCtx, kpe)
+			if err != nil {
+				return regErrors.Wrapf(err, "failed to load plugin - %s", kpe.ID)
+			}
+			for _, tt := range kpe.RegisteredTaskTypes {
+				t.plugins[tt] = kp
+			}
+			if kpe.IsDefault {
+				if err := t.setDefault(ctx, kp); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -214,7 +229,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 			pluginTrns.TransitionPreviouslyRecorded()
 			return pluginTrns, nil
 		}
-		if trns.Info().Version() > maxPluginPhaseVersions {
+		if trns.Info().Version() > t.cfg.MaxPluginPhaseVersions {
 			logger.Errorf(ctx, "Too many Plugin p versions for plugin [%s]. p versions [%d/%d]", p.GetID(), trns.Info().Version(), maxPluginPhaseVersions)
 			pluginTrns.ObservedExecutionError(&io.ExecutionError{
 				ExecutionError: &core.ExecutionError{
@@ -467,5 +482,6 @@ func New(_ context.Context, kubeClient executors.Client, client catalog2.Client,
 		},
 		kubeClient: kubeClient,
 		catalog:    catalog.NOOPCatalog{},
+		cfg:        config.GetConfig(),
 	}
 }

@@ -438,7 +438,7 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:f9b4371b8fe51795529675ae685eea1a2b746e50e6afae41af7e6465f6fa113e"
+  digest = "1:ff16facc8cc9a89fc3d5e39856f4d3d3f5fbdef97bf0e2c22550f9b1f41b6628"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/array",
@@ -448,6 +448,9 @@
     "go/tasks/array/k8s",
     "go/tasks/config",
     "go/tasks/errors",
+    "go/tasks/hive",
+    "go/tasks/hive/client",
+    "go/tasks/hive/config",
     "go/tasks/logs",
     "go/tasks/pluginmachinery",
     "go/tasks/pluginmachinery/catalog",
@@ -465,7 +468,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "56734c53a10b561d496055ee107bf124a968a1d7"
+  revision = "5419ad24eda616da146e3e15794cc056dd170c1d"
   source = "https://github.com/lyft/flyteplugins"
 
 [[projects]]
@@ -1329,6 +1332,7 @@
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/service",
     "github.com/lyft/flyteplugins/go/tasks/array/k8s",
     "github.com/lyft/flyteplugins/go/tasks/errors",
+    "github.com/lyft/flyteplugins/go/tasks/hive",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core",

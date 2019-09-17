@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-
 	pluginCatalog "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
@@ -127,7 +126,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 			o:                     nCtx.Node(),
 		},
 		// TODO add resource manager
-		rm:  nil,
+		rm:  dummyRM{},
 		psm: psm,
 		tr:  nCtx.TaskReader(),
 		ow:  ow,

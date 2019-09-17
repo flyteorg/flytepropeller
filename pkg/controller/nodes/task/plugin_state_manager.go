@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/codex"
 )
 
 type CodecVersion uint8
@@ -72,7 +73,7 @@ func newPluginStateManager(_ context.Context, prevCodecVersion CodecVersion, pre
 		return nil, errors.Errorf(errors.IllegalStateError, "x", "prev codec [%d] != current codec [%d]", prevCodecVersion, currentCodec)
 	}
 	return &pluginStateManager{
-		codec:            GobStateCodec{},
+		codec:            codex.GobStateCodec{},
 		codecVersion:     GobCodecVersion,
 		prevStateVersion: uint8(prevStateVersion),
 		prevState:        prevState,
