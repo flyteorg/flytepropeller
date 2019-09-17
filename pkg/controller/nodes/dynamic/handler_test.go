@@ -323,6 +323,9 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 		endNodeStatus := &flyteMocks.ExecutableNodeStatus{}
 		endNodeStatus.On("GetDataDir").Return(storage.DataReference("end-node"))
 
+		endNodeStatus := &flyteMocks.ExecutableNodeStatus{}
+		endNodeStatus.On("GetDataDir").Return(storage.DataReference("end-node"))
+
 		subNs := &flyteMocks.ExecutableNodeStatus{}
 		subNs.On("SetDataDir", mock.Anything).Return()
 		subNs.On("ResetDirty").Return()
