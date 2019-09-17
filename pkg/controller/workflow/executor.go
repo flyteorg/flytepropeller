@@ -284,7 +284,7 @@ func (c *workflowExecutor) Initialize(ctx context.Context) error {
 }
 
 func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) error {
-	logger.Infof(ctx, "Handling Workflow [%s], id: [%s], Phase [%s]", w.GetName(), w.GetExecutionID(), w.GetExecutionStatus().GetPhase().String())
+	logger.Infof(ctx, "Handling Workflow [%s], id: [%s], p [%s]", w.GetName(), w.GetExecutionID(), w.GetExecutionStatus().GetPhase().String())
 	defer logger.Infof(ctx, "Handling Workflow [%s] Done", w.GetName())
 
 	wStatus := w.GetExecutionStatus()

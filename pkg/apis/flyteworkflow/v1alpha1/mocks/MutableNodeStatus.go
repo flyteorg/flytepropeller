@@ -33,6 +33,38 @@ func (_m *MutableNodeStatus) ClearWorkflowStatus() {
 	_m.Called()
 }
 
+// GetBranchStatus provides a mock function with given fields:
+func (_m *MutableNodeStatus) GetBranchStatus() v1alpha1.MutableBranchNodeStatus {
+	ret := _m.Called()
+
+	var r0 v1alpha1.MutableBranchNodeStatus
+	if rf, ok := ret.Get(0).(func() v1alpha1.MutableBranchNodeStatus); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha1.MutableBranchNodeStatus)
+		}
+	}
+
+	return r0
+}
+
+// GetDynamicNodeStatus provides a mock function with given fields:
+func (_m *MutableNodeStatus) GetDynamicNodeStatus() v1alpha1.MutableDynamicNodeStatus {
+	ret := _m.Called()
+
+	var r0 v1alpha1.MutableDynamicNodeStatus
+	if rf, ok := ret.Get(0).(func() v1alpha1.MutableDynamicNodeStatus); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha1.MutableDynamicNodeStatus)
+		}
+	}
+
+	return r0
+}
+
 // GetOrCreateBranchStatus provides a mock function with given fields:
 func (_m *MutableNodeStatus) GetOrCreateBranchStatus() v1alpha1.MutableBranchNodeStatus {
 	ret := _m.Called()
@@ -99,6 +131,38 @@ func (_m *MutableNodeStatus) GetOrCreateTaskStatus() v1alpha1.MutableTaskNodeSta
 
 // GetOrCreateWorkflowStatus provides a mock function with given fields:
 func (_m *MutableNodeStatus) GetOrCreateWorkflowStatus() v1alpha1.MutableWorkflowNodeStatus {
+	ret := _m.Called()
+
+	var r0 v1alpha1.MutableWorkflowNodeStatus
+	if rf, ok := ret.Get(0).(func() v1alpha1.MutableWorkflowNodeStatus); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha1.MutableWorkflowNodeStatus)
+		}
+	}
+
+	return r0
+}
+
+// GetTaskStatus provides a mock function with given fields:
+func (_m *MutableNodeStatus) GetTaskStatus() v1alpha1.MutableTaskNodeStatus {
+	ret := _m.Called()
+
+	var r0 v1alpha1.MutableTaskNodeStatus
+	if rf, ok := ret.Get(0).(func() v1alpha1.MutableTaskNodeStatus); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha1.MutableTaskNodeStatus)
+		}
+	}
+
+	return r0
+}
+
+// GetWorkflowStatus provides a mock function with given fields:
+func (_m *MutableNodeStatus) GetWorkflowStatus() v1alpha1.MutableWorkflowNodeStatus {
 	ret := _m.Called()
 
 	var r0 v1alpha1.MutableWorkflowNodeStatus

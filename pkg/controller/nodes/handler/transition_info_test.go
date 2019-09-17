@@ -8,7 +8,7 @@ import (
 
 func TestPhaseInfoQueued(t *testing.T) {
 	p := PhaseInfoQueued("queued")
-	assert.Equal(t, EPhaseQueued, p.Phase)
+	assert.Equal(t, EPhaseQueued, p.p)
 }
 
 func TestEPhase_String(t *testing.T) {

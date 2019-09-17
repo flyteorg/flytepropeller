@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	"bytes"
 	"encoding/json"
 	"reflect"
 
@@ -73,10 +74,10 @@ func (s *DynamicNodeStatus) Equals(o *DynamicNodeStatus) bool {
 	if s == nil && o == nil {
 		return true
 	}
-	if s != nil && o != nil {
-		return s.Phase == o.Phase
+	if s == nil || o == nil {
+		return false
 	}
-	return false
+	return s.Phase == o.Phase
 }
 
 type SubWorkflowNodeStatus struct {
@@ -129,10 +130,38 @@ type NodeStatus struct {
 	DynamicNodeStatus     *DynamicNodeStatus     `json:"dynamicNodeStatus,omitempty"`
 }
 
+func (in *NodeStatus) GetBranchStatus() MutableBranchNodeStatus {
+	if in.BranchStatus == nil {
+		return nil
+	}
+	return in.BranchStatus
+}
+
+func (in *NodeStatus) GetWorkflowStatus() MutableWorkflowNodeStatus {
+	if in.WorkflowNodeStatus == nil {
+		return nil
+	}
+	return in.WorkflowNodeStatus
+}
+
+func (in *NodeStatus) GetTaskStatus() MutableTaskNodeStatus {
+	if in.TaskNodeStatus == nil {
+		return nil
+	}
+	return in.TaskNodeStatus
+}
+
 func (in NodeStatus) VisitNodeStatuses(visitor NodeStatusVisitFn) {
 	for n, s := range in.SubNodeStatus {
 		visitor(n, s)
 	}
+}
+
+func (in NodeStatus) GetDynamicNodeStatus() MutableDynamicNodeStatus {
+	if in.DynamicNodeStatus == nil {
+		return nil
+	}
+	return in.DynamicNodeStatus
 }
 
 func (in *NodeStatus) ClearWorkflowStatus() {
@@ -374,6 +403,12 @@ func (in *NodeStatus) Equals(other *NodeStatus) bool {
 		return false
 	}
 
+	if in.Phase == other.Phase {
+		if in.Phase == NodePhaseSucceeded || in.Phase == NodePhaseFailed {
+			return true
+		}
+	}
+
 	if in.Attempts != other.Attempts {
 		return false
 	}
@@ -382,7 +417,7 @@ func (in *NodeStatus) Equals(other *NodeStatus) bool {
 		return false
 	}
 
-	if !reflect.DeepEqual(in.TaskNodeStatus, other.TaskNodeStatus) {
+	if !in.TaskNodeStatus.Equals(other.TaskNodeStatus) {
 		return false
 	}
 
@@ -417,7 +452,7 @@ func (in *NodeStatus) Equals(other *NodeStatus) bool {
 		}
 	}
 
-	return in.BranchStatus.Equals(other.BranchStatus) // && in.DynamicNodeStatus.Equals(other.DynamicNodeStatus)
+	return in.BranchStatus.Equals(other.BranchStatus) && in.DynamicNodeStatus.Equals(other.DynamicNodeStatus)
 }
 
 // THIS IS NOT AUTO GENERATED
@@ -448,22 +483,13 @@ func (in *CustomState) DeepCopy() *CustomState {
 }
 
 type TaskNodeStatus struct {
-	Phase              int                    `json:"phase,omitempty"`
-	PhaseVersion       uint32                 `json:"phaseVersion,omitempty"`
-	PluginState        []byte                 `json:"pState,omitempty"`
-	PluginStateVersion uint32                 `json:"psv,omitempty"`
-	// The default case would be false, which indicates that we are not using plugin state. this would be useful in migration
-	PluginStateInUse   bool                   `json:"psvUsed"`
-	// Delete after migration is complete
-	CustomState        map[string]interface{} `json:"custom,omitempty"`
-}
-
-func (in *TaskNodeStatus) UsePluginState() bool {
-	return in.PluginStateInUse
+	Phase              int    `json:"phase,omitempty"`
+	PhaseVersion       uint32 `json:"phaseVersion,omitempty"`
+	PluginState        []byte `json:"pState,omitempty"`
+	PluginStateVersion uint32 `json:"psv,omitempty"`
 }
 
 func (in *TaskNodeStatus) SetPluginState(s []byte) {
-	in.PluginStateInUse = true
 	in.PluginState = s
 }
 
@@ -487,10 +513,6 @@ func (in *TaskNodeStatus) SetPhaseVersion(version uint32) {
 	in.PhaseVersion = version
 }
 
-func (in *TaskNodeStatus) SetCustomState(state map[string]interface{}) {
-	in.CustomState = state
-}
-
 func (in TaskNodeStatus) GetPhase() int {
 	return in.Phase
 }
@@ -499,17 +521,9 @@ func (in TaskNodeStatus) GetPhaseVersion() uint32 {
 	return in.PhaseVersion
 }
 
-func (in TaskNodeStatus) GetCustomState() map[string]interface{} {
-	return in.CustomState
-}
-
 func (in *TaskNodeStatus) UpdatePhase(phase int, phaseVersion uint32) {
 	in.Phase = phase
 	in.PhaseVersion = phaseVersion
-}
-
-func (in *TaskNodeStatus) UpdateCustomState(state map[string]interface{}) {
-	in.CustomState = state
 }
 
 func (in *TaskNodeStatus) DeepCopyInto(out *TaskNodeStatus) {
@@ -536,4 +550,14 @@ func (in *TaskNodeStatus) DeepCopy() *TaskNodeStatus {
 	out := &TaskNodeStatus{}
 	in.DeepCopyInto(out)
 	return out
+}
+
+func (in *TaskNodeStatus) Equals(other *TaskNodeStatus) bool {
+	if in == nil && other == nil {
+		return true
+	}
+	if in == nil || other == nil {
+		return false
+	}
+	return in.Phase == other.Phase && in.PhaseVersion == other.PhaseVersion && in.PluginStateVersion == other.PluginStateVersion && bytes.Equal(in.PluginState, other.PluginState)
 }

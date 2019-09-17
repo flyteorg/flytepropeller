@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"sigs.k8s.io/controller-runtime/pkg/cache/informertest"
 
 	"github.com/lyft/flytestdlib/promutils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -69,17 +70,27 @@ func ExampleNewPluginManager() {
 	// Created executor: SampleHandler
 }
 
-func getMockTaskContext() pluginsCore.TaskExecutionContext {
+func getMockTaskContext(initPhase PluginPhase, wantPhase PluginPhase) pluginsCore.TaskExecutionContext {
 	taskExecutionContext := &pluginsCoreMock.TaskExecutionContext{}
 	taskExecutionContext.On("TaskExecutionMetadata").Return(getMockTaskExecutionMetadata())
 
 	customStateReader := &pluginsCoreMock.PluginStateReader{}
-	customStateReader.On("Get", mock.Anything).Return(nil)
-	taskExecutionContext.On("CustomStateReader").Return(customStateReader)
+	customStateReader.On("Get", mock.MatchedBy(func(i interface{}) bool {
+		ps, ok := i.(*PluginState)
+		if ok {
+			ps.Phase = initPhase
+			return true
+		}
+		return false
+	})).Return(uint8(0), nil)
+	taskExecutionContext.On("PluginStateReader").Return(customStateReader)
 
 	customStateWriter := &pluginsCoreMock.PluginStateWriter{}
-	customStateWriter.On("Put", mock.Anything).Return(nil)
-	taskExecutionContext.On("CustomStateWriter").Return(customStateWriter)
+	customStateWriter.On("Put", mock.Anything, mock.MatchedBy(func(i interface{}) bool {
+		ps, ok := i.(*PluginState)
+		return ok && ps.Phase == wantPhase
+	})).Return(nil)
+	taskExecutionContext.On("PluginStateWriter").Return(customStateWriter)
 	return taskExecutionContext
 }
 
@@ -107,6 +118,7 @@ func dummySetupContext(fakeClient client.Client) pluginsCore.SetupContext {
 
 	kubeClient := &pluginsCoreMock.KubeClient{}
 	kubeClient.On("GetClient").Return(fakeClient)
+	kubeClient.On("GetCache").Return(&informertest.FakeInformers{})
 	setupContext.On("KubeClient").Return(kubeClient)
 
 	setupContext.On("OwnerKind").Return("x")
@@ -117,15 +129,14 @@ func dummySetupContext(fakeClient client.Client) pluginsCore.SetupContext {
 
 func TestK8sTaskExecutor_StartTask(t *testing.T) {
 	ctx := context.TODO()
-	tctx := getMockTaskContext()
 	/*var tmpl *core.TaskTemplate
 	var inputs *core.LiteralMap*/
 
 	t.Run("jobQueued", func(t *testing.T) {
+		tctx := getMockTaskContext(PluginPhaseNotStarted, PluginPhaseStarted)
 		// common setup code
 		mockResourceHandler := &pluginsk8sMock.Plugin{}
 		mockResourceHandler.On("BuildResource", mock.Anything, tctx).Return(&v1.Pod{}, nil)
-		// evRecorder := &mocks2.EventRecorder{}
 		fakeClient := fake.NewFakeClient()
 		pluginManager, err := NewPluginManager(ctx, dummySetupContext(fakeClient), k8s.PluginEntry{
 			ID:              "x",
@@ -133,9 +144,6 @@ func TestK8sTaskExecutor_StartTask(t *testing.T) {
 			Plugin:          mockResourceHandler,
 		})
 		assert.NoError(t, err)
-
-		/*evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
-		mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_QUEUED })).Return(nil)*/
 
 		transition, err := pluginManager.Handle(ctx, tctx)
 		assert.NoError(t, err)
@@ -151,32 +159,38 @@ func TestK8sTaskExecutor_StartTask(t *testing.T) {
 		assert.Equal(t, tctx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), createdPod.Name)
 		assert.NoError(t, fakeClient.Delete(ctx, createdPod))
 	})
-	/*
-		t.Run("jobAlreadyExists", func(t *testing.T) {
-			// common setup code
-			mockResourceHandler := &mocks.K8sResourceHandler{}
-			evRecorder := &mocks2.EventRecorder{}
-			k := flytek8s.NewK8sTaskExecutorForResource("x", &v1.Pod{}, mockResourceHandler, time.Second)
-			mockResourceHandler.On("BuildResource", mock.Anything, tctx, tmpl, inputs).Return(&v1.Pod{}, nil)
-			err := k.Initialize(ctx, createExecutorInitializationParams(t, evRecorder))
-			assert.NoError(t, err)
 
-			expectedNewStatus := types.TaskStatusQueued
-			mockResourceHandler.On("GetTaskStatus", mock.Anything, mock.Anything, mock.MatchedBy(func(o *v1.Pod) bool { return true })).Return(expectedNewStatus, nil, nil)
-
-			evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
-				mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_QUEUED })).Return(nil)
-
-			status, err := k.StartTask(ctx, tctx, nil, nil)
-			assert.NoError(t, err)
-			assert.Nil(t, status.State)
-			assert.Equal(t, types.TaskPhaseQueued, status.Phase)
-			createdPod := &v1.Pod{}
-			flytek8s.AddObjectMetadata(tctx, createdPod)
-			assert.NoError(t, c.Get(ctx, k8stypes.NamespacedName{Namespace: tctx.GetNamespace(), Name: tctx.GetTaskExecutionID().GetGeneratedName()}, createdPod))
-			assert.Equal(t, tctx.GetTaskExecutionID().GetGeneratedName(), createdPod.Name)
+	t.Run("jobAlreadyExists", func(t *testing.T) {
+		tctx := getMockTaskContext(PluginPhaseNotStarted, PluginPhaseStarted)
+		// common setup code
+		mockResourceHandler := &pluginsk8sMock.Plugin{}
+		mockResourceHandler.On("BuildResource", mock.Anything, tctx).Return(&v1.Pod{}, nil)
+		fakeClient := fake.NewFakeClient()
+		pluginManager, err := NewPluginManager(ctx, dummySetupContext(fakeClient), k8s.PluginEntry{
+			ID:              "x",
+			ResourceToWatch: &v1.Pod{},
+			Plugin:          mockResourceHandler,
 		})
+		assert.NoError(t, err)
 
+		createdPod := &v1.Pod{}
+		AddObjectMetadata(tctx.TaskExecutionMetadata(), createdPod, &config.K8sPluginConfig{})
+		assert.NoError(t, fakeClient.Create(ctx, createdPod))
+
+		transition, err := pluginManager.Handle(ctx, tctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, transition)
+		transitionInfo := transition.Info()
+		assert.NotNil(t, transitionInfo)
+		assert.Equal(t, pluginsCore.PhaseQueued, transitionInfo.Phase())
+
+		assert.NoError(t, fakeClient.Get(ctx, k8stypes.NamespacedName{Namespace: tctx.TaskExecutionMetadata().GetNamespace(),
+			Name: tctx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()}, createdPod))
+		assert.Equal(t, tctx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), createdPod.Name)
+		assert.NoError(t, fakeClient.Delete(ctx, createdPod))
+	})
+
+	/*
 		t.Run("jobDifferentTerminalState", func(t *testing.T) {
 			// common setup code
 			mockResourceHandler := &mocks.K8sResourceHandler{}
@@ -191,7 +205,7 @@ func TestK8sTaskExecutor_StartTask(t *testing.T) {
 
 			evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
 				mock.MatchedBy(func(e *event.TaskExecutionEvent) bool {
-					return e.Phase == core.TaskExecution_QUEUED
+					return e.p == core.TaskExecution_QUEUED
 				})).Return(&eventErrors.EventError{Code: eventErrors.EventAlreadyInTerminalStateError,
 				Cause: errors.New("already exists"),
 			})
@@ -199,7 +213,7 @@ func TestK8sTaskExecutor_StartTask(t *testing.T) {
 			status, err := k.StartTask(ctx, tctx, nil, nil)
 			assert.NoError(t, err)
 			assert.Nil(t, status.State)
-			assert.Equal(t, types.TaskPhasePermanentFailure, status.Phase)
+			assert.Equal(t, types.TaskPhasePermanentFailure, status.p)
 		})
 
 		t.Run("jobQuotaExceeded", func(t *testing.T) {
@@ -212,7 +226,7 @@ func TestK8sTaskExecutor_StartTask(t *testing.T) {
 			assert.NoError(t, err)
 
 			evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
-				mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_QUEUED })).Return(nil)
+				mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.p == core.TaskExecution_QUEUED })).Return(nil)
 
 			// override create to return quota exceeded
 			mockRuntimeClient := mocks.NewMockRuntimeClient()
@@ -226,7 +240,7 @@ func TestK8sTaskExecutor_StartTask(t *testing.T) {
 			status, err := k.StartTask(ctx, tctx, nil, nil)
 			assert.NoError(t, err)
 			assert.Nil(t, status.State)
-			assert.Equal(t, types.TaskPhaseNotReady, status.Phase)
+			assert.Equal(t, types.TaskPhaseNotReady, status.p)
 
 			// reset the client back to fake client
 			if err := flytek8s.InjectClient(fake.NewFakeClient()); err != nil {
@@ -244,7 +258,7 @@ func TestK8sTaskExecutor_StartTask(t *testing.T) {
 			assert.NoError(t, err)
 
 			evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
-				mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_FAILED })).Return(nil)
+				mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.p == core.TaskExecution_FAILED })).Return(nil)
 
 			// override create to return forbidden
 			mockRuntimeClient := mocks.NewMockRuntimeClient()
@@ -258,7 +272,7 @@ func TestK8sTaskExecutor_StartTask(t *testing.T) {
 			status, err := k.StartTask(ctx, tctx, nil, nil)
 			assert.NoError(t, err)
 			assert.Nil(t, status.State)
-			assert.Equal(t, types.TaskPhasePermanentFailure, status.Phase)
+			assert.Equal(t, types.TaskPhasePermanentFailure, status.p)
 
 			// reset the client back to fake client
 			if err := flytek8s.InjectClient(fake.NewFakeClient()); err != nil {
@@ -353,7 +367,7 @@ func TestK8sTaskExecutor_CheckTaskStatus(t *testing.T) {
 
 		evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
 			mock.MatchedBy(func(e *event.TaskExecutionEvent) bool {
-				return e.Phase == core.TaskExecution_SUCCEEDED
+				return e.p == core.TaskExecution_SUCCEEDED
 			})).Return(&eventErrors.EventError{Code: eventErrors.EventAlreadyInTerminalStateError,
 			Cause: errors.New("already exists"),
 		})
@@ -361,7 +375,7 @@ func TestK8sTaskExecutor_CheckTaskStatus(t *testing.T) {
 		s, err := k.CheckTaskStatus(ctx, tctx, nil)
 		assert.NoError(t, err)
 		assert.Nil(t, s.State)
-		assert.Equal(t, types.TaskPhasePermanentFailure, s.Phase)
+		assert.Equal(t, types.TaskPhasePermanentFailure, s.p)
 	})
 
 	t.Run("noChange", func(t *testing.T) {
@@ -425,7 +439,7 @@ func TestK8sTaskExecutor_CheckTaskStatus(t *testing.T) {
 		s, err := k.CheckTaskStatus(ctx, tctx, nil)
 		assert.Nil(t, s.State)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseRetryableFailure, s.Phase, "Expected failure got %s", s.Phase.String())
+		assert.Equal(t, types.TaskPhaseRetryableFailure, s.p, "Expected failure got %s", s.p.String())
 	})
 
 	t.Run("errorFileExit", func(t *testing.T) {
@@ -475,7 +489,7 @@ func TestK8sTaskExecutor_CheckTaskStatus(t *testing.T) {
 		s, err := k.CheckTaskStatus(ctx, tctx, nil)
 		assert.Nil(t, s.State)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhasePermanentFailure, s.Phase)
+		assert.Equal(t, types.TaskPhasePermanentFailure, s.p)
 	})
 
 	t.Run("errorFileExitRecoverable", func(t *testing.T) {
@@ -520,12 +534,12 @@ func TestK8sTaskExecutor_CheckTaskStatus(t *testing.T) {
 		mockResourceHandler.On("GetTaskStatus", mock.Anything, mock.Anything, mock.MatchedBy(func(o *v1.Pod) bool { return true })).Return(types.TaskStatusSucceeded, nil, nil)
 
 		evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
-			mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_FAILED })).Return(nil)
+			mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.p == core.TaskExecution_FAILED })).Return(nil)
 
 		s, err := k.CheckTaskStatus(ctx, tctx, nil)
 		assert.Nil(t, s.State)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseRetryableFailure, s.Phase)
+		assert.Equal(t, types.TaskPhaseRetryableFailure, s.p)
 	})
 
 	t.Run("nodeGetsDeleted", func(t *testing.T) {
@@ -564,7 +578,7 @@ func TestK8sTaskExecutor_CheckTaskStatus(t *testing.T) {
 		s, err := k.CheckTaskStatus(ctx, tctx, nil)
 		assert.Nil(t, s.State)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseRetryableFailure, s.Phase)
+		assert.Equal(t, types.TaskPhaseRetryableFailure, s.p)
 	})
 }
 
@@ -579,7 +593,7 @@ func TestK8sTaskExecutor_HandleTaskSuccess(t *testing.T) {
 		assert.NoError(t, k.Initialize(ctx, createExecutorInitializationParams(t, nil)))
 		s, err := k.HandleTaskSuccess(ctx, tctx)
 		assert.NoError(t, err)
-		assert.Equal(t, s.Phase, types.TaskPhaseSucceeded)
+		assert.Equal(t, s.p, types.TaskPhaseSucceeded)
 	})
 
 	t.Run("retryable-error", func(t *testing.T) {
@@ -596,8 +610,8 @@ func TestK8sTaskExecutor_HandleTaskSuccess(t *testing.T) {
 		assert.NoError(t, k.Initialize(ctx, params))
 		s, err := k.HandleTaskSuccess(ctx, tctx)
 		assert.NoError(t, err)
-		assert.Equal(t, s.Phase, types.TaskPhaseRetryableFailure)
-		c, ok := taskerrs.GetErrorCode(s.Err)
+		assert.Equal(t, s.p, types.TaskPhaseRetryableFailure)
+		c, ok := taskerrs.GetErrorCode(s.err)
 		assert.True(t, ok)
 		assert.Equal(t, c, "x")
 	})
@@ -616,8 +630,8 @@ func TestK8sTaskExecutor_HandleTaskSuccess(t *testing.T) {
 		assert.NoError(t, k.Initialize(ctx, params))
 		s, err := k.HandleTaskSuccess(ctx, tctx)
 		assert.NoError(t, err)
-		assert.Equal(t, s.Phase, types.TaskPhasePermanentFailure)
-		c, ok := taskerrs.GetErrorCode(s.Err)
+		assert.Equal(t, s.p, types.TaskPhasePermanentFailure)
+		c, ok := taskerrs.GetErrorCode(s.err)
 		assert.True(t, ok)
 		assert.Equal(t, c, "m")
 	})
@@ -630,7 +644,7 @@ func TestK8sTaskExecutor_HandleTaskSuccess(t *testing.T) {
 		assert.NoError(t, k.Initialize(ctx, params))
 		s, err := k.HandleTaskSuccess(ctx, tctx)
 		assert.Error(t, err)
-		assert.Equal(t, s.Phase, types.TaskPhaseUndefined)
+		assert.Equal(t, s.p, types.TaskPhaseUndefined)
 	})
 }
 

@@ -1,4 +1,4 @@
-package task
+package secretmanager
 
 import (
 	"context"
@@ -7,15 +7,18 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/logger"
 )
 
-type fileEnvSecretManager struct {
+type FileEnvSecretManager struct {
 	secretPath string
+	envPrefix  string
 }
 
-func (f fileEnvSecretManager) Get(ctx context.Context, key string) (string, error) {
-	v, ok := os.LookupEnv(key)
+func (f FileEnvSecretManager) Get(ctx context.Context, key string) (string, error) {
+	envVar := fmt.Sprintf("%s%s", f.envPrefix, key)
+	v, ok := os.LookupEnv(envVar)
 	if ok {
 		return v, nil
 	}
@@ -32,4 +35,11 @@ func (f fileEnvSecretManager) Get(ctx context.Context, key string) (string, erro
 		return "", err
 	}
 	return string(b), err
+}
+
+func NewFileEnvSecretManager(cfg *Config) core.SecretManager {
+	return FileEnvSecretManager{
+		secretPath: cfg.SecretFilePrefix,
+		envPrefix:  cfg.EnvironmentPrefix,
+	}
 }

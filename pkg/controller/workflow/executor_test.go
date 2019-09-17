@@ -11,6 +11,9 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/modelbuilderadmin/workflow/sets"
 
 	mocks2 "github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/fakeplugins"
@@ -42,6 +45,10 @@ var (
 	fakeKubeClient = mocks2.NewFakeKubeClient()
 )
 
+const (
+	maxOutputSize = 10 * 1024
+)
+
 type fakeRemoteWritePlugin struct {
 	pluginCore.Plugin
 	enableAsserts bool
@@ -49,6 +56,13 @@ type fakeRemoteWritePlugin struct {
 }
 
 func (f fakeRemoteWritePlugin) Handle(ctx context.Context, tCtx pluginCore.TaskExecutionContext) (pluginCore.Transition, error) {
+	logger.Infof(ctx, "----------------------------------------------------------------------------------------------")
+	logger.Infof(ctx, "Handle called for %s", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+
+	defer func() {
+		logger.Infof(ctx, "Handle completed for %s", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+		logger.Infof(ctx, "----------------------------------------------------------------------------------------------")
+	}()
 	trns, err := f.Plugin.Handle(ctx, tCtx)
 	if err != nil {
 		return trns, err
@@ -68,6 +82,7 @@ func (f fakeRemoteWritePlugin) Handle(ctx context.Context, tCtx pluginCore.TaskE
 			o.Literals[k] = l
 		}
 		assert.NoError(f.t, tCtx.DataStore().WriteProtobuf(ctx, tCtx.OutputWriter().GetOutputPath(), storage.Options{}, o))
+		assert.NoError(f.t, tCtx.OutputWriter().Put(ctx, ioutils.NewRemoteFileOutputReader(ctx, tCtx.DataStore(), tCtx.OutputWriter(), tCtx.MaxDatasetSizeBytes())))
 	}
 	return trns, err
 }
@@ -200,7 +215,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Error(t *testing.T) {
 
 	eventSink := events.NewMockEventSink()
 	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
-	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), maxOutputSize, fakeKubeClient, catalogClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	executor, err := NewExecutor(ctx, store, enqueueWorkflow, eventSink, recorder, "", nodeExec, promutils.NewTestScope())
 	assert.NoError(t, err)
@@ -234,6 +249,31 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Error(t *testing.T) {
 	}
 }
 
+func walkAndPrint(conns v1alpha1.Connections, ns map[v1alpha1.NodeID]*v1alpha1.NodeStatus) {
+	ds := []v1alpha1.NodeID{v1alpha1.StartNodeID}
+	visited := map[v1alpha1.NodeID]bool{}
+	for k := range ns {
+		visited[k] = false
+	}
+	for ; len(ds) > 0; {
+		sub := sets.NewString()
+		for _, x := range ds {
+			sub.Insert(conns.DownstreamEdges[x]...)
+			if !visited[x] {
+				s, ok := ns[x]
+				if ok {
+					fmt.Printf("| %s: %s, %s |", x, s.Phase, s.Message)
+					visited[x] = true
+				} else {
+					fmt.Printf("| %s: Not considered |", x)
+				}
+			}
+		}
+		fmt.Println()
+		ds = sub.List()
+	}
+}
+
 func TestWorkflowExecutor_HandleFlyteWorkflow(t *testing.T) {
 	ctx := context.Background()
 	store := createInmemoryDataStore(t, testScope.NewSubScope("13"))
@@ -248,7 +288,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow(t *testing.T) {
 
 	eventSink := events.NewMockEventSink()
 	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
-	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), maxOutputSize, fakeKubeClient, catalogClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 
 	executor, err := NewExecutor(ctx, store, enqueueWorkflow, eventSink, recorder, "", nodeExec, promutils.NewTestScope())
@@ -261,8 +301,16 @@ func TestWorkflowExecutor_HandleFlyteWorkflow(t *testing.T) {
 		w := &v1alpha1.FlyteWorkflow{}
 		if assert.NoError(t, json.Unmarshal(wJSON, w)) {
 			// For benchmark workflow, we know how many rounds it needs
-			// Number of rounds = 12 ?
-			for i := 0; i < 12; i++ {
+			// Number of rounds = 14
+			// + WF (x1)
+			// | start-node: Succeeded, successfully completed | (x1)
+			// | add-one-and-print-0: Succeeded, completed successfully || add-one-and-print-3: Succeeded, completed successfully || print-every-time-0: Succeeded, completed successfully | (x3)
+			// | sum-non-none-0: Succeeded, completed successfully | (x3)
+			// | add-one-and-print-1: Succeeded, completed successfully || sum-and-print-0: Succeeded, completed successfully | (x3)
+			// | add-one-and-print-2: Succeeded, completed successfully | (x3)
+			// + WF (x2)
+			// Also there is some overlap
+			for i := 0; i < 14; i++ {
 				err := executor.HandleFlyteWorkflow(ctx, w)
 				if err != nil {
 					t.Log(err)
@@ -270,8 +318,8 @@ func TestWorkflowExecutor_HandleFlyteWorkflow(t *testing.T) {
 
 				assert.NoError(t, err)
 				fmt.Printf("Round[%d] Workflow[%v]\n", i, w.Status.Phase.String())
-				for k, v := range w.Status.NodeStatus {
-					fmt.Printf("Node[%v=%v],", k, v.Phase.String())
+				walkAndPrint(w.Connections, w.Status.NodeStatus)
+				for _, v := range w.Status.NodeStatus {
 					// Reset dirty manually for tests.
 					v.ResetDirty()
 				}
@@ -297,7 +345,7 @@ func BenchmarkWorkflowExecutor(b *testing.B) {
 
 	eventSink := events.NewMockEventSink()
 	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
-	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, scope)
+	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), maxOutputSize, fakeKubeClient, catalogClient, scope)
 	assert.NoError(b, err)
 
 	executor, err := NewExecutor(ctx, store, enqueueWorkflow, eventSink, recorder, "", nodeExec, promutils.NewTestScope())
@@ -381,7 +429,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Failing(t *testing.T) {
 		return nil
 	}
 	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
-	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), maxOutputSize, fakeKubeClient, catalogClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	executor, err := NewExecutor(ctx, store, enqueueWorkflow, eventSink, recorder, "", nodeExec, promutils.NewTestScope())
 	assert.NoError(t, err)
@@ -394,18 +442,19 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Failing(t *testing.T) {
 		if assert.NoError(t, json.Unmarshal(wJSON, w)) {
 			// For benchmark workflow, we will run into the first failure on round 6
 
-			for i := 0; i < 6; i++ {
+			roundsToFail := 7
+			for i := 0; i < roundsToFail; i++ {
 				err := executor.HandleFlyteWorkflow(ctx, w)
 				assert.Nil(t, err, "Round [%v]", i)
 				fmt.Printf("Round[%d] Workflow[%v]\n", i, w.Status.Phase.String())
-				for k, v := range w.Status.NodeStatus {
-					fmt.Printf("Node[%v=%v],", k, v.Phase.String())
+				walkAndPrint(w.Connections, w.Status.NodeStatus)
+				for _, v := range w.Status.NodeStatus {
 					// Reset dirty manually for tests.
 					v.ResetDirty()
 				}
 				fmt.Printf("\n")
 
-				if i == 5 {
+				if i == roundsToFail-1 {
 					assert.Equal(t, v1alpha1.WorkflowPhaseFailed, w.Status.Phase)
 				} else {
 					assert.NotEqual(t, v1alpha1.WorkflowPhaseFailed, w.Status.Phase, "For Round [%v] got phase [%v]", i, w.Status.Phase.String())
@@ -467,7 +516,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Events(t *testing.T) {
 		return nil
 	}
 	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
-	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), maxOutputSize, fakeKubeClient, catalogClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	executor, err := NewExecutor(ctx, store, enqueueWorkflow, eventSink, recorder, "metadata", nodeExec, promutils.NewTestScope())
 	assert.NoError(t, err)
@@ -479,13 +528,13 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Events(t *testing.T) {
 		w := &v1alpha1.FlyteWorkflow{}
 		if assert.NoError(t, json.Unmarshal(wJSON, w)) {
 			// For benchmark workflow, we know how many rounds it needs
-			// Number of rounds = 12 ?
-			for i := 0; i < 12; i++ {
+			// Number of rounds = 14 ?
+			for i := 0; i < 14; i++ {
 				err := executor.HandleFlyteWorkflow(ctx, w)
 				assert.NoError(t, err)
 				fmt.Printf("Round[%d] Workflow[%v]\n", i, w.Status.Phase.String())
-				for k, v := range w.Status.NodeStatus {
-					fmt.Printf("Node[%v=%v],", k, v.Phase.String())
+				walkAndPrint(w.Connections, w.Status.NodeStatus)
+				for _, v := range w.Status.NodeStatus {
 					// Reset dirty manually for tests.
 					v.ResetDirty()
 				}
@@ -517,7 +566,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_EventFailure(t *testing.T) {
 
 	nodeEventSink := events.NewMockEventSink()
 	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
-	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, time.Second, nodeEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, nodeEventSink, launchplan.NewFailFastLaunchPlanExecutor(), maxOutputSize, fakeKubeClient, catalogClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 
 	t.Run("EventAlreadyInTerminalStateError", func(t *testing.T) {

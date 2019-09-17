@@ -48,7 +48,6 @@ func (p EPhase) IsTerminal() bool {
 }
 
 type DynamicNodeInfo struct {
-	ParentTaskID *core.TaskExecutionIdentifier
 }
 
 type WorkflowNodeInfo struct {
@@ -76,22 +75,58 @@ type ExecutionInfo struct {
 }
 
 type PhaseInfo struct {
-	Phase      EPhase
-	OccurredAt time.Time
-	Err        *core.ExecutionError
-	Info       *ExecutionInfo
-	Reason     string
+	p          EPhase
+	occurredAt time.Time
+	err        *core.ExecutionError
+	info       *ExecutionInfo
+	reason     string
 }
 
-var PhaseInfoUndefined = PhaseInfo{Phase: EPhaseUndefined}
+func (p PhaseInfo) GetPhase() EPhase {
+	return p.p
+}
+
+func (p PhaseInfo) GetOccurredAt() time.Time {
+	return p.occurredAt
+}
+
+func (p PhaseInfo) GetErr() *core.ExecutionError {
+	return p.err
+}
+
+func (p PhaseInfo) GetInfo() *ExecutionInfo {
+	return p.info
+}
+
+func (p PhaseInfo) GetReason() string {
+	return p.reason
+}
+
+func (p *PhaseInfo) SetOcurredAt(t time.Time) {
+	p.occurredAt = t
+}
+
+func (p *PhaseInfo) SetErr(err *core.ExecutionError) {
+	p.err = err
+}
+
+func (p *PhaseInfo) SetInfo(info *ExecutionInfo) {
+	p.info = info
+}
+
+func (p *PhaseInfo) SetReason() string {
+	return p.reason
+}
+
+var PhaseInfoUndefined = PhaseInfo{p: EPhaseUndefined}
 
 func phaseInfo(p EPhase, err *core.ExecutionError, info *ExecutionInfo, reason string) PhaseInfo {
 	return PhaseInfo{
-		Phase:      p,
-		Err:        err,
-		OccurredAt: time.Now(),
-		Info:       info,
-		Reason:     reason,
+		p:          p,
+		err:        err,
+		occurredAt: time.Now(),
+		info:       info,
+		reason:     reason,
 	}
 }
 
@@ -104,11 +139,11 @@ func PhaseInfoQueued(reason string) PhaseInfo {
 }
 
 func PhaseInfoRunning(info *ExecutionInfo) PhaseInfo {
-	return phaseInfo(EPhaseRunning, nil, info, "")
+	return phaseInfo(EPhaseRunning, nil, info, "running")
 }
 
 func PhaseInfoSuccess(info *ExecutionInfo) PhaseInfo {
-	return phaseInfo(EPhaseSuccess, nil, info, "")
+	return phaseInfo(EPhaseSuccess, nil, info, "successfully completed")
 }
 
 func PhaseInfoSkip(info *ExecutionInfo, reason string) PhaseInfo {

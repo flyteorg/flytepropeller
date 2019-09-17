@@ -1,4 +1,4 @@
-package task
+package codex
 
 import (
 	"encoding/gob"
