@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"context"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,6 +15,7 @@ import (
 
 // The intention of these interfaces is to decouple the algorithm and usage from the actual CRD definition.
 // this would help in ease of changes underneath without affecting the code.
+// TODO we should do a quick pass and remove all the methods and interface extensions that are not directly useful
 
 //go:generate mockery -all
 
@@ -55,6 +57,7 @@ const (
 	NodePhaseFailed
 	NodePhaseSkipped
 	NodePhaseRetryableFailure
+	NodePhaseTimedOut
 )
 
 func (p NodePhase) String() string {
@@ -65,6 +68,8 @@ func (p NodePhase) String() string {
 		return "Queued"
 	case NodePhaseRunning:
 		return "Running"
+	case NodePhaseTimedOut:
+		return "NodePhaseTimedOut"
 	case NodePhaseSucceeding:
 		return "Succeeding"
 	case NodePhaseSucceeded:
@@ -285,6 +290,8 @@ type ExecutableNode interface {
 	GetResources() *v1.ResourceRequirements
 	GetConfig() *v1.ConfigMap
 	GetRetryStrategy() *RetryStrategy
+	GetExecutionDeadline() *time.Duration
+	GetActiveDeadline() *time.Duration
 }
 
 // Interface for the Workflow Phase. This is the mutable portion for a Workflow
@@ -363,8 +370,11 @@ type NodeStatusGetter interface {
 	GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus
 }
 
+<<<<<<< HEAD
+=======
 type NodeStatusMap = map[NodeID]ExecutableNodeStatus
 
+>>>>>>> master
 type NodeStatusVisitFn = func(node NodeID, status ExecutableNodeStatus)
 
 type NodeStatusVisitor interface {

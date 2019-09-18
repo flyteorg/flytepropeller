@@ -31,7 +31,8 @@ type FlyteWorkflow struct {
 	// Value must be a positive integer.
 	// +optional
 	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
-	// Specifies the time when the workflow has been accepted into the system.
+	// Specifies the time when the workflow has been accepted into the system. (e.g. When Flyte Admin received the
+	// request to create an execution).
 	AcceptedAt *metav1.Time `json:"acceptedAt,omitEmpty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run this pod.
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
@@ -224,7 +225,7 @@ func (in *WorkflowSpec) GetNodes() []NodeID {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// FlyteWorkflowList is a list of FlyteWorkflow resources
+// FlyteWorkflowList is a list of Foo resources
 type FlyteWorkflowList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`

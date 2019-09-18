@@ -28,10 +28,12 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/v1/types/mocks"
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/catalog"
+	"github.com/lyft/flytepropeller/pkg/controller/config"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task"
 	"github.com/lyft/flytepropeller/pkg/utils"
+	config2 "github.com/lyft/flytestdlib/config"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/lyft/flytestdlib/yamlutils"
@@ -44,6 +46,12 @@ var (
 	testScope      = promutils.NewScope("test_wfexec")
 	fakeKubeClient = mocks2.NewFakeKubeClient()
 )
+
+var cfg = &config.Config{
+	DefaultNodeExecutionDeadline:  config2.Duration{Duration: time.Hour},
+	DefaultNodeActiveDeadline:     config2.Duration{Duration: time.Hour},
+	DefaultWorkflowActiveDeadline: config2.Duration{Duration: time.Hour},
+}
 
 func createInmemoryDataStore(t testing.TB, scope promutils.Scope) *storage.DataStore {
 	cfg := storage.Config{
@@ -231,8 +239,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Error(t *testing.T) {
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 
 	eventSink := events.NewMockEventSink()
-	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
-	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	nodeExec, err := nodes.NewExecutor(ctx, cfg, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalog.NewCatalogClient(store), fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	executor, err := NewExecutor(ctx, store, enqueueWorkflow, eventSink, recorder, "", nodeExec, promutils.NewTestScope())
 	assert.NoError(t, err)
@@ -281,8 +288,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow(t *testing.T) {
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 
 	eventSink := events.NewMockEventSink()
-	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
-	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	nodeExec, err := nodes.NewExecutor(ctx, cfg, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalog.NewCatalogClient(store), fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 
 	executor, err := NewExecutor(ctx, store, enqueueWorkflow, eventSink, recorder, "", nodeExec, promutils.NewTestScope())
@@ -332,8 +338,7 @@ func BenchmarkWorkflowExecutor(b *testing.B) {
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 
 	eventSink := events.NewMockEventSink()
-	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
-	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, scope)
+	nodeExec, err := nodes.NewExecutor(ctx, cfg, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalog.NewCatalogClient(store), fakeKubeClient, scope)
 	assert.NoError(b, err)
 
 	executor, err := NewExecutor(ctx, store, enqueueWorkflow, eventSink, recorder, "", nodeExec, promutils.NewTestScope())
@@ -418,8 +423,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Failing(t *testing.T) {
 		}
 		return nil
 	}
-	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
-	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	nodeExec, err := nodes.NewExecutor(ctx, cfg, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalog.NewCatalogClient(store), fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	executor, err := NewExecutor(ctx, store, enqueueWorkflow, eventSink, recorder, "", nodeExec, promutils.NewTestScope())
 	assert.NoError(t, err)
@@ -506,8 +510,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Events(t *testing.T) {
 		}
 		return nil
 	}
-	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
-	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	nodeExec, err := nodes.NewExecutor(ctx, cfg, store, enqueueWorkflow, time.Second, eventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalog.NewCatalogClient(store), fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	executor, err := NewExecutor(ctx, store, enqueueWorkflow, eventSink, recorder, "metadata", nodeExec, promutils.NewTestScope())
 	assert.NoError(t, err)
@@ -558,8 +561,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_EventFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	nodeEventSink := events.NewMockEventSink()
-	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
-	nodeExec, err := nodes.NewExecutor(ctx, store, enqueueWorkflow, time.Second, nodeEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	nodeExec, err := nodes.NewExecutor(ctx, cfg, store, enqueueWorkflow, time.Second, nodeEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalog.NewCatalogClient(store), fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 
 	t.Run("EventAlreadyInTerminalStateError", func(t *testing.T) {

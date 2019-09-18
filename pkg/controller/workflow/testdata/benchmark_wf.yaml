@@ -44,7 +44,7 @@ spec:
   id: dummy-workflow-1-0
   nodes:
     add-one-and-print-0:
-      activeDeadlineSeconds: 0
+      activeDeadline: "1h"
       id: add-one-and-print-0
       inputBindings:
         - binding:
@@ -61,7 +61,7 @@ spec:
         phase: 0
       task: add-one-and-print
     add-one-and-print-1:
-      activeDeadlineSeconds: 0
+      activeDeadline: "1h"
       id: add-one-and-print-1
       inputBindings:
         - binding:
@@ -78,7 +78,7 @@ spec:
         phase: 0
       task: add-one-and-print
     add-one-and-print-2:
-      activeDeadlineSeconds: 0
+      activeDeadline: "1h"
       id: add-one-and-print-2
       inputBindings:
         - binding:
@@ -95,7 +95,7 @@ spec:
         phase: 0
       task: add-one-and-print
     add-one-and-print-3:
-      activeDeadlineSeconds: 0
+      activeDeadline: "1h"
       id: add-one-and-print-3
       inputBindings:
         - binding:
@@ -118,7 +118,7 @@ spec:
       status:
         phase: 0
     print-every-time-0:
-      activeDeadlineSeconds: 0
+      activeDeadline: "1h"
       id: print-every-time-0
       inputBindings:
         - binding:
@@ -156,7 +156,7 @@ spec:
       status:
         phase: 0
     sum-and-print-0:
-      activeDeadlineSeconds: 0
+      activeDeadline: "1h"
       id: sum-and-print-0
       inputBindings:
         - binding:
@@ -184,7 +184,7 @@ spec:
         phase: 0
       task: sum-and-print
     sum-non-none-0:
-      activeDeadlineSeconds: 0
+      activeDeadline: "1h"
       id: sum-non-none-0
       inputBindings:
         - binding:

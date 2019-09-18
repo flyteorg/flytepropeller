@@ -29,6 +29,7 @@ import (
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/catalog"
+	"github.com/lyft/flytepropeller/pkg/controller/config"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	mocks3 "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
@@ -37,9 +38,15 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task"
 	"github.com/lyft/flytepropeller/pkg/utils"
 	flyteassert "github.com/lyft/flytepropeller/pkg/utils/assert"
+	config2 "github.com/lyft/flytestdlib/config"
 )
 
 var fakeKubeClient = mocks4.NewFakeKubeClient()
+var cfg = &config.Config{
+	DefaultNodeExecutionDeadline:  config2.Duration{Duration: time.Hour},
+	DefaultNodeActiveDeadline:     config2.Duration{Duration: time.Hour},
+	DefaultWorkflowActiveDeadline: config2.Duration{Duration: time.Hour},
+}
 
 func createSingletonTaskExecutorFactory() task.Factory {
 	return &task.FactoryFuncs{
@@ -59,14 +66,14 @@ func init() {
 func TestSetInputsForStartNode(t *testing.T) {
 	ctx := context.Background()
 	mockStorage := createInmemoryDataStore(t, testScope.NewSubScope("f"))
-	catalogClient, _ := catalog.NewCatalogClient(ctx, mockStorage)
+	catalogClient := catalog.NewCatalogClient(mockStorage)
 	enQWf := func(workflowID v1alpha1.WorkflowID) {}
 
 	factory := createSingletonTaskExecutorFactory()
 	task.SetTestFactory(factory)
 	assert.True(t, task.IsTestModeEnabled())
 
-	exec, err := NewExecutor(ctx, mockStorage, enQWf, time.Second, events.NewMockEventSink(), launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	exec, err := NewExecutor(ctx, cfg, mockStorage, enQWf, time.Second, events.NewMockEventSink(), launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	inputs := &core.LiteralMap{
 		Literals: map[string]*core.Literal{
@@ -111,7 +118,7 @@ func TestSetInputsForStartNode(t *testing.T) {
 	})
 
 	failStorage := createFailingDatastore(t, testScope.NewSubScope("failing"))
-	execFail, err := NewExecutor(ctx, failStorage, enQWf, time.Second, events.NewMockEventSink(), launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	execFail, err := NewExecutor(ctx, cfg, failStorage, enQWf, time.Second, events.NewMockEventSink(), launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	t.Run("StorageFailure", func(t *testing.T) {
 		w := createDummyBaseWorkflow()
@@ -138,8 +145,8 @@ func TestNodeExecutor_TransitionToPhase(t *testing.T) {
 	memStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 	assert.NoError(t, err)
 
-	catalogClient, _ := catalog.NewCatalogClient(ctx, memStore)
-	execIface, err := NewExecutor(ctx, memStore, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	catalogClient := catalog.NewCatalogClient(memStore)
+	execIface, err := NewExecutor(ctx, cfg, memStore, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
 	execID := &core.WorkflowExecutionIdentifier{}
@@ -349,9 +356,9 @@ func TestNodeExecutor_Initialize(t *testing.T) {
 	memStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 	assert.NoError(t, err)
 
-	catalogClient, _ := catalog.NewCatalogClient(ctx, memStore)
+	catalogClient := catalog.NewCatalogClient(memStore)
 
-	execIface, err := NewExecutor(ctx, memStore, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	execIface, err := NewExecutor(ctx, cfg, memStore, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
 
@@ -368,9 +375,9 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 	assert.True(t, task.IsTestModeEnabled())
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
-	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
+	catalogClient := catalog.NewCatalogClient(store)
 
-	execIface, err := NewExecutor(ctx, store, enQWf, time.Second, mockEventSink,
+	execIface, err := NewExecutor(ctx, cfg, store, enQWf, time.Second, mockEventSink,
 		launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
@@ -472,9 +479,9 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 	assert.True(t, task.IsTestModeEnabled())
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
-	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
+	catalogClient := catalog.NewCatalogClient(store)
 
-	execIface, err := NewExecutor(ctx, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	execIface, err := NewExecutor(ctx, cfg, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
 
@@ -660,9 +667,9 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	assert.True(t, task.IsTestModeEnabled())
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
-	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
+	catalogClient := catalog.NewCatalogClient(store)
 
-	execIface, err := NewExecutor(ctx, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	execIface, err := NewExecutor(ctx, cfg, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
 
@@ -737,12 +744,18 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockN2Status.On("UpdatePhase", expectedN2Phase, mock.Anything, mock.AnythingOfType("string"))
 			mockN2Status.On("IsDirty").Return(false)
 
+			currentTime := v1.NewTime(time.Now())
+			mockN2Status.On("GetQueuedAt").Return(&currentTime)
+			mockN2Status.On("GetStartedAt").Return(&currentTime)
+
 			mockNode := &mocks.ExecutableNode{}
 			mockNode.On("GetID").Return(nodeN2)
 			mockNode.On("GetBranchNode").Return(nil)
 			mockNode.On("GetKind").Return(v1alpha1.NodeKindTask)
 			mockNode.On("IsStartNode").Return(false)
 			mockNode.On("IsEndNode").Return(false)
+			mockNode.On("GetExecutionDeadline").Return(nil)
+			mockNode.On("GetActiveDeadline").Return(nil)
 
 			mockNodeN0 := &mocks.ExecutableNode{}
 			mockNodeN0.On("GetID").Return(nodeN0)
@@ -750,9 +763,14 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockNodeN0.On("GetKind").Return(v1alpha1.NodeKindTask)
 			mockNodeN0.On("IsStartNode").Return(false)
 			mockNodeN0.On("IsEndNode").Return(false)
+			mockNodeN0.On("GetExecutionDeadline").Return(nil)
+			mockNodeN0.On("GetActiveDeadline").Return(nil)
+
 			mockN0Status := &mocks.ExecutableNodeStatus{}
 			mockN0Status.On("GetPhase").Return(n0Phase)
 			mockN0Status.On("IsDirty").Return(false)
+			mockN0Status.On("GetQueuedAt").Return(&currentTime)
+			mockN0Status.On("GetStartedAt").Return(&currentTime)
 
 			mockWfStatus := &mocks.ExecutableWorkflowStatus{}
 			mockWf := &mocks.ExecutableWorkflow{}
@@ -948,6 +966,145 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			})
 		}
 	}
+
+	// ExecutionDeadline Phase Change tests
+	{
+		tests := []struct {
+			name              string
+			currentNodePhase  v1alpha1.NodePhase
+			expectedNodePhase v1alpha1.NodePhase
+			expectedPhase     executors.NodePhase
+			handlerReturn     func() (handler.Status, error)
+			expectedError     bool
+		}{
+			// Queued to Timedout
+			{"queued->timedout", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseTimedOut, executors.NodePhaseTimedOut, func() (handler.Status, error) {
+				return handler.StatusTimedOut, nil
+			}, false},
+			// Starting at running
+			{"running->timedout", v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseTimedOut, executors.NodePhaseTimedOut, func() (handler.Status, error) {
+				return handler.StatusTimedOut, nil
+			}, false},
+		}
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				hf := &mocks2.HandlerFactory{}
+				exec.nodeHandlerFactory = hf
+
+				h := &mocks3.IFace{}
+				h.On("StartNode",
+					mock.MatchedBy(func(ctx context.Context) bool { return true }),
+					mock.MatchedBy(func(o v1alpha1.ExecutableWorkflow) bool { return true }),
+					mock.MatchedBy(func(o v1alpha1.ExecutableNode) bool { return true }),
+					mock.MatchedBy(func(o *handler.Data) bool { return true }),
+				).Return(test.handlerReturn())
+				h.On("CheckNodeStatus",
+					mock.MatchedBy(func(ctx context.Context) bool { return true }),
+					mock.MatchedBy(func(o v1alpha1.ExecutableWorkflow) bool { return true }),
+					mock.MatchedBy(func(o v1alpha1.ExecutableNode) bool { return true }),
+					mock.MatchedBy(func(o v1alpha1.ExecutableNodeStatus) bool { return true }),
+				).Return(test.handlerReturn())
+
+				hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
+
+				mockWf, _, mockNodeStatus := createSingleNodeWf(test.currentNodePhase, 0)
+				startNode := mockWf.StartNode()
+				s, err := exec.RecursiveNodeHandler(ctx, mockWf, startNode)
+				if test.expectedError {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+				}
+				assert.Equal(t, test.expectedPhase, s.NodePhase, "expected: %s, received %s", test.expectedPhase.String(), s.NodePhase.String())
+				assert.Equal(t, uint32(0), mockNodeStatus.GetAttempts())
+				assert.Equal(t, test.expectedNodePhase, mockNodeStatus.GetPhase(), "expected %s, received %s", test.expectedNodePhase.String(), mockNodeStatus.GetPhase().String())
+			})
+		}
+	}
+}
+
+func TestNodeExecutor_Timeout(t *testing.T) {
+	ctx := context.Background()
+	enQWf := func(workflowID v1alpha1.WorkflowID) {
+	}
+	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+
+	store := createInmemoryDataStore(t, promutils.NewTestScope())
+	catalogClient := catalog.NewCatalogClient(store)
+
+	execIface, err := NewExecutor(ctx, cfg, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	assert.NoError(t, err)
+	exec := execIface.(*nodeExecutor)
+
+	// Tests to ensure timeout gets triggered correctly
+	{
+		// Setup
+		mockNodeStatus := &mocks.ExecutableNodeStatus{}
+		mockNodeStatus.On("GetDataDir").Return(storage.DataReference("blah"))
+		mockNodeStatus.On("GetWorkflowNodeStatus").Return(nil)
+		mockNodeStatus.On("GetStoppedAt").Return(nil)
+		mockNodeStatus.On("UpdatePhase", mock.Anything, mock.Anything, mock.AnythingOfType("string"))
+
+		mockNode := &mocks.ExecutableNode{}
+		mockNode.On("GetBranchNode").Return(nil)
+		mockNode.On("GetKind").Return(v1alpha1.NodeKindTask)
+		mockNode.On("IsStartNode").Return(false)
+		mockNode.On("IsEndNode").Return(false)
+		mockNode.On("GetID").Return("n1")
+
+		mockWf := &mocks.ExecutableWorkflow{}
+		mockWf.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{})
+		mockWf.On("GetNodeExecutionStatus", mock.AnythingOfType("string")).Return(mockNodeStatus) //, := w.GetNodeExecutionStatus(node.GetID())
+
+		hf := &mocks2.HandlerFactory{}
+		exec.nodeHandlerFactory = hf
+		h := &mocks3.IFace{}
+		hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
+
+		handlerReturn := func() (handler.Status, error) { return handler.StatusRunning, nil }
+		h.On("startNode",
+			mock.MatchedBy(func(ctx context.Context) bool { return true }),
+			mock.MatchedBy(func(o v1alpha1.ExecutableWorkflow) bool { return true }),
+			mock.MatchedBy(func(o v1alpha1.ExecutableNode) bool { return true }),
+			mock.MatchedBy(func(o *handler.Data) bool { return true }),
+		).Return(handlerReturn)
+		h.On("CheckNodeStatus",
+			mock.MatchedBy(func(ctx context.Context) bool { return true }),
+			mock.MatchedBy(func(o v1alpha1.ExecutableWorkflow) bool { return true }),
+			mock.MatchedBy(func(o v1alpha1.ExecutableNode) bool { return true }),
+			mock.MatchedBy(func(o v1alpha1.ExecutableNodeStatus) bool { return true }),
+		).Return(handler.StatusRunning, nil)
+
+		// test cases
+		tests := []struct {
+			name              string
+			currentNodePhase  v1alpha1.NodePhase
+			expectedNodePhase executors.NodePhase
+			executionTimeout  time.Duration
+			overallDeadline   time.Duration
+		}{
+			// we want execution time to elapse but not the overall time.
+			{"running->timeout", v1alpha1.NodePhaseRunning, executors.NodePhaseTimedOut, 0, 10000 * time.Hour},
+			// overall timeout elapsed.
+			{"running->timeout", v1alpha1.NodePhaseRunning, executors.NodePhaseTimedOut, 10000 * time.Hour, 0},
+		}
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				queuedAt := v1.NewTime(time.Now().Add(-1 * time.Hour))
+
+				mockNodeStatus.On("GetPhase").Return(test.currentNodePhase)
+				mockNodeStatus.On("GetQueuedAt").Return(&queuedAt)
+				mockNodeStatus.On("GetStartedAt").Return(&queuedAt)
+				mockNode.On("GetExecutionDeadline").Return(&test.executionTimeout)
+				mockNode.On("GetActiveDeadline").Return(&test.overallDeadline)
+
+				s, err := exec.executeNode(ctx, mockWf, mockNode)
+				assert.NoError(t, err)
+				assert.Equal(t, test.expectedNodePhase, s.NodePhase, "expected: %s, received %s", test.expectedNodePhase.String(), s.NodePhase.String())
+			})
+		}
+	}
 }
 
 func TestNodeExecutor_RecursiveNodeHandler_NoDownstream(t *testing.T) {
@@ -961,9 +1118,9 @@ func TestNodeExecutor_RecursiveNodeHandler_NoDownstream(t *testing.T) {
 	assert.True(t, task.IsTestModeEnabled())
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
-	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
+	catalogClient := catalog.NewCatalogClient(store)
 
-	execIface, err := NewExecutor(ctx, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	execIface, err := NewExecutor(ctx, cfg, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
 
@@ -1334,9 +1491,9 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 	assert.True(t, task.IsTestModeEnabled())
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
-	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
+	catalogClient := catalog.NewCatalogClient(store)
 
-	execIface, err := NewExecutor(ctx, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
+	execIface, err := NewExecutor(ctx, cfg, store, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
 

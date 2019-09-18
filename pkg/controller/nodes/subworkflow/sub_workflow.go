@@ -36,6 +36,9 @@ func (s *subworkflowHandler) DoInlineSubWorkflow(ctx context.Context, w v1alpha1
 		}
 		return handler.StatusFailed(state.Err), nil
 	}
+	if state.HasTimedOut() {
+		return handler.StatusTimedOut, nil
+	}
 
 	if state.IsComplete() {
 		nodeID := ""
@@ -90,6 +93,9 @@ func (s *subworkflowHandler) DoInFailureHandling(ctx context.Context, w v1alpha1
 		if state.HasFailed() {
 			return handler.StatusFailed(state.Err), nil
 		}
+		if state.HasTimedOut() {
+			return handler.StatusTimedOut, nil
+		}
 		if state.IsComplete() {
 			// Re-enqueue the workflow
 			s.enqueueWorkflow(w.GetK8sWorkflowID().String())
@@ -136,6 +142,7 @@ func (s *subworkflowHandler) StartSubWorkflow(ctx context.Context, w v1alpha1.Ex
 		}
 	}
 
+	// assert startStatus.IsComplete() == true
 	return s.DoInlineSubWorkflow(ctx, contextualSubWorkflow, status, startNode)
 }
 

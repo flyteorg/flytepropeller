@@ -293,6 +293,10 @@ func (e dynamicNodeHandler) progressDynamicWorkflow(ctx context.Context, parentN
 		return handler.StatusFailed(state.Err), nil
 	}
 
+	if state.HasTimedOut() {
+		return handler.StatusTimedOut, nil
+	}
+
 	if state.IsComplete() {
 		nodeID := ""
 		if parentNodeStatus.GetParentNodeID() != nil {

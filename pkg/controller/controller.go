@@ -174,21 +174,27 @@ func newControllerMetrics(scope promutils.Scope) *metrics {
 	}
 }
 
-func newK8sEventRecorder(ctx context.Context, kubeclientset kubernetes.Interface, publishK8sEvents bool) record.EventRecorder {
+func newK8sEventRecorder(ctx context.Context, kubeclientset kubernetes.Interface, publishK8sEvents bool) (record.EventRecorder, error) {
 	// Create event broadcaster
 	// Add FlyteWorkflow controller types to the default Kubernetes Scheme so Events can be
 	// logged for FlyteWorkflow Controller types.
 	err := flyteScheme.AddToScheme(scheme.Scheme)
 	if err != nil {
+<<<<<<< HEAD
+		return nil, err
+	}
+
+=======
 		logger.Panicf(ctx, "failed to add flyte workflows scheme, %s", err.Error())
 	}
+>>>>>>> master
 	logger.Info(ctx, "Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(logger.InfofNoCtx)
 	if publishK8sEvents {
 		eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
 	}
-	return eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
+	return eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName}), nil
 }
 
 // NewController returns a new FlyteWorkflow controller
@@ -228,7 +234,11 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, errors.Wrapf(err, "failed to initialize WF GC")
 	}
 
-	eventRecorder := newK8sEventRecorder(ctx, kubeclientset, cfg.PublishK8sEvents)
+	eventRecorder, err := newK8sEventRecorder(ctx, kubeclientset, cfg.PublishK8sEvents)
+	if err != nil {
+		logger.Errorf(ctx, "failed to event recorder %v", err)
+		return nil, errors.Wrapf(err, "failed to initialize resource lock.")
+	}
 	controller := &Controller{
 		metrics:    newControllerMetrics(scope),
 		recorder:   eventRecorder,
@@ -274,10 +284,10 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	}
 
 	logger.Info(ctx, "Setting up Catalog client.")
-	catalogClient, err := catalog.NewCatalogClient(ctx, store)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to create datacatalog client")
-	}
+        catalogClient, err := catalog.NewCatalogClient(ctx, store)
+        if err != nil {
+                return nil, errors.Wrapf(err, "Failed to create datacatalog client")
+        }
 
 	workQ, err := NewCompositeWorkQueue(ctx, cfg.Queue, scope)
 	if err != nil {
@@ -287,7 +297,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 
 	controller.workflowStore = workflowstore.NewPassthroughWorkflowStore(ctx, scope, flytepropellerClientset.FlyteworkflowV1alpha1(), flyteworkflowInformer.Lister())
 
-	nodeExecutor, err := nodes.NewExecutor(ctx, store, controller.enqueueWorkflowForNodeUpdates,
+	nodeExecutor, err := nodes.NewExecutor(ctx, cfg, store, controller.enqueueWorkflowForNodeUpdates,
 		cfg.DownstreamEval.Duration, eventSink, wfLauncher, catalogClient, kubeClient, scope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create Controller.")

@@ -4,6 +4,8 @@ import (
 	ctrlConfig "github.com/lyft/flytepropeller/pkg/controller/config"
 )
 
+// TODO: Consider moving this to FlyteIdl/Admin client config
+
 //go:generate pflags AdminConfig --default-var defaultAdminConfig
 
 var (

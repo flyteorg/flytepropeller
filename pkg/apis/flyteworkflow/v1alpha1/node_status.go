@@ -217,7 +217,7 @@ func (in *NodeStatus) GetMessage() string {
 }
 
 func IsPhaseTerminal(phase NodePhase) bool {
-	return phase == NodePhaseSucceeded || phase == NodePhaseFailed || phase == NodePhaseSkipped
+	return phase == NodePhaseSucceeded || phase == NodePhaseFailed || phase == NodePhaseSkipped || phase == NodePhaseTimedOut
 }
 
 func (in *NodeStatus) GetOrCreateTaskStatus() MutableTaskNodeStatus {

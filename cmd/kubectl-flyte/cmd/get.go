@@ -27,7 +27,7 @@ func NewGetCommand(opts *RootOptions) *cobra.Command {
 	getCmd := &cobra.Command{
 		Use:   "get [opts] [<workflow_name>]",
 		Short: "Gets a single workflow or lists all workflows currently in execution",
-		Long:  `use labels to filter`,
+		Long:  `use labels to filter?`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				name := args[0]

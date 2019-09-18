@@ -29,6 +29,8 @@ const (
 	PhaseFailing
 	// This is a terminal Status and indicates that the node execution resulted in a Failure
 	PhaseFailed
+	// This is a terminal Status and indicates that the node execution took longer than configured
+	PhaseTimedout
 	// This is a pre-terminal state, currently unused and indicates that the Node execution has succeeded barring any cleanup
 	PhaseSucceeding
 	// This is a terminal state and indicates successful completion of the node execution.
@@ -51,6 +53,7 @@ var PhasesToString = map[Phase]string{
 	PhaseSkipped:          "Skipped",
 	PhaseUndefined:        "Undefined",
 	PhaseRetryableFailure: "RetryableFailure",
+	PhaseTimedout:         "PhaseTimedout",
 }
 
 func (p Phase) String() string {
@@ -62,7 +65,7 @@ func (p Phase) String() string {
 	return "Unknown"
 }
 
-// This encapsulates the status of the node
+// This encapsulates the status of the final
 type Status struct {
 	Phase      Phase
 	Err        error
@@ -76,6 +79,7 @@ var StatusSucceeding = Status{Phase: PhaseSucceeding}
 var StatusSuccess = Status{Phase: PhaseSuccess}
 var StatusUndefined = Status{Phase: PhaseUndefined}
 var StatusSkipped = Status{Phase: PhaseSkipped}
+var StatusTimedOut = Status{Phase: PhaseTimedout}
 
 func (s Status) WithOccurredAt(t time.Time) Status {
 	s.OccurredAt = t

@@ -16,7 +16,7 @@ type mockWorkflow struct {
 }
 
 func (m mockWorkflow) GetSubWorkflow(id common.WorkflowID) (wf *core.CompiledWorkflow, found bool) {
-	panic("method invocation not expected")
+	panic("implement me")
 }
 
 func (m mockWorkflow) GetNode(id common.NodeID) (node common.NodeBuilder, found bool) {

@@ -19,6 +19,7 @@ import (
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/catalog"
+	"github.com/lyft/flytepropeller/pkg/controller/config"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
@@ -31,6 +32,7 @@ type nodeMetrics struct {
 	SuccessDuration    labeled.StopWatch
 	ResolutionFailure  labeled.Counter
 	InputsWriteFailure labeled.Counter
+	TimedOutFailure    labeled.Counter
 
 	// Measures the latency between the last parent node stoppedAt time and current node's queued time.
 	TransitionLatency labeled.StopWatch
@@ -40,11 +42,13 @@ type nodeMetrics struct {
 }
 
 type nodeExecutor struct {
-	nodeHandlerFactory HandlerFactory
-	enqueueWorkflow    v1alpha1.EnqueueWorkflow
-	store              *storage.DataStore
-	nodeRecorder       events.NodeEventRecorder
-	metrics            *nodeMetrics
+	nodeHandlerFactory       HandlerFactory
+	enqueueWorkflow          v1alpha1.EnqueueWorkflow
+	store                    *storage.DataStore
+	nodeRecorder             events.NodeEventRecorder
+	metrics                  *nodeMetrics
+	defaultExecutionDeadline time.Duration
+	defaultActiveDeadline    time.Duration
 }
 
 // In this method we check if the queue is ready to be processed and if so, we prime it in Admin as queued
@@ -98,7 +102,7 @@ func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, w v1alpha1.E
 // Start the node execution. This implies that the node will start processing
 func (c *nodeExecutor) startNode(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, h handler.IFace) (handler.Status, error) {
 
-	// TODO: Performance problem, we may be in a retry loop and do not need to resolve the inputs again.
+	// TODO: Performance problem, we maybe in a retry loop and do not need to resolve the inputs again.
 	// For now we will do this.
 	dataDir := nodeStatus.GetDataDir()
 	var nodeInputs *handler.Data
@@ -141,7 +145,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	// Now depending on the node type decide
 	h, err := c.nodeHandlerFactory.GetHandler(node.GetKind())
 	if err != nil {
-		return handler.StatusUndefined, err
+		return handler.StatusFailed(err), nil
 	}
 
 	// Important to note that we have special optimization for start node only (not end node)
@@ -154,7 +158,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		// We only send the queued event to Admin in case the node was never started and when it is not either StartNode.
 		// We do not do this for endNode, because endNode may still be not executable. This is because StartNode
 		// completes as soon as started.
-		return c.queueNodeIfReady(ctx, w, node, nodeStatus)
+		status, err = c.queueNodeIfReady(ctx, w, node, nodeStatus)
 	} else if node.IsEndNode() {
 		status, err = c.queueNodeIfReady(ctx, w, node, nodeStatus)
 		if err == nil && status.Phase == handler.PhaseQueued {
@@ -169,6 +173,11 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		status, err = h.HandleFailingNode(ctx, w, node)
 	} else {
 		status, err = h.CheckNodeStatus(ctx, w, node, nodeStatus)
+	}
+
+	status = c.enforceTimeout(ctx, w, node, status)
+	if status == handler.StatusTimedOut {
+		return status, nil
 	}
 
 	return status, err
@@ -226,7 +235,7 @@ func (c *nodeExecutor) TransitionToPhase(ctx context.Context, execID *core.Workf
 	switch toStatus.Phase {
 	case handler.PhaseNotStarted:
 		return executors.NodeStatusPending, nil
-	// TODO we should not need handler.PhaseQueued since we have added Task StateMachine. Remove it.
+	// TODO ssingh: we should not need handler.PhaseQueued since we have added Task StateMachine. Remove it.
 	case handler.PhaseQueued:
 		nodeEvent.Phase = core.NodeExecution_QUEUED
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseQueued, v1.NewTime(toStatus.OccurredAt), "")
@@ -336,6 +345,20 @@ func (c *nodeExecutor) TransitionToPhase(ctx context.Context, execID *core.Workf
 		returnStatus = executors.NodeStatusFailed(toStatus.Err)
 		c.metrics.FailureDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 
+	case handler.PhaseTimedout:
+		nodeEvent.Phase = core.NodeExecution_TIMED_OUT
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseTimedOut, v1.NewTime(toStatus.OccurredAt), "")
+
+		nodeEvent.OccurredAt = utils.GetProtoTime(nodeStatus.GetStoppedAt())
+		nodeEvent.OutputResult = &event.NodeExecutionEvent_Error{
+			Error: &core.ExecutionError{
+				Code:     errCode,
+				Message:  errMsg,
+				ErrorUri: v1alpha1.GetOutputErrorFile(nodeStatus.GetDataDir()).String(),
+			},
+		}
+		returnStatus = executors.NodeStatusTimedOut
+		c.metrics.TimedOutFailure.Inc(ctx)
 	case handler.PhaseUndefined:
 		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "unexpected undefined state received, without an error")
 	}
@@ -354,7 +377,7 @@ func (c *nodeExecutor) TransitionToPhase(ctx context.Context, execID *core.Workf
 		if err != nil && eventsErr.IsEventAlreadyInTerminalStateError(err) {
 			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
 			return executors.NodeStatusFailed(errors.Wrapf(errors.IllegalStateError, node.GetID(), err,
-				"phase mismatch between propeller and control plane; Propeller State: %s", returnStatus.NodePhase)), nil
+				"phase mis-match mismatch between propeller and control plane; Propeller State: %s", returnStatus.NodePhase)), nil
 		} else if err != nil {
 			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, node.GetID(), err, "failed to record node event")
@@ -405,6 +428,10 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, w v1alpha1.Executab
 			logger.Debugf(ctx, "Some downstream node has failed, %s", state.Err.Error())
 			return state, nil
 		}
+		if state.HasTimedOut() {
+			logger.Debugf(ctx, "Some downstream node has timedout")
+			return state, nil
+		}
 		if !state.IsComplete() {
 			allCompleted = false
 		}
@@ -423,6 +450,45 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, w v1alpha1.Executab
 		return executors.NodeStatusSuccess, nil
 	}
 	return executors.NodeStatusPending, nil
+}
+
+func (c *nodeExecutor) enforceTimeout(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, status handler.Status) handler.Status {
+	nodeStatus := w.GetNodeExecutionStatus(node.GetID())
+
+	// if node has just transitioned to a terminal state, then just skip timeout-check
+	if v1alpha1.IsPhaseTerminal(nodeStatus.GetPhase()) {
+		return status
+	}
+
+	currentTime := time.Now()
+	// overall node timeout (includes queue time) has elapsed
+	if !nodeStatus.GetQueuedAt().IsZero() {
+		overallTimeout := c.defaultActiveDeadline
+		if node.GetActiveDeadline() != nil {
+			overallTimeout = *node.GetActiveDeadline()
+		}
+		overallDeadline := nodeStatus.GetQueuedAt().Add(overallTimeout)
+		if overallDeadline.Before(currentTime) {
+			logger.Errorf(ctx, "Node has timed out; timeout configured: %v", node.GetActiveDeadline())
+			return handler.StatusTimedOut
+		}
+	}
+
+	// node execution timeout has elapsed
+	if !nodeStatus.GetStartedAt().IsZero() {
+		timeout := c.defaultActiveDeadline
+		if node.GetExecutionDeadline() != nil {
+			timeout = *node.GetExecutionDeadline()
+		}
+		deadline := nodeStatus.GetStartedAt().Add(timeout)
+		if deadline.Before(currentTime) {
+			logger.Errorf(ctx, "Node execution has timed out; timeout configured: %v", node.GetExecutionDeadline())
+			return handler.StatusTimedOut
+		}
+	}
+
+	// unchanged status
+	return status
 }
 
 func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, w v1alpha1.BaseWorkflowWithStatus, inputs *handler.Data) (executors.NodeStatus, error) {
@@ -461,7 +527,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.Exec
 		// at a time. As we iterate down, further nodes will be skipped
 	case v1alpha1.NodePhaseSucceeded, v1alpha1.NodePhaseSkipped:
 		return c.handleDownstream(ctx, w, currentNode)
-	case v1alpha1.NodePhaseFailed:
+	case v1alpha1.NodePhaseFailed, v1alpha1.NodePhaseTimedOut:
 		logger.Debugf(currentNodeCtx, "Node Failed")
 		return executors.NodeStatusFailed(errors.Errorf(errors.RuntimeExecutionError, currentNode.GetID(), "Node Failed.")), nil
 	}
@@ -472,7 +538,7 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWo
 	ctx = contextutils.WithNodeID(ctx, currentNode.GetID())
 	nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
 	switch nodeStatus.GetPhase() {
-	case v1alpha1.NodePhaseRunning:
+	case v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseTimedOut:
 		// Abort this node
 		h, err := c.nodeHandlerFactory.GetHandler(currentNode.GetKind())
 		if err != nil {
@@ -505,7 +571,7 @@ func (c *nodeExecutor) Initialize(ctx context.Context) error {
 	return nil
 }
 
-func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow,
+func NewExecutor(ctx context.Context, cfg *config.Config, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow,
 	revalPeriod time.Duration, eventSink events.EventSink, workflowLauncher launchplan.Executor,
 	catalogClient catalog.Client, kubeClient executors.Client, scope promutils.Scope) (executors.Node, error) {
 
@@ -518,10 +584,13 @@ func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1al
 			FailureDuration:    labeled.NewStopWatch("failure_duration", "Indicates the total execution time of a failed workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			SuccessDuration:    labeled.NewStopWatch("success_duration", "Indicates the total execution time of a successful workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			InputsWriteFailure: labeled.NewCounter("inputs_write_fail", "Indicates failure in writing node inputs to metastore", nodeScope),
+			TimedOutFailure:    labeled.NewCounter("timeout_fail", "Indicates failure due to timeout", nodeScope),
 			ResolutionFailure:  labeled.NewCounter("input_resolve_fail", "Indicates failure in resolving node inputs", nodeScope),
 			TransitionLatency:  labeled.NewStopWatch("transition_latency", "Measures the latency between the last parent node stoppedAt time and current node's queued time.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			QueuingLatency:     labeled.NewStopWatch("queueing_latency", "Measures the latency between the time a node's been queued to the time the handler reported the executable moved to running state", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 		},
+		defaultExecutionDeadline: cfg.DefaultNodeExecutionDeadline.Duration,
+		defaultActiveDeadline:    cfg.DefaultNodeActiveDeadline.Duration,
 	}
 	nodeHandlerFactory, err := NewHandlerFactory(
 		ctx,
