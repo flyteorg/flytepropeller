@@ -334,6 +334,24 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 					newCtx := contextutils.WithNamespace(context.Background(), evt.MetaNew.GetNamespace())
 					droppedUpdateCount.Inc(newCtx)
 				}
+
+				if evt.MetaNew == nil {
+					logger.Warn(context.Background(), "Received an Update event with nil MetaNew.")
+				} else if evt.MetaOld == nil || evt.MetaOld.GetResourceVersion() != evt.MetaNew.GetResourceVersion() {
+					updateCount.Inc(newCtx)
+
+					logger.Debugf(newCtx, "Enqueueing owner for updated object [%v/%v]", evt.MetaNew.GetNamespace(), evt.MetaNew.GetName())
+					if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.MetaNew.GetName(), Namespace: evt.MetaNew.GetNamespace()}); err != nil {
+						logger.Warnf(context.Background(), "Failed to handle Update event for object [%v]", evt.MetaNew.GetName())
+					}
+					err := handler.Handle(newCtx, evt.ObjectNew)
+					if err != nil {
+						logger.Warnf(newCtx, "Failed to handle Update event for object [%v]", evt.ObjectNew)
+					}
+				} else {
+					newCtx := contextutils.WithNamespace(context.Background(), evt.MetaNew.GetNamespace())
+					droppedUpdateCount.Inc(newCtx)
+				}
 			},
 			DeleteFunc: func(evt event.DeleteEvent, q2 workqueue.RateLimitingInterface) {
 				logger.Debugf(context.Background(), "Delete received for %s, ignoring.", evt.Meta.GetName())
