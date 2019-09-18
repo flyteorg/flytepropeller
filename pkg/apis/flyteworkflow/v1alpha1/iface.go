@@ -370,11 +370,8 @@ type NodeStatusGetter interface {
 	GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus
 }
 
-<<<<<<< HEAD
-=======
 type NodeStatusMap = map[NodeID]ExecutableNodeStatus
 
->>>>>>> master
 type NodeStatusVisitFn = func(node NodeID, status ExecutableNodeStatus)
 
 type NodeStatusVisitor interface {
