@@ -36,6 +36,7 @@ type metrics struct {
 	discoveryGetFailureCount labeled.Counter
 	discoveryMissCount       labeled.Counter
 	discoveryHitCount        labeled.Counter
+	pluginExecutionLatency   labeled.StopWatch
 
 	// TODO We should have a metric to capture custom state size
 }
@@ -479,6 +480,7 @@ func New(_ context.Context, kubeClient executors.Client, client catalog2.Client,
 			discoveryMissCount:       labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
 			discoveryPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			discoveryGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
+			pluginExecutionLatency:   labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
 		},
 		kubeClient: kubeClient,
 		catalog:    catalog.NOOPCatalog{},
