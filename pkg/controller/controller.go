@@ -180,14 +180,8 @@ func newK8sEventRecorder(ctx context.Context, kubeclientset kubernetes.Interface
 	// logged for FlyteWorkflow Controller types.
 	err := flyteScheme.AddToScheme(scheme.Scheme)
 	if err != nil {
-<<<<<<< HEAD
 		return nil, err
 	}
-
-=======
-		logger.Panicf(ctx, "failed to add flyte workflows scheme, %s", err.Error())
-	}
->>>>>>> master
 	logger.Info(ctx, "Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(logger.InfofNoCtx)
