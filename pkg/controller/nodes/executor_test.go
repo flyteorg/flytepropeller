@@ -356,7 +356,7 @@ func TestNodeExecutor_Initialize(t *testing.T) {
 	memStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 	assert.NoError(t, err)
 
-	catalogClient, _ := catalog.NewCatalogClient(memStore)
+	catalogClient, _ := catalog.NewCatalogClient(ctx, memStore)
 
 	execIface, err := NewExecutor(ctx, cfg, memStore, enQWf, time.Second, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
 	assert.NoError(t, err)
@@ -375,7 +375,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 	assert.True(t, task.IsTestModeEnabled())
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
-	catalogClient, _ := catalog.NewCatalogClient(store)
+	catalogClient, _ := catalog.NewCatalogClient(ctx, store)
 
 	execIface, err := NewExecutor(ctx, cfg, store, enQWf, time.Second, mockEventSink,
 		launchplan.NewFailFastLaunchPlanExecutor(), catalogClient, fakeKubeClient, promutils.NewTestScope())
