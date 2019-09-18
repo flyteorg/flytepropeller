@@ -66,7 +66,7 @@ func init() {
 func TestSetInputsForStartNode(t *testing.T) {
 	ctx := context.Background()
 	mockStorage := createInmemoryDataStore(t, testScope.NewSubScope("f"))
-	catalogClient := catalog.NewCatalogClient(mockStorage)
+	catalogClient, _ := catalog.NewCatalogClient(ctx, mockStorage)
 	enQWf := func(workflowID v1alpha1.WorkflowID) {}
 
 	factory := createSingletonTaskExecutorFactory()
