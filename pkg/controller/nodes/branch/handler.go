@@ -26,29 +26,27 @@ func (b *branchHandler) Setup(ctx context.Context, setupContext handler.SetupCon
 	return nil
 }
 
-func (b *branchHandler) transitionToFailure(code string, errorMsg string) handler.Transition {
-	phase := handler.PhaseInfoFailure(code, errorMsg, nil)
-	transition := handler.DoTransition(handler.TransitionTypeEphemeral, phase)
-	return transition
-}
-
 func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
 
 	logger.Debug(ctx, "Starting Branch Node")
 	branchNode := nCtx.Node().GetBranchNode()
+	if branchNode == nil {
+		return handler.DoTransitionToFailed(errors.IllegalStateError, "Invoked branch handler, for a non branch node."), nil
+	}
+
 	w := nCtx.Workflow()
 
 	nodeInputs, err := nCtx.InputReader().Get(ctx)
 	if err != nil {
 		errMsg := fmt.Sprintf("Failed to read input. Error [%s]", err)
-		return b.transitionToFailure(string(errors.RuntimeExecutionError), errMsg), nil
+		return handler.DoTransitionToFailed(errors.RuntimeExecutionError, errMsg), nil
 	}
 
 	if nCtx.NodeStatus().GetPhase() == v1alpha1.NodePhaseNotYetStarted {
 		finalNode, err := DecideBranch(ctx, w, nCtx.NodeID(), branchNode, nodeInputs)
 		if err != nil {
 			errMsg := fmt.Sprintf("Branch evaluation failed. Error [%s]", err)
-			return b.transitionToFailure(string(errors.IllegalStateError), errMsg), nil
+			return handler.DoTransitionToFailed(errors.IllegalStateError, errMsg), nil
 		}
 
 		branchNodeState := handler.BranchNodeState{FinalizedNodeID: finalNode, Phase: v1alpha1.BranchNodeSuccess}
@@ -64,17 +62,15 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 			logger.Debugf(ctx, "Branch downstream finalized node not found. FinalizedNode [%s]", *finalNode)
 			errMsg := fmt.Sprintf("Branch downstream finalized node not found. FinalizedNode [%s]", *finalNode)
 			logger.Debugf(ctx, errMsg)
-			return b.transitionToFailure(string(errors.DownstreamNodeNotFoundError), errMsg), nil
+			return handler.DoTransitionToFailed(errors.DownstreamNodeNotFoundError, errMsg), nil
 		}
 		i := nCtx.NodeID()
 		childNodeStatus := w.GetNodeExecutionStatus(childNode.GetID())
 		childNodeStatus.SetParentNodeID(&i)
 
 		logger.Debugf(ctx, "Recursing down branchNodestatus node")
-
 		nodeStatus := w.GetNodeExecutionStatus(nCtx.NodeID())
 		return b.recurseDownstream(ctx, nCtx, nodeStatus, childNode)
-
 	}
 
 	// If the branchNodestatus was already evaluated i.e, Node is in Running status
@@ -86,23 +82,17 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 		if userError != nil {
 			// We should never reach here, but for safety and completeness
 			errMsg := fmt.Sprintf("Branch node userError [%s]", userError)
-			return b.transitionToFailure(string(errors.UserProvidedError), errMsg), nil
+			return handler.DoTransitionToFailed(errors.UserProvidedError, errMsg), nil
 		}
-
-		err := &core.ExecutionError{
-			Code:    string(errors.IllegalStateError),
-			Message: "no node finalized through previous branchNodestatus evaluation.",
-		}
-
-		phase := handler.PhaseInfoFailureErr(err, nil)
-		return handler.DoTransition(handler.TransitionTypeEphemeral, phase), nil
+		return handler.DoTransitionToFailed(errors.IllegalStateError, "no node finalized through previous branchNodestatus evaluation"), nil
 	}
 	var ok bool
 	branchTakenNode, ok := w.GetNode(*finalNodeID)
 	if !ok {
 		errMsg := fmt.Sprintf("Downstream node [%v] not found", *finalNodeID)
-		return b.transitionToFailure(string(errors.DownstreamNodeNotFoundError), errMsg), nil
+		return handler.DoTransitionToFailed(errors.DownstreamNodeNotFoundError, errMsg), nil
 	}
+
 	// Recurse downstream
 	return b.recurseDownstream(ctx, nCtx, nodeStatus, branchTakenNode)
 }
@@ -116,7 +106,6 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 	}
 
 	if downstreamStatus.IsComplete() {
-
 		// For branch node we set the output node to be the same as the child nodes output
 		childNodeStatus := w.GetNodeExecutionStatus(branchTakenNode.GetID())
 		nodeStatus.SetDataDir(childNodeStatus.GetDataDir())
@@ -127,7 +116,7 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 	if downstreamStatus.HasFailed() {
 		errMsg := downstreamStatus.Err.Error()
 		code, _ := errors.GetErrorCode(downstreamStatus.Err)
-		return b.transitionToFailure(string(code), errMsg), nil
+		return handler.DoTransitionToFailed(code, errMsg), nil
 	}
 
 	phase := handler.PhaseInfoRunning(nil)
@@ -158,7 +147,7 @@ func (b *branchHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionCon
 	if !ok {
 		return errors.Errorf(errors.DownstreamNodeNotFoundError, w.GetID(), nCtx.NodeID(), "Downstream node [%v] not found", *finalNodeID)
 	}
-	
+
 	// Recurse downstream
 	return b.nodeExecutor.AbortHandler(ctx, w, branchTakenNode)
 }
