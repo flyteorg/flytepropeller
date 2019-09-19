@@ -115,6 +115,7 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 	}
 
 	if downstreamStatus.IsComplete() {
+
 		// For branch node we set the output node to be the same as the child nodes output
 		childNodeStatus := w.GetNodeExecutionStatus(branchTakenNode.GetID())
 		nodeStatus.SetDataDir(childNodeStatus.GetDataDir())
