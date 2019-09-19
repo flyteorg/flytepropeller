@@ -88,6 +88,7 @@ func createNodeContext(phase v1alpha1.BranchNodePhase, childNodeID *v1alpha1.Nod
 
 	ns := &mocks2.ExecutableNodeStatus{}
 	ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
+	ns.On("GetPhase").Return(v1alpha1.NodePhaseNotYetStarted)
 
 	ir := &mocks3.InputReader{}
 	ir.On("Get", mock.Anything).Return(inputs, nil)
@@ -100,6 +101,7 @@ func createNodeContext(phase v1alpha1.BranchNodePhase, childNodeID *v1alpha1.Nod
 	nCtx.On("CurrentAttempt").Return(uint32(1))
 	nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
 	nCtx.On("NodeStatus").Return(ns)
+
 	nCtx.On("NodeID").Return("n1")
 	nCtx.On("EnqueueOwner").Return(nil)
 	nCtx.On("Workflow").Return(w)
@@ -311,7 +313,7 @@ func TestBranchHandler_HandleNode(t *testing.T) {
 			res := &v12.ResourceRequirements{}
 			n := & mocks2.ExecutableNode{}
 			n.On("GetResources").Return(res)
-			n.On("GetBranchNode").Return()
+			n.On("GetBranchNode").Return(nil)
 			nCtx := createNodeContext(v1alpha1.BranchNodeSuccess, &childNodeID, w, n, inputs)
 
 			s, err := branch.Handle(ctx, nCtx)
@@ -321,7 +323,6 @@ func TestBranchHandler_HandleNode(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			assert.Equal(t, test.expectedPhase, s.Info().GetPhase())
-
 		})
 	}
 }
