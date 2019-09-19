@@ -307,8 +307,7 @@ func (e dynamicNodeHandler) loadOrBuildDynamicWorkflow(ctx context.Context, w v1
 		return nil, false, errors.Wrapf(errors.CausedByError, node.GetID(), err, "Failed to construct data path for futures file.")
 	}
 
-	// If no compiled futures file, then build it from scratch.
-	shouldBuild := true
+	// If there is a cached compiled Workflow, load and return it.
 	if metadata, err := e.store.Head(ctx, compiledFuturesFilePath); err != nil {
 		logger.Warnf(ctx, "Failed to call head on compiled futures file. Error: %v", err)
 		return nil, false, errors.Wrapf(errors.CausedByError, node.GetID(), err, "Failed to do HEAD on compiled futures file.")
@@ -321,26 +320,25 @@ func (e dynamicNodeHandler) loadOrBuildDynamicWorkflow(ctx context.Context, w v1
 			e.metrics.CacheError.Inc(ctx)
 		} else {
 			cacheHitStopWatch.Stop()
-			shouldBuild = false
+			return compiledWf, true, nil
 		}
 	}
 
-	if shouldBuild {
-		compiledWf, isDynamic, err = e.buildFlyteWorkflow(ctx, w, node, dataDir, nodeStatus)
-		if err != nil {
-			return compiledWf, isDynamic, err
-		}
+	// If we have not build this spec before, build it now and cache it.
+	compiledWf, isDynamic, err = e.buildFlyteWorkflow(ctx, w, node, dataDir, nodeStatus)
+	if err != nil {
+		return compiledWf, isDynamic, err
+	}
 
-		if !isDynamic {
-			return compiledWf, isDynamic, err
-		}
+	if !isDynamic {
+		return compiledWf, isDynamic, err
+	}
 
-		// Cache the built WF
-		err = cacheFlyteWorkflow(ctx, e.store, compiledWf, compiledFuturesFilePath)
-		if err != nil {
-			logger.Warnf(ctx, "Failed to cache flyte workflow, this will cause a cache miss next time and cause the dynamic workflow to be recompiled. Error: %v", err)
-			e.metrics.CacheError.Inc(ctx)
-		}
+	// Cache the built WF. Errors are swallowed.
+	err = cacheFlyteWorkflow(ctx, e.store, compiledWf, compiledFuturesFilePath)
+	if err != nil {
+		logger.Warnf(ctx, "Failed to cache flyte workflow, this will cause a cache miss next time and cause the dynamic workflow to be recompiled. Error: %v", err)
+		e.metrics.CacheError.Inc(ctx)
 	}
 
 	return compiledWf, true, nil

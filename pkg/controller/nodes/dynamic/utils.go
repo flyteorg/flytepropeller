@@ -126,7 +126,6 @@ func loadCachedFlyteWorkflow(ctx context.Context, store storage.RawStore, source
 
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.ReadFrom(rawReader)
-	raw := buf.Bytes()
 	if err != nil {
 		return nil, err
 	}
@@ -137,5 +136,5 @@ func loadCachedFlyteWorkflow(ctx context.Context, store storage.RawStore, source
 	}
 
 	wf := &v1alpha1.FlyteWorkflow{}
-	return wf, json.Unmarshal(raw, wf)
+	return wf, json.Unmarshal(buf.Bytes(), wf)
 }
