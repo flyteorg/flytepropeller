@@ -3,7 +3,6 @@ package branch
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
@@ -28,17 +27,7 @@ func (b *branchHandler) Setup(ctx context.Context, setupContext handler.SetupCon
 }
 
 func (b *branchHandler) transitionToFailure(code string, errorMsg string) handler.Transition {
-	err := &core.ExecutionError{
-		Code:    string(errors.IllegalStateError),
-		Message: "invoked branch handler for a non branch node.",
-	}
-	phase := handler.PhaseInfo{
-		Phase:      handler.EPhaseFailed,
-		Err:        err,
-		OccurredAt: time.Now(),
-		Info:       nil,
-		Reason:     "invalid branch node",
-	}
+	phase := handler.PhaseInfoFailure(code, errorMsg, nil)
 	transition := handler.DoTransition(handler.TransitionTypeEphemeral, phase)
 	return transition
 }
@@ -104,12 +93,8 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 			Code:    string(errors.IllegalStateError),
 			Message: "no node finalized through previous branchNodestatus evaluation.",
 		}
-		phase := handler.PhaseInfo{
-			Phase:      handler.EPhaseRunning,
-			Err:        err,
-			OccurredAt: time.Now(),
-			Info:       nil,
-		}
+
+		phase := handler.PhaseInfoFailureErr(err, nil)
 		return handler.DoTransition(handler.TransitionTypeEphemeral, phase), nil
 	}
 	var ok bool
@@ -127,22 +112,15 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 
 	downstreamStatus, err := b.nodeExecutor.RecursiveNodeHandler(ctx, w, branchTakenNode)
 	if err != nil {
-		errMsg := fmt.Sprintf("executing branch downstream node failed. Error [%s]", err)
-		code, _ := errors.GetErrorCode(err)
-		return b.transitionToFailure(string(code), errMsg), nil
+		return handler.UnknownTransition, err
 	}
 
 	if downstreamStatus.IsComplete() {
+
 		// For branch node we set the output node to be the same as the child nodes output
 		childNodeStatus := w.GetNodeExecutionStatus(branchTakenNode.GetID())
 		nodeStatus.SetDataDir(childNodeStatus.GetDataDir())
-
-		phase := handler.PhaseInfo{
-			Phase:      handler.EPhaseSuccess,
-			Err:        nil,
-			OccurredAt: time.Now(),
-			Info:       nil,
-		}
+		phase := handler.PhaseInfoSuccess(nil)
 		return handler.DoTransition(handler.TransitionTypeEphemeral, phase), nil
 	}
 
@@ -152,12 +130,7 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 		return b.transitionToFailure(string(code), errMsg), nil
 	}
 
-	phase := handler.PhaseInfo{
-		Phase:      handler.EPhaseRunning,
-		Err:        nil,
-		OccurredAt: time.Now(),
-		Info:       nil,
-	}
+	phase := handler.PhaseInfoRunning(nil)
 	return handler.DoTransition(handler.TransitionTypeEphemeral, phase), nil
 }
 
@@ -168,9 +141,11 @@ func (b *branchHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionCon
 	if branch == nil {
 		return errors.Errorf(errors.IllegalStateError, w.GetID(), nCtx.NodeID(), "Invoked branch handler, for a non branch node.")
 	}
+
 	// If the branch was already evaluated i.e, Node is in Running status
 	userError := branch.GetElseFail()
-	finalNodeID := nCtx.NodeStateReader().GetBranchNode().FinalizedNodeID
+	nodeState := nCtx.NodeStateReader().GetBranchNode()
+	finalNodeID := nodeState.FinalizedNodeID
 	if finalNodeID == nil {
 		if userError != nil {
 			// We should never reach here, but for safety and completeness
@@ -178,12 +153,12 @@ func (b *branchHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionCon
 		}
 		return errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "No node finalized through previous branch evaluation.")
 	}
-
 	var ok bool
 	branchTakenNode, ok := w.GetNode(*finalNodeID)
 	if !ok {
 		return errors.Errorf(errors.DownstreamNodeNotFoundError, w.GetID(), nCtx.NodeID(), "Downstream node [%v] not found", *finalNodeID)
 	}
+	
 	// Recurse downstream
 	return b.nodeExecutor.AbortHandler(ctx, w, branchTakenNode)
 }

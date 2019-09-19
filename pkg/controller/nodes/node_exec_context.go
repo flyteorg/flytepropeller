@@ -140,7 +140,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1
 		c.maxDatasetSizeBytes,
 		&taskEventRecorder{TaskEventRecorder: c.taskRecorder},
 		tr,
-		newNodeStateManager(ctx, s),
+		NewNodeStateManager(ctx, s),
 		workflowEnqueuer,
 	), nil
 }
