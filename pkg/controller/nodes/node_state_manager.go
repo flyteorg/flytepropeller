@@ -69,6 +69,6 @@ func (n nodeStateManager) clearNodeStatus() {
 	n.d = nil
 }
 
-func newNodeStateManager(_ context.Context, status v1alpha1.ExecutableNodeStatus) *nodeStateManager {
+func NewNodeStateManager(_ context.Context, status v1alpha1.ExecutableNodeStatus) *nodeStateManager {
 	return &nodeStateManager{nodeStatus: status}
 }
