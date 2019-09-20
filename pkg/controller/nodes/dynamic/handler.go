@@ -315,6 +315,35 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	nStatus.SetDataDir(nCtx.NodeStatus().GetDataDir())
 	nStatus.SetParentTaskID(execID)
 
+	subwf, isDynamic, err := e.loadOrBuildDynamicWorkflow(ctx, w, node, previousNodeStatus.GetDataDir(), nStatus)
+	if err != nil {
+		return nil, nStatus, false, err
+	}
+
+	if !isDynamic {
+		return nil, nil, false, nil
+	}
+
+	return newContextualWorkflow(w, subwf, nStatus, subwf.Tasks, subwf.SubWorkflows), nStatus, isDynamic, nil
+}
+
+func (e dynamicNodeHandler) buildFlyteWorkflow(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode,
+	dataDir storage.DataReference, nStatus v1alpha1.ExecutableNodeStatus) (compiledWf *v1alpha1.FlyteWorkflow, isDynamic bool, err error) {
+	t := e.metrics.buildDynamicWorkflow.Start(ctx)
+	defer t.Stop()
+
+	// We will only get here if the Phase is success. The downside is that this is an overhead for all nodes that are
+	// not dynamic. But given that we will only check once, it should be ok.
+	// TODO: Check for node.is_dynamic once the IDL changes are in and SDK migration has happened.
+	djSpec, err := e.getDynamicJobSpec(ctx, node, dataDir)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if djSpec == nil {
+		return nil, false, nil
+	}
+
 	var closure *core.CompiledWorkflowClosure
 	wf, err := d.buildDynamicWorkflowTemplate(ctx, djSpec, nCtx, nStatus)
 	if err != nil {

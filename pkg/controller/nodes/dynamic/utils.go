@@ -1,7 +1,9 @@
 package dynamic
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 
 	"github.com/Masterminds/semver"
 
