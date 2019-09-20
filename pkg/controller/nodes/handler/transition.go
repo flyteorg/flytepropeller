@@ -1,7 +1,5 @@
 package handler
 
-import "github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
-
 type TransitionType int
 
 const (
@@ -31,10 +29,4 @@ var UnknownTransition = Transition{TransitionTypeEphemeral, PhaseInfoUndefined}
 
 func DoTransition(ttype TransitionType, info PhaseInfo) Transition {
 	return Transition{ttype: ttype, info: info}
-}
-
-func DoTransitionToFailed(code errors.ErrorCode, errorMsg string) Transition {
-	phase := PhaseInfoFailure(string(code), errorMsg, nil)
-	transition := DoTransition(TransitionTypeEphemeral, phase)
-	return transition
 }
