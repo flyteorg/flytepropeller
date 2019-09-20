@@ -39,7 +39,7 @@ func Test_cacheFlyteWorkflow(t *testing.T) {
 
 	ctx := context.TODO()
 	location := storage.DataReference("somekey/file.json")
-	r := RemoteFileWorkflowStore{store:store}
+	r := RemoteFileWorkflowStore{store: store}
 	assert.NoError(t, r.Put(ctx, expected, location))
 	actual, err := r.Get(ctx, location)
 	assert.NoError(t, err)
