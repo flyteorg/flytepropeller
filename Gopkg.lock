@@ -49,7 +49,7 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:9f8615d7907ba737b89895391626f81e9dd7776f48ea062d5bea77b46bdcfc89"
+  digest = "1:3cb5a7438cd06b18f192433cdb375f557c3c2eb6d97b88f0eb27c42f65c6b4dd"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -93,8 +93,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "8c6586204ba7e9a887fb4cb6ffca2428e6c6dc7c"
-  version = "v1.23.20"
+  revision = "b4225bdde03b756685c89b7db31fe2ffac6d9234"
+  version = "v1.24.0"
 
 [[projects]]
   branch = "master"
@@ -438,7 +438,7 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:c6181f0bd353d2558f8b3b0128b0625f0982f6a428664c5fc4f3a69118172799"
+  digest = "1:ab33b506292441cab3455961ad86e9e5e81989b2f6089d4437d2b15a6d417dc2"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/array",
@@ -468,9 +468,9 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "fcad09176702bc061d6e0422593834f266a88c13"
+  revision = "31b0fb21c6bf86f9e5e81297d9ad3de3feaea6e6"
   source = "https://github.com/lyft/flyteplugins"
-  version = "v0.1.6"
+  version = "v0.1.7"
 
 [[projects]]
   digest = "1:b8860863eb1eb7fe4f7d2b3c6b34b89aaedeaae88d761d2c9a4eccc46262abcc"
@@ -717,12 +717,12 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:cbaf13cdbfef0e4734ed8a7504f57fe893d471d62a35b982bf6fb3f036449a66"
+  digest = "1:1bff633980ce46a718d753a3bc7e3eb6d7e4df34bc7e4a9869e71ccb4314dc40"
   name = "github.com/spf13/pflag"
   packages = ["."]
   pruneopts = ""
-  revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
-  version = "v1.0.3"
+  revision = "e8f29969b682c41a730f8f08b76033b120498464"
+  version = "v1.0.4"
 
 [[projects]]
   digest = "1:c25a789c738f7cc8ec7f34026badd4e117853f329334a5aa45cf5d0727d7d442"
@@ -816,7 +816,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3feebd8c7f8c56efb8dd591ccb3227ba5e05863ead67a7e64cbba4c3957f61b4"
+  digest = "1:af83d44f1195692d76697f62af82329be4d55b100d33b9b3db8f5d0f44563fb9"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -829,7 +829,7 @@
     "trace",
   ]
   pruneopts = ""
-  revision = "a7b16738d86b947dd0fadb08ca2c2342b51958b6"
+  revision = "c8589233b77dde5edd2205ba8a4fb5c9c2472556"
 
 [[projects]]
   branch = "master"
@@ -847,14 +847,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d75336f9fd966011ede7a692794c112e81f0cb80d6e0082ad352e1986fc7b5ee"
+  digest = "1:c04d252619a11f0ba51313ad9ee728c0b7bb61c34c7ab65e841a05ac350e65a0"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "b4ddaad3f8a36719f2b8bc6486c14cc468ca2bb5"
+  revision = "0c1ff786ef13daa914a3351c5e6b0321aed5960e"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -891,7 +891,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a779e74cb881ebe8626d4fee58ad262c4b0d41b5d97a8454e4dda97b638f6177"
+  digest = "1:3eccfc7625ff5137b398e7b16323d272f2423cd04985de69c79c3e0793494e8f"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -908,11 +908,11 @@
     "internal/semver",
   ]
   pruneopts = ""
-  revision = "6bfd74cf029c99138aa1bb5b7e0d6b57c9d4eb49"
+  revision = "1cc945182204dc50f5760d9859d043a3d4e27047"
 
 [[projects]]
   branch = "master"
-  digest = "1:d8b3f0a0769b9c2694d4ca4fb4b2b6d971d1af008ce9ea9c3b188df76d9d77d6"
+  digest = "1:1163141bda0af433265042eb4345e4433f1302991b6be9bfa623bd0316004e32"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -926,7 +926,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = ""
-  revision = "28eb3b1f27f6a4e7185acb5b5074a90b4cc04cc4"
+  revision = "7439972e83a764c2a87f6fa78c4a37e8ed2db615"
 
 [[projects]]
   digest = "1:0568e577f790e9bd0420521cff50580f9b38165a38f217ce68f55c4bbaa97066"
@@ -1238,12 +1238,12 @@
   revision = "ebc107f98eab922ef99d645781b87caca01f4f48"
 
 [[projects]]
-  digest = "1:3063061b6514ad2666c4fa292451685884cacf77c803e1b10b4a4fa23f7787fb"
+  digest = "1:7ce71844fcaaabcbe09a392902edb5790ddca3a7070ae8d20830dc6dbe2751af"
   name = "k8s.io/klog"
   packages = ["."]
   pruneopts = ""
-  revision = "3ca30a56d8a775276f9cdae009ba326fdc05af7f"
-  version = "v0.4.0"
+  revision = "2ca9ad30301bf30a8a6e0fa2110db6b8df699a91"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"

@@ -133,6 +133,10 @@ func getKubeConfig(_ context.Context, cfg *config2.Config) (*kubernetes.Clientse
 		}
 	}
 
+	kubecfg.QPS = cfg.KubeConfig.QPS
+	kubecfg.Burst = cfg.KubeConfig.Burst
+	kubecfg.Timeout = cfg.KubeConfig.Timeout.Duration
+
 	kubeClient, err := kubernetes.NewForConfig(kubecfg)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "Error building kubernetes clientset")
