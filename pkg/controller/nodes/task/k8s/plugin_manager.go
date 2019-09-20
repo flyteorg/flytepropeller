@@ -289,6 +289,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		return nil, err
 	}
 
+	metricsScope := iCtx.MetricsScope().NewSubScope(entry.ID)
 	updateCount := labeled.NewCounter("informer_update", "Update events from informer", metricsScope)
 	droppedUpdateCount := labeled.NewCounter("informer_update_dropped", "Update events from informer that have the same resource version", metricsScope)
 	genericCount := labeled.NewCounter("informer_generic", "Generic events from informer", metricsScope)
@@ -301,23 +302,15 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 				logger.Debugf(context.Background(), "Create received for %s, ignoring.", evt.Meta.GetName())
 			},
 			UpdateFunc: func(evt event.UpdateEvent, q2 workqueue.RateLimitingInterface) {
-				if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.MetaNew.GetName(), Namespace: evt.MetaNew.GetNamespace()}); err != nil {
-					logger.Warnf(context.Background(), "Failed to handle Update event for object [%v]", evt.MetaNew.GetName())
-				}
-
 				if evt.MetaNew == nil {
 					logger.Warn(context.Background(), "Received an Update event with nil MetaNew.")
 				} else if evt.MetaOld == nil || evt.MetaOld.GetResourceVersion() != evt.MetaNew.GetResourceVersion() {
-					updateCount.Inc(newCtx)
-
-					logger.Debugf(newCtx, "Enqueueing owner for updated object [%v/%v]", evt.MetaNew.GetNamespace(), evt.MetaNew.GetName())
+					newCtx := contextutils.WithNamespace(context.Background(), evt.MetaNew.GetNamespace())
+					logger.Debugf(ctx, "Enqueueing owner for updated object [%v/%v]", evt.MetaNew.GetNamespace(), evt.MetaNew.GetName())
 					if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.MetaNew.GetName(), Namespace: evt.MetaNew.GetNamespace()}); err != nil {
 						logger.Warnf(context.Background(), "Failed to handle Update event for object [%v]", evt.MetaNew.GetName())
 					}
-					err := handler.Handle(newCtx, evt.ObjectNew)
-					if err != nil {
-						logger.Warnf(newCtx, "Failed to handle Update event for object [%v]", evt.ObjectNew)
-					}
+					updateCount.Inc(newCtx)
 				} else {
 					newCtx := contextutils.WithNamespace(context.Background(), evt.MetaNew.GetNamespace())
 					droppedUpdateCount.Inc(newCtx)
@@ -328,6 +321,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 			},
 			GenericFunc: func(evt event.GenericEvent, q2 workqueue.RateLimitingInterface) {
 				logger.Debugf(context.Background(), "Generic received for %s, ignoring.", evt.Meta.GetName())
+				genericCount.Inc(ctx)
 			},
 		},
 		// Queue
@@ -359,7 +353,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		id:              entry.ID,
 		plugin:          entry.Plugin,
 		resourceToWatch: entry.ResourceToWatch,
-		metrics:         newPluginMetrics(iCtx.MetricsScope().NewSubScope(entry.ID)),
+		metrics:         newPluginMetrics(metricsScope),
 		kubeClient:      iCtx.KubeClient(),
 	}, nil
 }

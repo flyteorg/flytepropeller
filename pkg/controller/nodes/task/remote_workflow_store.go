@@ -56,3 +56,7 @@ func (r RemoteFileWorkflowStore) Get(ctx context.Context, source storage.DataRef
 	wf := &v1alpha1.FlyteWorkflow{}
 	return wf, json.Unmarshal(buf.Bytes(), wf)
 }
+
+func NewRemoteWorkflowStore(store *storage.DataStore) RemoteFileWorkflowStore {
+	return RemoteFileWorkflowStore{store: store}
+}
