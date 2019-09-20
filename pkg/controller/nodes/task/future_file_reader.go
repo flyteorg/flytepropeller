@@ -68,8 +68,9 @@ func NewRemoteFutureFileReader(ctx context.Context, dataDir storage.DataReferenc
 		return FutureFileReader{}, err
 	}
 	return FutureFileReader{
-		loc:      loc,
-		cacheLoc: cacheLoc,
-		store:    store,
+		loc:                     loc,
+		cacheLoc:                cacheLoc,
+		store:                   store,
+		RemoteFileWorkflowStore: NewRemoteWorkflowStore(store),
 	}, nil
 }
