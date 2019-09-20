@@ -398,3 +398,7 @@ func GetOutputErrorFile(inputDir DataReference) DataReference {
 func GetFutureFile() string {
 	return "futures.pb"
 }
+
+func GetCompiledFutureFile() string {
+	return "futures_compiled.pb"
+}
