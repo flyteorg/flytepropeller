@@ -435,7 +435,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.Exec
 	switch nodeStatus.GetPhase() {
 	case v1alpha1.NodePhaseNotYetStarted, v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseRetryableFailure, v1alpha1.NodePhaseSucceeding:
 		logger.Debugf(currentNodeCtx, "Handling node Status [%v]", nodeStatus.GetPhase().String())
-		
+
 		t := c.metrics.NodeExecutionTime.Start(ctx)
 		defer t.Stop()
 		return c.handleNode(currentNodeCtx, w, currentNode)

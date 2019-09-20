@@ -76,4 +76,3 @@ func compileTasks(_ context.Context, tasks []*core.TaskTemplate) ([]*core.Compil
 
 	return compiledTasks, nil
 }
-

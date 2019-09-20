@@ -60,5 +60,3 @@ func TestUnderlyingInterface(t *testing.T) {
 	assert.NotNil(t, iface)
 	assert.Nil(t, iface.Outputs)
 }
-
-
