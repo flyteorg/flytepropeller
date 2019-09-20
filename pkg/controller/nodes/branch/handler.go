@@ -13,7 +13,6 @@ import (
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 )
 
 type metrics struct {
@@ -30,7 +29,7 @@ func (b *branchHandler) FinalizeRequired() bool {
 }
 
 func (b *branchHandler) FinalizeRequired() bool {
-	return true
+	return false
 }
 
 func (b *branchHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
