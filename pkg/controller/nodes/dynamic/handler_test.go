@@ -318,10 +318,15 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 		w.On("GetExecutionStatus").Return(ws)
 		nCtx.On("Workflow").Return(w)
 
+		endNodeStatus := &flyteMocks.ExecutableNodeStatus{}
+		endNodeStatus.On("GetDataDir").Return(storage.DataReference("end-node"))
+
 		subNs := &flyteMocks.ExecutableNodeStatus{}
 		subNs.On("SetDataDir", mock.Anything).Return()
 		subNs.On("ResetDirty").Return()
 		subNs.On("GetDataDir").Return(finalOutput)
+		subNs.On("SetParentTaskID", mock.Anything).Return()
+		subNs.On("GetNodeExecutionStatus", mock.MatchedBy(func(n v1alpha1.NodeID) bool { return n == v1alpha1.EndNodeID })).Return(endNodeStatus)
 
 		ns := &flyteMocks.ExecutableNodeStatus{}
 		ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
@@ -388,8 +393,8 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 				n.On("RecursiveNodeHandler", mock.Anything, mock.Anything, mock.Anything).Return(tt.args.s, nil)
 			}
 			if tt.args.generateOutputs {
-				f := v1alpha1.GetOutputsFile(finalOutput)
-				assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, &core.LiteralMap{}))
+				endF := v1alpha1.GetOutputsFile("end-node")
+				assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), endF, storage.Options{}, &core.LiteralMap{}))
 			}
 			d := New(h, n, promutils.NewTestScope())
 			got, err := d.Handle(context.TODO(), nCtx)
