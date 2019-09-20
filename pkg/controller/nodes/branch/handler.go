@@ -10,7 +10,6 @@ import (
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 )
 
 type branchHandler struct {
@@ -18,7 +17,7 @@ type branchHandler struct {
 }
 
 func (b *branchHandler) FinalizeRequired() bool {
-	return true
+	return false
 }
 
 func (b *branchHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
@@ -33,14 +32,13 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 		return handler.DoTransitionToFailed(errors.IllegalStateError, "Invoked branch handler, for a non branch node."), nil
 	}
 
-	w := nCtx.Workflow()
-	nodeInputs, err := nCtx.InputReader().Get(ctx)
-	if err != nil {
-		errMsg := fmt.Sprintf("Failed to read input. Error [%s]", err)
-		return handler.DoTransitionToFailed(errors.RuntimeExecutionError, errMsg), nil
-	}
-
-	if nCtx.NodeStatus().GetPhase() == v1alpha1.NodePhaseNotYetStarted {
+	if nCtx.NodeStateReader().GetBranchNode().FinalizedNodeID == nil {
+		nodeInputs, err := nCtx.InputReader().Get(ctx)
+		if err != nil {
+			errMsg := fmt.Sprintf("Failed to read input. Error [%s]", err)
+			return handler.DoTransitionToFailed(errors.RuntimeExecutionError, errMsg), nil
+		}
+		w := nCtx.Workflow()
 		finalNodeId, err := DecideBranch(ctx, w, nCtx.NodeID(), branchNode, nodeInputs)
 		if err != nil {
 			errMsg := fmt.Sprintf("Branch evaluation failed. Error [%s]", err)
@@ -71,10 +69,9 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 	}
 
 	// If the branchNodestatus was already evaluated i.e, Node is in Running status
-	nodeStatus := w.GetNodeExecutionStatus(nCtx.NodeID())
-	branchStatus := nodeStatus.GetOrCreateBranchStatus()
+	branchStatus := nCtx.NodeStateReader().GetBranchNode()
 	userError := branchNode.GetElseFail()
-	finalNodeID := branchStatus.GetFinalizedNode()
+	finalNodeID := branchStatus.FinalizedNodeID
 	if finalNodeID == nil {
 		if userError != nil {
 			// We should never reach here, but for safety and completeness
@@ -83,7 +80,8 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 		}
 		return handler.DoTransitionToFailed(errors.IllegalStateError, "no node finalized through previous branchNodestatus evaluation"), nil
 	}
-	var ok bool
+
+	w := nCtx.Workflow()
 	branchTakenNode, ok := w.GetNode(*finalNodeID)
 	if !ok {
 		errMsg := fmt.Sprintf("Downstream node [%v] not found", *finalNodeID)
@@ -91,6 +89,7 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 	}
 
 	// Recurse downstream
+	nodeStatus := w.GetNodeExecutionStatus(nCtx.NodeID())
 	return b.recurseDownstream(ctx, nCtx, nodeStatus, branchTakenNode)
 }
 
@@ -111,7 +110,10 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 
 	if downstreamStatus.HasFailed() {
 		errMsg := downstreamStatus.Err.Error()
-		code, _ := errors.GetErrorCode(downstreamStatus.Err)
+		code, nodeError := errors.GetErrorCode(downstreamStatus.Err)
+		if !nodeError {
+			code = errors.UnknownError
+		}
 		return handler.DoTransitionToFailed(code, errMsg), nil
 	}
 
@@ -128,17 +130,19 @@ func (b *branchHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionCon
 	}
 
 	// If the branch was already evaluated i.e, Node is in Running status
-	userError := branch.GetElseFail()
-	nodeState := nCtx.NodeStateReader().GetBranchNode()
-	finalNodeID := nodeState.FinalizedNodeID
-	if finalNodeID == nil {
-		if userError != nil {
-			// We should never reach here, but for safety and completeness
-			return errors.Errorf(errors.UserProvidedError, nCtx.NodeID(), userError.Message)
-		}
+	branchNodeState := nCtx.NodeStateReader().GetBranchNode()
+	if branchNodeState.Phase == v1alpha1.BranchNodeNotYetEvaluated {
 		return errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "No node finalized through previous branch evaluation.")
+	} else if branchNodeState.Phase == v1alpha1.BranchNodeError {
+		// We should never reach here, but for safety and completeness
+		errMsg := "branch evaluation failed"
+		if branch.GetElseFail() != nil {
+			errMsg = branch.GetElseFail().Message
+		}
+		return errors.Errorf(errors.UserProvidedError, nCtx.NodeID(), errMsg)
 	}
-	var ok bool
+
+	finalNodeID := branchNodeState.FinalizedNodeID
 	branchTakenNode, ok := w.GetNode(*finalNodeID)
 	if !ok {
 		return errors.Errorf(errors.DownstreamNodeNotFoundError, w.GetID(), nCtx.NodeID(), "Downstream node [%v] not found", *finalNodeID)

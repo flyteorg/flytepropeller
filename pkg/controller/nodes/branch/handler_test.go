@@ -246,10 +246,10 @@ func TestBranchHandler_AbortNode(t *testing.T) {
 	}
 
 	t.Run("NoBranchNode", func(t *testing.T) {
-		nCtx := createNodeContext(v1alpha1.BranchNodeSuccess, nil, w, n, nil)
+		nCtx := createNodeContext(v1alpha1.BranchNodeError, nil, w, n, nil)
 		err := branch.Abort(ctx, nCtx)
 		assert.Error(t, err)
-		assert.True(t, errors.Matches(err, errors.IllegalStateError))
+		assert.True(t, errors.Matches(err, errors.UserProvidedError))
 	})
 
 	//t.Run("BranchNodeNoEval", func(t *testing.T) {
