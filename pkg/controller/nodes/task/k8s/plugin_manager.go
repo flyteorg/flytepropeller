@@ -120,7 +120,7 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 			if strings.Contains(err.Error(), "exceeded quota") {
 				// TODO: Quota errors are retried forever, it would be good to have support for backoff strategy.
 				logger.Warnf(ctx, "Failed to launch job, resource quota exceeded. err: %v", err)
-				return pluginsCore.DoTransition(pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "failed to launch job, resource quota exceeded.")), nil
+				return pluginsCore.DoTransition(pluginsCore.PhaseInfoWaitingForResources(time.Now(), pluginsCore.DefaultPhaseVersion, "failed to launch job, resource quota exceeded.")), nil
 			}
 			return pluginsCore.DoTransition(pluginsCore.PhaseInfoRetryableFailure("RuntimeFailure", err.Error(), nil)), nil
 		}
@@ -128,7 +128,7 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 		return pluginsCore.UnknownTransition, err
 	}
 
-	return pluginsCore.DoTransition(pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion+1, "task submitted to K8s")), nil
+	return pluginsCore.DoTransition(pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "task submitted to K8s")), nil
 }
 
 func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (pluginsCore.Transition, error) {
@@ -195,7 +195,7 @@ func (e PluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutio
 	}
 	if ps.Phase == PluginPhaseNotStarted {
 		t, err := e.LaunchResource(ctx, tCtx)
-		if err == nil {
+		if err == nil && t.Info().Phase() == pluginsCore.PhaseQueued {
 			if err := tCtx.PluginStateWriter().Put(pluginStateVersion, &PluginState{Phase: PluginPhaseStarted}); err != nil {
 				return pluginsCore.UnknownTransition, err
 			}
@@ -289,29 +289,45 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		return nil, err
 	}
 
+	updateCount := labeled.NewCounter("informer_update", "Update events from informer", metricsScope)
+	droppedUpdateCount := labeled.NewCounter("informer_update_dropped", "Update events from informer that have the same resource version", metricsScope)
+	genericCount := labeled.NewCounter("informer_generic", "Generic events from informer", metricsScope)
+
 	enqueueOwner := iCtx.EnqueueOwner()
 	err := src.Start(
 		// Handlers
 		handler.Funcs{
 			CreateFunc: func(evt event.CreateEvent, q2 workqueue.RateLimitingInterface) {
-				if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
-					logger.Warnf(ctx, "Failed to handle Create event for object [%v]", evt.Meta.GetName())
-				}
+				logger.Debugf(context.Background(), "Create received for %s, ignoring.", evt.Meta.GetName())
 			},
 			UpdateFunc: func(evt event.UpdateEvent, q2 workqueue.RateLimitingInterface) {
 				if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.MetaNew.GetName(), Namespace: evt.MetaNew.GetNamespace()}); err != nil {
-					logger.Warnf(ctx, "Failed to handle Update event for object [%v]", evt.MetaNew.GetName())
+					logger.Warnf(context.Background(), "Failed to handle Update event for object [%v]", evt.MetaNew.GetName())
+				}
+
+				if evt.MetaNew == nil {
+					logger.Warn(context.Background(), "Received an Update event with nil MetaNew.")
+				} else if evt.MetaOld == nil || evt.MetaOld.GetResourceVersion() != evt.MetaNew.GetResourceVersion() {
+					updateCount.Inc(newCtx)
+
+					logger.Debugf(newCtx, "Enqueueing owner for updated object [%v/%v]", evt.MetaNew.GetNamespace(), evt.MetaNew.GetName())
+					if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.MetaNew.GetName(), Namespace: evt.MetaNew.GetNamespace()}); err != nil {
+						logger.Warnf(context.Background(), "Failed to handle Update event for object [%v]", evt.MetaNew.GetName())
+					}
+					err := handler.Handle(newCtx, evt.ObjectNew)
+					if err != nil {
+						logger.Warnf(newCtx, "Failed to handle Update event for object [%v]", evt.ObjectNew)
+					}
+				} else {
+					newCtx := contextutils.WithNamespace(context.Background(), evt.MetaNew.GetNamespace())
+					droppedUpdateCount.Inc(newCtx)
 				}
 			},
 			DeleteFunc: func(evt event.DeleteEvent, q2 workqueue.RateLimitingInterface) {
-				if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
-					logger.Warnf(ctx, "Failed to handle Delete event for object [%v]", evt.Meta.GetName())
-				}
+				logger.Debugf(context.Background(), "Delete received for %s, ignoring.", evt.Meta.GetName())
 			},
 			GenericFunc: func(evt event.GenericEvent, q2 workqueue.RateLimitingInterface) {
-				if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
-					logger.Warnf(ctx, "Failed to handle Generic event for object [%v]", evt.Meta.GetName())
-				}
+				logger.Debugf(context.Background(), "Generic received for %s, ignoring.", evt.Meta.GetName())
 			},
 		},
 		// Queue
@@ -321,14 +337,14 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		// Predicates
 		predicate.Funcs{
 			CreateFunc: func(createEvent event.CreateEvent) bool {
-				return workflowParentPredicate(createEvent.Meta)
+				return false
 			},
 			UpdateFunc: func(updateEvent event.UpdateEvent) bool {
 				// TODO we should filter out events in case there are no updates observed between the old and new?
 				return workflowParentPredicate(updateEvent.MetaNew)
 			},
 			DeleteFunc: func(deleteEvent event.DeleteEvent) bool {
-				return workflowParentPredicate(deleteEvent.Meta)
+				return false
 			},
 			GenericFunc: func(genericEvent event.GenericEvent) bool {
 				return workflowParentPredicate(genericEvent.Meta)

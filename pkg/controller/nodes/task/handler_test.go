@@ -31,6 +31,7 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
 	catalogMock "github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog/mocks"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/codex"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/fakeplugins"
 )
 
@@ -362,8 +363,8 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 		nCtx.On("EnqueueOwner").Return(nil)
 
 		st := bytes.NewBuffer([]byte{})
-		codex := GobStateCodec{}
-		assert.NoError(t, codex.Encode(pluginResp, st))
+		cod := codex.GobStateCodec{}
+		assert.NoError(t, cod.Encode(pluginResp, st))
 		nr := &nodeMocks.NodeStateReader{}
 		nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
 			PluginState:        st.Bytes(),
@@ -649,8 +650,8 @@ func Test_task_Handle_Catalog(t *testing.T) {
 		nCtx.On("EnqueueOwner").Return(nil)
 
 		st := bytes.NewBuffer([]byte{})
-		codex := GobStateCodec{}
-		assert.NoError(t, codex.Encode(&fakeplugins.NextPhaseState{
+		cod := codex.GobStateCodec{}
+		assert.NoError(t, cod.Encode(&fakeplugins.NextPhaseState{
 			Phase:        pluginCore.PhaseSuccess,
 			OutputExists: true,
 		}, st))
@@ -740,7 +741,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			} else {
 				c.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			}
-			tk := New(context.TODO(),  mocks.NewFakeKubeClient(), &catalog.MockCatalogClient{}, promutils.NewTestScope())
+			tk := New(context.TODO(), mocks.NewFakeKubeClient(), &catalog.MockCatalogClient{}, promutils.NewTestScope())
 			tk.plugins = map[pluginCore.TaskType]pluginCore.Plugin{
 				"test": fakeplugins.NewPhaseBasedPlugin(),
 			}
@@ -820,8 +821,8 @@ func Test_task_Abort(t *testing.T) {
 	type test struct {
 		A int
 	}
-	codex := GobStateCodec{}
-	assert.NoError(t, codex.Encode(test{A: a}, st))
+	cod := codex.GobStateCodec{}
+	assert.NoError(t, cod.Encode(test{A: a}, st))
 	nr := &nodeMocks.NodeStateReader{}
 	nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
 		PluginState: st.Bytes(),
@@ -931,8 +932,8 @@ func Test_task_Finalize(t *testing.T) {
 	type test struct {
 		A int
 	}
-	codex := GobStateCodec{}
-	assert.NoError(t, codex.Encode(test{A: a}, st))
+	cod := codex.GobStateCodec{}
+	assert.NoError(t, cod.Encode(test{A: a}, st))
 	nr := &nodeMocks.NodeStateReader{}
 	nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
 		PluginState: st.Bytes(),
@@ -990,7 +991,7 @@ func Test_task_Finalize(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	got := New(context.TODO(),  mocks.NewFakeKubeClient(), &catalog.MockCatalogClient{}, promutils.NewTestScope())
+	got := New(context.TODO(), mocks.NewFakeKubeClient(), &catalog.MockCatalogClient{}, promutils.NewTestScope())
 	assert.NotNil(t, got)
 	assert.NotNil(t, got.plugins)
 	assert.NotNil(t, got.metrics)

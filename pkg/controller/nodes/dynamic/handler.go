@@ -31,7 +31,6 @@ import (
 
 //go:generate mockery -all -case=underscore
 
-
 const dynamicNodeID = "dynamic-node"
 
 type TaskNodeHandler interface {
@@ -96,7 +95,6 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 	if err != nil {
 		return handler.UnknownTransition, err
 	}
-
 
 	if trns.Info().GetPhase() == handler.EPhaseSuccess {
 		logger.Infof(ctx, "dynamic workflow node has succeeded, will call on success handler for parent node [%s]", nCtx.NodeID())

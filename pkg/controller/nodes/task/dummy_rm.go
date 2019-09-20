@@ -7,7 +7,6 @@ import (
 )
 
 type dummyRM struct {
-
 }
 
 func (d dummyRM) AllocateResource(ctx context.Context, namespace string, allocationToken string) (pluginCore.AllocationStatus, error) {
@@ -17,4 +16,3 @@ func (d dummyRM) AllocateResource(ctx context.Context, namespace string, allocat
 func (d dummyRM) ReleaseResource(ctx context.Context, namespace string, allocationToken string) error {
 	return nil
 }
-
