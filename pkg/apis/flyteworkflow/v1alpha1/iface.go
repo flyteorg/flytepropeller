@@ -207,12 +207,10 @@ type MutableNodeStatus interface {
 	GetBranchStatus() MutableBranchNodeStatus
 	GetOrCreateBranchStatus() MutableBranchNodeStatus
 	GetWorkflowStatus() MutableWorkflowNodeStatus
-	GetOrCreateWorkflowStatus() MutableWorkflowNodeStatus
 	ClearWorkflowStatus()
 	GetOrCreateTaskStatus() MutableTaskNodeStatus
 	GetTaskStatus() MutableTaskNodeStatus
 	ClearTaskStatus()
-	GetOrCreateSubWorkflowStatus() MutableSubWorkflowNodeStatus
 	ClearSubWorkflowStatus()
 	GetOrCreateDynamicNodeStatus() MutableDynamicNodeStatus
 	GetDynamicNodeStatus() MutableDynamicNodeStatus

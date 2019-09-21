@@ -144,16 +144,12 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 		t.SetPluginState(n.t.PluginState)
 		t.SetPluginStateVersion(n.t.PluginStateVersion)
 
-	} else if s.GetTaskNodeStatus() != nil {
-		s.ClearTaskStatus()
 	}
 
 	// Update dynamic node status
 	if n.d != nil {
 		t := s.GetOrCreateDynamicNodeStatus()
 		t.SetDynamicNodePhase(n.d.Phase)
-	} else {
-		s.ClearDynamicNodeStatus()
 	}
 
 	// Update branch node status

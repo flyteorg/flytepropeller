@@ -6,22 +6,23 @@ import (
 	"testing"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/lyft/flytepropeller/pkg/controller/executors"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
+	mocks3 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
-	"github.com/stretchr/testify/assert"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/mocks"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	mocks2 "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	"github.com/lyft/flytestdlib/storage"
-	v12 "k8s.io/api/core/v1"
-	mocks3 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	v12 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	mocks2 "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/mocks"
 )
 
 type recursiveNodeHandlerFn func(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error)
@@ -59,9 +60,9 @@ func (m *mockNodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.Executab
 }
 
 func createNodeContext(phase v1alpha1.BranchNodePhase, childNodeID *v1alpha1.NodeID, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode, inputs *core.LiteralMap) *mocks.NodeExecutionContext {
-	nodeId := "nodeId"
+	nodeID := "nodeID"
 	branchNodeState := handler.BranchNodeState{
-		FinalizedNodeID: &nodeId,
+		FinalizedNodeID: &nodeID,
 		Phase:           phase,
 	}
 	s := &branchNodeStateHolder{s: branchNodeState}
@@ -109,7 +110,7 @@ func createNodeContext(phase v1alpha1.BranchNodePhase, childNodeID *v1alpha1.Nod
 	nr := &mocks.NodeStateReader{}
 	nr.On("GetBranchNode").Return(handler.BranchNodeState{
 		FinalizedNodeID: childNodeID,
-		Phase: phase,
+		Phase:           phase,
 	})
 	nCtx.On("NodeStateReader").Return(nr)
 	nCtx.On("NodeStateWriter").Return(s)
@@ -134,7 +135,7 @@ func TestBranchHandler_RecurseDownstream(t *testing.T) {
 	}
 
 	res := &v12.ResourceRequirements{}
-	n := & mocks2.ExecutableNode{}
+	n := &mocks2.ExecutableNode{}
 	n.On("GetResources").Return(res)
 
 	expectedError := fmt.Errorf("error")
@@ -219,7 +220,7 @@ func TestBranchHandler_AbortNode(t *testing.T) {
 	}
 
 	n := &v1alpha1.NodeSpec{
-		ID: n2,
+		ID:         n2,
 		BranchNode: branchNode,
 	}
 
@@ -251,13 +252,6 @@ func TestBranchHandler_AbortNode(t *testing.T) {
 		assert.Error(t, err)
 		assert.True(t, errors.Matches(err, errors.UserProvidedError))
 	})
-
-	//t.Run("BranchNodeNoEval", func(t *testing.T) {
-	//	nCtx := createNodeContext(v1alpha1.BranchNodeNotYetEvaluated, &childNodeID, w, n)
-	//	err := branch.Abort(ctx, nCtx)
-	//	assert.Error(t, err)
-	//	assert.True(t, errors.Matches(err, errors.IllegalStateError))
-	//})
 
 	t.Run("BranchNodeSuccess", func(t *testing.T) {
 
@@ -299,19 +293,18 @@ func TestBranchHandler_HandleNode(t *testing.T) {
 	}
 	_, inputs := getComparisonExpression(1, core.ComparisonExpression_NEQ, 1)
 
-
 	tests := []struct {
-		name           string
-		node           v1alpha1.ExecutableNode
-		isErr          bool
-		expectedPhase  handler.EPhase
+		name          string
+		node          v1alpha1.ExecutableNode
+		isErr         bool
+		expectedPhase handler.EPhase
 	}{
 		{"NoBranchNode", &v1alpha1.NodeSpec{}, false, handler.EPhaseFailed},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			res := &v12.ResourceRequirements{}
-			n := & mocks2.ExecutableNode{}
+			n := &mocks2.ExecutableNode{}
 			n.On("GetResources").Return(res)
 			n.On("GetBranchNode").Return(nil)
 			nCtx := createNodeContext(v1alpha1.BranchNodeSuccess, &childNodeID, w, n, inputs)
