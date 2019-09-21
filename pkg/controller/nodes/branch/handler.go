@@ -4,16 +4,22 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lyft/flytestdlib/promutils"
-	"github.com/lyft/flytepropeller/pkg/controller/executors"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flytestdlib/promutils"
+
+	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 )
+
+type metrics struct {
+	scope promutils.Scope
+}
 
 type branchHandler struct {
 	nodeExecutor executors.Node
+	m            metrics
 }
 
 func (b *branchHandler) FinalizeRequired() bool {
@@ -39,13 +45,13 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.RuntimeExecutionError), errMsg, nil)), nil
 		}
 		w := nCtx.Workflow()
-		finalNodeId, err := DecideBranch(ctx, w, nCtx.NodeID(), branchNode, nodeInputs)
+		finalNodeID, err := DecideBranch(ctx, w, nCtx.NodeID(), branchNode, nodeInputs)
 		if err != nil {
 			errMsg := fmt.Sprintf("Branch evaluation failed. Error [%s]", err)
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.IllegalStateError), errMsg, nil)), nil
 		}
 
-		branchNodeState := handler.BranchNodeState{FinalizedNodeID: finalNodeId, Phase: v1alpha1.BranchNodeSuccess}
+		branchNodeState := handler.BranchNodeState{FinalizedNodeID: finalNodeID, Phase: v1alpha1.BranchNodeSuccess}
 		err = nCtx.NodeStateWriter().PutBranchNode(branchNodeState)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())
@@ -53,9 +59,9 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 		}
 
 		var ok bool
-		finalNode, ok := w.GetNode(*finalNodeId)
+		finalNode, ok := w.GetNode(*finalNodeID)
 		if !ok {
-			errMsg := fmt.Sprintf("Branch downstream finalized node not found. FinalizedNode [%s]", *finalNodeId)
+			errMsg := fmt.Sprintf("Branch downstream finalized node not found. FinalizedNode [%s]", *finalNodeID)
 			logger.Debugf(ctx, errMsg)
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.DownstreamNodeNotFoundError), errMsg, nil)), nil
 		}
@@ -159,8 +165,8 @@ func (b *branchHandler) Finalize(ctx context.Context, executionContext handler.N
 }
 
 func New(executor executors.Node, scope promutils.Scope) handler.Node {
-	//branchScope := scope.NewSubScope("branch")
 	return &branchHandler{
 		nodeExecutor: executor,
+		m:            metrics{scope: scope},
 	}
 }
