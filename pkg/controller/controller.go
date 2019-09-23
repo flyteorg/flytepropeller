@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 
 	"github.com/lyft/flytepropeller/pkg/controller/config"
 	"github.com/lyft/flytepropeller/pkg/controller/workflowstore"
@@ -28,7 +29,6 @@ import (
 	clientset "github.com/lyft/flytepropeller/pkg/client/clientset/versioned"
 	flyteScheme "github.com/lyft/flytepropeller/pkg/client/clientset/versioned/scheme"
 	informers "github.com/lyft/flytepropeller/pkg/client/informers/externalversions"
-	"github.com/lyft/flytepropeller/pkg/controller/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/lyft/flytepropeller/pkg/controller/workflow"
@@ -274,7 +274,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	}
 
 	logger.Info(ctx, "Setting up Catalog client.")
-	catalogClient, err := catalog.NewCatalogClient(ctx, store)
+	catalogClient, err := catalog.NewCatalogClient(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create datacatalog client")
 	}

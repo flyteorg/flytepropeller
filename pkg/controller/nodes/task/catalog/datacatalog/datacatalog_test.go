@@ -8,11 +8,15 @@ import (
 	"github.com/google/uuid"
 	datacatalog "github.com/lyft/datacatalog/protos/gen"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	mocks2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/pkg/errors"
+
 	"github.com/lyft/flytepropeller/pkg/controller/catalog/datacatalog/mocks"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
+
 	"github.com/lyft/flytestdlib/contextutils"
-	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
-	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/codes"
@@ -21,17 +25,6 @@ import (
 
 func init() {
 	labeled.SetMetricKeys(contextutils.ProjectKey, contextutils.DomainKey, contextutils.WorkflowIDKey, contextutils.TaskIDKey)
-}
-
-func createInmemoryStore(t testing.TB) *storage.DataStore {
-	cfg := storage.Config{
-		Type: storage.TypeMemory,
-	}
-
-	d, err := storage.NewDataStore(&cfg, promutils.NewTestScope())
-	assert.NoError(t, err)
-
-	return d
 }
 
 func newStringLiteral(value string) *core.Literal {
@@ -66,25 +59,20 @@ var variableMap = &core.VariableMap{
 	},
 }
 
-var typedInterface = &core.TypedInterface{
+var typedInterface = core.TypedInterface{
 	Inputs:  variableMap,
 	Outputs: variableMap,
 }
 
-var sampleTask = &core.TaskTemplate{
-	Id:        &core.Identifier{Project: "project", Domain: "domain", Name: "name"},
-	Interface: typedInterface,
-	Metadata: &core.TaskMetadata{
-		DiscoveryVersion: "1.0.0",
-	},
+var sampleKey = catalog.Key{
+	Identifier:     core.Identifier{Project: "project", Domain: "domain", Name: "name"},
+	TypedInterface: typedInterface,
+	CacheVersion:   "1.0.0",
 }
 
-var noInputOutputTask = &core.TaskTemplate{
-	Id: &core.Identifier{Project: "project", Domain: "domain", Name: "name"},
-	Metadata: &core.TaskMetadata{
-		DiscoveryVersion: "1.0.0",
-	},
-	Interface: &core.TypedInterface{},
+var noInputOutputKey = catalog.Key{
+	Identifier:     core.Identifier{Project: "project", Domain: "domain", Name: "name"},
+	CacheVersion:   "1.0.0",
 }
 
 var datasetID = &datacatalog.DatasetID{
@@ -95,41 +83,20 @@ var datasetID = &datacatalog.DatasetID{
 }
 
 func assertGrpcErr(t *testing.T, err error, code codes.Code) {
-	assert.Equal(t, code, status.Code(err))
+	assert.Equal(t, code, status.Code(errors.Cause(err)), "Got err: %s", err)
 }
 
 func TestCatalog_Get(t *testing.T) {
 
 	ctx := context.Background()
-	testFile := storage.DataReference("test-data.pb")
-
-	t.Run("Empty interface returns err", func(t *testing.T) {
-		dataStore := createInmemoryStore(t)
-
-		mockClient := &mocks.DataCatalogClient{}
-		catalogClient := &CatalogClient{
-			client: mockClient,
-			store:  dataStore,
-		}
-		taskWithoutInterface := &core.TaskTemplate{
-			Id: &core.Identifier{Project: "project", Domain: "domain", Name: "name"},
-			Metadata: &core.TaskMetadata{
-				DiscoveryVersion: "1.0.0",
-			},
-		}
-		_, err := catalogClient.Get(ctx, taskWithoutInterface, testFile)
-		assert.Error(t, err)
-	})
 
 	t.Run("No results, no Dataset", func(t *testing.T) {
-		dataStore := createInmemoryStore(t)
-		err := dataStore.WriteProtobuf(ctx, testFile, storage.Options{}, newStringLiteral("output"))
-		assert.NoError(t, err)
+		ir := &mocks2.InputReader{}
+		ir.On("Get", mock.Anything).Return(newStringLiteral("output"), nil, nil)
 
 		mockClient := &mocks.DataCatalogClient{}
 		catalogClient := &CatalogClient{
 			client: mockClient,
-			store:  dataStore,
 		}
 		mockClient.On("GetDataset",
 			ctx,
@@ -138,7 +105,9 @@ func TestCatalog_Get(t *testing.T) {
 				return true
 			}),
 		).Return(nil, status.Error(codes.NotFound, "test not found"))
-		resp, err := catalogClient.Get(ctx, sampleTask, testFile)
+		newKey := sampleKey
+		newKey.InputReader = ir
+		resp, err := catalogClient.Get(ctx, newKey)
 		assert.Error(t, err)
 
 		assertGrpcErr(t, err, codes.NotFound)
@@ -146,15 +115,12 @@ func TestCatalog_Get(t *testing.T) {
 	})
 
 	t.Run("No results, no Artifact", func(t *testing.T) {
-		dataStore := createInmemoryStore(t)
-
-		err := dataStore.WriteProtobuf(ctx, testFile, storage.Options{}, sampleParameters)
-		assert.NoError(t, err)
+		ir := &mocks2.InputReader{}
+		ir.On("Get", mock.Anything).Return(sampleParameters, nil, nil)
 
 		mockClient := &mocks.DataCatalogClient{}
-		discovery := &CatalogClient{
+		catalogClient := &CatalogClient{
 			client: mockClient,
-			store:  dataStore,
 		}
 
 		sampleDataSet := &datacatalog.Dataset{
@@ -175,21 +141,20 @@ func TestCatalog_Get(t *testing.T) {
 			}),
 		).Return(nil, status.Error(codes.NotFound, ""))
 
-		outputs, err := discovery.Get(ctx, sampleTask, testFile)
+		newKey := sampleKey
+		newKey.InputReader = ir
+		outputs, err := catalogClient.Get(ctx, newKey)
 		assert.Nil(t, outputs)
 		assert.Error(t, err)
 	})
 
 	t.Run("Found w/ tag", func(t *testing.T) {
-		dataStore := createInmemoryStore(t)
-
-		err := dataStore.WriteProtobuf(ctx, testFile, storage.Options{}, sampleParameters)
-		assert.NoError(t, err)
+		ir := &mocks2.InputReader{}
+		ir.On("Get", mock.Anything).Return(sampleParameters, nil, nil)
 
 		mockClient := &mocks.DataCatalogClient{}
-		discovery := &CatalogClient{
+		catalogClient := &CatalogClient{
 			client: mockClient,
-			store:  dataStore,
 		}
 
 		sampleDataSet := &datacatalog.Dataset{
@@ -222,18 +187,17 @@ func TestCatalog_Get(t *testing.T) {
 			}),
 		).Return(&datacatalog.GetArtifactResponse{Artifact: sampleArtifact}, nil)
 
-		resp, err := discovery.Get(ctx, sampleTask, testFile)
+		newKey := sampleKey
+		newKey.InputReader = ir
+		resp, err := catalogClient.Get(ctx, newKey)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 	})
 
 	t.Run("Found w/ tag no inputs or outputs", func(t *testing.T) {
-		dataStore := createInmemoryStore(t)
-
 		mockClient := &mocks.DataCatalogClient{}
 		discovery := &CatalogClient{
 			client: mockClient,
-			store:  dataStore,
 		}
 
 		sampleDataSet := &datacatalog.Dataset{
@@ -267,44 +231,26 @@ func TestCatalog_Get(t *testing.T) {
 			}),
 		).Return(&datacatalog.GetArtifactResponse{Artifact: sampleArtifact}, nil)
 
-		resp, err := discovery.Get(ctx, noInputOutputTask, testFile)
+		resp, err := discovery.Get(ctx, noInputOutputKey)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
-		assert.Len(t, resp.Literals, 0)
+		v, e, err := resp.Read(ctx)
+		assert.NoError(t, err)
+		assert.Nil(t, e)
+		assert.Len(t, v.Literals, 0)
 	})
 }
 
 func TestCatalog_Put(t *testing.T) {
 	ctx := context.Background()
 
-	execID := &core.TaskExecutionIdentifier{
-		NodeExecutionId: &core.NodeExecutionIdentifier{
-			ExecutionId: &core.WorkflowExecutionIdentifier{
-				Project: "project",
-				Domain:  "domain",
-				Name:    "runID",
-			},
-		},
-		TaskId: &core.Identifier{
-			Project: "project",
-			Domain:  "domain",
-			Name:    "taskRunName",
-			Version: "taskRunVersion",
-		},
-	}
-
-	testFile := storage.DataReference("test-data.pb")
-
 	t.Run("Create new cached execution", func(t *testing.T) {
-		dataStore := createInmemoryStore(t)
-
-		err := dataStore.WriteProtobuf(ctx, testFile, storage.Options{}, sampleParameters)
-		assert.NoError(t, err)
+		ir := &mocks2.InputReader{}
+		ir.On("Get", mock.Anything).Return(sampleParameters, nil, nil)
 
 		mockClient := &mocks.DataCatalogClient{}
 		discovery := &CatalogClient{
 			client: mockClient,
-			store:  dataStore,
 		}
 
 		mockClient.On("CreateDataset",
@@ -334,16 +280,22 @@ func TestCatalog_Put(t *testing.T) {
 				return true
 			}),
 		).Return(&datacatalog.AddTagResponse{}, nil)
-		err = discovery.Put(ctx, sampleTask, execID, testFile, testFile)
+		newKey := sampleKey
+		newKey.InputReader = ir
+		or := ioutils.NewInMemoryOutputReader(sampleParameters, nil)
+		err := discovery.Put(ctx, newKey, or, catalog.Metadata{
+			WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{
+				Name: "test",
+			},
+			TaskExecutionIdentifier: nil,
+		})
 		assert.NoError(t, err)
 	})
 
 	t.Run("Create new cached execution with no inputs/outputs", func(t *testing.T) {
-		dataStore := createInmemoryStore(t)
 		mockClient := &mocks.DataCatalogClient{}
 		catalogClient := &CatalogClient{
 			client: mockClient,
-			store:  dataStore,
 		}
 
 		mockClient.On("CreateDataset",
@@ -369,20 +321,17 @@ func TestCatalog_Put(t *testing.T) {
 				return true
 			}),
 		).Return(&datacatalog.AddTagResponse{}, nil)
-		err := catalogClient.Put(ctx, noInputOutputTask, execID, "", "")
+		err := catalogClient.Put(ctx, noInputOutputKey, &mocks2.OutputReader{}, catalog.Metadata{})
 		assert.NoError(t, err)
 	})
 
 	t.Run("Create new cached execution with existing dataset", func(t *testing.T) {
-		dataStore := createInmemoryStore(t)
-
-		err := dataStore.WriteProtobuf(ctx, testFile, storage.Options{}, sampleParameters)
-		assert.NoError(t, err)
+		ir := &mocks2.InputReader{}
+		ir.On("Get", mock.Anything).Return(sampleParameters, nil, nil)
 
 		mockClient := &mocks.DataCatalogClient{}
 		discovery := &CatalogClient{
 			client: mockClient,
-			store:  dataStore,
 		}
 
 		createDatasetCalled := false
@@ -417,7 +366,15 @@ func TestCatalog_Put(t *testing.T) {
 				return true
 			}),
 		).Return(&datacatalog.AddTagResponse{}, nil)
-		err = discovery.Put(ctx, sampleTask, execID, testFile, testFile)
+		newKey := sampleKey
+		newKey.InputReader = ir
+		or := ioutils.NewInMemoryOutputReader(sampleParameters, nil)
+		err := discovery.Put(ctx, newKey, or, catalog.Metadata{
+			WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{
+				Name: "test",
+			},
+			TaskExecutionIdentifier: nil,
+		})
 		assert.NoError(t, err)
 		assert.True(t, createDatasetCalled)
 		assert.True(t, createArtifactCalled)
