@@ -253,7 +253,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		// Outputs for the parent node will only get generated after the subtasks complete. We have to wait for the completion
 		// the dynamic.handler will call onTaskSuccess for the parent node
 
-		f, err := NewRemoteFutureFileReader(ctx, tCtx.ow.dataDir, tCtx.DataStore())
+		f, err := NewRemoteFutureFileReader(ctx, tCtx.ow.GetOutputPrefixPath(), tCtx.DataStore())
 		if err != nil {
 			return nil, regErrors.Wrapf(err, "failed to create remote file reader")
 		}
@@ -267,7 +267,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		// End TODO
 		// -------------------------------------
 		logger.Debugf(ctx, "Task success detected, calling on Task success")
-		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.outReader, tCtx.tr, catalog.Metadata{
+		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.GetReader(), tCtx.tr, catalog.Metadata{
 			WorkflowExecutionIdentifier: nil,
 			TaskExecutionIdentifier: &core.TaskExecutionIdentifier{
 				TaskId: tCtx.tr.GetTaskID(),
@@ -282,7 +282,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		if ee != nil {
 			pluginTrns.ObservedExecutionError(ee)
 		} else {
-			pluginTrns.ObserveSuccess(tCtx.ow.outPath)
+			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath())
 		}
 	}
 	return pluginTrns, nil
@@ -329,7 +329,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 					logger.Errorf(ctx, "got execution error from catalog output reader? This should not happen, err: %s", ee.String())
 					return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
 				}
-				if err := nCtx.DataStore().WriteProtobuf(ctx, tCtx.ow.outPath, storage.Options{}, o); err != nil {
+				if err := nCtx.DataStore().WriteProtobuf(ctx, tCtx.ow.GetOutputPath(), storage.Options{}, o); err != nil {
 					logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
 					return handler.UnknownTransition, err
 				}
