@@ -464,9 +464,6 @@
     "go/tasks/aws",
     "go/tasks/config",
     "go/tasks/errors",
-    "go/tasks/hive",
-    "go/tasks/hive/client",
-    "go/tasks/hive/config",
     "go/tasks/logs",
     "go/tasks/pluginmachinery",
     "go/tasks/pluginmachinery/catalog",
@@ -544,6 +541,14 @@
   packages = ["workflow/sets"]
   pruneopts = ""
   revision = "51050b0a64aa3e9b264d82d502b2ec68634d2aba"
+
+[[projects]]
+  branch = "master"
+  digest = "1:96e9b14e5c61cefe7cd80251ecd5d99e0029e174fc2f5f7d63868eaddf437bc0"
+  name = "github.com/lyft/modelbuilderadmin"
+  packages = ["workflow/sets"]
+  pruneopts = ""
+  revision = "8985b100a28946a5377def993bacdd21fbc90a99"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
@@ -1369,7 +1374,6 @@
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/service",
     "github.com/lyft/flyteplugins/go/tasks/array/k8s",
     "github.com/lyft/flyteplugins/go/tasks/errors",
-    "github.com/lyft/flyteplugins/go/tasks/hive",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog/mocks",
