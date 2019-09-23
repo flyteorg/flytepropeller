@@ -9,6 +9,7 @@ import (
 	pluginCatalog "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
@@ -52,7 +53,7 @@ type taskExecutionContext struct {
 	rm  pluginCore.ResourceManager
 	psm *pluginStateManager
 	tr  handler.TaskReader
-	ow  *OutputWriter
+	ow  *ioutils.BufferedOutputWriter
 	ber *bufferedEventRecorder
 	sm  pluginCore.SecretManager
 	c   catalog.Client
@@ -104,10 +105,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		return nil, err
 	}
 
-	ow, err := NewRemoteFileOutputWriter(ctx, nCtx.NodeStatus().GetDataDir(), nCtx.DataStore())
-	if err != nil {
-		return nil, err
-	}
+	ow := ioutils.NewBufferedOutputWriter(ctx, ioutils.NewRemoteFileOutputPaths(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetDataDir()))
 
 	ts := nCtx.NodeStateReader().GetTaskNodeState()
 	var b *bytes.Buffer
@@ -133,7 +131,6 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		ow:  ow,
 		ber: newBufferedEventRecorder(),
 		c:   t.catalog,
-		// TODO @kumare path should be configurable
 		sm: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
 	}, nil
 }

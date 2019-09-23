@@ -6,6 +6,7 @@ import (
 
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/lyft/flytestdlib/storage"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -132,11 +133,18 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1
 	}
 
 	return newNodeExecContext(ctx, c.store, w, n, s,
-		&remoteFileInputReader{
-			inputPath:       inFile,
-			store:           c.store,
-			inputPrefixPath: s.GetDataDir(),
-		},
+		ioutils.NewCachedInputReader(
+			ctx,
+			ioutils.NewRemoteFileInputReader(
+				ctx,
+				c.store,
+				ioutils.NewInputFilePaths(
+					ctx,
+					c.store,
+					s.GetDataDir(),
+				),
+			),
+		),
 		c.maxDatasetSizeBytes,
 		&taskEventRecorder{TaskEventRecorder: c.taskRecorder},
 		tr,

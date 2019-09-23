@@ -438,7 +438,7 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:ab33b506292441cab3455961ad86e9e5e81989b2f6089d4437d2b15a6d417dc2"
+  digest = "1:abad43a0400036cacef298282d6ec5c19025f5ff5b71e95c289f9d8632fe610c"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/array",
@@ -448,9 +448,6 @@
     "go/tasks/array/k8s",
     "go/tasks/config",
     "go/tasks/errors",
-    "go/tasks/hive",
-    "go/tasks/hive/client",
-    "go/tasks/hive/config",
     "go/tasks/logs",
     "go/tasks/pluginmachinery",
     "go/tasks/pluginmachinery/catalog",
@@ -465,12 +462,14 @@
     "go/tasks/pluginmachinery/k8s/mocks",
     "go/tasks/pluginmachinery/utils",
     "go/tasks/pluginmachinery/workqueue",
+    "go/tasks/plugins/hive",
+    "go/tasks/plugins/hive/client",
+    "go/tasks/plugins/hive/config",
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "31b0fb21c6bf86f9e5e81297d9ad3de3feaea6e6"
+  revision = "fc3a8df2e3b6042a26f0e53f185e22995af363d0"
   source = "https://github.com/lyft/flyteplugins"
-  version = "v0.1.7"
 
 [[projects]]
   digest = "1:b8860863eb1eb7fe4f7d2b3c6b34b89aaedeaae88d761d2c9a4eccc46262abcc"
@@ -497,6 +496,14 @@
   revision = "a758bbb91a09d6e9474fa160a633fdb05f3abc03"
   source = "https://github.com/lyft/flytestdlib"
   version = "v0.2.16"
+
+[[projects]]
+  branch = "master"
+  digest = "1:96e9b14e5c61cefe7cd80251ecd5d99e0029e174fc2f5f7d63868eaddf437bc0"
+  name = "github.com/lyft/modelbuilderadmin"
+  packages = ["workflow/sets"]
+  pruneopts = ""
+  revision = "8985b100a28946a5377def993bacdd21fbc90a99"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
@@ -1325,7 +1332,6 @@
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/service",
     "github.com/lyft/flyteplugins/go/tasks/array/k8s",
     "github.com/lyft/flyteplugins/go/tasks/errors",
-    "github.com/lyft/flyteplugins/go/tasks/hive",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core",
@@ -1337,6 +1343,7 @@
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s/mocks",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils",
+    "github.com/lyft/flyteplugins/go/tasks/plugins/hive",
     "github.com/lyft/flyteplugins/go/tasks/plugins/k8s/container",
     "github.com/lyft/flytestdlib/config",
     "github.com/lyft/flytestdlib/config/viper",
