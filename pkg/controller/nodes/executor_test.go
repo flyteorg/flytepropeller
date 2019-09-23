@@ -15,10 +15,10 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
-	"github.com/lyft/flytepropeller/pkg/controller/catalog"
 	mocks4 "github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	mocks2 "github.com/lyft/flytepropeller/pkg/controller/nodes/mocks"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -33,14 +33,13 @@ import (
 )
 
 var fakeKubeClient = mocks4.NewFakeKubeClient()
-var catalogClient = catalog.NewNoOpDiscovery()
+var catalogClient = catalog.NOOPCatalog{}
 
 const taskID = "tID"
 
 func TestSetInputsForStartNode(t *testing.T) {
 	ctx := context.Background()
 	mockStorage := createInmemoryDataStore(t, testScope.NewSubScope("f"))
-	catalogClient, _ := catalog.NewCatalogClient(ctx, mockStorage)
 	enQWf := func(workflowID v1alpha1.WorkflowID) {}
 
 	exec, err := NewExecutor(ctx, mockStorage, enQWf, events.NewMockEventSink(), launchplan.NewFailFastLaunchPlanExecutor(), 10, fakeKubeClient, catalogClient, promutils.NewTestScope())

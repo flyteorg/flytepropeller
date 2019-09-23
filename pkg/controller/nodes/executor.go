@@ -17,11 +17,11 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/lyft/flytepropeller/pkg/controller/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 )
 
 type nodeMetrics struct {

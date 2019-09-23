@@ -3,8 +3,8 @@ package nodes
 import (
 	"context"
 
-	"github.com/lyft/flytepropeller/pkg/controller/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/dynamic"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 
 	"github.com/lyft/flytestdlib/promutils"
 

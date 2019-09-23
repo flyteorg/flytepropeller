@@ -1,4 +1,4 @@
-package transformer
+package datacatalog
 
 import (
 	"context"
@@ -6,29 +6,29 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/utils"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
+	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
 // add test for raarranged Literal maps for input values
 
 func TestNilParamTask(t *testing.T) {
-	task := &core.TaskTemplate{
-		Id: &core.Identifier{
+	key := catalog.Key{
+		Identifier: core.Identifier{
 			Project: "project",
 			Domain:  "domain",
 			Name:    "name",
 			Version: "1.0.0",
 		},
-		Metadata: &core.TaskMetadata{
-			DiscoveryVersion: "1.0.0",
-		},
-		Interface: &core.TypedInterface{
+		CacheVersion: "1.0.0",
+		TypedInterface: core.TypedInterface{
 			Inputs:  nil,
 			Outputs: nil,
 		},
 	}
-	datasetID, err := GenerateDatasetIDForTask(context.TODO(), task)
+	datasetID, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, datasetID.Version)
 	assert.Equal(t, "1.0.0-V-K42BDF-V-K42BDF", datasetID.Version)
@@ -36,46 +36,42 @@ func TestNilParamTask(t *testing.T) {
 
 // Ensure that empty parameters generate the same dataset as nil parameters
 func TestEmptyParamTask(t *testing.T) {
-	task := &core.TaskTemplate{
-		Id: &core.Identifier{
+	key := catalog.Key{
+		Identifier: core.Identifier{
 			Project: "project",
 			Domain:  "domain",
 			Name:    "name",
 			Version: "1.0.0",
 		},
-		Metadata: &core.TaskMetadata{
-			DiscoveryVersion: "1.0.0",
-		},
-		Interface: &core.TypedInterface{
+		CacheVersion: "1.0.0",
+		TypedInterface: core.TypedInterface{
 			Inputs:  &core.VariableMap{},
 			Outputs: &core.VariableMap{},
 		},
 	}
-	datasetID, err := GenerateDatasetIDForTask(context.TODO(), task)
+	datasetID, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, datasetID.Version)
 	assert.Equal(t, "1.0.0-V-K42BDF-V-K42BDF", datasetID.Version)
 
-	task.Interface.Inputs = nil
-	task.Interface.Outputs = nil
-	datasetIDDupe, err := GenerateDatasetIDForTask(context.TODO(), task)
+	key.TypedInterface.Inputs = nil
+	key.TypedInterface.Outputs = nil
+	datasetIDDupe, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 	assert.True(t, proto.Equal(datasetIDDupe, datasetID))
 }
 
 // Ensure the key order on the map generates the same dataset
 func TestVariableMapOrder(t *testing.T) {
-	task := &core.TaskTemplate{
-		Id: &core.Identifier{
+	key := catalog.Key{
+		Identifier: core.Identifier{
 			Project: "project",
 			Domain:  "domain",
 			Name:    "name",
 			Version: "1.0.0",
 		},
-		Metadata: &core.TaskMetadata{
-			DiscoveryVersion: "1.0.0",
-		},
-		Interface: &core.TypedInterface{
+		CacheVersion: "1.0.0",
+		TypedInterface: core.TypedInterface{
 			Inputs: &core.VariableMap{
 				Variables: map[string]*core.Variable{
 					"1": {Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
@@ -84,18 +80,18 @@ func TestVariableMapOrder(t *testing.T) {
 			},
 		},
 	}
-	datasetID, err := GenerateDatasetIDForTask(context.TODO(), task)
+	datasetID, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, datasetID.Version)
 	assert.Equal(t, "1.0.0-UxVtPm0k-V-K42BDF", datasetID.Version)
 
-	task.Interface.Inputs = &core.VariableMap{
+	key.TypedInterface.Inputs = &core.VariableMap{
 		Variables: map[string]*core.Variable{
 			"2": {Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
 			"1": {Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
 		},
 	}
-	datasetIDDupe, err := GenerateDatasetIDForTask(context.TODO(), task)
+	datasetIDDupe, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "1.0.0-UxVtPm0k-V-K42BDF", datasetIDDupe.Version)

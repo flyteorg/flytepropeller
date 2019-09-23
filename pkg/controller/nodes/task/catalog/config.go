@@ -20,7 +20,6 @@ type DiscoveryType = string
 
 const (
 	NoOpDiscoveryType   DiscoveryType = "noop"
-	LegacyDiscoveryType DiscoveryType = "legacy"
 	DataCatalogType     DiscoveryType = "datacatalog"
 )
 
