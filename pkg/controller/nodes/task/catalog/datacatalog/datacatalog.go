@@ -5,10 +5,9 @@ import (
 	"crypto/x509"
 	"time"
 
-	grpcRetry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	datacatalog "github.com/lyft/datacatalog/protos/gen"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/pkg/errors"
@@ -19,15 +18,13 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"k8s.io/apimachinery/pkg/util/uuid"
+
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 )
 
 const (
 	taskVersionKey = "task-version"
 	wfExecNameKey  = "execution-name"
-)
-
-var (
-	_ catalog.Client = &CatalogClient{}
 )
 
 // This is the client that caches task executions to DataCatalog service.
@@ -112,7 +109,7 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (io.OutputRead
 		return nil, err
 	}
 
-	logger.Infof(ctx, "Retrieved %v outputs from artifact %v, tag: %v", len(outputs.Literals), artifact.Id, tag)
+	logger.Debugf(ctx, "Retrieved %v artifact outputs from artifact %v", len(outputs.Literals), artifact.Id)
 	return ioutils.NewInMemoryOutputReader(outputs, nil), nil
 }
 
@@ -129,7 +126,7 @@ func (m *CatalogClient) CreateDataset(ctx context.Context, key catalog.Key, meta
 	}
 
 	_, err = m.client.CreateDataset(ctx, &datacatalog.CreateDatasetRequest{Dataset: newDataset})
-	if err != nil {
+	if err == nil {
 		logger.Debugf(ctx, "Create dataset %v return err %v", datasetID, err)
 		if status.Code(err) == codes.AlreadyExists {
 			logger.Debugf(ctx, "Create Dataset for ID %s already exists", key.Identifier)
@@ -138,7 +135,6 @@ func (m *CatalogClient) CreateDataset(ctx context.Context, key catalog.Key, meta
 			return nil, err
 		}
 	}
-
 	return datasetID, nil
 }
 
@@ -190,9 +186,6 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 	}
 
 	datasetID, err := m.CreateDataset(ctx, key, md)
-	if err != nil {
-		return err
-	}
 
 	inputs := &core.LiteralMap{}
 	outputs := &core.LiteralMap{}
@@ -232,7 +225,7 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 		logger.Errorf(ctx, "Failed to generate tag for artifact %+v, err: %+v", cachedArtifact.Id, err)
 		return err
 	}
-	logger.Infof(ctx, "Cached exec tag: %v, task: %v", tagName, key.Identifier)
+	logger.Debugf(ctx, "Created tag: %v, for task: %v", tagName, key.Identifier)
 
 	// TODO: We should create the artifact + tag in a transaction when the service supports that
 	tag := &datacatalog.Tag{
@@ -244,10 +237,10 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 	if err != nil {
 		if status.Code(err) == codes.AlreadyExists {
 			logger.Warnf(ctx, "Tag %v already exists for Artifact %v (idempotent)", tagName, cachedArtifact.Id)
-		} else {
-			logger.Errorf(ctx, "Failed to add tag %+v for artifact %+v, err: %+v", tagName, cachedArtifact.Id, err)
-			return err
 		}
+
+		logger.Errorf(ctx, "Failed to add tag %+v for artifact %+v, err: %+v", tagName, cachedArtifact.Id, err)
+		return err
 	}
 
 	return nil
@@ -257,10 +250,10 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 func NewDataCatalog(ctx context.Context, endpoint string, insecureConnection bool) (*CatalogClient, error) {
 	var opts []grpc.DialOption
 
-	grpcOptions := []grpcRetry.CallOption{
-		grpcRetry.WithBackoff(grpcRetry.BackoffLinear(100 * time.Millisecond)),
-		grpcRetry.WithCodes(codes.DeadlineExceeded, codes.Unavailable, codes.Canceled),
-		grpcRetry.WithMax(5),
+	grpcOptions := []grpc_retry.CallOption{
+		grpc_retry.WithBackoff(grpc_retry.BackoffLinear(100 * time.Millisecond)),
+		grpc_retry.WithCodes(codes.DeadlineExceeded, codes.Unavailable, codes.Canceled),
+		grpc_retry.WithMax(5),
 	}
 
 	if insecureConnection {
@@ -277,7 +270,7 @@ func NewDataCatalog(ctx context.Context, endpoint string, insecureConnection boo
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	}
 
-	retryInterceptor := grpc.WithUnaryInterceptor(grpcRetry.UnaryClientInterceptor(grpcOptions...))
+	retryInterceptor := grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(grpcOptions...))
 
 	opts = append(opts, retryInterceptor)
 	clientConn, err := grpc.Dial(endpoint, opts...)

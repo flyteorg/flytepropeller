@@ -6,6 +6,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/dynamic"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 
 	"github.com/lyft/flytestdlib/promutils"
 

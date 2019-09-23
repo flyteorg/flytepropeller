@@ -2,16 +2,16 @@ package datacatalog
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"reflect"
 	"strings"
 
+	"encoding/base64"
+
 	datacatalog "github.com/lyft/datacatalog/protos/gen"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
-
 	"github.com/lyft/flytepropeller/pkg/compiler/validators"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 
 	"github.com/lyft/flytestdlib/pbhash"
 )
@@ -43,7 +43,7 @@ func GenerateTaskOutputsFromArtifact(id core.Identifier, taskInterface core.Type
 
 	// verify the task outputs matches what is stored in ArtifactData
 	if len(outputVariables) != len(artifactDataList) {
-		return nil, fmt.Errorf("the task %s with %d outputs, should have %d artifactData for artifact %s", id.String(), len(outputVariables), len(artifactDataList), artifact.Id)
+		return nil, fmt.Errorf("the task %s with %d outputs, should have %d artifactData for artifact %s", id, len(outputVariables), len(artifactDataList), artifact.Id)
 	}
 
 	outputs := make(map[string]*core.Literal, len(artifactDataList))
@@ -71,11 +71,9 @@ func generateDataSetVersionFromTask(ctx context.Context, taskInterface core.Type
 		return "", err
 	}
 
-	cacheVersion = strings.Trim(cacheVersion, " ")
-	if len(cacheVersion) == 0 {
+	if strings.Trim(cacheVersion, " ") == "" {
 		return "", fmt.Errorf("task cannot have an empty discoveryVersion %v", cacheVersion)
 	}
-
 	return fmt.Sprintf("%s-%s", cacheVersion, signatureHash), nil
 }
 

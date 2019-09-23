@@ -6,9 +6,9 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
