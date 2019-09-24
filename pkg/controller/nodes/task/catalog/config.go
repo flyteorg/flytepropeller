@@ -1,7 +1,13 @@
 package catalog
 
 import (
+	"context"
+	"fmt"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/lyft/flytestdlib/config"
+
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog/datacatalog"
 )
 
 //go:generate pflags Config --default-var defaultConfig
@@ -32,4 +38,16 @@ type Config struct {
 // Gets loaded config for Discovery
 func GetConfig() *Config {
 	return configSection.GetConfig().(*Config)
+}
+
+func NewCatalogClient(ctx context.Context) (catalog.Client, error) {
+	catalogConfig := GetConfig()
+
+	switch catalogConfig.Type {
+	case DataCatalogType:
+		return datacatalog.NewDataCatalog(ctx, catalogConfig.Endpoint, catalogConfig.Insecure)
+	case NoOpDiscoveryType, "":
+		return NOOPCatalog{}, nil
+	}
+	return nil, fmt.Errorf("no such catalog type available: %s", catalogConfig.Type)
 }

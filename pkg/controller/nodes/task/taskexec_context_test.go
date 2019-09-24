@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog/mocks"
 	ioMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/storage"
@@ -14,11 +15,11 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	flyteMocks "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/codex"
 )
 

@@ -10,6 +10,7 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
+	pluginCatalogMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog/mocks"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginCoreMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
@@ -26,11 +27,9 @@ import (
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	flyteMocks "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
-	"github.com/lyft/flytepropeller/pkg/controller/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
-	catalogMock "github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/codex"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/fakeplugins"
 )
@@ -187,7 +186,7 @@ func Test_task_Setup(t *testing.T) {
 			sCtx.On("EnqueueOwner").Return(pluginCore.EnqueueOwner(func(name types.NamespacedName) error { return nil }))
 			sCtx.On("MetricsScope").Return(promutils.NewTestScope())
 
-			tk := New(context.TODO(), mocks.NewFakeKubeClient(), &catalog.MockCatalogClient{}, promutils.NewTestScope())
+			tk := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
 			tk.pluginRegistry = tt.registry
 			if err := tk.Setup(context.TODO(), sCtx); err != nil {
 				if !tt.wantErr {
@@ -535,7 +534,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 			state := &taskNodeStateHolder{}
 			ev := &fakeBufferedTaskEventRecorder{}
 			nCtx := createNodeContext(tt.args.startingPluginPhase, uint32(tt.args.startingPluginPhaseVersion), tt.args.expectedState, ev, "test", state)
-			c := &catalogMock.Client{}
+			c := &pluginCatalogMocks.Client{}
 			tk := Handler{
 				plugins: map[pluginCore.TaskType]pluginCore.Plugin{
 					"test": fakeplugins.NewPhaseBasedPlugin(),
@@ -725,7 +724,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			state := &taskNodeStateHolder{}
 			ev := &fakeBufferedTaskEventRecorder{}
 			nCtx := createNodeContext(ev, "test", state)
-			c := &catalogMock.Client{}
+			c := &pluginCatalogMocks.Client{}
 			if tt.args.catalogFetch {
 				or := &ioMocks.OutputReader{}
 				or.On("Read", mock.Anything).Return(&core.LiteralMap{}, nil, nil)
@@ -741,7 +740,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			} else {
 				c.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			}
-			tk := New(context.TODO(), mocks.NewFakeKubeClient(), &catalog.MockCatalogClient{}, promutils.NewTestScope())
+			tk := New(context.TODO(), mocks.NewFakeKubeClient(), c, promutils.NewTestScope())
 			tk.plugins = map[pluginCore.TaskType]pluginCore.Plugin{
 				"test": fakeplugins.NewPhaseBasedPlugin(),
 			}
@@ -991,7 +990,7 @@ func Test_task_Finalize(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	got := New(context.TODO(), mocks.NewFakeKubeClient(), &catalog.MockCatalogClient{}, promutils.NewTestScope())
+	got := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
 	assert.NotNil(t, got)
 	assert.NotNil(t, got.plugins)
 	assert.NotNil(t, got.metrics)

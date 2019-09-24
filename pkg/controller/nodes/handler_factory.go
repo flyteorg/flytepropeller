@@ -3,8 +3,9 @@ package nodes
 import (
 	"context"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
+
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/dynamic"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 
 	"github.com/lyft/flytestdlib/promutils"
 
@@ -21,7 +22,7 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task"
 )
 
-//go:generate mockery -all -case=underscore
+//go:generate mockery -name HandlerFactory -case=underscore
 
 type HandlerFactory interface {
 	GetHandler(kind v1alpha1.NodeKind) (handler.Node, error)

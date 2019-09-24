@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
@@ -15,7 +16,6 @@ import (
 	common2 "github.com/lyft/flytepropeller/pkg/compiler/common"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 
 	"github.com/lyft/flytestdlib/promutils"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -102,10 +102,7 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 
 	if trns.Info().GetPhase() == handler.EPhaseSuccess {
 		logger.Infof(ctx, "dynamic workflow node has succeeded, will call on success handler for parent node [%s]", nCtx.NodeID())
-		outputPaths, err := task.NewRemoteFileOutputPaths(ctx, nCtx.NodeStatus().GetDataDir(), nCtx.DataStore())
-		if err != nil {
-			return handler.UnknownTransition, err
-		}
+		outputPaths := ioutils.NewRemoteFileOutputPaths(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetDataDir())
 		execID := task.GetTaskExecutionIdentifier(nCtx)
 		outputReader := ioutils.NewRemoteFileOutputReader(ctx, nCtx.DataStore(), outputPaths, nCtx.MaxDatasetSizeBytes())
 		ee, err := d.TaskNodeHandler.ValidateOutputAndCacheAdd(ctx, nCtx.InputReader(), outputReader, nCtx.TaskReader(), catalog.Metadata{

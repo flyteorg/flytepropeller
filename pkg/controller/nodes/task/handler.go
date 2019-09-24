@@ -9,6 +9,7 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	pluginK8s "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
@@ -19,11 +20,9 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	regErrors "github.com/pkg/errors"
 
-	catalog2 "github.com/lyft/flytepropeller/pkg/controller/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/config"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/k8s"
 )
@@ -113,6 +112,7 @@ type PluginRegistryIface interface {
 
 type Handler struct {
 	catalog        catalog.Client
+	asyncCatalog   catalog.AsyncClient
 	plugins        map[pluginCore.TaskType]pluginCore.Plugin
 	defaultPlugin  pluginCore.Plugin
 	metrics        *metrics
@@ -469,8 +469,12 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 	}()
 }
 
-func New(_ context.Context, kubeClient executors.Client, client catalog2.Client, scope promutils.Scope) *Handler {
-
+func New(_ context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) *Handler {
+	// TODO NewShould take apointer
+	async, err:= catalog.NewAsyncClient(client, *catalog.GetConfig())
+	if err != nil {
+		return nil
+	}
 	return &Handler{
 		pluginRegistry: pluginMachinery.PluginRegistry(),
 		plugins:        make(map[pluginCore.TaskType]pluginCore.Plugin),
@@ -483,8 +487,9 @@ func New(_ context.Context, kubeClient executors.Client, client catalog2.Client,
 			discoveryGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
 			pluginExecutionLatency:   labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
 		},
-		kubeClient: kubeClient,
-		catalog:    catalog.NOOPCatalog{},
-		cfg:        config.GetConfig(),
+		kubeClient:   kubeClient,
+		catalog:      client,
+		asyncCatalog: async,
+		cfg:          config.GetConfig(),
 	}
 }
