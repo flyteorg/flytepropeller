@@ -17,6 +17,7 @@ import (
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	mocks4 "github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
+	nodeHandlerMocks "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
 	mocks2 "github.com/lyft/flytepropeller/pkg/controller/nodes/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 
@@ -210,7 +211,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 				hf := &mocks2.HandlerFactory{}
 				exec.nodeHandlerFactory = hf
 
-				h := &mocks2.Node{}
+				h := &nodeHandlerMocks.Node{}
 				h.On("Handle",
 					mock.MatchedBy(func(ctx context.Context) bool { return true }),
 					mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
@@ -298,7 +299,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				hf := &mocks2.HandlerFactory{}
 				exec.nodeHandlerFactory = hf
-				h := &mocks2.Node{}
+				h := &nodeHandlerMocks.Node{}
 				hf.On("GetHandler", v1alpha1.NodeKindEnd).Return(h, nil)
 
 				mockWf, mockNode, mockNodeStatus := createSingleNodeWf(test.parentNodePhase, 0)
@@ -387,7 +388,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 				hf := &mocks2.HandlerFactory{}
 				exec.nodeHandlerFactory = hf
 
-				h := &mocks2.Node{}
+				h := &nodeHandlerMocks.Node{}
 				h.On("Handle",
 					mock.MatchedBy(func(ctx context.Context) bool { return true }),
 					mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
@@ -563,7 +564,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				hf := &mocks2.HandlerFactory{}
 
-				h := &mocks2.Node{}
+				h := &nodeHandlerMocks.Node{}
 				h.On("Handle",
 					mock.MatchedBy(func(ctx context.Context) bool { return true }),
 					mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
@@ -662,7 +663,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 					},
 				}
 
-				h := &mocks2.Node{}
+				h := &nodeHandlerMocks.Node{}
 				h.On("Handle",
 					mock.MatchedBy(func(ctx context.Context) bool { return true }),
 					mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
@@ -758,7 +759,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 					},
 				}
 
-				h := &mocks2.Node{}
+				h := &nodeHandlerMocks.Node{}
 				h.On("Handle",
 					mock.MatchedBy(func(ctx context.Context) bool { return true }),
 					mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
@@ -796,7 +797,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		exec := execIface.(*nodeExecutor)
 		exec.nodeHandlerFactory = hf
 
-		h := &mocks2.Node{}
+		h := &nodeHandlerMocks.Node{}
 		h.On("Handle",
 			mock.MatchedBy(func(ctx context.Context) bool { return true }),
 			mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
@@ -823,7 +824,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		exec := execIface.(*nodeExecutor)
 		exec.nodeHandlerFactory = hf
 
-		h := &mocks2.Node{}
+		h := &nodeHandlerMocks.Node{}
 		h.On("Handle",
 			mock.MatchedBy(func(ctx context.Context) bool { return true }),
 			mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
@@ -925,7 +926,7 @@ func TestNodeExecutor_RecursiveNodeHandler_NoDownstream(t *testing.T) {
 				hf := &mocks2.HandlerFactory{}
 				exec.nodeHandlerFactory = hf
 
-				h := &mocks2.Node{}
+				h := &nodeHandlerMocks.Node{}
 				h.On("Handle",
 					mock.MatchedBy(func(ctx context.Context) bool { return true }),
 					mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
@@ -1026,7 +1027,7 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				hf := &mocks2.HandlerFactory{}
 				exec.nodeHandlerFactory = hf
-				h := &mocks2.Node{}
+				h := &nodeHandlerMocks.Node{}
 				h.On("Handle",
 					mock.MatchedBy(func(ctx context.Context) bool { return true }),
 					mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
