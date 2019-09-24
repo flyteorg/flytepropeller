@@ -8,12 +8,10 @@ import (
 	"github.com/google/uuid"
 	datacatalog "github.com/lyft/datacatalog/protos/gen"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	mocks2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/pkg/errors"
-
-	"github.com/lyft/flytepropeller/pkg/controller/catalog/datacatalog/mocks"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
@@ -21,6 +19,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog/datacatalog/mocks"
 )
 
 func init() {
@@ -49,7 +49,7 @@ var sampleParameters = &core.LiteralMap{Literals: map[string]*core.Literal{
 
 var variableMap = &core.VariableMap{
 	Variables: map[string]*core.Variable{
-		"test": &core.Variable{
+		"test": {
 			Type: &core.LiteralType{
 				Type: &core.LiteralType_Simple{
 					Simple: core.SimpleType_STRING,
@@ -71,8 +71,8 @@ var sampleKey = catalog.Key{
 }
 
 var noInputOutputKey = catalog.Key{
-	Identifier:     core.Identifier{Project: "project", Domain: "domain", Name: "name"},
-	CacheVersion:   "1.0.0",
+	Identifier:   core.Identifier{Project: "project", Domain: "domain", Name: "name"},
+	CacheVersion: "1.0.0",
 }
 
 var datasetID = &datacatalog.DatasetID{
