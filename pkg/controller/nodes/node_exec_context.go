@@ -113,8 +113,6 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.
 }
 
 func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode, s v1alpha1.ExecutableNodeStatus) (*execContext, error) {
-	inFile := v1alpha1.GetInputsFile(s.GetDataDir())
-
 	var tr handler.TaskReader
 	if n.GetKind() == v1alpha1.NodeKindTask {
 		if n.GetTaskID() == nil {

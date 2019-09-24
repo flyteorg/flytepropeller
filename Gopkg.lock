@@ -422,12 +422,10 @@
     "clients/go/admin/mocks",
     "clients/go/coreutils",
     "clients/go/coreutils/logs",
-    "clients/go/datacatalog/mocks",
     "clients/go/events",
     "clients/go/events/errors",
     "gen/pb-go/flyteidl/admin",
     "gen/pb-go/flyteidl/core",
-    "gen/pb-go/flyteidl/datacatalog",
     "gen/pb-go/flyteidl/event",
     "gen/pb-go/flyteidl/plugins",
     "gen/pb-go/flyteidl/service",
@@ -438,7 +436,7 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:abad43a0400036cacef298282d6ec5c19025f5ff5b71e95c289f9d8632fe610c"
+  digest = "1:77098d6676046b78eaecd50fe14db51cfb0d48742ecb63c672ca181520eae657"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/array",
@@ -451,6 +449,7 @@
     "go/tasks/logs",
     "go/tasks/pluginmachinery",
     "go/tasks/pluginmachinery/catalog",
+    "go/tasks/pluginmachinery/catalog/mocks",
     "go/tasks/pluginmachinery/core",
     "go/tasks/pluginmachinery/core/mocks",
     "go/tasks/pluginmachinery/flytek8s",
@@ -468,7 +467,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "fc3a8df2e3b6042a26f0e53f185e22995af363d0"
+  revision = "0b641ccea4862053ff65e00ce8368136924a58ca"
   source = "https://github.com/lyft/flyteplugins"
 
 [[projects]]
@@ -1322,18 +1321,17 @@
     "github.com/lyft/flyteidl/clients/go/admin",
     "github.com/lyft/flyteidl/clients/go/admin/mocks",
     "github.com/lyft/flyteidl/clients/go/coreutils",
-    "github.com/lyft/flyteidl/clients/go/datacatalog/mocks",
     "github.com/lyft/flyteidl/clients/go/events",
     "github.com/lyft/flyteidl/clients/go/events/errors",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core",
-    "github.com/lyft/flyteidl/gen/pb-go/flyteidl/datacatalog",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/event",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/service",
     "github.com/lyft/flyteplugins/go/tasks/array/k8s",
     "github.com/lyft/flyteplugins/go/tasks/errors",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog",
+    "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog/mocks",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config",

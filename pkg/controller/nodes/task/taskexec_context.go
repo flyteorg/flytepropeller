@@ -13,11 +13,13 @@ import (
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/secretmanager"
 	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
+var (
+	_ pluginCore.TaskExecutionContext = &taskExecutionContext{}
+)
 const IDMaxLength = 50
 
 type taskExecutionID struct {
@@ -56,7 +58,11 @@ type taskExecutionContext struct {
 	ow  *ioutils.BufferedOutputWriter
 	ber *bufferedEventRecorder
 	sm  pluginCore.SecretManager
-	c   catalog.Client
+	c   pluginCatalog.AsyncClient
+}
+
+func (t *taskExecutionContext) Catalog() pluginCatalog.AsyncClient {
+	return t.c
 }
 
 func (t taskExecutionContext) EventsRecorder() pluginCore.EventsRecorder {
@@ -85,10 +91,6 @@ func (t *taskExecutionContext) OutputWriter() io.OutputWriter {
 
 func (t *taskExecutionContext) PluginStateWriter() pluginCore.PluginStateWriter {
 	return t.psm
-}
-
-func (t *taskExecutionContext) Catalog() pluginCatalog.Client {
-	return nil
 }
 
 func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
@@ -130,7 +132,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		tr:  nCtx.TaskReader(),
 		ow:  ow,
 		ber: newBufferedEventRecorder(),
-		c:   t.catalog,
+		c:   t.asyncCatalog,
 		sm: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
 	}, nil
 }

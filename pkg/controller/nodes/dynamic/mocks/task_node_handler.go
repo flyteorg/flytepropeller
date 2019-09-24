@@ -2,7 +2,7 @@
 
 package mocks
 
-import catalog "github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
+import catalog "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 import context "context"
 import core "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 

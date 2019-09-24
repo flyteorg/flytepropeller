@@ -5,9 +5,10 @@ import (
 	"crypto/x509"
 	"time"
 
-	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	grpcRetry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	datacatalog "github.com/lyft/datacatalog/protos/gen"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/pkg/errors"
@@ -19,12 +20,15 @@ import (
 	"google.golang.org/grpc/status"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 )
 
 const (
 	taskVersionKey = "task-version"
 	wfExecNameKey  = "execution-name"
+)
+
+var (
+	_ catalog.Client = &CatalogClient{}
 )
 
 // This is the client that caches task executions to DataCatalog service.
@@ -250,10 +254,10 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 func NewDataCatalog(ctx context.Context, endpoint string, insecureConnection bool) (*CatalogClient, error) {
 	var opts []grpc.DialOption
 
-	grpcOptions := []grpc_retry.CallOption{
-		grpc_retry.WithBackoff(grpc_retry.BackoffLinear(100 * time.Millisecond)),
-		grpc_retry.WithCodes(codes.DeadlineExceeded, codes.Unavailable, codes.Canceled),
-		grpc_retry.WithMax(5),
+	grpcOptions := []grpcRetry.CallOption{
+		grpcRetry.WithBackoff(grpcRetry.BackoffLinear(100 * time.Millisecond)),
+		grpcRetry.WithCodes(codes.DeadlineExceeded, codes.Unavailable, codes.Canceled),
+		grpcRetry.WithMax(5),
 	}
 
 	if insecureConnection {
@@ -270,7 +274,7 @@ func NewDataCatalog(ctx context.Context, endpoint string, insecureConnection boo
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	}
 
-	retryInterceptor := grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(grpcOptions...))
+	retryInterceptor := grpc.WithUnaryInterceptor(grpcRetry.UnaryClientInterceptor(grpcOptions...))
 
 	opts = append(opts, retryInterceptor)
 	clientConn, err := grpc.Dial(endpoint, opts...)
