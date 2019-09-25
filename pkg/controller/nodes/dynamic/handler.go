@@ -350,7 +350,7 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 	}
 
 	if state.PartiallyComplete() {
-		if err := nCtx.EnqueueOwner(); err != nil {
+		if err := nCtx.EnqueueOwnerFunc()(); err != nil {
 			return handler.UnknownTransition, err
 		}
 	}

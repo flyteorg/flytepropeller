@@ -436,7 +436,7 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:77098d6676046b78eaecd50fe14db51cfb0d48742ecb63c672ca181520eae657"
+  digest = "1:ac435d67e79d0c3840381d07b71758fab8644a4b884d4d341cb6c80b420af402"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/array",
@@ -467,7 +467,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "0b641ccea4862053ff65e00ce8368136924a58ca"
+  revision = "ac80d7ffedee55f8c37b5bb6aeba25445ad3c798"
   source = "https://github.com/lyft/flyteplugins"
 
 [[projects]]

@@ -44,15 +44,17 @@ func (_m *NodeExecutionContext) DataStore() *storage.DataStore {
 	return r0
 }
 
-// EnqueueOwner provides a mock function with given fields:
-func (_m *NodeExecutionContext) EnqueueOwner() error {
+// EnqueueOwnerFunc provides a mock function with given fields:
+func (_m *NodeExecutionContext) EnqueueOwnerFunc() func() error {
 	ret := _m.Called()
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
+	var r0 func() error
+	if rf, ok := ret.Get(0).(func() func() error); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(func() error)
+		}
 	}
 
 	return r0
