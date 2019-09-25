@@ -40,8 +40,8 @@ type execContext struct {
 	w                   v1alpha1.ExecutableWorkflow
 }
 
-func (e execContext) EnqueueOwner() error {
-	return e.enqueueOwner()
+func (e execContext) EnqueueOwnerFunc() func() error {
+	return e.enqueueOwner
 }
 
 func (e execContext) Workflow() v1alpha1.ExecutableWorkflow {

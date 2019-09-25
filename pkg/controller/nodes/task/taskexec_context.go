@@ -61,6 +61,12 @@ type taskExecutionContext struct {
 	c   pluginCatalog.AsyncClient
 }
 
+func (t *taskExecutionContext) GetTaskRefreshIndicator() func() {
+	return func() {
+		_ = t.NodeExecutionContext.EnqueueOwnerFunc()
+	}
+}
+
 func (t *taskExecutionContext) Catalog() pluginCatalog.AsyncClient {
 	return t.c
 }

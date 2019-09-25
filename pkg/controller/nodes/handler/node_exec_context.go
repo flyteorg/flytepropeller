@@ -52,7 +52,7 @@ type NodeExecutionContext interface {
 	NodeExecutionMetadata() NodeExecutionMetadata
 	MaxDatasetSizeBytes() int64
 
-	EnqueueOwner() error
+	EnqueueOwnerFunc() func() error
 
 	// Deprecated
 	Workflow() v1alpha1.ExecutableWorkflow
