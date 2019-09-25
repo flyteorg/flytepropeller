@@ -311,7 +311,7 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 		nCtx.On("TaskReader").Return(tr)
 		nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
 		nCtx.On("NodeID").Return("n1")
-		nCtx.On("EnqueueOwner").Return(nil)
+		nCtx.On("EnqueueOwnerFunc").Return(func() error { return nil })
 
 		w := &flyteMocks.ExecutableWorkflow{}
 		ws := &flyteMocks.ExecutableWorkflowStatus{}
