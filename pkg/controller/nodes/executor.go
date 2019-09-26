@@ -94,7 +94,7 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 // In this method we check if the queue is ready to be processed and if so, we prime it in Admin as queued
 // Before we start the node execution, we need to transition this Node status to Queued.
 // This is because a node execution has to exist before task/wf executions can start.
-func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) (handler.PhaseInfo, error) {
+func (c *nodeExecutor) preExecute(ctx context.Context, nCtx handler.NodeExecutionContext, w executors.DAGStructure) (handler.PhaseInfo, error) {
 	logger.Debugf(ctx, "Node not yet started")
 	// Query the nodes information to figure out if it can be executed.
 	predicatePhase, err := CanExecute(ctx, w, node)
@@ -106,6 +106,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 	if predicatePhase == PredicatePhaseReady {
 
 		if len(nodeStatus.GetDataDir()) == 0 {
+			nCtx.StorageKey()
 			// Predicate ready, lets Resolve the data
 			dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, node.GetID())
 			if err != nil {
@@ -196,7 +197,7 @@ func (c *nodeExecutor) finalize(ctx context.Context, h handler.Node, nCtx *execC
 	return h.Finalize(ctx, nCtx)
 }
 
-func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
+func (c *nodeExecutor) handleNode(ctx context.Context, w executors.DAGStructure, node v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
 	logger.Debugf(ctx, "Handling Node [%s]", node.GetID())
 	defer logger.Debugf(ctx, "Completed node [%s]", node.GetID())
 
@@ -434,7 +435,7 @@ func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, w v1alpha1.Bas
 	return executors.NodeStatusComplete, nil
 }
 
-func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
+func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w executors.DAGStructure, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
 	currentNodeCtx := contextutils.WithNodeID(ctx, currentNode.GetID())
 	nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
 	switch nodeStatus.GetPhase() {

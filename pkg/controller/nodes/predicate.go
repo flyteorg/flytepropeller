@@ -8,6 +8,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 )
 
@@ -37,19 +38,21 @@ func (p PredicatePhase) String() string {
 	return "undefined"
 }
 
-func CanExecute(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.BaseNode) (PredicatePhase, error) {
-	nodeID := node.GetID()
+func CanExecute(ctx context.Context, w executors.DAGStructure, nCtx executors.ImmutableNodeContext) (PredicatePhase, error) {
+	nodeID := nCtx.NodeID()
 	if nodeID == v1alpha1.StartNodeID {
 		logger.Debugf(ctx, "Start Node id is assumed to be ready.")
 		return PredicatePhaseReady, nil
 	}
-	nodeStatus := w.GetNodeExecutionStatus(nodeID)
-	parentNodeID := nodeStatus.GetParentNodeID()
-	upstreamNodes, ok := w.GetConnections().UpstreamEdges[nodeID]
+	upstreamNodes, ok := w.ToNode(nodeID)
 	if !ok {
 		return PredicatePhaseUndefined, errors.Errorf(errors.BadSpecificationError, nodeID, "Unable to find upstream nodes for Node")
 	}
 	skipped := false
+	var parentNodeID v1alpha1.NodeID
+	if nCtx.ParentNodeContext() != nil {
+		parentNodeID = nCtx.ParentNodeContext().NodeID()
+	}
 	for _, upstreamNodeID := range upstreamNodes {
 		upstreamNodeStatus := w.GetNodeExecutionStatus(upstreamNodeID)
 
@@ -57,7 +60,7 @@ func CanExecute(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha
 			return PredicatePhaseNotReady, nil
 		}
 
-		if parentNodeID != nil && *parentNodeID == upstreamNodeID {
+		if parentNodeID == upstreamNodeID {
 			upstreamNode, ok := w.GetNode(upstreamNodeID)
 			if !ok {
 				return PredicatePhaseUndefined, errors.Errorf(errors.BadSpecificationError, nodeID, "Upstream node [%v] of node [%v] not defined", upstreamNodeID, nodeID)
@@ -82,7 +85,7 @@ func CanExecute(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha
 	return PredicatePhaseReady, nil
 }
 
-func GetParentNodeMaxEndTime(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.BaseNode) (t v1.Time, err error) {
+func GetParentNodeMaxEndTime(ctx context.Context, w executors.DAGStructure, node v1alpha1.BaseNode) (t v1.Time, err error) {
 	zeroTime := v1.NewTime(time.Time{})
 	nodeID := node.GetID()
 	if nodeID == v1alpha1.StartNodeID {
@@ -92,7 +95,7 @@ func GetParentNodeMaxEndTime(ctx context.Context, w v1alpha1.ExecutableWorkflow,
 
 	nodeStatus := w.GetNodeExecutionStatus(node.GetID())
 	parentNodeID := nodeStatus.GetParentNodeID()
-	upstreamNodes, ok := w.GetConnections().UpstreamEdges[nodeID]
+	upstreamNodes, ok := w.ToNode(nodeID)
 	if !ok {
 		return zeroTime, errors.Errorf(errors.BadSpecificationError, nodeID, "Unable to find upstream nodes for Node")
 	}

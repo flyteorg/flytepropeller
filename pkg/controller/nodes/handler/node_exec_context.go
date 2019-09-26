@@ -37,11 +37,22 @@ type NodeExecutionMetadata interface {
 	GetK8sServiceAccount() string
 }
 
+
+type ImmutableNodeContext interface {
+	ParentNodeContext() ImmutableNodeContext
+	StorageKey() storage.DataReference
+	TaskID() *core.TaskExecutionIdentifier
+	NodeID() v1alpha1.NodeID
+	NodeKind() v1alpha1.NodeKind
+	NodePhase() v1alpha1.NodePhase
+}
+
 type NodeExecutionContext interface {
+	ImmutableNodeContext
+
 	DataStore() *storage.DataStore
 	InputReader() io.InputReader
 	EventsRecorder() events.TaskEventRecorder
-	NodeID() v1alpha1.NodeID
 	Node() v1alpha1.ExecutableNode
 	CurrentAttempt() uint32
 	TaskReader() TaskReader

@@ -13,6 +13,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 )
 
@@ -54,7 +55,7 @@ func ToNodeExecEventPhase(p handler.EPhase) core.NodeExecution_Phase {
 	}
 }
 
-func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler.PhaseInfo, reader io.InputReader, status v1alpha1.ExecutableNodeStatus) (*event.NodeExecutionEvent, error) {
+func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler.PhaseInfo, reader io.InputReader, nCtx executors.ImmutableNodeContext) (*event.NodeExecutionEvent, error) {
 	if info.GetPhase() == handler.EPhaseNotReady {
 		return nil, nil
 	}
@@ -74,9 +75,9 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler
 	}
 
 	// TODO this should use node-node relationship instead of taskID
-	if status.GetParentTaskID() != nil {
+	if nCtx.ParentNodeContext() != nil {
 		nev.ParentTaskMetadata = &event.ParentTaskExecutionMetadata{
-			Id: status.GetParentTaskID(),
+			Id: nCtx.ParentNodeContext().TaskID(),
 		}
 	}
 
