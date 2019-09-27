@@ -20,6 +20,7 @@ import (
 var (
 	_ pluginCore.TaskExecutionContext = &taskExecutionContext{}
 )
+
 const IDMaxLength = 50
 
 type taskExecutionID struct {
@@ -139,6 +140,6 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		ow:  ow,
 		ber: newBufferedEventRecorder(),
 		c:   t.asyncCatalog,
-		sm: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
+		sm:  secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
 	}, nil
 }
