@@ -58,7 +58,7 @@ required = [
 
 [[constraint]]
   name = "github.com/lyft/flyteplugins"
-  revision = "ac80d7ffedee55f8c37b5bb6aeba25445ad3c798"
+  revision = "be1b9bb1a648bbc073c6392117aad0fa5f754adb"
   source = "https://github.com/lyft/flyteplugins"
   #version = "^0.1.3"
 
