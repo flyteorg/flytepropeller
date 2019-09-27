@@ -190,6 +190,9 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 	}
 
 	datasetID, err := m.CreateDataset(ctx, key, md)
+	if err != nil {
+		return err
+	}
 
 	inputs := &core.LiteralMap{}
 	outputs := &core.LiteralMap{}
