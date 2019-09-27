@@ -123,7 +123,7 @@ type Handler struct {
 	pluginRegistry PluginRegistryIface
 	kubeClient     pluginCore.KubeClient
 	cfg            *config.Config
-	barrierCache   barrier
+	barrierCache   *barrier
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -211,7 +211,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 	pluginTrns := &pluginRequestedTransition{}
 
 	prevBarrier := t.barrierCache.GetPreviousBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
-	if !t.cfg.BarrierEnabled || prevBarrier.BarrierClockTick <= ts.BarrierClockTick {
+	if prevBarrier.BarrierClockTick <= ts.BarrierClockTick {
 		trns, err := func() (trns pluginCore.Transition, err error) {
 			defer func() {
 				if r := recover(); r != nil {
@@ -491,12 +491,13 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 	}()
 }
 
-func New(_ context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) *Handler {
+func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) *Handler {
 	// TODO NewShould take apointer
 	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig())
 	if err != nil {
 		return nil
 	}
+	cfg := config.GetConfig()
 	return &Handler{
 		pluginRegistry: pluginMachinery.PluginRegistry(),
 		plugins:        make(map[pluginCore.TaskType]pluginCore.Plugin),
@@ -512,6 +513,7 @@ func New(_ context.Context, kubeClient executors.Client, client catalog.Client, 
 		kubeClient:   kubeClient,
 		catalog:      client,
 		asyncCatalog: async,
-		cfg:          config.GetConfig(),
+		barrierCache: NewLRUBarrier(ctx, cfg.BarrierConfig),
+		cfg:          cfg,
 	}
 }

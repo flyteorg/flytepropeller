@@ -31,6 +31,7 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/codex"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/config"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/fakeplugins"
 )
 
@@ -540,6 +541,9 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 					"test": fakeplugins.NewPhaseBasedPlugin(),
 				},
 				catalog: c,
+				barrierCache: NewLRUBarrier(context.TODO(), config.BarrierConfig{
+					Enabled: false,
+				}),
 			}
 			got, err := tk.Handle(context.TODO(), nCtx)
 			if (err != nil) != tt.want.wantErr {

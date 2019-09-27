@@ -7,9 +7,9 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/logger"
 	"k8s.io/apimachinery/pkg/util/cache"
-)
 
-var defaultExpirationDuration = time.Minute * 5
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/config"
+)
 
 type BarrierKey = string
 
@@ -27,21 +27,38 @@ type BarrierTransition struct {
 var NoBarrierTransition = BarrierTransition{BarrierClockTick: 0}
 
 type barrier struct {
-	barrierTransitions cache.LRUExpireCache
+	barrierCacheExpiration time.Duration
+	barrierTransitions     *cache.LRUExpireCache
+	barrierEnabled         bool
 }
 
 func (b *barrier) RecordBarrierTransition(ctx context.Context, k BarrierKey, bt BarrierTransition) {
-	b.barrierTransitions.Add(k, bt, defaultExpirationDuration)
+	if b.barrierEnabled {
+		b.barrierTransitions.Add(k, bt, b.barrierCacheExpiration)
+	}
 }
 
 func (b *barrier) GetPreviousBarrierTransition(ctx context.Context, k BarrierKey) BarrierTransition {
-	if v, ok := b.barrierTransitions.Get(k); ok {
-		f, casted := v.(BarrierTransition)
-		if !casted {
-			logger.Errorf(ctx, "Failed to cast recorded value to BarrierTransition")
-			return NoBarrierTransition
+	if b.barrierEnabled {
+		if v, ok := b.barrierTransitions.Get(k); ok {
+			f, casted := v.(BarrierTransition)
+			if !casted {
+				logger.Errorf(ctx, "Failed to cast recorded value to BarrierTransition")
+				return NoBarrierTransition
+			}
+			return f
 		}
-		return f
 	}
 	return NoBarrierTransition
+}
+
+func NewLRUBarrier(_ context.Context, cfg config.BarrierConfig) *barrier {
+	b := &barrier{
+		barrierEnabled: cfg.Enabled,
+	}
+	if cfg.Enabled {
+		b.barrierCacheExpiration = cfg.CacheTTL.Duration
+		b.barrierTransitions = cache.NewLRUExpireCache(cfg.CacheSize)
+	}
+	return b
 }
