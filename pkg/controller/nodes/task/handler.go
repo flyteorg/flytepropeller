@@ -42,10 +42,12 @@ type metrics struct {
 }
 
 type pluginRequestedTransition struct {
+	previouslyObserved bool
 	ttype              handler.TransitionType
 	pInfo              pluginCore.PhaseInfo
-	previouslyObserved bool
 	execInfo           handler.ExecutionInfo
+	pluginState        []byte
+	pluginStateVersion uint32
 }
 
 func (p *pluginRequestedTransition) CacheHit() {
@@ -57,9 +59,11 @@ func (p *pluginRequestedTransition) CacheHit() {
 	p.execInfo.TaskNodeInfo.CacheHit = true
 }
 
-func (p *pluginRequestedTransition) ObservedTransition(trns pluginCore.Transition) {
+func (p *pluginRequestedTransition) ObservedTransitionAndState(trns pluginCore.Transition, pluginStateVersion uint32, pluginState []byte) {
 	p.ttype = ToTransitionType(trns.Type())
 	p.pInfo = trns.Info()
+	p.pluginState = pluginState
+	p.pluginStateVersion = pluginStateVersion
 }
 
 func (p *pluginRequestedTransition) ObservedExecutionError(executionError *io.ExecutionError) {
@@ -119,6 +123,7 @@ type Handler struct {
 	pluginRegistry PluginRegistryIface
 	kubeClient     pluginCore.KubeClient
 	cfg            *config.Config
+	barrierCache   barrier
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -203,40 +208,67 @@ func (t Handler) ResolvePlugin(ctx context.Context, ttype string) (pluginCore.Pl
 }
 
 func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *taskExecutionContext, ts handler.TaskNodeState) (*pluginRequestedTransition, error) {
-	trns, err := func() (trns pluginCore.Transition, err error) {
-		defer func() {
-			if r := recover(); r != nil {
-				t.metrics.pluginPanics.Inc(ctx)
-				stack := debug.Stack()
-				logger.Errorf(ctx, "Panic in plugin[%s]", p.GetID())
-				err = fmt.Errorf("panic when executing a plugin [%s]. Stack: [%s]", p.GetID(), string(stack))
-				trns = pluginCore.UnknownTransition
-			}
-		}()
-		childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
-		trns, err = p.Handle(childCtx, tCtx)
-		return
-	}()
-	if err != nil {
-		logger.Warnf(ctx, "Runtime error from plugin [%s]. Error: %s", p.GetID(), err.Error())
-		return nil, regErrors.Wrapf(err, "failed to execute handle for plugin [%s]", p.GetID())
-	}
-
 	pluginTrns := &pluginRequestedTransition{}
-	pluginTrns.ObservedTransition(trns)
 
-	if trns.Info().Phase() == ts.PluginPhase {
-		if trns.Info().Version() == ts.PluginPhaseVersion {
+	prevBarrier := t.barrierCache.GetPreviousBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+	if !t.cfg.BarrierEnabled || prevBarrier.BarrierClockTick <= ts.BarrierClockTick {
+		trns, err := func() (trns pluginCore.Transition, err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.metrics.pluginPanics.Inc(ctx)
+					stack := debug.Stack()
+					logger.Errorf(ctx, "Panic in plugin[%s]", p.GetID())
+					err = fmt.Errorf("panic when executing a plugin [%s]. Stack: [%s]", p.GetID(), string(stack))
+					trns = pluginCore.UnknownTransition
+				}
+			}()
+			childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
+			trns, err = p.Handle(childCtx, tCtx)
+			return
+		}()
+		if err != nil {
+			logger.Warnf(ctx, "Runtime error from plugin [%s]. Error: %s", p.GetID(), err.Error())
+			return nil, regErrors.Wrapf(err, "failed to execute handle for plugin [%s]", p.GetID())
+		}
+
+		var b []byte
+		var v uint32
+		if tCtx.psm.newState != nil {
+			b = tCtx.psm.newState.Bytes()
+			v = uint32(tCtx.psm.newStateVersion)
+		} else {
+			// New state was not mutated, so we should write back the existing state
+			b = ts.PluginState
+			v = ts.PluginPhaseVersion
+		}
+		if trns.Type() == pluginCore.TransitionTypeBarrier {
+			logger.Infof(ctx, "Barrier transition observed for Plugin [%s], TaskExecID [%s]. recording: [%s]", p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), trns.String())
+			t.barrierCache.RecordBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), BarrierTransition{
+				BarrierClockTick: prevBarrier.BarrierClockTick + 1,
+				CallLog: PluginCallLog{
+					PluginState:        b,
+					PluginStateVersion: v,
+					PluginTransition:   trns,
+				},
+			})
+		}
+		pluginTrns.ObservedTransitionAndState(trns, v, b)
+	} else {
+		logger.Infof(ctx, "Replaying Barrier transition for Plugin [%s], TaskExecID [%s]. recording: [%s]", p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), prevBarrier.CallLog.PluginTransition.String())
+		pluginTrns.ObservedTransitionAndState(prevBarrier.CallLog.PluginTransition, prevBarrier.CallLog.PluginStateVersion, prevBarrier.CallLog.PluginState)
+	}
+	if pluginTrns.pInfo.Phase() == ts.PluginPhase {
+		if pluginTrns.pInfo.Version() == ts.PluginPhaseVersion {
 			logger.Debugf(ctx, "p+Version previously seen .. no event will be sent")
 			pluginTrns.TransitionPreviouslyRecorded()
 			return pluginTrns, nil
 		}
-		if trns.Info().Version() > uint32(t.cfg.MaxPluginPhaseVersions) {
-			logger.Errorf(ctx, "Too many Plugin p versions for plugin [%s]. p versions [%d/%d]", p.GetID(), trns.Info().Version(), t.cfg.MaxPluginPhaseVersions)
+		if pluginTrns.pInfo.Version() > uint32(t.cfg.MaxPluginPhaseVersions) {
+			logger.Errorf(ctx, "Too many Plugin p versions for plugin [%s]. p versions [%d/%d]", p.GetID(), pluginTrns.pInfo.Version(), t.cfg.MaxPluginPhaseVersions)
 			pluginTrns.ObservedExecutionError(&io.ExecutionError{
 				ExecutionError: &core.ExecutionError{
 					Code:    "TooManyPluginPhaseVersions",
-					Message: fmt.Sprintf("Total number of phase versions exceeded for p [%s] in Plugin [%s], max allowed [%d]", trns.Info().Phase().String(), p.GetID(), t.cfg.MaxPluginPhaseVersions),
+					Message: fmt.Sprintf("Total number of phase versions exceeded for p [%s] in Plugin [%s], max allowed [%d]", pluginTrns.pInfo.Phase().String(), p.GetID(), t.cfg.MaxPluginPhaseVersions),
 				},
 				IsRecoverable: false,
 			})
@@ -244,7 +276,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		}
 	}
 
-	if trns.Info().Phase() == pluginCore.PhaseSuccess {
+	if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
 		// -------------------------------------
 		// TODO: @kumare create Issue# Remove the code after we use closures to handle dynamic nodes
 		// This code only exists to support Dynamic tasks. Eventually dynamic tasks will use closure nodes to execute
@@ -391,19 +423,9 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	}
 
 	// STEP 6: Persist the plugin state
-	var b []byte
-	var v uint32
-	if tCtx.psm.newState != nil {
-		b = tCtx.psm.newState.Bytes()
-		v = uint32(tCtx.psm.newStateVersion)
-	} else {
-		// New state was not mutated, so we should write back the existing state
-		b = ts.PluginState
-		v = ts.PluginPhaseVersion
-	}
 	err = nCtx.NodeStateWriter().PutTaskNodeState(handler.TaskNodeState{
-		PluginState:        b,
-		PluginStateVersion: v,
+		PluginState:        pluginTrns.pluginState,
+		PluginStateVersion: pluginTrns.pluginStateVersion,
 		PluginPhase:        pluginTrns.pInfo.Phase(),
 		PluginPhaseVersion: pluginTrns.pInfo.Version(),
 	})
@@ -471,7 +493,7 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 
 func New(_ context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) *Handler {
 	// TODO NewShould take apointer
-	async, err:= catalog.NewAsyncClient(client, *catalog.GetConfig())
+	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig())
 	if err != nil {
 		return nil
 	}

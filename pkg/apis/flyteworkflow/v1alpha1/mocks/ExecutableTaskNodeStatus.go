@@ -9,17 +9,15 @@ type ExecutableTaskNodeStatus struct {
 	mock.Mock
 }
 
-// GetCustomState provides a mock function with given fields:
-func (_m *ExecutableTaskNodeStatus) GetCustomState() map[string]interface{} {
+// GetBarrierClockTick provides a mock function with given fields:
+func (_m *ExecutableTaskNodeStatus) GetBarrierClockTick() uint32 {
 	ret := _m.Called()
 
-	var r0 map[string]interface{}
-	if rf, ok := ret.Get(0).(func() map[string]interface{}); ok {
+	var r0 uint32
+	if rf, ok := ret.Get(0).(func() uint32); ok {
 		r0 = rf()
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]interface{})
-		}
+		r0 = ret.Get(0).(uint32)
 	}
 
 	return r0
@@ -78,20 +76,6 @@ func (_m *ExecutableTaskNodeStatus) GetPluginStateVersion() uint32 {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(uint32)
-	}
-
-	return r0
-}
-
-// UsePluginState provides a mock function with given fields:
-func (_m *ExecutableTaskNodeStatus) UsePluginState() bool {
-	ret := _m.Called()
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func() bool); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(bool)
 	}
 
 	return r0

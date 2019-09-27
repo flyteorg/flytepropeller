@@ -15,6 +15,7 @@ var (
 			"container",
 		}},
 		MaxPluginPhaseVersions: 1000,
+		BarrierEnabled:         true,
 	}
 
 	section = config.MustRegisterSection(SectionKey, defaultConfig)
@@ -23,6 +24,7 @@ var (
 type Config struct {
 	TaskPlugins            TaskPluginConfig `json:"task-plugins" pflag:",Task plugin configuration"`
 	MaxPluginPhaseVersions int32            `json:"max-plugin-phase-versions" pflag:",Maximum number of plugin phase versions allowed for one phase."`
+	BarrierEnabled         bool             `json:"barrier-enabled" pflag:",Enable Barrier transitions using inmemory context"`
 }
 
 type TaskPluginConfig struct {

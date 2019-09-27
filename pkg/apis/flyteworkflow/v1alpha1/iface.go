@@ -254,6 +254,7 @@ type ExecutableTaskNodeStatus interface {
 	GetPhaseVersion() uint32
 	GetPluginState() []byte
 	GetPluginStateVersion() uint32
+	GetBarrierClockTick() uint32
 }
 
 type MutableTaskNodeStatus interface {
@@ -262,6 +263,7 @@ type MutableTaskNodeStatus interface {
 	SetPhaseVersion(version uint32)
 	SetPluginState([]byte)
 	SetPluginStateVersion(uint32)
+	SetBarrierClockTick(tick uint32)
 }
 
 // Interface for a Child Workflow Node
