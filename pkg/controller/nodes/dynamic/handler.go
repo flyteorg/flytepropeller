@@ -145,7 +145,7 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 	return trns, nil
 }
 
-func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext) error {
+func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
 
 	ds := nCtx.NodeStateReader().GetDynamicNodeState()
 	switch ds.Phase {
@@ -159,10 +159,10 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 			return nil
 		}
 
-		return d.nodeExecutor.AbortHandler(ctx, dynamicWF, dynamicWF.StartNode())
+		return d.nodeExecutor.AbortHandler(ctx, dynamicWF, dynamicWF.StartNode(), reason)
 	default:
 		// The parent node has not yet completed, so we will abort the parent node
-		return d.TaskNodeHandler.Abort(ctx, nCtx)
+		return d.TaskNodeHandler.Abort(ctx, nCtx, reason)
 	}
 }
 

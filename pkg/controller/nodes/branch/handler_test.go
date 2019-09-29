@@ -55,7 +55,7 @@ func (m *mockNodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.
 	return m.RecursiveNodeHandlerCB(ctx, w, currentNode)
 }
 
-func (m *mockNodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error {
+func (m *mockNodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error {
 	return m.AbortNodeHandlerCB(ctx, w, currentNode)
 }
 
@@ -248,7 +248,7 @@ func TestBranchHandler_AbortNode(t *testing.T) {
 
 	t.Run("NoBranchNode", func(t *testing.T) {
 		nCtx := createNodeContext(v1alpha1.BranchNodeError, nil, w, n, nil)
-		err := branch.Abort(ctx, nCtx)
+		err := branch.Abort(ctx, nCtx, "")
 		assert.Error(t, err)
 		assert.True(t, errors.Matches(err, errors.UserProvidedError))
 	})
@@ -260,7 +260,7 @@ func TestBranchHandler_AbortNode(t *testing.T) {
 			assert.Equal(t, n1, currentNode.GetID())
 			return nil
 		}
-		err := branch.Abort(ctx, nCtx)
+		err := branch.Abort(ctx, nCtx, "")
 		assert.NoError(t, err)
 	})
 }
