@@ -24,9 +24,6 @@ propeller:
   publish-k8s-events: true
 # Sample plugins config
 plugins:
-  # Set of enabled plugins at root level
-  enabled-plugins:
-    - container
   # All k8s plugins default configuration
   k8s:
     inject-finalizer: true

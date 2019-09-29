@@ -3,11 +3,12 @@ package end
 import (
 	"context"
 
+	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flytestdlib/storage"
+
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/lyft/flytestdlib/logger"
-	"github.com/lyft/flytestdlib/storage"
 )
 
 type endHandler struct {
@@ -40,7 +41,7 @@ func (e endHandler) Handle(ctx context.Context, executionContext handler.NodeExe
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(nil)), nil
 }
 
-func (e endHandler) Abort(ctx context.Context, executionContext handler.NodeExecutionContext) error {
+func (e endHandler) Abort(ctx context.Context, executionContext handler.NodeExecutionContext, reason string) error {
 	return nil
 }
 

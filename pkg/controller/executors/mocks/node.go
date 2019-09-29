@@ -13,13 +13,13 @@ type Node struct {
 	mock.Mock
 }
 
-// AbortHandler provides a mock function with given fields: ctx, w, currentNode
-func (_m *Node) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error {
-	ret := _m.Called(ctx, w, currentNode)
+// AbortHandler provides a mock function with given fields: ctx, w, currentNode, reason
+func (_m *Node) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error {
+	ret := _m.Called(ctx, w, currentNode, reason)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, v1alpha1.ExecutableWorkflow, v1alpha1.ExecutableNode) error); ok {
-		r0 = rf(ctx, w, currentNode)
+	if rf, ok := ret.Get(0).(func(context.Context, v1alpha1.ExecutableWorkflow, v1alpha1.ExecutableNode, string) error); ok {
+		r0 = rf(ctx, w, currentNode, reason)
 	} else {
 		r0 = ret.Error(0)
 	}
