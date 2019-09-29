@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteidl/clients/go/events"
 	eventsErr "github.com/lyft/flyteidl/clients/go/events/errors"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
