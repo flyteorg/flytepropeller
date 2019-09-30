@@ -11,7 +11,7 @@ const SectionKey = "tasks"
 
 var (
 	defaultConfig = &Config{
-		TaskPlugins: TaskPluginConfig{EnabledPlugins: []string{}},
+		TaskPlugins:            TaskPluginConfig{EnabledPlugins: []string{}},
 		MaxPluginPhaseVersions: 1000,
 	}
 
