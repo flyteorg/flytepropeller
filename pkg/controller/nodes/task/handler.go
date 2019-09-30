@@ -31,13 +31,13 @@ import (
 const pluginContextKey = contextutils.Key("plugin")
 
 type metrics struct {
-	pluginPanics             labeled.Counter
-	unsupportedTaskType      labeled.Counter
-	discoveryPutFailureCount labeled.Counter
-	discoveryGetFailureCount labeled.Counter
-	discoveryMissCount       labeled.Counter
-	discoveryHitCount        labeled.Counter
-	pluginExecutionLatency   labeled.StopWatch
+	pluginPanics           labeled.Counter
+	unsupportedTaskType    labeled.Counter
+	catalogPutFailureCount labeled.Counter
+	catalogGetFailureCount labeled.Counter
+	discoveryMissCount     labeled.Counter
+	catalogHitCount        labeled.Counter
+	pluginExecutionLatency labeled.StopWatch
 
 	// TODO We should have a metric to capture custom state size
 }
@@ -478,13 +478,13 @@ func New(_ context.Context, kubeClient executors.Client, client catalog.Client, 
 		pluginRegistry: pluginMachinery.PluginRegistry(),
 		plugins:        make(map[pluginCore.TaskType]pluginCore.Plugin),
 		metrics: &metrics{
-			pluginPanics:             labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),
-			unsupportedTaskType:      labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),
-			discoveryHitCount:        labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", scope),
-			discoveryMissCount:       labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
-			discoveryPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
-			discoveryGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
-			pluginExecutionLatency:   labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
+			pluginPanics:           labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),
+			unsupportedTaskType:    labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),
+			catalogHitCount:        labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", scope),
+			discoveryMissCount:     labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
+			catalogPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
+			catalogGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
+			pluginExecutionLatency: labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
 		},
 		kubeClient:    kubeClient,
 		catalog:       client,
