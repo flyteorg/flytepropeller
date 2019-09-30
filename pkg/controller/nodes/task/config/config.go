@@ -13,9 +13,7 @@ const SectionKey = "tasks"
 
 var (
 	defaultConfig = &Config{
-		TaskPlugins: TaskPluginConfig{EnabledPlugins: []string{
-			"container",
-		}},
+		TaskPlugins:            TaskPluginConfig{EnabledPlugins: []string{}},
 		MaxPluginPhaseVersions: 1000,
 		BarrierConfig: BarrierConfig{
 			Enabled:   true,
@@ -40,7 +38,7 @@ type BarrierConfig struct {
 }
 
 type TaskPluginConfig struct {
-	EnabledPlugins []string
+	EnabledPlugins []string `json:"enabled-plugins" pflag:",Plugins enabled currently"`
 }
 
 func (p TaskPluginConfig) GetEnabledPluginsSet() sets.String {

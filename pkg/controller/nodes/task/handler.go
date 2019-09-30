@@ -6,6 +6,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -25,6 +26,7 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/config"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/k8s"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/secretmanager"
 )
 
 const pluginContextKey = contextutils.Key("plugin")
@@ -123,7 +125,6 @@ type Handler struct {
 	pluginRegistry PluginRegistryIface
 	kubeClient     pluginCore.KubeClient
 	cfg            *config.Config
-	barrierCache   *barrier
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -141,10 +142,7 @@ func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
 }
 
 func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
-	tSCtx := &setupContext{
-		SetupContext: sCtx,
-		kubeClient:   t.kubeClient,
-	}
+	tSCtx := t.newSetupContext(ctx, sCtx)
 
 	enabledPlugins := t.cfg.TaskPlugins.GetEnabledPluginsSet()
 	allPluginsEnabled := false
@@ -152,9 +150,10 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		allPluginsEnabled = true
 	}
 
-	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all plugins enabled: %s]", allPluginsEnabled)
+	logger.Infof(ctx, "Enabled plugins: %v", enabledPlugins.List())
+	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all plugins enabled: %v]", allPluginsEnabled)
 	for _, cpe := range t.pluginRegistry.GetCorePlugins() {
-		if !allPluginsEnabled && enabledPlugins.Has(cpe.ID) {
+		if !allPluginsEnabled && !enabledPlugins.Has(cpe.ID) {
 			logger.Infof(ctx, "Plugin [%s] is DISABLED.", cpe.ID)
 		} else {
 			logger.Infof(ctx, "Loading Plugin [%s] ENABLED", cpe.ID)
@@ -174,7 +173,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		}
 	}
 	for _, kpe := range t.pluginRegistry.GetK8sPlugins() {
-		if !allPluginsEnabled && enabledPlugins.Has(kpe.ID) {
+		if !allPluginsEnabled && !enabledPlugins.Has(kpe.ID) {
 			logger.Infof(ctx, "K8s Plugin [%s] is DISABLED.", kpe.ID)
 		} else {
 			kp, err := k8s.NewPluginManager(ctx, tSCtx, kpe)
@@ -437,7 +436,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	return pluginTrns.FinalTransition(ctx)
 }
 
-func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext) error {
+func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
 	logger.Debugf(ctx, "Abort invoked.")
 	tCtx, err := t.newTaskExecutionContext(ctx, nCtx)
 	if err != nil {
@@ -449,7 +448,7 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext) e
 		return errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
 	}
 
-	return func() (err error) {
+	err = func() (err error) {
 		defer func() {
 			if r := recover(); r != nil {
 				t.metrics.pluginPanics.Inc(ctx)
@@ -462,6 +461,29 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext) e
 		err = p.Abort(childCtx, tCtx)
 		return
 	}()
+
+	if err != nil {
+		logger.Errorf(ctx, "Abort failed when calling plugin abort.")
+		return err
+	}
+	taskExecID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
+	evRecorder := nCtx.EventsRecorder()
+	if err := evRecorder.RecordTaskEvent(ctx, &event.TaskExecutionEvent{
+		TaskId:                taskExecID.TaskId,
+		ParentNodeExecutionId: taskExecID.NodeExecutionId,
+		RetryAttempt:          nCtx.CurrentAttempt(),
+		Phase:                 core.TaskExecution_ABORTED,
+		OccurredAt:            ptypes.TimestampNow(),
+		OutputResult: &event.TaskExecutionEvent_Error{
+			Error: &core.ExecutionError{
+				Code:    "Task Aborted",
+				Message: reason,
+			}},
+	}); err != nil {
+		logger.Errorf(ctx, "failed to send event to Admin. error: %s", err.Error())
+		return err
+	}
+	return nil
 }
 
 func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
@@ -510,10 +532,11 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 			discoveryGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
 			pluginExecutionLatency:   labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
 		},
-		kubeClient:   kubeClient,
-		catalog:      client,
-		asyncCatalog: async,
+		kubeClient:    kubeClient,
+		catalog:       client,
+		asyncCatalog:  async,
+		secretManager: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
 		barrierCache: NewLRUBarrier(ctx, cfg.BarrierConfig),
-		cfg:          cfg,
+		cfg:           cfg,
 	}
 }

@@ -15,12 +15,12 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	flyteMocks "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/codex"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/secretmanager"
 )
 
 func TestHandler_newTaskExecutionContext(t *testing.T) {
@@ -84,7 +84,8 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 
 	c := &mocks.Client{}
 	tk := &Handler{
-		catalog: c,
+		catalog:       c,
+		secretManager: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
 	}
 
 	got, err := tk.newTaskExecutionContext(context.TODO(), nCtx)

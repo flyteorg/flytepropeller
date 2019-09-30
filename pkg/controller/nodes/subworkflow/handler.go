@@ -25,7 +25,7 @@ func (w *workflowNodeHandler) Handle(ctx context.Context, executionContext handl
 	panic("implement me")
 }
 
-func (w *workflowNodeHandler) Abort(ctx context.Context, executionContext handler.NodeExecutionContext) error {
+func (w *workflowNodeHandler) Abort(ctx context.Context, executionContext handler.NodeExecutionContext, reason string) error {
 	panic("implement me")
 }
 

@@ -22,11 +22,13 @@ propeller:
       capacity: 1000
   kube-config: "$HOME/.kube/config"
   publish-k8s-events: true
+tasks:
+  task-plugins:
+    enabled-plugins:
+      - container
+      - k8s-array
 # Sample plugins config
 plugins:
-  # Set of enabled plugins at root level
-  enabled-plugins:
-    - container
   # All k8s plugins default configuration
   k8s:
     inject-finalizer: true
