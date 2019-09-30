@@ -171,7 +171,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		}
 	}
 	for _, kpe := range t.pluginRegistry.GetK8sPlugins() {
-		if !allPluginsEnabled && enabledPlugins.Has(kpe.ID) {
+		if !allPluginsEnabled && !enabledPlugins.Has(kpe.ID) {
 			logger.Infof(ctx, "K8s Plugin [%s] is DISABLED.", kpe.ID)
 		} else {
 			kp, err := k8s.NewPluginManager(ctx, tSCtx, kpe)
