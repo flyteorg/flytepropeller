@@ -124,6 +124,8 @@ type Handler struct {
 	metrics        *metrics
 	pluginRegistry PluginRegistryIface
 	kubeClient     pluginCore.KubeClient
+	secretManager  pluginCore.SecretManager
+	barrierCache   *barrier
 	cfg            *config.Config
 }
 
@@ -536,7 +538,7 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		catalog:       client,
 		asyncCatalog:  async,
 		secretManager: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
-		barrierCache: NewLRUBarrier(ctx, cfg.BarrierConfig),
+		barrierCache:  NewLRUBarrier(ctx, cfg.BarrierConfig),
 		cfg:           cfg,
 	}
 }
