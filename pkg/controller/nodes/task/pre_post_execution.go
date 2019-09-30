@@ -32,11 +32,11 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 				logger.Infof(ctx, "Artifact not found in Discovery. Executing Task.")
 				return false, nil
 			}
-			t.metrics.discoveryGetFailureCount.Inc(ctx)
+			t.metrics.catalogGetFailureCount.Inc(ctx)
 			logger.Errorf(ctx, "Discovery check failed. err: %v", err.Error())
 			return false, errors.Wrapf(err, "Failed to check Catalog for previous results")
 		} else if resp != nil {
-			t.metrics.discoveryHitCount.Inc(ctx)
+			t.metrics.catalogHitCount.Inc(ctx)
 			if iface := tk.Interface; iface != nil && iface.Outputs != nil && len(iface.Outputs.Variables) > 0 {
 				if err := outputWriter.Put(ctx, resp); err != nil {
 					logger.Errorf(ctx, "failed to write data to Storage, err: %v", err.Error())
@@ -47,7 +47,7 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 			return true, nil
 		} else {
 			// Nil response and Nil error
-			t.metrics.discoveryGetFailureCount.Inc(ctx)
+			t.metrics.catalogGetFailureCount.Inc(ctx)
 			return false, errors.Wrapf(err, "Nil catalog response. Failed to check Catalog for previous results")
 		}
 	}
@@ -123,7 +123,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReade
 				InputReader:    i,
 			}
 			if err2 := t.catalog.Put(ctx, key, r, m); err2 != nil {
-				t.metrics.discoveryPutFailureCount.Inc(ctx)
+				t.metrics.catalogPutFailureCount.Inc(ctx)
 				logger.Errorf(ctx, "Failed to write results to catalog. err: %v", err2)
 			} else {
 				logger.Debugf(ctx, "Successfully cached results to discovery - Task [%s]", tk.GetId())

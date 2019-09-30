@@ -25,20 +25,19 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/config"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/k8s"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/secretmanager"
 )
 
 const pluginContextKey = contextutils.Key("plugin")
 
 type metrics struct {
-	pluginPanics             labeled.Counter
-	unsupportedTaskType      labeled.Counter
-	discoveryPutFailureCount labeled.Counter
-	discoveryGetFailureCount labeled.Counter
-	discoveryMissCount       labeled.Counter
-	discoveryHitCount        labeled.Counter
-	pluginExecutionLatency   labeled.StopWatch
+	pluginPanics           labeled.Counter
+	unsupportedTaskType    labeled.Counter
+	catalogPutFailureCount labeled.Counter
+	catalogGetFailureCount labeled.Counter
+	discoveryMissCount     labeled.Counter
+	catalogHitCount        labeled.Counter
+	pluginExecutionLatency labeled.StopWatch
 
 	// TODO We should have a metric to capture custom state size
 }
@@ -146,49 +145,25 @@ func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
 func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	tSCtx := t.newSetupContext(ctx, sCtx)
 
-	enabledPlugins := t.cfg.TaskPlugins.GetEnabledPluginsSet()
-	allPluginsEnabled := false
-	if enabledPlugins.Len() == 0 {
-		allPluginsEnabled = true
+	enabledPlugins, err := WranglePluginsAndGenerateFinalList(ctx, &t.cfg.TaskPlugins, t.pluginRegistry)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to finalize enabled plugins. Err: %s", err)
+		return err
 	}
 
-	logger.Infof(ctx, "Enabled plugins: %v", enabledPlugins.List())
-	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all plugins enabled: %v]", allPluginsEnabled)
-	for _, cpe := range t.pluginRegistry.GetCorePlugins() {
-		if !allPluginsEnabled && !enabledPlugins.Has(cpe.ID) {
-			logger.Infof(ctx, "Plugin [%s] is DISABLED.", cpe.ID)
-		} else {
-			logger.Infof(ctx, "Loading Plugin [%s] ENABLED", cpe.ID)
-			cp, err := cpe.LoadPlugin(ctx, tSCtx)
-			if err != nil {
-				return regErrors.Wrapf(err, "failed to load plugin - %s", cpe.ID)
-			}
-			for _, tt := range cpe.RegisteredTaskTypes {
-				logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cpe.ID, tt)
-				t.plugins[tt] = cp
-			}
-			if cpe.IsDefault {
-				if err := t.setDefault(ctx, cp); err != nil {
-					return err
-				}
-			}
+	for _, p := range enabledPlugins {
+		logger.Infof(ctx, "Loading Plugin [%s] ENABLED", p.ID)
+		cp, err := p.LoadPlugin(ctx, tSCtx)
+		if err != nil {
+			return regErrors.Wrapf(err, "failed to load plugin - %s", p.ID)
 		}
-	}
-	for _, kpe := range t.pluginRegistry.GetK8sPlugins() {
-		if !allPluginsEnabled && !enabledPlugins.Has(kpe.ID) {
-			logger.Infof(ctx, "K8s Plugin [%s] is DISABLED.", kpe.ID)
-		} else {
-			kp, err := k8s.NewPluginManager(ctx, tSCtx, kpe)
-			if err != nil {
-				return regErrors.Wrapf(err, "failed to load plugin - %s", kpe.ID)
-			}
-			for _, tt := range kpe.RegisteredTaskTypes {
-				t.plugins[tt] = kp
-			}
-			if kpe.IsDefault {
-				if err := t.setDefault(ctx, kp); err != nil {
-					return err
-				}
+		for _, tt := range p.RegisteredTaskTypes {
+			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", p.ID, tt)
+			t.plugins[tt] = cp
+		}
+		if p.IsDefault {
+			if err := t.setDefault(ctx, cp); err != nil {
+				return err
 			}
 		}
 	}
@@ -526,13 +501,13 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		pluginRegistry: pluginMachinery.PluginRegistry(),
 		plugins:        make(map[pluginCore.TaskType]pluginCore.Plugin),
 		metrics: &metrics{
-			pluginPanics:             labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),
-			unsupportedTaskType:      labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),
-			discoveryHitCount:        labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", scope),
-			discoveryMissCount:       labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
-			discoveryPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
-			discoveryGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
-			pluginExecutionLatency:   labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
+			pluginPanics:           labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),
+			unsupportedTaskType:    labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),
+			catalogHitCount:        labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", scope),
+			discoveryMissCount:     labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
+			catalogPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
+			catalogGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
+			pluginExecutionLatency: labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
 		},
 		kubeClient:    kubeClient,
 		catalog:       client,

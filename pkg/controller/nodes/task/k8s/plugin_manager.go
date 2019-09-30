@@ -123,9 +123,16 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 				return pluginsCore.DoTransition(pluginsCore.PhaseInfoWaitingForResources(time.Now(), pluginsCore.DefaultPhaseVersion, "failed to launch job, resource quota exceeded.")), nil
 			}
 			return pluginsCore.DoTransition(pluginsCore.PhaseInfoRetryableFailure("RuntimeFailure", err.Error(), nil)), nil
+		} else if k8serrors.IsBadRequest(err) || k8serrors.IsInvalid(err) {
+			logger.Errorf(ctx, "Badly formatted resource for plugin [%s], err %s", e.id, err)
+			// return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("BadTaskFormat", err.Error(), nil)), nil
+		} else if k8serrors.IsRequestEntityTooLargeError(err) {
+			logger.Errorf(ctx, "Badly formatted resource for plugin [%s], err %s", e.id, err)
+			return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("EntityTooLarge", err.Error(), nil)), nil
 		}
+		reason := k8serrors.ReasonForError(err)
 		logger.Errorf(ctx, "Failed to launch job, system error. err: %v", err)
-		return pluginsCore.UnknownTransition, err
+		return pluginsCore.UnknownTransition, errors.Wrapf(errors.ErrorCode(reason), err, "failed to create resource")
 	}
 
 	return pluginsCore.DoTransition(pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "task submitted to K8s")), nil
