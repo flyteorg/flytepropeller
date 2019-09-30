@@ -6,6 +6,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -147,7 +148,8 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		allPluginsEnabled = true
 	}
 
-	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all plugins enabled: %s]", allPluginsEnabled)
+	logger.Infof(ctx, "Enabled plugins: %v", enabledPlugins.List())
+	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all plugins enabled: %v]", allPluginsEnabled)
 	for _, cpe := range t.pluginRegistry.GetCorePlugins() {
 		if !allPluginsEnabled && enabledPlugins.Has(cpe.ID) {
 			logger.Infof(ctx, "Plugin [%s] is DISABLED.", cpe.ID)
@@ -415,7 +417,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	return pluginTrns.FinalTransition(ctx)
 }
 
-func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext) error {
+func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
 	logger.Debugf(ctx, "Abort invoked.")
 	tCtx, err := t.newTaskExecutionContext(ctx, nCtx)
 	if err != nil {
@@ -427,7 +429,7 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext) e
 		return errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
 	}
 
-	return func() (err error) {
+	err = func() (err error) {
 		defer func() {
 			if r := recover(); r != nil {
 				t.metrics.pluginPanics.Inc(ctx)
@@ -440,6 +442,29 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext) e
 		err = p.Abort(childCtx, tCtx)
 		return
 	}()
+
+	if err != nil {
+		logger.Errorf(ctx, "Abort failed when calling plugin abort.")
+		return err
+	}
+	taskExecID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
+	evRecorder := nCtx.EventsRecorder()
+	if err := evRecorder.RecordTaskEvent(ctx, &event.TaskExecutionEvent{
+		TaskId:                taskExecID.TaskId,
+		ParentNodeExecutionId: taskExecID.NodeExecutionId,
+		RetryAttempt:          nCtx.CurrentAttempt(),
+		Phase:                 core.TaskExecution_ABORTED,
+		OccurredAt:            ptypes.TimestampNow(),
+		OutputResult: &event.TaskExecutionEvent_Error{
+			Error: &core.ExecutionError{
+				Code:    "Task Aborted",
+				Message: reason,
+			}},
+	}); err != nil {
+		logger.Errorf(ctx, "failed to send event to Admin. error: %s", err.Error())
+		return err
+	}
+	return nil
 }
 
 func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
@@ -471,7 +496,7 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 
 func New(_ context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) *Handler {
 	// TODO NewShould take apointer
-	async, err:= catalog.NewAsyncClient(client, *catalog.GetConfig())
+	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig())
 	if err != nil {
 		return nil
 	}
