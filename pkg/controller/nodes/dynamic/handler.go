@@ -294,7 +294,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 		return nil, true, err
 	}
 
-	subwf, err := k8s.BuildFlyteWorkflow(closure, nil, nil, "")
+	subwf, err := k8s.BuildFlyteWorkflow(closure, &core.LiteralMap{}, nil, "")
 	if err != nil {
 		return nil, true, err
 	}
@@ -302,6 +302,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	if err := f.Cache(ctx, subwf); err != nil {
 		logger.Errorf(ctx, "Failed to cache Dynamic workflow [%s]", err.Error())
 	}
+
 	return newContextualWorkflow(nCtx.Workflow(), subwf, nStatus, subwf.Tasks, subwf.SubWorkflows), true, nil
 }
 
