@@ -13,7 +13,6 @@ import (
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/secretmanager"
 	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
@@ -140,6 +139,6 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		ow:  ow,
 		ber: newBufferedEventRecorder(),
 		c:   t.asyncCatalog,
-		sm:  secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
+		sm:  t.secretManager,
 	}, nil
 }

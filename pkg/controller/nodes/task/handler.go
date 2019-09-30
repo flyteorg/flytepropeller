@@ -26,6 +26,7 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/config"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/k8s"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/secretmanager"
 )
 
 const pluginContextKey = contextutils.Key("plugin")
@@ -120,6 +121,7 @@ type Handler struct {
 	pluginRegistry PluginRegistryIface
 	kubeClient     pluginCore.KubeClient
 	cfg            *config.Config
+	secretManager  pluginCore.SecretManager
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -137,10 +139,7 @@ func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
 }
 
 func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
-	tSCtx := &setupContext{
-		SetupContext: sCtx,
-		kubeClient:   t.kubeClient,
-	}
+	tSCtx := t.newSetupContext(ctx, sCtx)
 
 	enabledPlugins := t.cfg.TaskPlugins.GetEnabledPluginsSet()
 	allPluginsEnabled := false
@@ -512,9 +511,10 @@ func New(_ context.Context, kubeClient executors.Client, client catalog.Client, 
 			discoveryGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
 			pluginExecutionLatency:   labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
 		},
-		kubeClient:   kubeClient,
-		catalog:      client,
-		asyncCatalog: async,
-		cfg:          config.GetConfig(),
+		kubeClient:    kubeClient,
+		catalog:       client,
+		asyncCatalog:  async,
+		secretManager: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
+		cfg:           config.GetConfig(),
 	}
 }
