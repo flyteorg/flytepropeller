@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteidl/clients/go/events"
 	eventsErr "github.com/lyft/flyteidl/clients/go/events/errors"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -184,8 +185,8 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 	return t.Info(), nil
 }
 
-func (c *nodeExecutor) abort(ctx context.Context, h handler.Node, nCtx *execContext) error {
-	if err := h.Abort(ctx, nCtx); err != nil {
+func (c *nodeExecutor) abort(ctx context.Context, h handler.Node, nCtx *execContext, reason string) error {
+	if err := h.Abort(ctx, nCtx, reason); err != nil {
 		return err
 	}
 	return h.Finalize(ctx, nCtx)
@@ -456,7 +457,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.Exec
 	return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, currentNode.GetID(), "Should never reach here")
 }
 
-func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error {
+func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error {
 	ctx = contextutils.WithNodeID(ctx, currentNode.GetID())
 	nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
 	switch nodeStatus.GetPhase() {
@@ -474,7 +475,29 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWo
 			return err
 		}
 		// Abort this node
-		return c.abort(ctx, h, nCtx)
+		err = c.abort(ctx, h, nCtx, reason)
+		if err != nil {
+			return err
+		}
+		nodeExecID := &core.NodeExecutionIdentifier{
+			NodeId:      nCtx.NodeID(),
+			ExecutionId: w.GetExecutionID().WorkflowExecutionIdentifier,
+		}
+		err = c.IdempotentRecordEvent(ctx, &event.NodeExecutionEvent{
+			Id:         nodeExecID,
+			Phase:      core.NodeExecution_ABORTED,
+			OccurredAt: ptypes.TimestampNow(),
+			OutputResult: &event.NodeExecutionEvent_Error{
+				Error: &core.ExecutionError{
+					Code:    "NodeAborted",
+					Message: reason,
+				},
+			},
+		})
+		if err != nil {
+			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
+			return errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
+		}
 	case v1alpha1.NodePhaseSucceeded, v1alpha1.NodePhaseSkipped:
 		// Abort downstream nodes
 		downstreamNodes, err := w.FromNode(currentNode.GetID())
@@ -487,7 +510,7 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWo
 			if !ok {
 				return errors.Errorf(errors.BadSpecificationError, currentNode.GetID(), "Unable to find Downstream Node [%v]", d)
 			}
-			if err := c.AbortHandler(ctx, w, downstreamNode); err != nil {
+			if err := c.AbortHandler(ctx, w, downstreamNode, reason); err != nil {
 				return err
 			}
 		}

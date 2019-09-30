@@ -80,14 +80,11 @@
     "private/protocol/eventstream",
     "private/protocol/eventstream/eventstreamapi",
     "private/protocol/json/jsonutil",
-    "private/protocol/jsonrpc",
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
-    "private/protocol/restjson",
     "private/protocol/restxml",
     "private/protocol/xml/xmlutil",
-    "service/batch",
     "service/s3",
     "service/s3/s3iface",
     "service/s3/s3manager",
@@ -430,10 +427,9 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:ccd5a632f09d0f0340fc2384fd8d417780e7eeed96d26380511414c3c09e3597"
+  digest = "1:d33f9f88240933167645014031e91fdc72c472b906b290824644a8628752322d"
   name = "github.com/lyft/flyteplugins"
   packages = [
-    "go/tasks/aws",
     "go/tasks/config",
     "go/tasks/errors",
     "go/tasks/logs",
@@ -453,9 +449,6 @@
     "go/tasks/pluginmachinery/workqueue",
     "go/tasks/plugins/array",
     "go/tasks/plugins/array/arraystatus",
-    "go/tasks/plugins/array/awsbatch",
-    "go/tasks/plugins/array/awsbatch/config",
-    "go/tasks/plugins/array/awsbatch/definition",
     "go/tasks/plugins/array/errorcollector",
     "go/tasks/plugins/array/k8s",
     "go/tasks/plugins/hive",
@@ -464,7 +457,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "27b9b97c4f7020527a88a120070dfdab68758d40"
+  revision = "fa8c964988a72f065099593b7aef502cec1165f3"
   source = "https://github.com/lyft/flyteplugins"
 
 [[projects]]
@@ -473,7 +466,6 @@
   packages = [
     "atomic",
     "bitarray",
-    "cache",
     "config",
     "config/files",
     "config/viper",
@@ -1339,7 +1331,6 @@
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s/mocks",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils",
-    "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch",
     "github.com/lyft/flyteplugins/go/tasks/plugins/array/k8s",
     "github.com/lyft/flyteplugins/go/tasks/plugins/hive",
     "github.com/lyft/flyteplugins/go/tasks/plugins/k8s/container",

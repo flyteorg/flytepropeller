@@ -19,7 +19,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"k8s.io/apimachinery/pkg/util/uuid"
-
 )
 
 const (
@@ -190,6 +189,9 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 	}
 
 	datasetID, err := m.CreateDataset(ctx, key, md)
+	if err != nil {
+		return err
+	}
 
 	inputs := &core.LiteralMap{}
 	outputs := &core.LiteralMap{}

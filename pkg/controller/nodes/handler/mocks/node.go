@@ -11,13 +11,13 @@ type Node struct {
 	mock.Mock
 }
 
-// Abort provides a mock function with given fields: ctx, executionContext
-func (_m *Node) Abort(ctx context.Context, executionContext handler.NodeExecutionContext) error {
-	ret := _m.Called(ctx, executionContext)
+// Abort provides a mock function with given fields: ctx, executionContext, reason
+func (_m *Node) Abort(ctx context.Context, executionContext handler.NodeExecutionContext, reason string) error {
+	ret := _m.Called(ctx, executionContext, reason)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, handler.NodeExecutionContext) error); ok {
-		r0 = rf(ctx, executionContext)
+	if rf, ok := ret.Get(0).(func(context.Context, handler.NodeExecutionContext, string) error); ok {
+		r0 = rf(ctx, executionContext, reason)
 	} else {
 		r0 = ret.Error(0)
 	}

@@ -21,7 +21,7 @@ func (s startHandler) Handle(ctx context.Context, executionContext handler.NodeE
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{})), nil
 }
 
-func (s startHandler) Abort(ctx context.Context, executionContext handler.NodeExecutionContext) error {
+func (s startHandler) Abort(ctx context.Context, executionContext handler.NodeExecutionContext, reason string) error {
 	return nil
 }
 

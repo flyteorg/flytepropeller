@@ -18,7 +18,7 @@ type Node interface {
 	Handle(ctx context.Context, executionContext NodeExecutionContext) (Transition, error)
 
 	// This method should be invoked to indicate the node needs to be aborted.
-	Abort(ctx context.Context, executionContext NodeExecutionContext) error
+	Abort(ctx context.Context, executionContext NodeExecutionContext, reason string) error
 
 	// This method is always called before completing the node, if FinalizeRequired returns true.
 	// It is guaranteed that Handle -> (happens before) -> Finalize. Abort -> finalize may be repeated multiple times

@@ -66,7 +66,7 @@ type Node interface {
 	RecursiveNodeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (NodeStatus, error)
 
 	// This aborts the given node. If the given node is complete then it recursively finds the running nodes and aborts them
-	AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error
+	AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error
 
 	// This method should be used to initialize Node executor
 	Initialize(ctx context.Context) error

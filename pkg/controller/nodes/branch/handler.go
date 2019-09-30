@@ -128,7 +128,7 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 	return handler.DoTransition(handler.TransitionTypeEphemeral, phase), nil
 }
 
-func (b *branchHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext) error {
+func (b *branchHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
 
 	branch := nCtx.Node().GetBranchNode()
 	w := nCtx.Workflow()
@@ -139,7 +139,8 @@ func (b *branchHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionCon
 	// If the branch was already evaluated i.e, Node is in Running status
 	branchNodeState := nCtx.NodeStateReader().GetBranchNode()
 	if branchNodeState.Phase == v1alpha1.BranchNodeNotYetEvaluated {
-		return errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "No node finalized through previous branch evaluation.")
+		logger.Errorf(ctx, "No node finalized through previous branch evaluation.")
+		return nil
 	} else if branchNodeState.Phase == v1alpha1.BranchNodeError {
 		// We should never reach here, but for safety and completeness
 		errMsg := "branch evaluation failed"
@@ -152,11 +153,12 @@ func (b *branchHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionCon
 	finalNodeID := branchNodeState.FinalizedNodeID
 	branchTakenNode, ok := w.GetNode(*finalNodeID)
 	if !ok {
-		return errors.Errorf(errors.DownstreamNodeNotFoundError, w.GetID(), nCtx.NodeID(), "Downstream node [%v] not found", *finalNodeID)
+		logger.Errorf(ctx, "Downstream node [%v] not found", *finalNodeID)
+		return nil
 	}
 
 	// Recurse downstream
-	return b.nodeExecutor.AbortHandler(ctx, w, branchTakenNode)
+	return b.nodeExecutor.AbortHandler(ctx, w, branchTakenNode, reason)
 }
 
 func (b *branchHandler) Finalize(ctx context.Context, executionContext handler.NodeExecutionContext) error {

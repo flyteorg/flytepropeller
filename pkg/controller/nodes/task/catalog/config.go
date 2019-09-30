@@ -25,8 +25,8 @@ var (
 type DiscoveryType = string
 
 const (
-	NoOpDiscoveryType   DiscoveryType = "noop"
-	DataCatalogType     DiscoveryType = "datacatalog"
+	NoOpDiscoveryType DiscoveryType = "noop"
+	DataCatalogType   DiscoveryType = "datacatalog"
 )
 
 type Config struct {
