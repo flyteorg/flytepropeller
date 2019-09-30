@@ -151,7 +151,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	logger.Infof(ctx, "Enabled plugins: %v", enabledPlugins.List())
 	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all plugins enabled: %v]", allPluginsEnabled)
 	for _, cpe := range t.pluginRegistry.GetCorePlugins() {
-		if !allPluginsEnabled && enabledPlugins.Has(cpe.ID) {
+		if !allPluginsEnabled && !enabledPlugins.Has(cpe.ID) {
 			logger.Infof(ctx, "Plugin [%s] is DISABLED.", cpe.ID)
 		} else {
 			logger.Infof(ctx, "Loading Plugin [%s] ENABLED", cpe.ID)
