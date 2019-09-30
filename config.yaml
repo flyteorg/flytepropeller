@@ -27,6 +27,7 @@ tasks:
     enabled-plugins:
       - container
       - k8s-array
+      - qubole-hive-executor
 # Sample plugins config
 plugins:
   # All k8s plugins default configuration
