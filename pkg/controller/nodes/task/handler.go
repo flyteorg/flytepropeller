@@ -186,53 +186,37 @@ func (t Handler) ResolvePlugin(ctx context.Context, ttype string) (pluginCore.Pl
 func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *taskExecutionContext, ts handler.TaskNodeState) (*pluginRequestedTransition, error) {
 	pluginTrns := &pluginRequestedTransition{}
 
-	prevBarrier := t.barrierCache.GetPreviousBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
-	if prevBarrier.BarrierClockTick <= ts.BarrierClockTick {
-		trns, err := func() (trns pluginCore.Transition, err error) {
-			defer func() {
-				if r := recover(); r != nil {
-					t.metrics.pluginPanics.Inc(ctx)
-					stack := debug.Stack()
-					logger.Errorf(ctx, "Panic in plugin[%s]", p.GetID())
-					err = fmt.Errorf("panic when executing a plugin [%s]. Stack: [%s]", p.GetID(), string(stack))
-					trns = pluginCore.UnknownTransition
-				}
-			}()
-			childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
-			trns, err = p.Handle(childCtx, tCtx)
-			return
+	trns, err := func() (trns pluginCore.Transition, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.metrics.pluginPanics.Inc(ctx)
+				stack := debug.Stack()
+				logger.Errorf(ctx, "Panic in plugin[%s]", p.GetID())
+				err = fmt.Errorf("panic when executing a plugin [%s]. Stack: [%s]", p.GetID(), string(stack))
+				trns = pluginCore.UnknownTransition
+			}
 		}()
-		if err != nil {
-			logger.Warnf(ctx, "Runtime error from plugin [%s]. Error: %s", p.GetID(), err.Error())
-			return nil, regErrors.Wrapf(err, "failed to execute handle for plugin [%s]", p.GetID())
-		}
-
-		var b []byte
-		var v uint32
-		if tCtx.psm.newState != nil {
-			b = tCtx.psm.newState.Bytes()
-			v = uint32(tCtx.psm.newStateVersion)
-		} else {
-			// New state was not mutated, so we should write back the existing state
-			b = ts.PluginState
-			v = ts.PluginPhaseVersion
-		}
-		if trns.Type() == pluginCore.TransitionTypeBarrier {
-			logger.Infof(ctx, "Barrier transition observed for Plugin [%s], TaskExecID [%s]. recording: [%s]", p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), trns.String())
-			t.barrierCache.RecordBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), BarrierTransition{
-				BarrierClockTick: prevBarrier.BarrierClockTick + 1,
-				CallLog: PluginCallLog{
-					PluginState:        b,
-					PluginStateVersion: v,
-					PluginTransition:   trns,
-				},
-			})
-		}
-		pluginTrns.ObservedTransitionAndState(trns, v, b)
-	} else {
-		logger.Infof(ctx, "Replaying Barrier transition for Plugin [%s], TaskExecID [%s]. recording: [%s]", p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), prevBarrier.CallLog.PluginTransition.String())
-		pluginTrns.ObservedTransitionAndState(prevBarrier.CallLog.PluginTransition, prevBarrier.CallLog.PluginStateVersion, prevBarrier.CallLog.PluginState)
+		childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
+		trns, err = p.Handle(childCtx, tCtx)
+		return
+	}()
+	if err != nil {
+		logger.Warnf(ctx, "Runtime error from plugin [%s]. Error: %s", p.GetID(), err.Error())
+		return nil, regErrors.Wrapf(err, "failed to execute handle for plugin [%s]", p.GetID())
 	}
+
+	var b []byte
+	var v uint32
+	if tCtx.psm.newState != nil {
+		b = tCtx.psm.newState.Bytes()
+		v = uint32(tCtx.psm.newStateVersion)
+	} else {
+		// New state was not mutated, so we should write back the existing state
+		b = ts.PluginState
+		v = ts.PluginPhaseVersion
+	}
+	pluginTrns.ObservedTransitionAndState(trns, v, b)
+
 	if pluginTrns.pInfo.Phase() == ts.PluginPhase {
 		if pluginTrns.pInfo.Version() == ts.PluginPhaseVersion {
 			logger.Debugf(ctx, "p+Version previously seen .. no event will be sent")
@@ -351,10 +335,25 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 	// STEP 2: If no cache-hit, then lets invoke the plugin and wait for a transition out of undefined
 	if pluginTrns == nil {
-		var err error
-		pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
-		if err != nil {
-			return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
+		prevBarrier := t.barrierCache.GetPreviousBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+		if prevBarrier.BarrierClockTick <= ts.BarrierClockTick {
+			var err error
+			pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
+			if err != nil {
+				return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
+			}
+			if pluginTrns.ttype == handler.TransitionTypeBarrier {
+				logger.Infof(ctx, "Barrier transition observed for Plugin [%s], TaskExecID [%s]. recording: [%s]", p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), pluginTrns.pInfo.String())
+				t.barrierCache.RecordBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), BarrierTransition{
+					BarrierClockTick: prevBarrier.BarrierClockTick + 1,
+					CallLog: PluginCallLog{
+						PluginTransition: pluginTrns,
+					},
+				})
+			}
+		} else {
+			logger.Infof(ctx, "Replaying Barrier transition for Plugin [%s], TaskExecID [%s]. recording: [%s]", p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), prevBarrier.CallLog.PluginTransition.pInfo.String())
+			pluginTrns = prevBarrier.CallLog.PluginTransition
 		}
 	}
 

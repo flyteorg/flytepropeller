@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/logger"
 	"k8s.io/apimachinery/pkg/util/cache"
 
@@ -14,9 +13,7 @@ import (
 type BarrierKey = string
 
 type PluginCallLog struct {
-	PluginState        []byte
-	PluginStateVersion uint32
-	PluginTransition   core.Transition
+	PluginTransition   *pluginRequestedTransition
 }
 
 type BarrierTransition struct {
