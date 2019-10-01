@@ -172,7 +172,7 @@ func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx handler.N
 	return d.TaskNodeHandler.Finalize(ctx, nCtx)
 }
 
-func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Context, djSpec *core.DynamicJobSpec, nCtx handler.NodeExecutionContext) (
+func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Context, djSpec *core.DynamicJobSpec, nCtx handler.NodeExecutionContext, parentNodeStatus v1alpha1.ExecutableNodeStatus) (
 	*core.WorkflowTemplate, error) {
 
 	iface, err := underlyingInterface(ctx, nCtx.TaskReader())
@@ -190,7 +190,7 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 		}
 
 		// Instantiate a nodeStatus using the modified name but set its data directory using the original name.
-		subNodeStatus := nCtx.NodeStatus().GetNodeExecutionStatus(newID)
+		subNodeStatus := parentNodeStatus.GetNodeExecutionStatus(newID)
 		originalNodePath, err := nCtx.DataStore().ConstructReference(ctx, nCtx.NodeStatus().GetDataDir(), n.Id)
 		if err != nil {
 			return nil, err
@@ -278,7 +278,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	}
 
 	var closure *core.CompiledWorkflowClosure
-	wf, err := d.buildDynamicWorkflowTemplate(ctx, djSpec, nCtx)
+	wf, err := d.buildDynamicWorkflowTemplate(ctx, djSpec, nCtx, nStatus)
 	if err != nil {
 		return nil, true, err
 	}
