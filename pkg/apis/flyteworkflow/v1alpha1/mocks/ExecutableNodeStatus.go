@@ -18,11 +18,6 @@ func (_m *ExecutableNodeStatus) ClearDynamicNodeStatus() {
 	_m.Called()
 }
 
-// ClearSubWorkflowStatus provides a mock function with given fields:
-func (_m *ExecutableNodeStatus) ClearSubWorkflowStatus() {
-	_m.Called()
-}
-
 // ClearTaskStatus provides a mock function with given fields:
 func (_m *ExecutableNodeStatus) ClearTaskStatus() {
 	_m.Called()
@@ -171,22 +166,6 @@ func (_m *ExecutableNodeStatus) GetOrCreateDynamicNodeStatus() v1alpha1.MutableD
 	return r0
 }
 
-// GetOrCreateSubWorkflowStatus provides a mock function with given fields:
-func (_m *ExecutableNodeStatus) GetOrCreateSubWorkflowStatus() v1alpha1.MutableSubWorkflowNodeStatus {
-	ret := _m.Called()
-
-	var r0 v1alpha1.MutableSubWorkflowNodeStatus
-	if rf, ok := ret.Get(0).(func() v1alpha1.MutableSubWorkflowNodeStatus); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha1.MutableSubWorkflowNodeStatus)
-		}
-	}
-
-	return r0
-}
-
 // GetOrCreateTaskStatus provides a mock function with given fields:
 func (_m *ExecutableNodeStatus) GetOrCreateTaskStatus() v1alpha1.MutableTaskNodeStatus {
 	ret := _m.Called()
@@ -307,22 +286,6 @@ func (_m *ExecutableNodeStatus) GetStoppedAt() *v1.Time {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*v1.Time)
-		}
-	}
-
-	return r0
-}
-
-// GetSubWorkflowNodeStatus provides a mock function with given fields:
-func (_m *ExecutableNodeStatus) GetSubWorkflowNodeStatus() v1alpha1.ExecutableSubWorkflowNodeStatus {
-	ret := _m.Called()
-
-	var r0 v1alpha1.ExecutableSubWorkflowNodeStatus
-	if rf, ok := ret.Get(0).(func() v1alpha1.ExecutableSubWorkflowNodeStatus); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha1.ExecutableSubWorkflowNodeStatus)
 		}
 	}
 

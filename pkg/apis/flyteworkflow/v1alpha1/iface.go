@@ -211,7 +211,6 @@ type MutableNodeStatus interface {
 	GetOrCreateTaskStatus() MutableTaskNodeStatus
 	GetTaskStatus() MutableTaskNodeStatus
 	ClearTaskStatus()
-	ClearSubWorkflowStatus()
 	GetOrCreateDynamicNodeStatus() MutableDynamicNodeStatus
 	GetDynamicNodeStatus() MutableDynamicNodeStatus
 	ClearDynamicNodeStatus()
@@ -234,7 +233,6 @@ type ExecutableNodeStatus interface {
 	GetAttempts() uint32
 	GetWorkflowNodeStatus() ExecutableWorkflowNodeStatus
 	GetTaskNodeStatus() ExecutableTaskNodeStatus
-	GetSubWorkflowNodeStatus() ExecutableSubWorkflowNodeStatus
 
 	IsCached() bool
 	IsDirty() bool

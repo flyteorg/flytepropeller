@@ -14,6 +14,7 @@ type nodeStateManager struct {
 	t          *handler.TaskNodeState
 	b          *handler.BranchNodeState
 	d          *handler.DynamicNodeState
+	w          *handler.WorkflowNodeState
 }
 
 func (n *nodeStateManager) PutTaskNodeState(s handler.TaskNodeState) error {
@@ -28,6 +29,11 @@ func (n *nodeStateManager) PutBranchNode(s handler.BranchNodeState) error {
 
 func (n *nodeStateManager) PutDynamicNodeState(s handler.DynamicNodeState) error {
 	n.d = &s
+	return nil
+}
+
+func (n *nodeStateManager) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
+	n.w = &s
 	return nil
 }
 
@@ -57,6 +63,15 @@ func (n nodeStateManager) GetBranchNode() handler.BranchNodeState {
 func (n nodeStateManager) GetDynamicNodeState() handler.DynamicNodeState {
 	dn := n.nodeStatus.GetDynamicNodeStatus()
 	ds := handler.DynamicNodeState{}
+	if dn != nil {
+		ds.Phase = dn.GetDynamicNodePhase()
+	}
+	return ds
+}
+
+func (n nodeStateManager) GetWorkflowNodeState() handler.WorkflowNodeState {
+	dn := n.nodeStatus.GetWorkflowNodeStatus()
+	ds := handler.WorkflowNodeState{}
 	if dn != nil {
 		ds.Phase = dn.GetDynamicNodePhase()
 	}

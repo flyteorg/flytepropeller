@@ -80,17 +80,17 @@ func (s *DynamicNodeStatus) Equals(o *DynamicNodeStatus) bool {
 	return s.Phase == o.Phase
 }
 
-type SubWorkflowNodeStatus struct {
-	Phase WorkflowPhase `json:"phase"`
-}
-
-func (s SubWorkflowNodeStatus) GetPhase() WorkflowPhase {
-	return s.Phase
-}
-
-func (s *SubWorkflowNodeStatus) SetPhase(phase WorkflowPhase) {
-	s.Phase = phase
-}
+//type SubWorkflowNodeStatus struct {
+//	Phase WorkflowPhase `json:"phase"`
+//}
+//
+//func (s SubWorkflowNodeStatus) GetPhase() WorkflowPhase {
+//	return s.Phase
+//}
+//
+//func (s *SubWorkflowNodeStatus) SetPhase(phase WorkflowPhase) {
+//	s.Phase = phase
+//}
 
 type WorkflowNodeStatus struct {
 	WorkflowName string `json:"name"`
@@ -126,7 +126,6 @@ type NodeStatus struct {
 	WorkflowNodeStatus *WorkflowNodeStatus `json:"workflowNodeStatus,omitempty"`
 	TaskNodeStatus     *TaskNodeStatus     `json:",omitempty"`
 	// TODO not used delete
-	SubWorkflowNodeStatus *SubWorkflowNodeStatus `json:"subWorkflowStatus,omitempty"`
 	DynamicNodeStatus     *DynamicNodeStatus     `json:"dynamicNodeStatus,omitempty"`
 }
 
@@ -346,26 +345,6 @@ func (in NodeStatus) GetTaskNodeStatus() ExecutableTaskNodeStatus {
 	}
 
 	return in.TaskNodeStatus
-}
-
-func (in NodeStatus) GetSubWorkflowNodeStatus() ExecutableSubWorkflowNodeStatus {
-	if in.SubWorkflowNodeStatus == nil {
-		return nil
-	}
-
-	return in.SubWorkflowNodeStatus
-}
-
-func (in NodeStatus) GetOrCreateSubWorkflowStatus() MutableSubWorkflowNodeStatus {
-	if in.SubWorkflowNodeStatus == nil {
-		in.SubWorkflowNodeStatus = &SubWorkflowNodeStatus{}
-	}
-
-	return in.SubWorkflowNodeStatus
-}
-
-func (in *NodeStatus) ClearSubWorkflowStatus() {
-	in.SubWorkflowNodeStatus = nil
 }
 
 func (in *NodeStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {

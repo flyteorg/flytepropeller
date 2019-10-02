@@ -27,14 +27,26 @@ type DynamicNodeState struct {
 	Phase v1alpha1.DynamicNodePhase
 }
 
+// TODO ssingh: Not sure if we need this.
+// type WorkflowNodePhase uint8
+
+type WorkflowNodeState struct {
+	WorkflowName string `json:"name"`
+
+	// TODO ssingh: Not sure if we need this.
+	//Phase v1alpha1.WorkflowPhase
+}
+
 type NodeStateWriter interface {
 	PutTaskNodeState(s TaskNodeState) error
 	PutBranchNode(s BranchNodeState) error
 	PutDynamicNodeState(s DynamicNodeState) error
+	PutWorkflowNodeState(s WorkflowNodeState) error
 }
 
 type NodeStateReader interface {
 	GetTaskNodeState() TaskNodeState
 	GetBranchNode() BranchNodeState
 	GetDynamicNodeState() DynamicNodeState
+	GetWorkflowNodeState() WorkflowNodeState
 }
