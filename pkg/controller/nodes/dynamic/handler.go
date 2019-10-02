@@ -172,7 +172,7 @@ func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx handler.N
 	return d.TaskNodeHandler.Finalize(ctx, nCtx)
 }
 
-func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Context, djSpec *core.DynamicJobSpec, nCtx handler.NodeExecutionContext) (
+func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Context, djSpec *core.DynamicJobSpec, nCtx handler.NodeExecutionContext, parentNodeStatus v1alpha1.ExecutableNodeStatus) (
 	*core.WorkflowTemplate, error) {
 
 	iface, err := underlyingInterface(ctx, nCtx.TaskReader())
@@ -190,7 +190,7 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 		}
 
 		// Instantiate a nodeStatus using the modified name but set its data directory using the original name.
-		subNodeStatus := nCtx.NodeStatus().GetNodeExecutionStatus(newID)
+		subNodeStatus := parentNodeStatus.GetNodeExecutionStatus(newID)
 		originalNodePath, err := nCtx.DataStore().ConstructReference(ctx, nCtx.NodeStatus().GetDataDir(), n.Id)
 		if err != nil {
 			return nil, err
@@ -253,23 +253,23 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	nStatus.SetDataDir(nCtx.NodeStatus().GetDataDir())
 	nStatus.SetParentTaskID(execID)
 
-	cacheHitStopWatch := d.metrics.CacheHit.Start(ctx)
+	//cacheHitStopWatch := d.metrics.CacheHit.Start(ctx)
 	// Check if we have compiled the workflow before:
 	// If there is a cached compiled Workflow, load and return it.
-	if ok, err := f.CacheExists(ctx); err != nil {
-		logger.Warnf(ctx, "Failed to call head on compiled futures file. Error: %v", err)
-		return nil, false, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to do HEAD on compiled futures file.")
-	} else if ok {
-		// It exists, load and return it
-		compiledWf, err := f.RetrieveCache(ctx)
-		if err != nil {
-			logger.Warnf(ctx, "Failed to load cached flyte workflow , this will cause the dynamic workflow to be recompiled. Error: %v", err)
-			d.metrics.CacheError.Inc(ctx)
-		} else {
-			cacheHitStopWatch.Stop()
-			return newContextualWorkflow(nCtx.Workflow(), compiledWf, nStatus, compiledWf.Tasks, compiledWf.SubWorkflows), true, nil
-		}
-	}
+	//if ok, err := f.CacheExists(ctx); err != nil {
+	//	logger.Warnf(ctx, "Failed to call head on compiled futures file. Error: %v", err)
+	//	return nil, false, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to do HEAD on compiled futures file.")
+	//} else if ok {
+	//	// It exists, load and return it
+	//	compiledWf, err := f.RetrieveCache(ctx)
+	//	if err != nil {
+	//		logger.Warnf(ctx, "Failed to load cached flyte workflow , this will cause the dynamic workflow to be recompiled. Error: %v", err)
+	//		d.metrics.CacheError.Inc(ctx)
+	//	} else {
+	//		cacheHitStopWatch.Stop()
+	//		return newContextualWorkflow(nCtx.Workflow(), compiledWf, nStatus, compiledWf.Tasks, compiledWf.SubWorkflows), true, nil
+	//	}
+	//}
 
 	// We know for sure that futures file was generated. Lets read it
 	djSpec, err := f.Read(ctx)
@@ -278,7 +278,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	}
 
 	var closure *core.CompiledWorkflowClosure
-	wf, err := d.buildDynamicWorkflowTemplate(ctx, djSpec, nCtx)
+	wf, err := d.buildDynamicWorkflowTemplate(ctx, djSpec, nCtx, nStatus)
 	if err != nil {
 		return nil, true, err
 	}
