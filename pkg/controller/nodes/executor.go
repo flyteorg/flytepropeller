@@ -343,6 +343,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "could not convert phase info to event")
 		}
+
 		err = c.IdempotentRecordEvent(ctx, nev)
 		if err != nil {
 			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())

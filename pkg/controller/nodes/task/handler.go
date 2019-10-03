@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"runtime/debug"
 	"time"
 
@@ -243,7 +244,8 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		// End TODO
 		// -------------------------------------
 		logger.Debugf(ctx, "Task success detected, calling on Task success")
-		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.GetReader(), tCtx.tr, catalog.Metadata{
+		outputCommiter := ioutils.NewRemoteFileOutputWriter(ctx, tCtx.DataStore(), tCtx.OutputWriter())
+		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.GetReader(), outputCommiter, tCtx.tr, catalog.Metadata{
 			WorkflowExecutionIdentifier: nil,
 			TaskExecutionIdentifier: &core.TaskExecutionIdentifier{
 				TaskId: tCtx.tr.GetTaskID(),
@@ -255,6 +257,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		if err != nil {
 			return nil, err
 		}
+
 		if ee != nil {
 			pluginTrns.ObservedExecutionError(ee)
 		} else {
