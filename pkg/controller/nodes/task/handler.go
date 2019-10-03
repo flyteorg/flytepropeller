@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"runtime/debug"
 	"time"
 
@@ -327,6 +328,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		if err != nil {
 			return nil, err
 		}
+
 		if ee != nil {
 			pluginTrns.ObservedExecutionError(ee)
 		} else {
