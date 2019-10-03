@@ -92,13 +92,13 @@ func (_m *TaskNodeHandler) Setup(ctx context.Context, setupContext handler.Setup
 	return r0
 }
 
-// ValidateOutputAndCacheAdd provides a mock function with given fields: ctx, i, r, tr, m
-func (_m *TaskNodeHandler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReader, r io.OutputReader, tr core.TaskReader, m catalog.Metadata) (*io.ExecutionError, error) {
-	ret := _m.Called(ctx, i, r, tr, m)
+// ValidateOutputAndCacheAdd provides a mock function with given fields: ctx, i, r, outputCommitter, tr, m
+func (_m *TaskNodeHandler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReader, r io.OutputReader, outputCommitter io.OutputWriter, tr core.TaskReader, m catalog.Metadata) (*io.ExecutionError, error) {
+	ret := _m.Called(ctx, i, r, outputCommitter, tr, m)
 
 	var r0 *io.ExecutionError
-	if rf, ok := ret.Get(0).(func(context.Context, io.InputReader, io.OutputReader, core.TaskReader, catalog.Metadata) *io.ExecutionError); ok {
-		r0 = rf(ctx, i, r, tr, m)
+	if rf, ok := ret.Get(0).(func(context.Context, io.InputReader, io.OutputReader, io.OutputWriter, core.TaskReader, catalog.Metadata) *io.ExecutionError); ok {
+		r0 = rf(ctx, i, r, outputCommitter, tr, m)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*io.ExecutionError)
@@ -106,8 +106,8 @@ func (_m *TaskNodeHandler) ValidateOutputAndCacheAdd(ctx context.Context, i io.I
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, io.InputReader, io.OutputReader, core.TaskReader, catalog.Metadata) error); ok {
-		r1 = rf(ctx, i, r, tr, m)
+	if rf, ok := ret.Get(1).(func(context.Context, io.InputReader, io.OutputReader, io.OutputWriter, core.TaskReader, catalog.Metadata) error); ok {
+		r1 = rf(ctx, i, r, outputCommitter, tr, m)
 	} else {
 		r1 = ret.Error(1)
 	}

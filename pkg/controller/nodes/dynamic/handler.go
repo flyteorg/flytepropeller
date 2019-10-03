@@ -35,7 +35,8 @@ const dynamicNodeID = "dynamic-node"
 
 type TaskNodeHandler interface {
 	handler.Node
-	ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReader, r io.OutputReader, tr pluginCore.TaskReader, m catalog.Metadata) (*io.ExecutionError, error)
+	ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReader, r io.OutputReader, outputCommitter io.OutputWriter,
+		tr pluginCore.TaskReader, m catalog.Metadata) (*io.ExecutionError, error)
 }
 
 type metrics struct {
@@ -105,7 +106,7 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 		outputPaths := ioutils.NewRemoteFileOutputPaths(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetDataDir())
 		execID := task.GetTaskExecutionIdentifier(nCtx)
 		outputReader := ioutils.NewRemoteFileOutputReader(ctx, nCtx.DataStore(), outputPaths, nCtx.MaxDatasetSizeBytes())
-		ee, err := d.TaskNodeHandler.ValidateOutputAndCacheAdd(ctx, nCtx.InputReader(), outputReader, nCtx.TaskReader(), catalog.Metadata{
+		ee, err := d.TaskNodeHandler.ValidateOutputAndCacheAdd(ctx, nCtx.InputReader(), outputReader, nil, nCtx.TaskReader(), catalog.Metadata{
 			TaskExecutionIdentifier: execID,
 		})
 		if err != nil {
@@ -118,6 +119,7 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 			return trns.WithInfo(handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().GetInfo())), nil
 		}
 	}
+
 	return trns, nil
 }
 
@@ -306,7 +308,8 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	return newContextualWorkflow(nCtx.Workflow(), subwf, nStatus, subwf.Tasks, subwf.SubWorkflows), true, nil
 }
 
-func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context, dynamicWorkflow v1alpha1.ExecutableWorkflow, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
+func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context, dynamicWorkflow v1alpha1.ExecutableWorkflow,
+	nCtx handler.NodeExecutionContext) (handler.Transition, error) {
 
 	state, err := d.nodeExecutor.RecursiveNodeHandler(ctx, dynamicWorkflow, dynamicWorkflow.StartNode())
 	if err != nil {
@@ -318,6 +321,7 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 			// TODO Once we migrate to closure node we need to handle subworkflow using the subworkflow handler
 			logger.Errorf(ctx, "We do not support failure nodes in dynamic workflow today")
 		}
+
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure("DynamicWorkflowFailure", state.Err.Error(), nil)), err
 	}
 
