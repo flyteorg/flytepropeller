@@ -49,7 +49,7 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:e731932bbd52c7ae298de54b410864ef9959c6879c123869a001acdcff3f27fd"
+  digest = "1:2a9f555e35d999a92d282ac3f6888849d7650fc55d09c70cab42284de533c8a4"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -93,8 +93,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "572908275ed4e38fef7ccb7d507f2faacaa7ab36"
-  version = "v1.25.4"
+  revision = "9deb6031265e7efb2ed0c2c87cf4549ed9483554"
+  version = "v1.25.5"
 
 [[projects]]
   branch = "master"
@@ -365,12 +365,12 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:31bfd110d31505e9ffbc9478e31773bf05bf02adcaeb9b139af42684f9294c13"
+  digest = "1:6906c992632a66c125bd44e68a7abc354d9eda683e451b5c2d9b1614d15d4f18"
   name = "github.com/imdario/mergo"
   packages = ["."]
   pruneopts = ""
-  revision = "7c29201646fa3de8506f701213473dd407f19646"
-  version = "v0.3.7"
+  revision = "1afb36080aec31e0d1528973ebe6721b191b0369"
+  version = "v0.3.8"
 
 [[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
@@ -435,7 +435,7 @@
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:06932e299082f348a28cc960cdefa6520fef86a767be5fad56947764f487a060"
+  digest = "1:4924c097be765754d91a469cbe21dab8bbec3ef6e23d2e9f55318bec213b210f"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/config",
@@ -465,7 +465,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "4f781b8cfba72e9bdec9b3a2a2115142181f177c"
+  revision = "58b1c481a0d5996d1ce9d6c264943ed968fef85a"
   source = "https://github.com/lyft/flyteplugins"
 
 [[projects]]
@@ -497,11 +497,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:96e9b14e5c61cefe7cd80251ecd5d99e0029e174fc2f5f7d63868eaddf437bc0"
+  digest = "1:bf4961e239aa86204200c4404691eb4f3cd01c4304265ce6bd271c22ed3f8b36"
   name = "github.com/lyft/modelbuilderadmin"
   packages = ["workflow/sets"]
   pruneopts = ""
-  revision = "8985b100a28946a5377def993bacdd21fbc90a99"
+  revision = "354844fcb6616bd9b594005024f1052336335fa0"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
@@ -821,7 +821,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6cef7e9992e59376400561282987e1387404e2f54dd09344570d75d374f2756d"
+  digest = "1:c835e80fbb8977537a4e3da19d3485a027413297bc7f3683ddc992e12fdb78d0"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -834,7 +834,7 @@
     "trace",
   ]
   pruneopts = ""
-  revision = "2ec189313ef0a07735684caebd1ba8b8ebca456f"
+  revision = "d98b1b4438230571bd7fbc5aaa89843e92937bd3"
 
 [[projects]]
   branch = "master"
@@ -852,14 +852,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6ddcc1a2f7bfe9524d5e31df22cd929f29560a8e7e880c8f276b587efc007aff"
+  digest = "1:83040dcb06a143fb1cfe8158e43bf82f6eef6868b6a4be094709846e4400aaf4"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "b397fe3ad8ed895c98fa54584f61835a88e65ff5"
+  revision = "c178f38b412c7b426e4e97be2e75d11ff7b8d4d4"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -896,7 +896,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9046864172fa2c76069f0242b6adbd3168e53290dd7611ef9c2f3938851973d2"
+  digest = "1:010ae7d8ec8571d3dfa3af2e5d9ec8f4cb88c4b5eb9c5a69ac90cfd41b9eb36d"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -913,7 +913,7 @@
     "internal/semver",
   ]
   pruneopts = ""
-  revision = "6fe9ea94a73dc611358a83811806b16f9e748c56"
+  revision = "88641d98b32adc8bb37889675de04db164156bf4"
 
 [[projects]]
   branch = "master"

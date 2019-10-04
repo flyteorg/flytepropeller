@@ -78,6 +78,7 @@ func Resolve(ctx context.Context, outputResolver OutputResolver, w v1alpha1.Exec
 		varName := binding.GetVar()
 		l, err := ResolveBindingData(ctx, outputResolver, w, binding.GetBinding())
 		if err != nil {
+			l, err = ResolveBindingData(ctx, outputResolver, w, binding.GetBinding())
 			return nil, errors.Wrapf(errors.BindingResolutionError, nodeID, err, "Error binding Var [%v].[%v]", w.GetID(), binding.GetVar())
 		}
 
