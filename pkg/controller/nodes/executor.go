@@ -80,6 +80,10 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 	logger.Infof(ctx, "Recording event p[%+v]", nodeEvent)
 	err := c.nodeRecorder.RecordNodeEvent(ctx, nodeEvent)
 	if err != nil {
+		if nodeEvent.GetId().NodeId == v1alpha1.EndNodeID {
+			return nil
+		}
+
 		if eventsErr.IsAlreadyExists(err) {
 			logger.Infof(ctx, "Node event phase: %s, nodeId %s already exist",
 				nodeEvent.Phase.String(), nodeEvent.GetId().NodeId)
@@ -342,6 +346,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "could not convert phase info to event")
 		}
+
 		err = c.IdempotentRecordEvent(ctx, nev)
 		if err != nil {
 			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())

@@ -54,7 +54,8 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 	return false, nil
 }
 
-func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReader, r io.OutputReader, tr pluginCore.TaskReader, m catalog.Metadata) (*io.ExecutionError, error) {
+func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReader, r io.OutputReader,
+	outputCommitter io.OutputWriter, tr pluginCore.TaskReader, m catalog.Metadata) (*io.ExecutionError, error) {
 
 	tk, err := tr.Read(ctx)
 	if err != nil {
@@ -98,6 +99,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReade
 			logger.Errorf(ctx, "Failed to check if the output file exists. Error: %s", err.Error())
 			return nil, err
 		}
+
 		if !ok {
 			// Does not exist
 			return &io.ExecutionError{
@@ -111,7 +113,12 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReade
 
 		if !r.IsFile(ctx) {
 			// Read output and write to file
-			logger.Warnf(ctx, "Inputs of type file are only handled currently. Implement other input types")
+			// No need to check for Execution Error here as we have done so above this block.
+			err = outputCommitter.Put(ctx, r)
+			if err != nil {
+				logger.Errorf(ctx, "Failed to commit output to remote location. Error: %v", err)
+				return nil, err
+			}
 		}
 
 		// ignores discovery write failures
@@ -130,5 +137,6 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReade
 			}
 		}
 	}
+
 	return nil, nil
 }

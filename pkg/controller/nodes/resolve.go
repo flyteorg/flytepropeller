@@ -53,10 +53,12 @@ func ResolveBindingData(ctx context.Context, outputResolver OutputResolver, w v1
 				"Trying to resolve output from previous node, without providing the workflow for variable [%s]",
 				bindToVar)
 		}
+
 		if upstreamNodeID == "" {
 			return nil, errors.Errorf(errors.BadSpecificationError, "missing",
 				"No nodeId (missing) specified for binding in Workflow.")
 		}
+
 		n, ok := w.GetNode(upstreamNodeID)
 		if !ok {
 			return nil, errors.Errorf(errors.IllegalStateError, w.GetID(), upstreamNodeID,
@@ -73,11 +75,14 @@ func ResolveBindingData(ctx context.Context, outputResolver OutputResolver, w v1
 func Resolve(ctx context.Context, outputResolver OutputResolver, w v1alpha1.ExecutableWorkflow, nodeID v1alpha1.NodeID, bindings []*v1alpha1.Binding) (*core.LiteralMap, error) {
 	literalMap := make(map[string]*core.Literal, len(bindings))
 	for _, binding := range bindings {
+		varName := binding.GetVar()
 		l, err := ResolveBindingData(ctx, outputResolver, w, binding.GetBinding())
 		if err != nil {
+			l, err = ResolveBindingData(ctx, outputResolver, w, binding.GetBinding())
 			return nil, errors.Wrapf(errors.BindingResolutionError, nodeID, err, "Error binding Var [%v].[%v]", w.GetID(), binding.GetVar())
 		}
-		literalMap[binding.GetVar()] = l
+
+		literalMap[varName] = l
 	}
 	return &core.LiteralMap{
 		Literals: literalMap,
