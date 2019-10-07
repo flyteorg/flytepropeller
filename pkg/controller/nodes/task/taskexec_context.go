@@ -11,6 +11,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/utils"
@@ -52,7 +53,7 @@ func (t taskExecutionMetadata) GetOverrides() pluginCore.TaskOverrides {
 type taskExecutionContext struct {
 	handler.NodeExecutionContext
 	tm  taskExecutionMetadata
-	rm  pluginCore.ResourceManager
+	rm  resourcemanager.ResourceManager
 	psm *pluginStateManager
 	tr  handler.TaskReader
 	ow  *ioutils.BufferedOutputWriter
@@ -125,6 +126,12 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to initialize plugin state manager")
 	}
 
+
+	rm, err := resourcemanager.GetResourceManagerByType(ctx, resourcemanager.ResourceManagerTypeRedis, )
+	if err != nil {
+		return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to initialize resource manager")
+	}
+
 	return &taskExecutionContext{
 		NodeExecutionContext: nCtx,
 		tm: taskExecutionMetadata{
@@ -133,7 +140,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 			o:                     nCtx.Node(),
 		},
 		// TODO add resource manager
-		rm:  dummyRM{},
+		rm:  rm,
 		psm: psm,
 		tr:  nCtx.TaskReader(),
 		ow:  ow,

@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/promutils"
@@ -14,6 +15,7 @@ type setupContext struct {
 	handler.SetupContext
 	kubeClient    pluginCore.KubeClient
 	secretManager pluginCore.SecretManager
+	resourceManager resourcemanager.ResourceManager
 }
 
 func (s setupContext) SecretManager() pluginCore.SecretManager {
@@ -40,5 +42,6 @@ func (t *Handler) newSetupContext(_ context.Context, sCtx handler.SetupContext) 
 		SetupContext:  sCtx,
 		kubeClient:    t.kubeClient,
 		secretManager: t.secretManager,
+		resourceManager: t.resourceManager,
 	}
 }

@@ -193,6 +193,22 @@
   version = "v0.1.1"
 
 [[projects]]
+  digest = "1:b994001ce7517c69ce8173ba12463f329c3fe8aecae84be6a334eae89a99f2fd"
+  name = "github.com/go-redis/redis"
+  packages = [
+    ".",
+    "internal",
+    "internal/consistenthash",
+    "internal/hashtag",
+    "internal/pool",
+    "internal/proto",
+    "internal/util",
+  ]
+  pruneopts = ""
+  revision = "17c058513b3e03c5e23136c18582fdd8ac8a3645"
+  version = "v6.15.5"
+
+[[projects]]
   digest = "1:8a7fe65e9ac2612c4df602cc9f014a92406776d993ff0f28335e5a8831d87c53"
   name = "github.com/gogo/protobuf"
   packages = [
@@ -1308,6 +1324,7 @@
     "github.com/DiSiqueira/GoTree",
     "github.com/fatih/color",
     "github.com/ghodss/yaml",
+    "github.com/go-redis/redis",
     "github.com/gogo/protobuf/proto",
     "github.com/golang/protobuf/jsonpb",
     "github.com/golang/protobuf/proto",
