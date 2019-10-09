@@ -333,25 +333,40 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		}
 	}
 
+	barrierTick := uint32(0)
 	// STEP 2: If no cache-hit, then lets invoke the plugin and wait for a transition out of undefined
 	if pluginTrns == nil {
 		prevBarrier := t.barrierCache.GetPreviousBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
-		if prevBarrier.BarrierClockTick <= ts.BarrierClockTick {
+		// Lets start with the current barrierTick (the value to be stored) same as the barrierTick in the cache
+		barrierTick = prevBarrier.BarrierClockTick
+		// Lets check if this value in cache is less than or equal to one in the store
+		if barrierTick <= ts.BarrierClockTick {
 			var err error
 			pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
 			if err != nil {
 				return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
 			}
+			// Now no matter what we should update the barrierTick (stored in state)
+			// This is because the state is ahead of the inmemory representation
+			// This can happen in the case where the process restarted or the barrier cache got reset
+			barrierTick = ts.BarrierClockTick
+			// Now if the transition is of type barrier, lets tick the clock by one from the prev known value
+			// store that in the cache
 			if pluginTrns.ttype == handler.TransitionTypeBarrier {
 				logger.Infof(ctx, "Barrier transition observed for Plugin [%s], TaskExecID [%s]. recording: [%s]", p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), pluginTrns.pInfo.String())
+				barrierTick = barrierTick + 1
 				t.barrierCache.RecordBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), BarrierTransition{
-					BarrierClockTick: prevBarrier.BarrierClockTick + 1,
+					BarrierClockTick: barrierTick,
 					CallLog: PluginCallLog{
 						PluginTransition: pluginTrns,
 					},
 				})
+
 			}
 		} else {
+			// Barrier tick will remain to be the one in cache.
+			// Now it may happen that the cache may get reset before we store the barrier tick
+			// this will cause us to lose that information and potentially replaying.
 			logger.Infof(ctx, "Replaying Barrier transition for Plugin [%s], TaskExecID [%s]. recording: [%s]", p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), prevBarrier.CallLog.PluginTransition.pInfo.String())
 			pluginTrns = prevBarrier.CallLog.PluginTransition
 		}
@@ -403,6 +418,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		PluginStateVersion: pluginTrns.pluginStateVersion,
 		PluginPhase:        pluginTrns.pInfo.Phase(),
 		PluginPhaseVersion: pluginTrns.pInfo.Version(),
+		BarrierClockTick:   barrierTick,
 	})
 	if err != nil {
 		logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())

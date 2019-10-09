@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -166,9 +167,9 @@ func Test_task_Setup(t *testing.T) {
 			defaultPluginID: corePluginDefaultType,
 		}, false},
 		{"only-default-k8s", testPluginRegistry{
-			core: []pluginCore.PluginEntry{corePluginEntry}, k8s: []pluginK8s.PluginEntry{k8sPluginEntry, k8sPluginEntryDefault},
+			core: []pluginCore.PluginEntry{corePluginEntry}, k8s: []pluginK8s.PluginEntry{k8sPluginEntryDefault},
 		}, wantFields{
-			pluginIDs:       map[pluginCore.TaskType]string{corePluginType: corePluginType, k8sPluginType: k8sPluginType, k8sPluginDefaultType: k8sPluginDefaultType},
+			pluginIDs:       map[pluginCore.TaskType]string{corePluginType: corePluginType, k8sPluginDefaultType: k8sPluginDefaultType},
 			defaultPluginID: k8sPluginDefaultType,
 		}, false},
 		{"default-both", testPluginRegistry{
@@ -772,7 +773,278 @@ func Test_task_Handle_Catalog(t *testing.T) {
 	}
 }
 
-func Test_task_Abort(t *testing.T) {
+func Test_task_Handle_Barrier(t *testing.T) {
+
+	createNodeContext := func(recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder, prevBarrierClockTick uint32) *nodeMocks.NodeExecutionContext {
+		wfExecID := &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		}
+
+		nm := &nodeMocks.NodeExecutionMetadata{}
+		nm.On("GetAnnotations").Return(map[string]string{})
+		nm.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{
+			WorkflowExecutionIdentifier: wfExecID,
+		})
+		nm.On("GetK8sServiceAccount").Return("service-account")
+		nm.On("GetLabels").Return(map[string]string{})
+		nm.On("GetNamespace").Return("namespace")
+		nm.On("GetOwnerID").Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
+		nm.On("GetOwnerReference").Return(v12.OwnerReference{
+			Kind: "sample",
+			Name: "name",
+		})
+
+		taskID := &core.Identifier{}
+		tk := &core.TaskTemplate{
+			Id:   taskID,
+			Type: "test",
+			Metadata: &core.TaskMetadata{
+				Discoverable: false,
+			},
+			Interface: &core.TypedInterface{
+				Outputs: &core.VariableMap{
+					Variables: map[string]*core.Variable{
+						"x": {
+							Type: &core.LiteralType{
+								Type: &core.LiteralType_Simple{
+									Simple: core.SimpleType_BOOLEAN,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		tr := &nodeMocks.TaskReader{}
+		tr.On("GetTaskID").Return(taskID)
+		tr.On("GetTaskType").Return(ttype)
+		tr.On("Read", mock.Anything).Return(tk, nil)
+
+		ns := &flyteMocks.ExecutableNodeStatus{}
+		ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
+
+		res := &v1.ResourceRequirements{}
+		n := &flyteMocks.ExecutableNode{}
+		n.On("GetResources").Return(res)
+
+		ir := &ioMocks.InputReader{}
+		ir.On("GetInputPath").Return(storage.DataReference("input"))
+		nCtx := &nodeMocks.NodeExecutionContext{}
+		nCtx.On("NodeExecutionMetadata").Return(nm)
+		nCtx.On("Node").Return(n)
+		nCtx.On("InputReader").Return(ir)
+		nCtx.On("DataStore").Return(storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope()))
+		nCtx.On("CurrentAttempt").Return(uint32(1))
+		nCtx.On("TaskReader").Return(tr)
+		nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
+		nCtx.On("NodeStatus").Return(ns)
+		nCtx.On("NodeID").Return("n1")
+		nCtx.On("EventsRecorder").Return(recorder)
+		nCtx.On("EnqueueOwner").Return(nil)
+
+		st := bytes.NewBuffer([]byte{})
+		cod := codex.GobStateCodec{}
+		assert.NoError(t, cod.Encode(&fakeplugins.NextPhaseState{
+			Phase:        pluginCore.PhaseSuccess,
+			OutputExists: true,
+		}, st))
+		nr := &nodeMocks.NodeStateReader{}
+		nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
+			PluginState: st.Bytes(),
+			BarrierClockTick: prevBarrierClockTick,
+		})
+		nCtx.On("NodeStateReader").Return(nr)
+		nCtx.On("NodeStateWriter").Return(s)
+		return nCtx
+	}
+
+	trns := pluginCore.DoTransitionType(pluginCore.TransitionTypeBarrier, pluginCore.PhaseInfoQueued(time.Now(), 1, "z"))
+	type args struct {
+		prevTick  uint32
+		btrnsTick uint32
+		bTrns     *pluginCore.Transition
+		res       []fakeplugins.HandleResponse
+	}
+	type wantBarrier struct {
+		hit  bool
+		tick uint32
+	}
+	type want struct {
+		wantBarrer   wantBarrier
+		handlerPhase handler.EPhase
+		wantErr      bool
+		eventPhase   core.TaskExecution_Phase
+		pluginPhase  pluginCore.Phase
+		pluginVer    uint32
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			"ephemeral-trns",
+			args{
+				res: []fakeplugins.HandleResponse{
+					{T: pluginCore.DoTransitionType(pluginCore.TransitionTypeEphemeral, pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{}))},
+				},
+			},
+			want{
+				handlerPhase: handler.EPhaseRunning,
+				eventPhase:   core.TaskExecution_RUNNING,
+				pluginPhase:  pluginCore.PhaseRunning,
+				pluginVer:    1,
+			},
+		},
+		{
+			"first-barrier-trns",
+			args{
+				res: []fakeplugins.HandleResponse{
+					{T: pluginCore.DoTransitionType(pluginCore.TransitionTypeBarrier, pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{}))},
+				},
+			},
+			want{
+				wantBarrer: wantBarrier{
+					hit:  true,
+					tick: 1,
+				},
+				handlerPhase: handler.EPhaseRunning,
+				eventPhase:   core.TaskExecution_RUNNING,
+				pluginPhase:  pluginCore.PhaseRunning,
+				pluginVer:    1,
+			},
+		},
+		{
+			"barrier-trns-replay",
+			args{
+				prevTick:  0,
+				btrnsTick: 1,
+				bTrns:     &trns,
+			},
+			want{
+				wantBarrer: wantBarrier{
+					hit:  true,
+					tick: 1,
+				},
+				handlerPhase: handler.EPhaseRunning,
+				eventPhase:   core.TaskExecution_QUEUED,
+				pluginPhase:  pluginCore.PhaseQueued,
+				pluginVer:    1,
+			},
+		},
+		{
+			"barrier-trns-next",
+			args{
+				prevTick:  1,
+				btrnsTick: 1,
+				bTrns:     &trns,
+				res: []fakeplugins.HandleResponse{
+					{T: pluginCore.DoTransitionType(pluginCore.TransitionTypeBarrier, pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{}))},
+				},
+			},
+			want{
+				wantBarrer: wantBarrier{
+					hit:  true,
+					tick: 2,
+				},
+				handlerPhase: handler.EPhaseRunning,
+				eventPhase:   core.TaskExecution_RUNNING,
+				pluginPhase:  pluginCore.PhaseRunning,
+				pluginVer:    1,
+			},
+		},
+		{
+			"barrier-trns-restart-case",
+			args{
+				prevTick:  2,
+				res: []fakeplugins.HandleResponse{
+					{T: pluginCore.DoTransitionType(pluginCore.TransitionTypeBarrier, pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{}))},
+				},
+			},
+			want{
+				wantBarrer: wantBarrier{
+					hit:  true,
+					tick: 3,
+				},
+				handlerPhase: handler.EPhaseRunning,
+				eventPhase:   core.TaskExecution_RUNNING,
+				pluginPhase:  pluginCore.PhaseRunning,
+				pluginVer:    1,
+			},
+		},
+		{
+			"barrier-trns-restart-case-ephemeral",
+			args{
+				prevTick:  2,
+				res: []fakeplugins.HandleResponse{
+					{T: pluginCore.DoTransitionType(pluginCore.TransitionTypeEphemeral, pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{}))},
+				},
+			},
+			want{
+				wantBarrer: wantBarrier{
+					hit:  false,
+				},
+				handlerPhase: handler.EPhaseRunning,
+				eventPhase:   core.TaskExecution_RUNNING,
+				pluginPhase:  pluginCore.PhaseRunning,
+				pluginVer:    1,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := &taskNodeStateHolder{}
+			ev := &fakeBufferedTaskEventRecorder{}
+			nCtx := createNodeContext(ev, "test", state, tt.args.prevTick)
+			c := &pluginCatalogMocks.Client{}
+
+			tk := New(context.TODO(), mocks.NewFakeKubeClient(), c, promutils.NewTestScope())
+
+			tctx, err := tk.newTaskExecutionContext(context.TODO(), nCtx)
+			assert.NoError(t, err)
+			id := tctx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+
+			if tt.args.bTrns != nil {
+				x := &pluginRequestedTransition{}
+				x.ObservedTransitionAndState(*tt.args.bTrns, 0, nil)
+				tk.barrierCache.RecordBarrierTransition(context.TODO(), id, BarrierTransition{tt.args.btrnsTick, PluginCallLog{x}})
+			}
+
+			tk.plugins = map[pluginCore.TaskType]pluginCore.Plugin{
+				"test": fakeplugins.NewReplayer("test", pluginCore.PluginProperties{},
+					tt.args.res, nil, nil),
+			}
+			got, err := tk.Handle(context.TODO(), nCtx)
+			if (err != nil) != tt.want.wantErr {
+				t.Errorf("Handler.Handle() error = %v, wantErr %v", err, tt.want.wantErr)
+				return
+			}
+			if err == nil {
+				assert.Equal(t, tt.want.handlerPhase.String(), got.Info().GetPhase().String())
+				if assert.Equal(t, 1, len(ev.evs)) {
+					e := ev.evs[0]
+					assert.Equal(t, tt.want.eventPhase.String(), e.Phase.String())
+				}
+				assert.Equal(t, tt.want.pluginPhase.String(), state.s.PluginPhase.String())
+				assert.Equal(t, tt.want.pluginVer, state.s.PluginPhaseVersion)
+				if tt.want.wantBarrer.hit {
+					assert.Len(t, tk.barrierCache.barrierTransitions.Keys(), 1)
+					bt := tk.barrierCache.GetPreviousBarrierTransition(context.TODO(), id)
+					assert.Equal(t, bt.BarrierClockTick, tt.want.wantBarrer.tick)
+					assert.Equal(t, tt.want.wantBarrer.tick, state.s.BarrierClockTick)
+				} else {
+					assert.Len(t, tk.barrierCache.barrierTransitions.Keys(), 0)
+					assert.Equal(t, tt.args.prevTick, state.s.BarrierClockTick)
+				}
+			}
+		})
+	}
+}
+
+func
+Test_task_Abort(t *testing.T) {
 	createNodeCtx := func(ev *fakeBufferedTaskEventRecorder) *nodeMocks.NodeExecutionContext {
 		wfExecID := &core.WorkflowExecutionIdentifier{
 			Project: "project",
@@ -889,7 +1161,8 @@ func Test_task_Abort(t *testing.T) {
 	}
 }
 
-func Test_task_Finalize(t *testing.T) {
+func
+Test_task_Finalize(t *testing.T) {
 
 	wfExecID := &core.WorkflowExecutionIdentifier{
 		Project: "project",
@@ -949,7 +1222,6 @@ func Test_task_Finalize(t *testing.T) {
 		PluginState: st.Bytes(),
 	})
 	nCtx.On("NodeStateReader").Return(nr)
-
 	type fields struct {
 		defaultPluginCallback func() pluginCore.Plugin
 	}
@@ -1000,7 +1272,8 @@ func Test_task_Finalize(t *testing.T) {
 	}
 }
 
-func TestNew(t *testing.T) {
+func
+TestNew(t *testing.T) {
 	got := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
 	assert.NotNil(t, got)
 	assert.NotNil(t, got.plugins)
