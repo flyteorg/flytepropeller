@@ -473,7 +473,7 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 
 func New(_ context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) *Handler {
 	// TODO NewShould take apointer
-	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig())
+	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig(), scope.NewSubScope("catalog"))
 	if err != nil {
 		return nil
 	}
