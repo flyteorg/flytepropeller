@@ -3,7 +3,6 @@ package task
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"runtime/debug"
 	"time"
 
