@@ -33,10 +33,13 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 		}
 	}
 
-	for _, kpe := range pr.GetK8sPlugins() {
+	k8sPlugins := pr.GetK8sPlugins()
+	for i := range k8sPlugins {
+		kpe := k8sPlugins[i]
 		if !allPluginsEnabled && !enabledPlugins.Has(kpe.ID) {
 			logger.Infof(ctx, "K8s Plugin [%s] is DISABLED.", kpe.ID)
 		} else {
+			logger.Infof(ctx, "K8s Plugin [%s] is ENABLED.", kpe.ID)
 			finalizedPlugins = append(finalizedPlugins, core.PluginEntry{
 				ID:                  kpe.ID,
 				RegisteredTaskTypes: kpe.RegisteredTaskTypes,

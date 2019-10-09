@@ -1043,8 +1043,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 	}
 }
 
-func
-Test_task_Abort(t *testing.T) {
+func Test_task_Abort(t *testing.T) {
 	createNodeCtx := func(ev *fakeBufferedTaskEventRecorder) *nodeMocks.NodeExecutionContext {
 		wfExecID := &core.WorkflowExecutionIdentifier{
 			Project: "project",
@@ -1272,8 +1271,7 @@ Test_task_Finalize(t *testing.T) {
 	}
 }
 
-func
-TestNew(t *testing.T) {
+func TestNew(t *testing.T) {
 	got := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
 	assert.NotNil(t, got)
 	assert.NotNil(t, got.plugins)

@@ -276,6 +276,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		return nil, errors.Errorf(errors.PluginInitializationFailed, "Failed to initialize K8sResource Plugin, Kubeclient cannot be nil!")
 	}
 
+	logger.Infof(ctx, "Initializing K8s plugin [%s]", entry.ID)
 	src := source.Kind{
 		Type: entry.ResourceToWatch,
 	}

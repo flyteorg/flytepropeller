@@ -13,6 +13,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	pluginK8s "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/logger"
@@ -259,7 +260,8 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		// End TODO
 		// -------------------------------------
 		logger.Debugf(ctx, "Task success detected, calling on Task success")
-		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.GetReader(), tCtx.tr, catalog.Metadata{
+		outputCommiter := ioutils.NewRemoteFileOutputWriter(ctx, tCtx.DataStore(), tCtx.OutputWriter())
+		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.GetReader(), outputCommiter, tCtx.tr, catalog.Metadata{
 			WorkflowExecutionIdentifier: nil,
 			TaskExecutionIdentifier: &core.TaskExecutionIdentifier{
 				TaskId: tCtx.tr.GetTaskID(),
@@ -507,7 +509,7 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 
 func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) *Handler {
 	// TODO NewShould take apointer
-	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig())
+	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig(), scope)
 	if err != nil {
 		return nil
 	}
