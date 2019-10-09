@@ -3,9 +3,10 @@ package task
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"runtime/debug"
 	"time"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"

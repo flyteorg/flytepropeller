@@ -80,7 +80,7 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 	wfStatusClosure, err := l.launchPlan.GetStatus(ctx, childID)
 	if err != nil {
 		if launchplan.IsNotFound(err) { //NotFound
-		    errorCode, _ := errors.GetErrorCode(err)
+			errorCode, _ := errors.GetErrorCode(err)
 			err = errors.Wrapf(errorCode, nCtx.NodeID(), err, "launch-plan not found")
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errorCode), err.Error(), nil)), nil
 		}
@@ -120,7 +120,7 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 						errMsg := fmt.Sprintf("remote output for launchplan execution was not found, uri [%s], err %s", uri, err.Error())
 						return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.RemoteChildWorkflowExecutionFailed), errMsg, nil)), nil
 					}
-					err :=  errors2.Wrapf(err,"failed to read outputs from child workflow @ [%s]", uri)
+					err := errors2.Wrapf(err, "failed to read outputs from child workflow @ [%s]", uri)
 					return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoUndefined), err
 				}
 			} else if wfStatusClosure.GetOutputs().GetValues() != nil {

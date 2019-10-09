@@ -8,9 +8,11 @@ import (
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	mocks4 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	mocks2 "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
+	mocks3 "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan/mocks"
 	"github.com/lyft/flytestdlib/contextutils"
@@ -19,21 +21,9 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/lyft/flytepropeller/pkg/controller/executors"
-	mocks3 "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	mocks4 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 )
-
-type recursiveNodeHandlerFn func(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error)
-type abortNodeHandlerCbFn func(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error
-
-type mockNodeExecutor struct {
-	executors.Node
-	RecursiveNodeHandlerCB recursiveNodeHandlerFn
-	AbortNodeHandlerCB     abortNodeHandlerCbFn
-}
 
 type workflowNodeStateHolder struct {
 	s handler.WorkflowNodeState
@@ -47,21 +37,13 @@ func (t workflowNodeStateHolder) PutBranchNode(s handler.BranchNodeState) error 
 	panic("not implemented")
 }
 
-func (t workflowNodeStateHolder) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
+func (t *workflowNodeStateHolder) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
 	t.s = s
 	return nil
 }
 
 func (t workflowNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) error {
 	panic("not implemented")
-}
-
-func (m *mockNodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
-	return m.RecursiveNodeHandlerCB(ctx, w, currentNode)
-}
-
-func (m *mockNodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error {
-	return m.AbortNodeHandlerCB(ctx, w, currentNode)
 }
 
 func createNodeContext(phase v1alpha1.WorkflowNodePhase, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode) *mocks3.NodeExecutionContext {
@@ -110,7 +92,7 @@ func createNodeContext(phase v1alpha1.WorkflowNodePhase, w v1alpha1.ExecutableWo
 
 	nr := &mocks3.NodeStateReader{}
 	nr.On("GetWorkflowNodeState").Return(handler.WorkflowNodeState{
-		Phase:           phase,
+		Phase: phase,
 	})
 	nCtx.On("NodeStateReader").Return(nr)
 	nCtx.On("NodeStateWriter").Return(s)
@@ -160,7 +142,6 @@ func TestWorkflowNodeHandler_StartNode_Launchplan(t *testing.T) {
 		WorkflowExecutionIdentifier: parentID,
 	})
 
-
 	t.Run("happy", func(t *testing.T) {
 
 		mockLPExec := &mocks.Executor{}
@@ -174,8 +155,8 @@ func TestWorkflowNodeHandler_StartNode_Launchplan(t *testing.T) {
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
 				return o.Project == parentID.Project && o.Domain == parentID.Domain
 			}),
-			mock.MatchedBy(func(o *core.Identifier) bool {return lpID == o }),
-			mock.MatchedBy(func(o *core.LiteralMap) bool {return o.Literals == nil }),
+			mock.MatchedBy(func(o *core.Identifier) bool { return lpID == o }),
+			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
 		).Return(nil)
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseNone, mockWf, mockNode)

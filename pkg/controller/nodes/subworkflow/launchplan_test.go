@@ -84,7 +84,7 @@ func TestSubWorkflowHandler_StartLaunchPlan(t *testing.T) {
 				return o.Project == parentID.Project && o.Domain == parentID.Domain
 			}),
 			mock.MatchedBy(func(o *core.Identifier) bool { return lpID == o }),
-			mock.MatchedBy(func(o *core.LiteralMap) bool {return o.Literals == nil }),
+			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
 		).Return(nil)
 
 		wfStatus := &mocks2.MutableWorkflowNodeStatus{}
@@ -118,7 +118,7 @@ func TestSubWorkflowHandler_StartLaunchPlan(t *testing.T) {
 				return o.Project == parentID.Project && o.Domain == parentID.Domain
 			}),
 			mock.MatchedBy(func(o *core.Identifier) bool { return lpID == o }),
-			mock.MatchedBy(func(o *core.LiteralMap) bool {return o.Literals == nil }),
+			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
 		).Return(launchplan.Wrapf(launchplan.RemoteErrorAlreadyExists, fmt.Errorf("blah"), "failed"))
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseNone, mockWf, mockNode)
@@ -144,13 +144,13 @@ func TestSubWorkflowHandler_StartLaunchPlan(t *testing.T) {
 				return o.Project == parentID.Project && o.Domain == parentID.Domain
 			}),
 			mock.MatchedBy(func(o *core.Identifier) bool { return lpID == o }),
-			mock.MatchedBy(func(o *core.LiteralMap) bool {return o.Literals == nil }),
+			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
 		).Return(launchplan.Wrapf(launchplan.RemoteErrorSystem, fmt.Errorf("blah"), "failed"))
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
 		s, err := h.StartLaunchPlan(ctx, nCtx)
 		assert.Error(t, err)
-		assert.Equal(t,  handler.EPhaseUndefined, s.Info().GetPhase())
+		assert.Equal(t, handler.EPhaseUndefined, s.Info().GetPhase())
 	})
 
 	t.Run("userError", func(t *testing.T) {
@@ -170,7 +170,7 @@ func TestSubWorkflowHandler_StartLaunchPlan(t *testing.T) {
 				return o.Project == parentID.Project && o.Domain == parentID.Domain
 			}),
 			mock.MatchedBy(func(o *core.Identifier) bool { return lpID == o }),
-			mock.MatchedBy(func(o *core.LiteralMap) bool {return o.Literals == nil }),
+			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
 		).Return(launchplan.Wrapf(launchplan.RemoteErrorUser, fmt.Errorf("blah"), "failed"))
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
@@ -374,7 +374,6 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 				},
 			},
 		}, nil)
-
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
 		s, err := h.CheckLaunchPlanStatus(ctx, nCtx)

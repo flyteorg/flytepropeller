@@ -16,7 +16,7 @@ import (
 
 // Subworkflow handler handles inline subworkflows
 type subworkflowHandler struct {
-	nodeExecutor    executors.Node
+	nodeExecutor executors.Node
 }
 
 func (s *subworkflowHandler) DoInlineSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext, w v1alpha1.ExecutableWorkflow,
@@ -200,6 +200,6 @@ func (s *subworkflowHandler) HandleAbort(ctx context.Context, nCtx handler.NodeE
 
 func newSubworkflowHandler(nodeExecutor executors.Node) subworkflowHandler {
 	return subworkflowHandler{
-		nodeExecutor:    nodeExecutor,
+		nodeExecutor: nodeExecutor,
 	}
 }

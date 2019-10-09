@@ -130,7 +130,7 @@ type NodeStatus struct {
 	WorkflowNodeStatus *WorkflowNodeStatus `json:"workflowNodeStatus,omitempty"`
 	TaskNodeStatus     *TaskNodeStatus     `json:",omitempty"`
 	// TODO not used delete
-	DynamicNodeStatus     *DynamicNodeStatus     `json:"dynamicNodeStatus,omitempty"`
+	DynamicNodeStatus *DynamicNodeStatus `json:"dynamicNodeStatus,omitempty"`
 }
 
 func (in *NodeStatus) GetBranchStatus() MutableBranchNodeStatus {

@@ -28,7 +28,7 @@ type DynamicNodeState struct {
 }
 
 type WorkflowNodeState struct {
-	Phase        v1alpha1.WorkflowNodePhase
+	Phase v1alpha1.WorkflowNodePhase
 }
 
 type NodeStateWriter interface {

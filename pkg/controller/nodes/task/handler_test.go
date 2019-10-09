@@ -286,6 +286,10 @@ func (t taskNodeStateHolder) PutBranchNode(s handler.BranchNodeState) error {
 	panic("not implemented")
 }
 
+func (t taskNodeStateHolder) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
+	panic("not implemented")
+}
+
 func (t taskNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) error {
 	panic("not implemented")
 }
