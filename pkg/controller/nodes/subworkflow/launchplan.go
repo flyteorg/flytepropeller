@@ -12,7 +12,6 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 	errors2 "github.com/pkg/errors"
-	"k8s.io/client-go/informers/node"
 )
 
 type launchPlanHandler struct {
@@ -59,15 +58,7 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 		logger.Infof(ctx, "Launched launchplan with ID [%s]", childID.Name)
 	}
 
-	wfNodeState := handler.WorkflowNodeState{WorkflowName:childID.Name}
-	err = nCtx.NodeStateWriter().PutWorkflowNodeState(wfNodeState)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to store WorkflowNode state, err :%s", err.Error())
-		return handler.UnknownTransition, err
-	}
-
-	phase := handler.PhaseInfoRunning(nil)
-	return handler.DoTransition(handler.TransitionTypeEphemeral, phase), nil
+	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)), nil
 }
 
 func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {

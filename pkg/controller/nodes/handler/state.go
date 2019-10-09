@@ -27,14 +27,8 @@ type DynamicNodeState struct {
 	Phase v1alpha1.DynamicNodePhase
 }
 
-// TODO ssingh: Not sure if we need this.
-// type WorkflowNodePhase uint8
-
 type WorkflowNodeState struct {
-	WorkflowName string `json:"name"`
-
-	// TODO ssingh: Not sure if we need this.
-	//Phase v1alpha1.WorkflowPhase
+	Phase        v1alpha1.WorkflowNodePhase
 }
 
 type NodeStateWriter interface {

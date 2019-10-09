@@ -97,15 +97,16 @@ func (s *subworkflowHandler) DoInFailureHandling(ctx context.Context, nCtx handl
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailureErr(nil, nil)), nil
 }
 
-func (s *subworkflowHandler) StartSubWorkflow(ctx context.Context, w v1alpha1.ExecutableWorkflow, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
+func (s *subworkflowHandler) StartSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
 	node := nCtx.Node()
 	subID := *node.GetWorkflowNode().GetSubWorkflowRef()
-	subWorkflow := w.FindSubWorkflow(subID)
+	subWorkflow := nCtx.Workflow().FindSubWorkflow(subID)
 	if subWorkflow == nil {
 		errMsg := fmt.Sprintf("No subWorkflow [%s], workflow.", subID)
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.SubWorkflowExecutionFailed), errMsg, nil)), nil
 	}
 
+	w := nCtx.Workflow()
 	status := w.GetNodeExecutionStatus(node.GetID())
 	contextualSubWorkflow := executors.NewSubContextualWorkflow(w, subWorkflow, status)
 	startNode := contextualSubWorkflow.StartNode()
@@ -180,19 +181,18 @@ func (s *subworkflowHandler) HandleSubWorkflowFailingNode(ctx context.Context, n
 	return s.DoInFailureHandling(ctx, nCtx, contextualSubWorkflow)
 }
 
-func (s *subworkflowHandler) HandleAbort(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode) error {
-	subID := *node.GetWorkflowNode().GetSubWorkflowRef()
-	subWorkflow := w.FindSubWorkflow(subID)
+func (s *subworkflowHandler) HandleAbort(ctx context.Context, nCtx handler.NodeExecutionContext, w v1alpha1.ExecutableWorkflow, workflowId v1alpha1.WorkflowID) error {
+	subWorkflow := w.FindSubWorkflow(workflowId)
 	if subWorkflow == nil {
-		return fmt.Errorf("no sub workflow [%s] found in node [%s]", subID, node.GetID())
+		return fmt.Errorf("no sub workflow [%s] found in node [%s]", workflowId, nCtx.NodeID())
 	}
 
-	nodeStatus := w.GetNodeExecutionStatus(node.GetID())
+	nodeStatus := w.GetNodeExecutionStatus(nCtx.NodeID())
 	contextualSubWorkflow := executors.NewSubContextualWorkflow(w, subWorkflow, nodeStatus)
 
 	startNode := w.StartNode()
 	if startNode == nil {
-		return fmt.Errorf("no sub workflow [%s] found in node [%s]", subID, node.GetID())
+		return fmt.Errorf("no sub workflow [%s] found in node [%s]", workflowId, nCtx.NodeID())
 	}
 
 	return s.nodeExecutor.AbortHandler(ctx, contextualSubWorkflow, startNode, "")

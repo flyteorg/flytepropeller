@@ -70,12 +70,12 @@ func (n nodeStateManager) GetDynamicNodeState() handler.DynamicNodeState {
 }
 
 func (n nodeStateManager) GetWorkflowNodeState() handler.WorkflowNodeState {
-	dn := n.nodeStatus.GetWorkflowNodeStatus()
-	ds := handler.WorkflowNodeState{}
-	if dn != nil {
-		ds.Phase = dn.GetDynamicNodePhase()
+	wn := n.nodeStatus.GetWorkflowNodeStatus()
+	ws := handler.WorkflowNodeState{}
+	if wn != nil {
+		ws.Phase = wn.GetWorkflowNodePhase()
 	}
-	return ds
+	return ws
 }
 
 func (n nodeStateManager) clearNodeStatus() {

@@ -80,20 +80,16 @@ func (s *DynamicNodeStatus) Equals(o *DynamicNodeStatus) bool {
 	return s.Phase == o.Phase
 }
 
-//type SubWorkflowNodeStatus struct {
-//	Phase WorkflowPhase `json:"phase"`
-//}
-//
-//func (s SubWorkflowNodeStatus) GetPhase() WorkflowPhase {
-//	return s.Phase
-//}
-//
-//func (s *SubWorkflowNodeStatus) SetPhase(phase WorkflowPhase) {
-//	s.Phase = phase
-//}
+type WorkflowNodePhase int
+
+const (
+	WorkflowNodePhaseNone WorkflowNodePhase = iota
+	WorkflowNodePhaseExecuting
+)
 
 type WorkflowNodeStatus struct {
-	WorkflowName string `json:"name"`
+	WorkflowName string            `json:"name"`
+	Phase        WorkflowNodePhase `json:"phase"`
 }
 
 func (in *WorkflowNodeStatus) SetWorkflowExecutionName(name string) {
@@ -102,6 +98,14 @@ func (in *WorkflowNodeStatus) SetWorkflowExecutionName(name string) {
 
 func (in *WorkflowNodeStatus) GetWorkflowExecutionName() string {
 	return in.WorkflowName
+}
+
+func (in *WorkflowNodeStatus) GetWorkflowNodePhase() WorkflowNodePhase {
+	return in.Phase
+}
+
+func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
+	in.Phase = phase
 }
 
 type NodeStatus struct {
