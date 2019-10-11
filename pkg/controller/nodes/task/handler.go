@@ -15,7 +15,6 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	pluginK8s "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/logger"
