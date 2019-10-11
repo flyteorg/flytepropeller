@@ -27,13 +27,14 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 			InputReader:    inputReader,
 		}
 		if resp, err := t.catalog.Get(ctx, key); err != nil {
-			if taskStatus, ok := status.FromError(err); ok && taskStatus.Code() == codes.NotFound {
+			causeErr := errors.Cause(err)
+			if taskStatus, ok := status.FromError(causeErr); ok && taskStatus.Code() == codes.NotFound {
 				t.metrics.discoveryMissCount.Inc(ctx)
-				logger.Infof(ctx, "Artifact not found in Discovery. Executing Task.")
+				logger.Infof(ctx, "Artifact not found in Catalog. Executing Task.")
 				return false, nil
 			}
 			t.metrics.catalogGetFailureCount.Inc(ctx)
-			logger.Errorf(ctx, "Discovery check failed. err: %v", err.Error())
+			logger.Errorf(ctx, "Catalog memoization check failed. err: %v", err.Error())
 			return false, errors.Wrapf(err, "Failed to check Catalog for previous results")
 		} else if resp != nil {
 			t.metrics.catalogHitCount.Inc(ctx)
