@@ -78,7 +78,8 @@ func Resolve(ctx context.Context, outputResolver OutputResolver, w v1alpha1.Exec
 		varName := binding.GetVar()
 		l, err := ResolveBindingData(ctx, outputResolver, w, binding.GetBinding())
 		if err != nil {
-			l, err = ResolveBindingData(ctx, outputResolver, w, binding.GetBinding())
+			// TODO @haytham is this correct? https://github.com/lyft/flytepropeller/commit/6a143eaea736c1429e8c40620f30b740e277b2e3
+			// l, err = ResolveBindingData(ctx, outputResolver, w, binding.GetBinding())
 			return nil, errors.Wrapf(errors.BindingResolutionError, nodeID, err, "Error binding Var [%v].[%v]", w.GetID(), binding.GetVar())
 		}
 
