@@ -25,7 +25,7 @@ func (f FileEnvSecretManager) Get(ctx context.Context, key string) (string, erro
 	secretFile := filepath.Join(f.secretPath, key)
 	if _, err := os.Stat(secretFile); err != nil {
 		if os.IsNotExist(err) {
-			return "", fmt.Errorf("secrets not found")
+			return "", fmt.Errorf("secrets not found - file [%s], Env [%s]", secretFile, envVar)
 		}
 		return "", err
 	}
