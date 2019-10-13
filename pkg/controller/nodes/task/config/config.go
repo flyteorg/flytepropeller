@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"time"
 
 	"github.com/lyft/flytestdlib/config"
@@ -42,7 +43,13 @@ type TaskPluginConfig struct {
 }
 
 func (p TaskPluginConfig) GetEnabledPluginsSet() sets.String {
-	return sets.NewString(p.EnabledPlugins...)
+	s := sets.NewString()
+	for _, e := range p.EnabledPlugins {
+		cleanedPluginName := strings.Trim(e, " ")
+		cleanedPluginName = strings.ToLower(cleanedPluginName)
+		s.Insert(cleanedPluginName)
+	}
+	return s
 }
 
 func GetConfig() *Config {
