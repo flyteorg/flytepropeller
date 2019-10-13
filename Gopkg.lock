@@ -435,7 +435,7 @@
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:7e2f8f92da44f8fe230a865c5f891c2fff90a78e187b943b59fe606716b0add6"
+  digest = "1:bf6e34159283b71614703e279b960ae17f8f04489f7d60258a2f65635b732897"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/config",
@@ -466,7 +466,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "b8212b02880013f9d49389b81938c78085506eff"
+  revision = "4b9fcc8d0ba83807bc39b708d8e03549a7574bf9"
   source = "https://github.com/lyft/flyteplugins"
 
 [[projects]]
