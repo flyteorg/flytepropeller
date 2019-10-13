@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  digest = "1:fd319661e53f3607b8ddbded6121f8e4fe42978cb66968b20fdee68e10d10f9f"
+  digest = "1:9facd370d4b5aaf82bb6549c358eefc71c771458fc91d1afe724434aece9d886"
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
   pruneopts = ""
-  revision = "264def2dd949cdb8a803bb9f50fa29a67b798a6a"
-  version = "v0.46.3"
+  revision = "cfe8f6d1fe6976d03af790d7a8b9bf6aa73287bd"
+  version = "v0.47.0"
 
 [[projects]]
   digest = "1:9a11be778d5fcb8e4873e64a097dfd2862d8665d9e2d969b90810d5272e51acb"
@@ -18,7 +18,7 @@
   version = "v10.2.1-beta"
 
 [[projects]]
-  digest = "1:c4078565e52ba83b21b5307f50570d1d01db77de15ffff1493fbb341575f3e99"
+  digest = "1:44ba6749a186182a2c5fee875848dc733dadf0492bd5b466c3dec103c427ab8d"
   name = "github.com/Azure/go-autorest"
   packages = [
     "autorest",
@@ -29,8 +29,8 @@
     "tracing",
   ]
   pruneopts = ""
-  revision = "d9a171ca366fd4acfaa99107cdc4f91877f3572e"
-  version = "v13.0.2"
+  revision = "fa2154f3dfe448bf22f4b4771ad37c0247517727"
+  version = "v13.1.0"
 
 [[projects]]
   digest = "1:558b53577dc0c9fde49b08405d706b202bcac3064320e9be53a75fc866280ee3"
@@ -49,7 +49,7 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:d0a9a1cf0f6b3109090070a8a3cebd84914507e294db6ee3428eae3e8f76e7e2"
+  digest = "1:be59efa5c67921ce4d74b359ebea2fc4763b9e21387ed721d7f4be7c069dc19d"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -93,8 +93,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "707486d15fdffccd2b7fc759e3f997bf3e0882cd"
-  version = "v1.25.7"
+  revision = "8b44c74850c51562a4360837e9e4d6e7c47b7d81"
+  version = "v1.25.11"
 
 [[projects]]
   branch = "master"
@@ -162,11 +162,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:28901a66705449a22321a1574f33640e73e40b6e401187bf8a99aa7030aadbf7"
+  digest = "1:c47fa36ae2c154748003f5d39c5ca94e86ec144b37e4975fad91a1c7ff5047fb"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
   pruneopts = ""
-  revision = "ab058b44498e8b7566a799372a39d150d9ea0119"
+  revision = "4bf2d1fec78374803a39307bfb8d340688f4f28e"
 
 [[projects]]
   digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
@@ -435,7 +435,7 @@
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:3d2cbd72a54ab7c49f40133384d8ab56620951faae89d719901c1a9c17621e9c"
+  digest = "1:7e2f8f92da44f8fe230a865c5f891c2fff90a78e187b943b59fe606716b0add6"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/config",
@@ -457,6 +457,7 @@
     "go/tasks/pluginmachinery/workqueue",
     "go/tasks/plugins/array",
     "go/tasks/plugins/array/arraystatus",
+    "go/tasks/plugins/array/core",
     "go/tasks/plugins/array/errorcollector",
     "go/tasks/plugins/array/k8s",
     "go/tasks/plugins/hive",
@@ -465,11 +466,11 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "d3977cd326354fd1929b271effb3c0c2ccdb69dd"
+  revision = "b8212b02880013f9d49389b81938c78085506eff"
   source = "https://github.com/lyft/flyteplugins"
 
 [[projects]]
-  digest = "1:5104368cc09cd0fc24fe067ee2ec9f7865986f16a5329efca26f5176cf81ea95"
+  digest = "1:4f0506da275cf69c28a584bf8625e247c4684d617880af554a2bb0f09b979627"
   name = "github.com/lyft/flytestdlib"
   packages = [
     "atomic",
@@ -491,17 +492,17 @@
     "yamlutils",
   ]
   pruneopts = ""
-  revision = "37645a07c87771dcede50976460c5e5c76d0d99d"
+  revision = "2a121b0e3bc7fb85e36a5088e23ef59d401a78be"
   source = "https://github.com/lyft/flytestdlib"
-  version = "v0.2.19"
+  version = "v0.2.22"
 
 [[projects]]
   branch = "master"
-  digest = "1:a41364ebb0436c040941fcc9d19a837221605ee132cff7184aae50b531c5fd69"
+  digest = "1:f77e99a0e57a5a006cb5bca760689a95febe155aeb531d4ce8c43ec8bea71461"
   name = "github.com/lyft/modelbuilderadmin"
   packages = ["workflow/sets"]
   pruneopts = ""
-  revision = "d15da34bd77860d1dc87caf677c47148c791e0cc"
+  revision = "31036642688f3f47ac19507fcc8946a860b096cc"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
@@ -523,12 +524,12 @@
   version = "v0.0.9"
 
 [[projects]]
-  digest = "1:afc2714dedf683e571932f94f8a8ec444679eb84e076e021f63de871c5bc6cb1"
+  digest = "1:5794dadc5456af270fc564d98efbfa1f3627cd6c733ca772d14409793772064f"
   name = "github.com/mattn/go-isatty"
   packages = ["."]
   pruneopts = ""
-  revision = "e1f7b56ace729e4a73a29a6b4fac6cd5fcda7ab3"
-  version = "v0.0.9"
+  revision = "88ba11cfdc67c7588b30042edf244b2875f892b6"
+  version = "v0.0.10"
 
 [[projects]]
   digest = "1:63722a4b1e1717be7b98fc686e0b30d5e7f734b9e93d7dee86293b6deab7ea28"
@@ -813,15 +814,15 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b4305df2444548cf8f171cd377e19bc7021eaa195aaa78367b3a371d2d6b9ae1"
+  digest = "1:d709f6b44dffe11337b3730ebf5ae6bb1bc9273a1c204266921205158a5a523f"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   pruneopts = ""
-  revision = "34f69633bfdcf9db92f698f8487115767eebef81"
+  revision = "87dc89f01550277dc22b74ffcf4cd89fa2f40f4c"
 
 [[projects]]
   branch = "master"
-  digest = "1:3b22c4b2a448ff2c35e1740c7968afd9053f065d2252726a36ff7b96bf8b4cb1"
+  digest = "1:9775f16f1557e5a16a0c2d6a130488ca4e595916e2d55dd7fe819e60e2fcc1a5"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -834,7 +835,7 @@
     "trace",
   ]
   pruneopts = ""
-  revision = "72f939374954d0a1b2a1e27dcda950e2724dd5c1"
+  revision = "491137f692577e390404f177a0515c9f86f79754"
 
 [[projects]]
   branch = "master"
@@ -852,14 +853,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:08331054364d70d1e4bd8a2f40e930a86cd5b667d29ad10610c5cc1280aaf80b"
+  digest = "1:055771f25c4d6493a840af5cbdb8da461be2ec1192049dbaebd6ae1a8cbcdea0"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "ef33b2fb2c414dca4bfcf6ca59cbd1d9ad00703d"
+  revision = "b09406accb4736d857a32bf9444cd7edae2ffa79"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -896,7 +897,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e2b14bc74a8cfe2709683001b741cb22b492581c49aeacb96f5801985a84f840"
+  digest = "1:1ef1b12326ec1e2510ca41377888d3cdb794784e814d5e266d93683d83aadef0"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -913,11 +914,11 @@
     "internal/semver",
   ]
   pruneopts = ""
-  revision = "6536af71d98a5bb8f2cbd2f5e62afc2f6cc93dbb"
+  revision = "8de300cfc20a62d78c74c4b482fcfc0090f8d95c"
 
 [[projects]]
   branch = "master"
-  digest = "1:ae3c7c69a02dffb8bb4b51890546c46dbf113433bcfc35af44934a800bf484d4"
+  digest = "1:38c87dce95abdacdf9fe12c94d02fa4dc79782b41105251ea147f9a3195e4d33"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -931,7 +932,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = ""
-  revision = "d7272b84207dfaf3e6436bd41179c2bd4691316d"
+  revision = "5e0e3f4a3bb8f1c7d2bf1465670c5c0b3c45c277"
 
 [[projects]]
   digest = "1:c4404231035fad619a12f82ae3f0f8f9edc1cc7f34e7edad7a28ccac5336cc96"
@@ -954,7 +955,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:650883ae9adf5fc50676136789935844a105276ab75f4a88ef7bfa0f7a47681a"
+  digest = "1:bedd0fc72fda1aa2d22cfaf0fc5ae939d77adae869f01c45f64af07f27e296bc"
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api/annotations",
@@ -963,7 +964,7 @@
     "protobuf/field_mask",
   ]
   pruneopts = ""
-  revision = "a023cd5227bd25fd1f5c5633743ff3eacc93d169"
+  revision = "548a555dbc03994223efbaba0090152849259498"
 
 [[projects]]
   digest = "1:30d215704e78c21ffff90aa8e86ca1a438fec2837bad082116510fe5a862af5e"
@@ -1227,7 +1228,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a8c60fdc825be548a5cd9f599565d2c0dceff8d77a2b5ea00ff891e4aca33de5"
+  digest = "1:f081a7a72695a1410b10f622f423f2c4bcb8b1b2dece06d66517b6bf0c1d2cb1"
   name = "k8s.io/gengo"
   packages = [
     "args",
@@ -1240,7 +1241,7 @@
     "types",
   ]
   pruneopts = ""
-  revision = "ebc107f98eab922ef99d645781b87caca01f4f48"
+  revision = "7fa3014cb28f99ce2d9e803bcd3efa7edd4effa9"
 
 [[projects]]
   digest = "1:7ce71844fcaaabcbe09a392902edb5790ddca3a7070ae8d20830dc6dbe2751af"
