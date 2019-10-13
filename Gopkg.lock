@@ -547,11 +547,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a41364ebb0436c040941fcc9d19a837221605ee132cff7184aae50b531c5fd69"
+  digest = "1:f77e99a0e57a5a006cb5bca760689a95febe155aeb531d4ce8c43ec8bea71461"
   name = "github.com/lyft/modelbuilderadmin"
   packages = ["workflow/sets"]
   pruneopts = ""
-  revision = "d15da34bd77860d1dc87caf677c47148c791e0cc"
+  revision = "31036642688f3f47ac19507fcc8946a860b096cc"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
