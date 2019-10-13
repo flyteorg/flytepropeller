@@ -1,6 +1,8 @@
 package config
 
 import (
+	"strings"
+
 	"github.com/lyft/flytestdlib/config"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -28,7 +30,13 @@ type TaskPluginConfig struct {
 }
 
 func (p TaskPluginConfig) GetEnabledPluginsSet() sets.String {
-	return sets.NewString(p.EnabledPlugins...)
+	s := sets.NewString()
+	for _, e := range p.EnabledPlugins {
+		cleanedPluginName := strings.Trim(e, " ")
+		cleanedPluginName = strings.ToLower(cleanedPluginName)
+		s.Insert(cleanedPluginName)
+	}
+	return s
 }
 
 func GetConfig() *Config {
