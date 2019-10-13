@@ -19,7 +19,7 @@ var (
 		BarrierConfig: BarrierConfig{
 			Enabled:   true,
 			CacheSize: 5000,
-			CacheTTL:  config.Duration{Duration: time.Minute * 10},
+			CacheTTL:  config.Duration{Duration: time.Minute * 30},
 		},
 	}
 
