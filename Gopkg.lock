@@ -409,7 +409,6 @@
   packages = ["protos/gen"]
   pruneopts = ""
   revision = "2ee1d756da821e8616019b8e5310119c01b611ba"
-  source = "https://github.com/lyft/datacatalog"
   version = "v0.1.1"
 
 [[projects]]
@@ -430,12 +429,11 @@
   ]
   pruneopts = ""
   revision = "fac461ff1d6926e98b48e2f3374419afdb69de18"
-  source = "https://github.com/lyft/flyteidl"
   version = "v0.14.1"
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:10e292a9e836c6b65086556a9a9f25dd908df23ccae7a204a64be5d29a8ead33"
+  digest = "1:e1d84b9e71853a81fd6079b717880fbfe3765b0c27286928cc645690fc4f4a7d"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/config",
@@ -466,8 +464,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "f3c403d0e37ccbc8ffdbd9652916c808a448b045"
-  source = "https://github.com/lyft/flyteplugins"
+  revision = "8792e07f490d2fdd643d46cc5922b434cf136e4a"
 
 [[projects]]
   digest = "1:4f0506da275cf69c28a584bf8625e247c4684d617880af554a2bb0f09b979627"
@@ -493,7 +490,6 @@
   ]
   pruneopts = ""
   revision = "2a121b0e3bc7fb85e36a5088e23ef59d401a78be"
-  source = "https://github.com/lyft/flytestdlib"
   version = "v0.2.22"
 
 [[projects]]
@@ -822,7 +818,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9775f16f1557e5a16a0c2d6a130488ca4e595916e2d55dd7fe819e60e2fcc1a5"
+  digest = "1:f39d5c437a7a5a15b79b7ec0947afa6ad66fa9d1e6df4d13f534b87b10054d53"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -835,7 +831,7 @@
     "trace",
   ]
   pruneopts = ""
-  revision = "491137f692577e390404f177a0515c9f86f79754"
+  revision = "2ba7206551d1ac8b6b8385d1b685d70e60895828"
 
 [[projects]]
   branch = "master"
