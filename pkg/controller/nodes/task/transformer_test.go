@@ -97,6 +97,5 @@ func TestToTaskExecutionEvent(t *testing.T) {
 
 func TestToTransitionType(t *testing.T) {
 	assert.Equal(t, handler.TransitionTypeEphemeral, ToTransitionType(pluginCore.TransitionTypeEphemeral))
-	assert.Equal(t, handler.TransitionTypeEphemeral, ToTransitionType(pluginCore.TransitionTypeBestEffort))
 	assert.Equal(t, handler.TransitionTypeBarrier, ToTransitionType(pluginCore.TransitionTypeBarrier))
 }
