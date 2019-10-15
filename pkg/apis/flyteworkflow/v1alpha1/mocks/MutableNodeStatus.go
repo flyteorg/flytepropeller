@@ -97,22 +97,6 @@ func (_m *MutableNodeStatus) GetOrCreateDynamicNodeStatus() v1alpha1.MutableDyna
 	return r0
 }
 
-// GetOrCreateSubWorkflowStatus provides a mock function with given fields:
-func (_m *MutableNodeStatus) GetOrCreateSubWorkflowStatus() v1alpha1.MutableSubWorkflowNodeStatus {
-	ret := _m.Called()
-
-	var r0 v1alpha1.MutableSubWorkflowNodeStatus
-	if rf, ok := ret.Get(0).(func() v1alpha1.MutableSubWorkflowNodeStatus); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha1.MutableSubWorkflowNodeStatus)
-		}
-	}
-
-	return r0
-}
-
 // GetOrCreateTaskStatus provides a mock function with given fields:
 func (_m *MutableNodeStatus) GetOrCreateTaskStatus() v1alpha1.MutableTaskNodeStatus {
 	ret := _m.Called()
@@ -123,22 +107,6 @@ func (_m *MutableNodeStatus) GetOrCreateTaskStatus() v1alpha1.MutableTaskNodeSta
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(v1alpha1.MutableTaskNodeStatus)
-		}
-	}
-
-	return r0
-}
-
-// GetOrCreateWorkflowStatus provides a mock function with given fields:
-func (_m *MutableNodeStatus) GetOrCreateWorkflowStatus() v1alpha1.MutableWorkflowNodeStatus {
-	ret := _m.Called()
-
-	var r0 v1alpha1.MutableWorkflowNodeStatus
-	if rf, ok := ret.Get(0).(func() v1alpha1.MutableWorkflowNodeStatus); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha1.MutableWorkflowNodeStatus)
 		}
 	}
 

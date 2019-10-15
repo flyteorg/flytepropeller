@@ -487,6 +487,15 @@ type TaskNodeStatus struct {
 	PhaseVersion       uint32 `json:"phaseVersion,omitempty"`
 	PluginState        []byte `json:"pState,omitempty"`
 	PluginStateVersion uint32 `json:"psv,omitempty"`
+	BarrierClockTick   uint32 `json:"tick,omitempty"`
+}
+
+func (in *TaskNodeStatus) GetBarrierClockTick() uint32 {
+	return in.BarrierClockTick
+}
+
+func (in *TaskNodeStatus) SetBarrierClockTick(tick uint32) {
+	in.BarrierClockTick = tick
 }
 
 func (in *TaskNodeStatus) SetPluginState(s []byte) {
