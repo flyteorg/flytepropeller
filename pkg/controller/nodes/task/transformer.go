@@ -11,8 +11,7 @@ import (
 )
 
 func ToTransitionType(ttype pluginCore.TransitionType) handler.TransitionType {
-	// TODO lets deprecate BestEffort
-	if ttype == pluginCore.TransitionTypeBarrier || ttype == pluginCore.TransitionTypeBestEffort {
+	if ttype == pluginCore.TransitionTypeBarrier {
 		return handler.TransitionTypeBarrier
 	}
 	return handler.TransitionTypeEphemeral
