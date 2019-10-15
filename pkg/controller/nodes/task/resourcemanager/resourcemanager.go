@@ -15,6 +15,8 @@ const (
 	TypeRedis Type = "redis"
 )
 
+
+
 // This struct is designed to serve as the identifier of an user of resource manager
 type Resource struct {
 	quota   int
@@ -26,18 +28,18 @@ type Metrics interface {
 }
 
 type Factory interface {
-	GetNegotiator(namespacePrefix string) resourcemanager_interface.ResourceNegotiator
-	GetTaskResourceManager(namespacePrefix string) resourcemanager_interface.ResourceManager
+	GetNegotiator(namespacePrefix resourcemanager_interface.ResourceNamespace) resourcemanager_interface.ResourceNegotiator
+	GetTaskResourceManager(namespacePrefix resourcemanager_interface.ResourceNamespace) resourcemanager_interface.ResourceManager
 }
 
 type Proxy struct {
 	resourcemanager_interface.ResourceNegotiator
 	resourcemanager_interface.ResourceManager
-	NamespacePrefix string
+	NamespacePrefix resourcemanager_interface.ResourceNamespace
 }
 
-func (p Proxy) getPrefixedNamespace(namespace resourcemanager_interface.ResourceNamespace) string {
-	return p.NamespacePrefix + ":" + namespace
+func (p Proxy) getPrefixedNamespace(namespace resourcemanager_interface.ResourceNamespace) resourcemanager_interface.ResourceNamespace {
+	return p.NamespacePrefix.CreateSubNamespace(namespace)
 }
 
 func (p Proxy) RegisterResourceQuota(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace,

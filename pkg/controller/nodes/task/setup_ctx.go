@@ -2,8 +2,6 @@ package task
 
 import (
 	"context"
-	rmConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager_interface"
 
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"

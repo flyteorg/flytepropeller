@@ -2,19 +2,26 @@ package resourcemanager
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager_interface"
 )
 
 type NoopResourceManager struct {
 }
 
-func (r *NoopResourceManager) GetNegotiator() resourcemanager_interface.ResourceNegotiator {
-	return r
+func (r NoopResourceManager) GetNegotiator(namespacePrefix resourcemanager_interface.ResourceNamespace) resourcemanager_interface.ResourceNegotiator {
+	return Proxy{
+		ResourceNegotiator: r,
+		ResourceManager:    r,
+		NamespacePrefix:    namespacePrefix,
+	}
 }
 
-func (r *NoopResourceManager) GetTaskResourceManager(ctx context.Context, tCtx core.TaskExecutionContext) resourcemanager_interface.ResourceManager {
-	return r
+func (r NoopResourceManager) GetTaskResourceManager(namespacePrefix resourcemanager_interface.ResourceNamespace) resourcemanager_interface.ResourceManager {
+	return Proxy{
+		ResourceNegotiator: r,
+		ResourceManager:    r,
+		NamespacePrefix:    namespacePrefix,
+	}
 }
 
 func (NoopResourceManager) RegisterResourceQuota(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace, quota int) error {

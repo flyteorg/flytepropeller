@@ -21,7 +21,13 @@ const (
 	AllocationStatusNamespaceQuotaExceeded AllocationStatus = "NamespaceQuotaExceeded"
 )
 
-type ResourceNamespace = string
+const namespaceSeparator = ":"
+
+type ResourceNamespace string
+
+func (r ResourceNamespace) CreateSubNamespace(namespace ResourceNamespace) ResourceNamespace  {
+	return r + namespaceSeparator + namespace
+}
 
 type ResourceNegotiator interface {
 	RegisterResourceQuota(ctx context.Context, namespace ResourceNamespace, quota int) error

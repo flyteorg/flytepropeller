@@ -25,26 +25,25 @@ type RedisResourceManager struct {
 	namespacedResourcesMap map[resourcemanager_interface.ResourceNamespace]*Resource
 }
 
-func (r *RedisResourceManager) GetNegotiator(namespacePrefix string) resourcemanager_interface.ResourceNegotiator {
+func (r *RedisResourceManager) GetNegotiator(namespacePrefix resourcemanager_interface.ResourceNamespace) resourcemanager_interface.ResourceNegotiator {
 	return Proxy{
 		ResourceNegotiator: r,
 		ResourceManager:    r,
-		NamespacePrefix:namespacePrefix,
+		NamespacePrefix:    namespacePrefix,
 	}
 }
 
-func (r *RedisResourceManager) GetTaskResourceManager(namespacePrefix string) resourcemanager_interface.ResourceManager {
+func (r *RedisResourceManager) GetTaskResourceManager(namespacePrefix resourcemanager_interface.ResourceNamespace) resourcemanager_interface.ResourceManager {
 	return Proxy{
 		ResourceNegotiator: r,
 		ResourceManager:    r,
-		NamespacePrefix:namespacePrefix,
+		NamespacePrefix:    namespacePrefix,
 	}
 }
 
 type RedisResourceManagerMetrics struct {
 	Scope                promutils.Scope
 	RedisSizeCheckTime   promutils.StopWatch
-	// AllocatedTokensGauge *prometheus.GaugeVec
 	AllocatedTokensGauge prometheus.Gauge
 }
 
@@ -76,28 +75,27 @@ func (r *RedisResourceManager) pollRedis(ctx context.Context, namespace resource
 }
 
 func (r *RedisResourceManager) startMetricsGathering(ctx context.Context) {
-	wait.Until(func(){
-		for namespace, _ := range r.namespacedResourcesMap {
+	wait.Until(func() {
+		for namespace := range r.namespacedResourcesMap {
 			r.pollRedis(ctx, namespace)
 		}
-	}, 10 * time.Second, ctx.Done())
+	}, 10*time.Second, ctx.Done())
 	/*
-	ticker := time.NewTicker(10 * time.Second)
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				for _, rrToken := range r.resourceRegistryTokens {
-					r.pollRedis(ctx, rrToken)
+		ticker := time.NewTicker(10 * time.Second)
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					for _, rrToken := range r.resourceRegistryTokens {
+						r.pollRedis(ctx, rrToken)
+					}
 				}
 			}
-		}
-	}()
+		}()
 	*/
 }
-
 
 func NewRedisResourceManagerMetrics(scope promutils.Scope) *RedisResourceManagerMetrics {
 	return &RedisResourceManagerMetrics{
@@ -117,7 +115,7 @@ func (r *RedisResourceManager) RegisterResourceQuota(ctx context.Context, namesp
 		return err
 	}
 	config := rmConfig.GetResourceManagerConfig()
-	if quota <= 0 || quota > config.ResourceMaxQuota{
+	if quota <= 0 || quota > config.ResourceMaxQuota {
 		err := errors.Errorf("Invalid request for resource quota (<= 0 || > %v): [%v]", config.ResourceMaxQuota, quota)
 		return err
 	}
@@ -131,8 +129,8 @@ func (r *RedisResourceManager) RegisterResourceQuota(ctx context.Context, namesp
 	prefixedNamespace := r.getNamespacedRedisSetKey(namespace)
 	metrics := NewRedisResourceManagerMetrics(r.MetricsScope.NewSubScope(prefixedNamespace))
 
-	newResource := &Resource {
-		quota: quota,
+	newResource := &Resource{
+		quota:   quota,
 		metrics: metrics,
 	}
 
@@ -140,8 +138,6 @@ func (r *RedisResourceManager) RegisterResourceQuota(ctx context.Context, namesp
 	r.namespacedResourcesMap[namespace] = newResource
 	return nil
 }
-
-
 
 func (r RedisResourceManager) AllocateResource(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace, allocationToken string) (
 	resourcemanager_interface.AllocationStatus, error) {
@@ -195,13 +191,11 @@ func (r RedisResourceManager) ReleaseResource(ctx context.Context, namespace res
 func NewRedisResourceManager(ctx context.Context, client *redis.Client, scope promutils.Scope) (*RedisResourceManager, error) {
 
 	rm := &RedisResourceManager{
-		client:      client,
-		MetricsScope:     scope,
+		client:                 client,
+		MetricsScope:           scope,
 		namespacedResourcesMap: map[resourcemanager_interface.ResourceNamespace]*Resource{},
-		redisSetKeyPrefix: RedisSetKeyPrefix,
+		redisSetKeyPrefix:      RedisSetKeyPrefix,
 	}
 	rm.startMetricsGathering(ctx)
 	return rm, nil
 }
-
-

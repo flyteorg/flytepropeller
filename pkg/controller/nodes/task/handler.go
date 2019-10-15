@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager_interface"
 	"runtime/debug"
 	"time"
 
@@ -153,7 +154,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	}
 
 	for _, p := range enabledPlugins {
-		tSCtx.resourceNegotiator = t.resourceManagerFactory.GetNegotiator(p.ID)
+		tSCtx.resourceNegotiator = t.resourceManagerFactory.GetNegotiator(resourcemanager_interface.ResourceNamespace(p.ID))
 		logger.Infof(ctx, "Loading Plugin [%s] ENABLED", p.ID)
 		cp, err := p.LoadPlugin(ctx, tSCtx)
 		if err != nil {
