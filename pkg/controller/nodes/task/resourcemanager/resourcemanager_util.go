@@ -7,6 +7,12 @@ import (
 	"github.com/lyft/flytestdlib/promutils"
 )
 
+const (
+	propellerPrometheusScope            = "flytepropeller"
+	redisResourceManagerPrometheusScope = propellerPrometheusScope + ":" + "redisresourcemanager"
+)
+
+
 func GetResourceManagerByType(ctx context.Context, managerType Type, scope promutils.Scope) (
 	Factory, error) {
 
@@ -22,7 +28,7 @@ func GetResourceManagerByType(ctx context.Context, managerType Type, scope promu
 			logger.Errorf(ctx, "Unable to initialize a redis client for the resource manager: [%v]", err)
 			return nil, err
 		}
-		return NewRedisResourceManager(ctx, redisClient, scope.NewSubScope("flytepropeller:redisresourcemanager"))
+		return NewRedisResourceManager(ctx, redisClient, scope.NewSubScope(redisResourceManagerPrometheusScope))
 	}
 	logger.Infof(ctx, "Using the NOOP resource manager by default")
 	return NoopResourceManager{}, nil

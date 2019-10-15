@@ -15,14 +15,14 @@ import (
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	pluginK8s "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
+	rmConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
 	"github.com/lyft/flytestdlib/storage"
 	regErrors "github.com/pkg/errors"
-	rmConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
@@ -483,7 +483,6 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		return nil, err
 	}
 
-	// TODO add resource manager
 	resourceManagerConfig := rmConfig.GetResourceManagerConfig()
 	newResourceManagerFactory, err := resourcemanager.GetResourceManagerByType(ctx, resourceManagerConfig.ResourceManagerType, scope)
 	if err != nil {
