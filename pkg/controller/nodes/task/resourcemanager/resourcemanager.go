@@ -2,73 +2,58 @@ package resourcemanager
 
 import (
 	"context"
-
-	rmConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager_interface"
 	"github.com/lyft/flytestdlib/promutils"
 )
 
 //go:generate mockery -name ResourceManager -case=underscore
 
-type AllocationStatus string
+type Type string
 
 const (
-	// This is the enum returned when there's an error
-	AllocationUndefined                    AllocationStatus = "ResourceGranted"
-
-	// Go for it
-	AllocationStatusGranted                AllocationStatus = "ResourceGranted"
-
-	// This means that no resources are available globally.  This is the only rejection message we use right now.
-	AllocationStatusExhausted              AllocationStatus = "ResourceExhausted"
-
-	// We're not currently using this - but this would indicate that things globally are okay, but that your
-	// own namespace is too busy
-	AllocationStatusNamespaceQuotaExceeded AllocationStatus = "NamespaceQuotaExceeded"
+	TypeNoop  Type = "noop"
+	TypeRedis Type = "redis"
 )
 
-type ResourceManagerType string
-
-const (
-	ResourceManagerTypeNoop  ResourceManagerType = "noop"
-	ResourceManagerTypeRedis ResourceManagerType = "redis"
-)
-
-type ResourceNegotiator interface {
-	RegisterResourceQuota(ctx context.Context, namespace string, quota int) Token, error
+// This struct is designed to serve as the identifier of an user of resource manager
+type Resource struct {
+	quota   int
+	metrics Metrics
 }
 
-// Resource Manager manages a single resource type, and each allocation is of size one
-type ResourceManager interface {
-	//ResourceNegotiator
-	AllocateResource(ctx context.Context, allocationToken string) (AllocationStatus, error)
-	ReleaseResource(ctx context.Context, token Token, allocationToken string) error
+type Metrics interface {
+	GetScope() promutils.Scope
 }
 
-
-// Gets or creates a resource manager to the given resource name. This function is thread-safe and calling it with the
-// same resource name will return the same instance of resource manager every time.
-func GetOrCreateResourceManagerFor(ctx context.Context, resourceName string) (ResourceManager, error) {
-	return NoopResourceManager{}, nil
+type Factory interface {
+	GetNegotiator(namespacePrefix string) resourcemanager_interface.ResourceNegotiator
+	GetTaskResourceManager(namespacePrefix string) resourcemanager_interface.ResourceManager
 }
 
-func GetResourceManagerByType(ctx context.Context, managerType ResourceManagerType, scope promutils.Scope) (
-	ResourceManager, error) {
-
-	switch managerType {
-	case ResourceManagerTypeNoop:
-		logger.Infof(ctx, "Using the NOOP resource manager")
-		return NoopResourceManager{}, nil
-	case ResourceManagerTypeRedis:
-		logger.Infof(ctx, "Using Redis based resource manager")
-		config := rmConfig.GetResourceManagerConfig()
-		redisClient, err := NewRedisClient(ctx, config.RedisHostPath, config.RedisHostKey, config.RedisMaxRetries)
-		if err != nil {
-			logger.Errorf(ctx, "Unable to initialize a redis client for the resource manager: [%v]", err)
-			return nil, err
-		}
-		return NewRedisResourceManager(ctx, redisClient, scope.NewSubScope("flytepropeller:resourcemanager:redis"))
-	}
-	logger.Infof(ctx, "Using the NOOP resource manager by default")
-	return NoopResourceManager{}, nil
+type Proxy struct {
+	resourcemanager_interface.ResourceNegotiator
+	resourcemanager_interface.ResourceManager
+	NamespacePrefix string
 }
+
+func (p Proxy) getPrefixedNamespace(namespace resourcemanager_interface.ResourceNamespace) string {
+	return p.NamespacePrefix + ":" + namespace
+}
+
+func (p Proxy) RegisterResourceQuota(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace,
+	quota int) error {
+	return p.ResourceNegotiator.RegisterResourceQuota(ctx, p.getPrefixedNamespace(namespace), quota)
+}
+
+func (p Proxy) AllocateResource(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace,
+	allocationToken string) (resourcemanager_interface.AllocationStatus, error) {
+	status, err := p.ResourceManager.AllocateResource(ctx, p.getPrefixedNamespace(namespace), allocationToken)
+	return status, err
+}
+
+func (p Proxy) ReleaseResource(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace,
+	allocationToken string) error {
+	err := p.ResourceManager.ReleaseResource(ctx, p.getPrefixedNamespace(namespace), allocationToken)
+	return err
+}
+

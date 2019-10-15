@@ -20,6 +20,8 @@ import (
 	"github.com/lyft/flytestdlib/promutils/labeled"
 	"github.com/lyft/flytestdlib/storage"
 	regErrors "github.com/pkg/errors"
+	rmConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
@@ -121,6 +123,7 @@ type Handler struct {
 	kubeClient     pluginCore.KubeClient
 	cfg            *config.Config
 	secretManager  pluginCore.SecretManager
+	resourceManagerFactory resourcemanager.Factory
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -138,7 +141,10 @@ func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
 }
 
 func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
-	tSCtx := t.newSetupContext(ctx, sCtx)
+	tSCtx, err := t.newSetupContext(ctx, sCtx)
+	if err != nil {
+		return err
+	}
 
 	enabledPlugins, err := WranglePluginsAndGenerateFinalList(ctx, &t.cfg.TaskPlugins, t.pluginRegistry)
 	if err != nil {
@@ -147,6 +153,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	}
 
 	for _, p := range enabledPlugins {
+		tSCtx.resourceNegotiator = t.resourceManagerFactory.GetNegotiator(p.ID)
 		logger.Infof(ctx, "Loading Plugin [%s] ENABLED", p.ID)
 		cp, err := p.LoadPlugin(ctx, tSCtx)
 		if err != nil {
@@ -468,12 +475,20 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 	}()
 }
 
-func New(_ context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) *Handler {
+func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) (*Handler, error) {
 	// TODO NewShould take apointer
 	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig())
 	if err != nil {
-		return nil
+		return nil, err
 	}
+
+	// TODO add resource manager
+	resourceManagerConfig := rmConfig.GetResourceManagerConfig()
+	newResourceManagerFactory, err := resourcemanager.GetResourceManagerByType(ctx, resourceManagerConfig.ResourceManagerType, scope)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Handler{
 		pluginRegistry: pluginMachinery.PluginRegistry(),
 		plugins:        make(map[pluginCore.TaskType]pluginCore.Plugin),
@@ -489,7 +504,8 @@ func New(_ context.Context, kubeClient executors.Client, client catalog.Client, 
 		kubeClient:    kubeClient,
 		catalog:       client,
 		asyncCatalog:  async,
+		resourceManagerFactory: newResourceManagerFactory,
 		secretManager: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
 		cfg:           config.GetConfig(),
-	}
+	}, nil
 }

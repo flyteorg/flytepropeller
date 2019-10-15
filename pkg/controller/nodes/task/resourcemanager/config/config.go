@@ -5,25 +5,25 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 )
 
-// go:generate pflags Config
+//go:generate pflags Config --default-var=defaultConfig
 
 const resourceManagerConfigSectionKey = "resourcemanager"
 
 var (
 	defaultConfig = Config{
-		ResourceManagerType:     resourcemanager.ResourceManagerTypeNoop,
-		// ResourceQuota:           200,
+		ResourceManagerType:     resourcemanager.TypeNoop,
+		ResourceMaxQuota:        1000,
 	}
 
 	resourceManagerConfigSection = config.MustRegisterSubSection(resourceManagerConfigSectionKey, &defaultConfig)
 )
 
 type Config struct {
-	ResourceManagerType    resourcemanager.ResourceManagerType   `json:"resourceManagerType" pflag:"noop,Which resource manager to use"`
-	// ResourceQuota          int			   `json:"resourceQuota" pflag:",Global limit for concurrent Qubole queries"`
-	RedisHostPath          string          `json:"redisHostPath" pflag:",Redis host location"`
-	RedisHostKey           string          `json:"redisHostKey" pflag:",Key for local Redis access"`
-	RedisMaxRetries        int             `json:"redisMaxRetries" pflag:",See Redis client options for more info"`
+	ResourceManagerType    resourcemanager.Type `json:"resourceManagerType" pflag:"noop,Which resource manager to use"`
+	ResourceMaxQuota       int                  `json:"resourceQuota" pflag:",Global limit for concurrent Qubole queries"`
+	RedisHostPath          string               `json:"redisHostPath" pflag:",Redis host location"`
+	RedisHostKey           string               `json:"redisHostKey" pflag:",Key for local Redis access"`
+	RedisMaxRetries        int                  `json:"redisMaxRetries" pflag:",See Redis client options for more info"`
 }
 
 // Retrieves the current config value or default.

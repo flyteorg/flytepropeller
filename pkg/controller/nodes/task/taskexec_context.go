@@ -3,6 +3,7 @@ package task
 import (
 	"bytes"
 	"context"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager_interface"
 	"strconv"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -11,9 +12,9 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
@@ -53,7 +54,7 @@ func (t taskExecutionMetadata) GetOverrides() pluginCore.TaskOverrides {
 type taskExecutionContext struct {
 	handler.NodeExecutionContext
 	tm  taskExecutionMetadata
-	rm  resourcemanager.ResourceManager
+	rm  resourcemanager_interface.ResourceManager
 	psm *pluginStateManager
 	tr  handler.TaskReader
 	ow  *ioutils.BufferedOutputWriter
@@ -127,7 +128,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 	}
 
 
-	rm, err := resourcemanager.GetResourceManagerByType(ctx, resourcemanager.ResourceManagerTypeRedis, )
+	rm, err := resourcemanager.GetResourceManagerByType(ctx, resourcemanager.TypeRedis, )
 	if err != nil {
 		return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to initialize resource manager")
 	}
