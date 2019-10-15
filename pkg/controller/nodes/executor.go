@@ -110,16 +110,6 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 
 	if predicatePhase == PredicatePhaseReady {
 
-		if len(nodeStatus.GetDataDir()) == 0 {
-			// Predicate ready, lets Resolve the data
-			dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, node.GetID())
-			if err != nil {
-				return handler.PhaseInfoUndefined, err
-			}
-
-			nodeStatus.SetDataDir(dataDir)
-		}
-
 		// TODO: Performance problem, we maybe in a retry loop and do not need to resolve the inputs again.
 		// For now we will do this.
 		dataDir := nodeStatus.GetDataDir()
@@ -215,6 +205,16 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	h, err := c.nodeHandlerFactory.GetHandler(node.GetKind())
 	if err != nil {
 		return executors.NodeStatusUndefined, err
+	}
+
+	if len(nodeStatus.GetDataDir()) == 0 {
+		// Predicate ready, lets Resolve the data
+		dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, node.GetID())
+		if err != nil {
+			return executors.NodeStatusUndefined, err
+		}
+
+		nodeStatus.SetDataDir(dataDir)
 	}
 
 	nCtx, err := c.newNodeExecContextDefault(ctx, w, node, nodeStatus)
