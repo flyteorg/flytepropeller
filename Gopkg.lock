@@ -18,7 +18,7 @@
   version = "v10.2.1-beta"
 
 [[projects]]
-  digest = "1:44ba6749a186182a2c5fee875848dc733dadf0492bd5b466c3dec103c427ab8d"
+  digest = "1:08ea2d08d4b4acb4b6b189cdb58bd6087c2d2b53d10863e8d4917ebf2728cac4"
   name = "github.com/Azure/go-autorest"
   packages = [
     "autorest",
@@ -29,8 +29,8 @@
     "tracing",
   ]
   pruneopts = ""
-  revision = "fa2154f3dfe448bf22f4b4771ad37c0247517727"
-  version = "v13.1.0"
+  revision = "740293c019d8314ce3378d456b4327fa646297e6"
+  version = "v13.2.0"
 
 [[projects]]
   digest = "1:558b53577dc0c9fde49b08405d706b202bcac3064320e9be53a75fc866280ee3"
@@ -49,7 +49,7 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:be59efa5c67921ce4d74b359ebea2fc4763b9e21387ed721d7f4be7c069dc19d"
+  digest = "1:096b2450c9e022d4e1ae361ffa2ba36278fee3ac257d56c74d6b54a4084edc80"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -93,8 +93,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "8b44c74850c51562a4360837e9e4d6e7c47b7d81"
-  version = "v1.25.11"
+  revision = "e42fa244c725b2a423a8e9cf1c86828c0bf9400a"
+  version = "v1.25.12"
 
 [[projects]]
   branch = "master"
@@ -193,15 +193,15 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:8a7fe65e9ac2612c4df602cc9f014a92406776d993ff0f28335e5a8831d87c53"
+  digest = "1:d69d2ba23955582a64e367ff2b0808cdbd048458c178cea48f11ab8c40bd7aea"
   name = "github.com/gogo/protobuf"
   packages = [
     "proto",
     "sortkeys",
   ]
   pruneopts = ""
-  revision = "0ca988a254f991240804bf9821f3450d87ccbb1b"
-  version = "v1.3.0"
+  revision = "5628607bb4c51c3157aacc3a50f0ab707582b805"
+  version = "v1.3.1"
 
 [[projects]]
   branch = "master"
@@ -409,7 +409,6 @@
   packages = ["protos/gen"]
   pruneopts = ""
   revision = "2ee1d756da821e8616019b8e5310119c01b611ba"
-  source = "https://github.com/lyft/datacatalog"
   version = "v0.1.1"
 
 [[projects]]
@@ -430,12 +429,11 @@
   ]
   pruneopts = ""
   revision = "fac461ff1d6926e98b48e2f3374419afdb69de18"
-  source = "https://github.com/lyft/flyteidl"
   version = "v0.14.1"
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:bf6e34159283b71614703e279b960ae17f8f04489f7d60258a2f65635b732897"
+  digest = "1:e1d84b9e71853a81fd6079b717880fbfe3765b0c27286928cc645690fc4f4a7d"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/config",
@@ -466,8 +464,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "4b9fcc8d0ba83807bc39b708d8e03549a7574bf9"
-  source = "https://github.com/lyft/flyteplugins"
+  revision = "8792e07f490d2fdd643d46cc5922b434cf136e4a"
 
 [[projects]]
   digest = "1:4f0506da275cf69c28a584bf8625e247c4684d617880af554a2bb0f09b979627"
@@ -493,7 +490,6 @@
   ]
   pruneopts = ""
   revision = "2a121b0e3bc7fb85e36a5088e23ef59d401a78be"
-  source = "https://github.com/lyft/flytestdlib"
   version = "v0.2.22"
 
 [[projects]]
@@ -822,7 +818,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9775f16f1557e5a16a0c2d6a130488ca4e595916e2d55dd7fe819e60e2fcc1a5"
+  digest = "1:f39d5c437a7a5a15b79b7ec0947afa6ad66fa9d1e6df4d13f534b87b10054d53"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -835,7 +831,7 @@
     "trace",
   ]
   pruneopts = ""
-  revision = "491137f692577e390404f177a0515c9f86f79754"
+  revision = "2ba7206551d1ac8b6b8385d1b685d70e60895828"
 
 [[projects]]
   branch = "master"
@@ -897,7 +893,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1ef1b12326ec1e2510ca41377888d3cdb794784e814d5e266d93683d83aadef0"
+  digest = "1:1da238a6880de9846b58842ba51dafffd4a746fc7d58145231f56295eba819bf"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -914,7 +910,7 @@
     "internal/semver",
   ]
   pruneopts = ""
-  revision = "8de300cfc20a62d78c74c4b482fcfc0090f8d95c"
+  revision = "539cdc44f86437a5d06fd0cae3173ac81bd7c8aa"
 
 [[projects]]
   branch = "master"
