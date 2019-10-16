@@ -20,6 +20,7 @@ func (f FileEnvSecretManager) Get(ctx context.Context, key string) (string, erro
 	envVar := fmt.Sprintf("%s%s", f.envPrefix, key)
 	v, ok := os.LookupEnv(envVar)
 	if ok {
+		logger.Debugf(ctx, "Secret found %s", v)
 		return v, nil
 	}
 	secretFile := filepath.Join(f.secretPath, key)
