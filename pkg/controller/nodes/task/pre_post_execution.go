@@ -24,6 +24,7 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 	if tk.Metadata.Discoverable {
 		key := catalog.Key{
 			Identifier:     *tk.Id,
+			Type:           tk.Type,
 			CacheVersion:   tk.Metadata.DiscoveryVersion,
 			TypedInterface: *tk.Interface,
 			InputReader:    inputReader,
