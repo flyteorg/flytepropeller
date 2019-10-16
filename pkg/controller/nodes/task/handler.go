@@ -508,12 +508,17 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 	}()
 }
 
-func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) *Handler {
+func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) (*Handler, error) {
 	// TODO NewShould take apointer
 	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig(), scope)
 	if err != nil {
-		return nil
+		return nil, err
 	}
+
+	if err = async.Start(ctx); err != nil {
+		return nil, err
+	}
+
 	cfg := config.GetConfig()
 	return &Handler{
 		pluginRegistry: pluginMachinery.PluginRegistry(),
@@ -533,5 +538,5 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		secretManager: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
 		barrierCache:  NewLRUBarrier(ctx, cfg.BarrierConfig),
 		cfg:           cfg,
-	}
+	}, nil
 }
