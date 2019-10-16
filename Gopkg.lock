@@ -49,7 +49,7 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:096b2450c9e022d4e1ae361ffa2ba36278fee3ac257d56c74d6b54a4084edc80"
+  digest = "1:0f45944b79c6bc89f10c827b08e30f46b7e39c26c02c84d8a41f22fb283fbbc3"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -81,11 +81,14 @@
     "private/protocol/eventstream",
     "private/protocol/eventstream/eventstreamapi",
     "private/protocol/json/jsonutil",
+    "private/protocol/jsonrpc",
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
+    "private/protocol/restjson",
     "private/protocol/restxml",
     "private/protocol/xml/xmlutil",
+    "service/batch",
     "service/s3",
     "service/s3/s3iface",
     "service/s3/s3manager",
@@ -93,8 +96,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "e42fa244c725b2a423a8e9cf1c86828c0bf9400a"
-  version = "v1.25.12"
+  revision = "e40068abd62ea29db38cb7ca59bf6f58489343bf"
+  version = "v1.25.13"
 
 [[projects]]
   branch = "master"
@@ -433,9 +436,10 @@
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:e1d84b9e71853a81fd6079b717880fbfe3765b0c27286928cc645690fc4f4a7d"
+  digest = "1:aafbee71f8a4cc4ffaeeac305d73f6bfc9570d5d2597327df527ee3cdd681524"
   name = "github.com/lyft/flyteplugins"
   packages = [
+    "go/tasks/aws",
     "go/tasks/config",
     "go/tasks/errors",
     "go/tasks/logs",
@@ -455,6 +459,9 @@
     "go/tasks/pluginmachinery/workqueue",
     "go/tasks/plugins/array",
     "go/tasks/plugins/array/arraystatus",
+    "go/tasks/plugins/array/awsbatch",
+    "go/tasks/plugins/array/awsbatch/config",
+    "go/tasks/plugins/array/awsbatch/definition",
     "go/tasks/plugins/array/core",
     "go/tasks/plugins/array/errorcollector",
     "go/tasks/plugins/array/k8s",
@@ -464,7 +471,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "8792e07f490d2fdd643d46cc5922b434cf136e4a"
+  revision = "c01714581b8906046dcb3a52b15e1e8f6419efae"
 
 [[projects]]
   digest = "1:4f0506da275cf69c28a584bf8625e247c4684d617880af554a2bb0f09b979627"
@@ -472,6 +479,7 @@
   packages = [
     "atomic",
     "bitarray",
+    "cache",
     "config",
     "config/files",
     "config/viper",
@@ -818,7 +826,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f39d5c437a7a5a15b79b7ec0947afa6ad66fa9d1e6df4d13f534b87b10054d53"
+  digest = "1:d4d68fea45a3a5fc7645cf2538da3715384ac5eb6bcb72ce82b38cdfca8783e7"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -831,7 +839,7 @@
     "trace",
   ]
   pruneopts = ""
-  revision = "2ba7206551d1ac8b6b8385d1b685d70e60895828"
+  revision = "da9a3fd4c5820e74b24a6cb7fb438dc9b0dd377c"
 
 [[projects]]
   branch = "master"
@@ -893,7 +901,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1da238a6880de9846b58842ba51dafffd4a746fc7d58145231f56295eba819bf"
+  digest = "1:b95637a4ae9e8072f1e34cebd5835c34ce18e4411d5d68d681742fbae00d2238"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -910,11 +918,11 @@
     "internal/semver",
   ]
   pruneopts = ""
-  revision = "539cdc44f86437a5d06fd0cae3173ac81bd7c8aa"
+  revision = "9c6d90b5a7d0c5de88404edf63ae60750868bf0a"
 
 [[projects]]
   branch = "master"
-  digest = "1:38c87dce95abdacdf9fe12c94d02fa4dc79782b41105251ea147f9a3195e4d33"
+  digest = "1:65f6414cea43458f417e27a8d393c5e3ed8ef165f0e356ee22b0a5c292b7858a"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -928,7 +936,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = ""
-  revision = "5e0e3f4a3bb8f1c7d2bf1465670c5c0b3c45c277"
+  revision = "4f26c6409ffa7b94f89d06aac760b63875d9b42c"
 
 [[projects]]
   digest = "1:c4404231035fad619a12f82ae3f0f8f9edc1cc7f34e7edad7a28ccac5336cc96"
@@ -1303,6 +1311,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/DiSiqueira/GoTree",
+    "github.com/dgrijalva/jwt-go",
     "github.com/fatih/color",
     "github.com/ghodss/yaml",
     "github.com/gogo/protobuf/proto",
@@ -1336,6 +1345,7 @@
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s/mocks",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils",
+    "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch",
     "github.com/lyft/flyteplugins/go/tasks/plugins/array/k8s",
     "github.com/lyft/flyteplugins/go/tasks/plugins/hive",
     "github.com/lyft/flyteplugins/go/tasks/plugins/k8s/container",

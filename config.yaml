@@ -26,7 +26,7 @@ tasks:
   task-plugins:
     enabled-plugins:
       - container
-      - k8s-array
+      - aws_array
       - qubole-hive-executor
 # Sample plugins config
 plugins:
@@ -52,18 +52,14 @@ plugins:
     kubernetes-enabled: true
     kubernetes-url: "http://localhost:30082"
 storage:
+  type: s3
   connection:
-    access-key: minio
-    auth-type: accesskey
-    disable-ssl: true
-    endpoint: http://localhost:9000
+    auth-type: iam
     region: us-east-1
-    secret-key: miniostorage
   cache:
-    max_size_mbs: 10
-    target_gc_percent: 100
-  container: myflytecontainer
-  type: minio
+    max_size_mbs: 1024
+    target_gc_percent: 70
+  container: "lyft-modelbuilder"
 event:
   type: admin
   rate: 500
