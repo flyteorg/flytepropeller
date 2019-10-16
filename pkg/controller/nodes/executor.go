@@ -11,6 +11,7 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
+	"github.com/lyft/flytepropeller/pkg/controller/config"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
@@ -23,6 +24,8 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
+	"k8s.io/client-go/informers/node"
+	"golang.org/x/tools/go/cfg"
 )
 
 type nodeMetrics struct {
@@ -31,6 +34,7 @@ type nodeMetrics struct {
 	SuccessDuration    labeled.StopWatch
 	ResolutionFailure  labeled.Counter
 	InputsWriteFailure labeled.Counter
+	TimedOutFailure    labeled.Counter
 
 	// Measures the latency between the last parent node stoppedAt time and current node's queued time.
 	TransitionLatency labeled.StopWatch
@@ -42,14 +46,16 @@ type nodeMetrics struct {
 }
 
 type nodeExecutor struct {
-	nodeHandlerFactory  HandlerFactory
-	enqueueWorkflow     v1alpha1.EnqueueWorkflow
-	store               *storage.DataStore
-	nodeRecorder        events.NodeEventRecorder
-	taskRecorder        events.TaskEventRecorder
-	metrics             *nodeMetrics
-	maxDatasetSizeBytes int64
-	outputResolver      OutputResolver
+	nodeHandlerFactory       HandlerFactory
+	enqueueWorkflow          v1alpha1.EnqueueWorkflow
+	store                    *storage.DataStore
+	nodeRecorder             events.NodeEventRecorder
+	taskRecorder             events.TaskEventRecorder
+	metrics                  *nodeMetrics
+	maxDatasetSizeBytes      int64
+	outputResolver           OutputResolver
+	defaultExecutionDeadline time.Duration
+	defaultActiveDeadline    time.Duration
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -191,7 +197,7 @@ func (c *nodeExecutor) finalize(ctx context.Context, h handler.Node, nCtx *execC
 	return h.Finalize(ctx, nCtx)
 }
 
-func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
+func (c *nodeExecutor) handleNodeWithTimeout(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
 	logger.Debugf(ctx, "Handling Node [%s]", node.GetID())
 	defer logger.Debugf(ctx, "Completed node [%s]", node.GetID())
 
@@ -199,12 +205,17 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		NodeId:      node.GetID(),
 		ExecutionId: w.GetExecutionID().WorkflowExecutionIdentifier,
 	}
-	nodeStatus := w.GetNodeExecutionStatus(node.GetID())
+	curStatus := w.GetNodeExecutionStatus(node.GetID())
+	if curStatus.GetPhase() == v1alpha1.NodePhaseFailed || curStatus.GetPhase() == v1alpha1.NodePhaseSucceeded || curStatus.GetPhase() == v1alpha1.NodePhaseTimedOut {
+		// This should never happen
+		logger.Errorf(ctx, "unexpected phase %v", curStatus.GetPhase())
+		return executors.NodeStatusFailed(fmt.Errorf("system error: node handle invoked for unexpected phase %v", curStatus)), nil
+	}
 
 	// Now depending on the node type decide
 	h, err := c.nodeHandlerFactory.GetHandler(node.GetKind())
 	if err != nil {
-		return executors.NodeStatusUndefined, err
+		return executors.NodeStatusFailed(err), nil
 	}
 
 	if len(nodeStatus.GetDataDir()) == 0 {
@@ -219,8 +230,57 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 
 	nCtx, err := c.newNodeExecContextDefault(ctx, w, node, nodeStatus)
 	if err != nil {
-		return executors.NodeStatusUndefined, err
+		return executors.NodeStatusFailed(err), nil
 	}
+	newStatus, err := c.handleNode(ctx, w, node, h, nCtx, nodeExecID, curStatus)
+
+	// if node has just transitioned to a terminal state, then just skip timeout-check
+	if !newStatus.IsComplete() {
+		currentTime := time.Now()
+
+		returnTimeout := func() (executors.NodeStatus, error) {
+			logger.Debugf(ctx, "invoking finalize on node timed out")
+			if err := c.finalize(ctx, h, nCtx); err != nil {
+				logger.Errorf(ctx, "failed to finalize node on timeout; err: %v", err)
+				return executors.NodeStatusUndefined, err
+			}
+			return executors.NodeStatusTimedOut, nil
+		}
+
+		// overall node timeout (includes queue time) has elapsed
+		if !curStatus.GetQueuedAt().IsZero() {
+			overallTimeout := c.defaultActiveDeadline
+			if node.GetActiveDeadline() != nil {
+				overallTimeout = *node.GetActiveDeadline()
+			}
+			overallDeadline := curStatus.GetQueuedAt().Add(overallTimeout)
+			if overallDeadline.Before(currentTime) {
+				logger.Errorf(ctx, "Node has timed out; timeout configured: %v", node.GetActiveDeadline())
+				return returnTimeout()
+			}
+		}
+
+		// node execution timeout has elapsed
+		if !curStatus.GetStartedAt().IsZero() {
+			timeout := c.defaultActiveDeadline
+			if node.GetExecutionDeadline() != nil {
+				timeout = *node.GetExecutionDeadline()
+			}
+			deadline := curStatus.GetStartedAt().Add(timeout)
+			if deadline.Before(currentTime) {
+				logger.Errorf(ctx, "Node execution has timed out; timeout configured: %v", node.GetExecutionDeadline())
+				return returnTimeout()
+			}
+		}
+	}
+
+	return newStatus, err
+}
+
+func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, h handler.Node, nCtx *execContext, nodeExecID *core.NodeExecutionIdentifier, nodeStatus v1alpha1.ExecutableNodeStatus) (executors.NodeStatus, error) {
+	logger.Debugf(ctx, "Handling Node [%s]", node.GetID())
+	defer logger.Debugf(ctx, "Completed node [%s]", node.GetID())
+
 
 	currentPhase := nodeStatus.GetPhase()
 
@@ -243,7 +303,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 
 		np, err := ToNodePhase(p.GetPhase())
 		if err != nil {
-			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "failed to move from queued")
+			return executors.NodeStatusFailed(err), nil
 		}
 		if np != nodeStatus.GetPhase() {
 			// assert np == Queued!
@@ -300,16 +360,6 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		nodeStatus.ClearTaskStatus()
 		nodeStatus.ClearWorkflowStatus()
 		return executors.NodeStatusPending, nil
-	}
-
-	if currentPhase == v1alpha1.NodePhaseFailed {
-		// This should never happen
-		return executors.NodeStatusFailed(fmt.Errorf(nodeStatus.GetMessage())), nil
-	}
-
-	if currentPhase == v1alpha1.NodePhaseFailed {
-		// This should never happen
-		return executors.NodeStatusSuccess, nil
 	}
 
 	// case v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseRetryableFailure:
@@ -395,6 +445,10 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, w v1alpha1.Executab
 			logger.Debugf(ctx, "Some downstream node has failed, %s", state.Err.Error())
 			return state, nil
 		}
+		if state.HasTimedOut() {
+			logger.Debugf(ctx, "Some downstream node has timedout")
+			return state, nil
+		}
 		if !state.IsComplete() {
 			allCompleted = false
 		}
@@ -448,7 +502,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.Exec
 
 		t := c.metrics.NodeExecutionTime.Start(ctx)
 		defer t.Stop()
-		return c.handleNode(currentNodeCtx, w, currentNode)
+		return c.handleNodeWithTimeout(currentNodeCtx, w, currentNode)
 		// TODO we can optimize skip state handling by iterating down the graph and marking all as skipped
 		// Currently we treat either Skip or Success the same way. In this approach only one node will be skipped
 		// at a time. As we iterate down, further nodes will be skipped
@@ -531,7 +585,7 @@ func (c *nodeExecutor) Initialize(ctx context.Context) error {
 	return c.nodeHandlerFactory.Setup(ctx, s)
 }
 
-func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink, workflowLauncher launchplan.Executor, maxDatasetSize int64, kubeClient executors.Client, catalogClient catalog.Client, scope promutils.Scope) (executors.Node, error) {
+func NewExecutor(ctx context.Context, cfg *config.Config, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink, workflowLauncher launchplan.Executor, maxDatasetSize int64, kubeClient executors.Client, catalogClient catalog.Client, scope promutils.Scope) (executors.Node, error) {
 
 	nodeScope := scope.NewSubScope("node")
 	exec := &nodeExecutor{
@@ -545,13 +599,16 @@ func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1al
 			FailureDuration:        labeled.NewStopWatch("failure_duration", "Indicates the total execution time of a failed workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			SuccessDuration:        labeled.NewStopWatch("success_duration", "Indicates the total execution time of a successful workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			InputsWriteFailure:     labeled.NewCounter("inputs_write_fail", "Indicates failure in writing node inputs to metastore", nodeScope),
+			TimedOutFailure:        labeled.NewCounter("timeout_fail", "Indicates failure due to timeout", nodeScope),
 			ResolutionFailure:      labeled.NewCounter("input_resolve_fail", "Indicates failure in resolving node inputs", nodeScope),
 			TransitionLatency:      labeled.NewStopWatch("transition_latency", "Measures the latency between the last parent node stoppedAt time and current node's queued time.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			QueuingLatency:         labeled.NewStopWatch("queueing_latency", "Measures the latency between the time a node's been queued to the time the handler reported the executable moved to running state", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			NodeExecutionTime:      labeled.NewStopWatch("node_exec_latency", "Measures the time taken to execute one node, a node can be complex so it may encompass sub-node latency.", time.Microsecond, nodeScope, labeled.EmitUnlabeledMetric),
 			NodeInputGatherLatency: labeled.NewStopWatch("node_input_latency", "Measures the latency to aggregate inputs and check readiness of a node", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 		},
-		outputResolver: NewRemoteFileOutputResolver(store),
+		outputResolver:           NewRemoteFileOutputResolver(store),
+		defaultExecutionDeadline: cfg.DefaultNodeExecutionDeadline.Duration,
+		defaultActiveDeadline:    cfg.DefaultNodeActiveDeadline.Duration,
 	}
 	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, kubeClient, catalogClient, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory

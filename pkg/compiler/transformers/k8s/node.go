@@ -45,13 +45,19 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		return nil, false
 	}
 
+	timeout, err := computeDeadline(n)
+	if err != nil {
+		errs.Collect(errors.NewSyntaxError(n.GetId(), "node:metadata:timeout", nil))
+		return nil, !errs.HasErrors()
+	}
 	nodeSpec := &v1alpha1.NodeSpec{
-		ID:                    n.GetId(),
-		RetryStrategy:         computeRetryStrategy(n, task),
-		Resources:             res,
-		OutputAliases:         toAliasValueArray(n.GetOutputAliases()),
-		InputBindings:         toBindingValueArray(n.GetInputs()),
-		ActiveDeadlineSeconds: computeActiveDeadlineSeconds(n, task),
+		ID:                n.GetId(),
+		RetryStrategy:     computeRetryStrategy(n, task),
+		ExecutionDeadline: timeout,
+		Resources:         res,
+		OutputAliases:     toAliasValueArray(n.GetOutputAliases()),
+		InputBindings:     toBindingValueArray(n.GetInputs()),
+		ActiveDeadline:    timeout, // TODO: For now using same timeout value for execution and overall deadline which includes queueing delays.
 	}
 
 	switch v := n.GetTarget().(type) {

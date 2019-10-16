@@ -54,6 +54,7 @@ const (
 	NodePhaseFailed
 	NodePhaseSkipped
 	NodePhaseRetryableFailure
+	NodePhaseTimedOut
 )
 
 func (p NodePhase) String() string {
@@ -64,6 +65,8 @@ func (p NodePhase) String() string {
 		return "Queued"
 	case NodePhaseRunning:
 		return "Running"
+	case NodePhaseTimedOut:
+		return "NodePhaseTimedOut"
 	case NodePhaseSucceeding:
 		return "Succeeding"
 	case NodePhaseSucceeded:
@@ -285,6 +288,8 @@ type ExecutableNode interface {
 	GetResources() *v1.ResourceRequirements
 	GetConfig() *v1.ConfigMap
 	GetRetryStrategy() *RetryStrategy
+	GetExecutionDeadline() *time.Duration
+	GetActiveDeadline() *time.Duration
 }
 
 // Interface for the Workflow p. This is the mutable portion for a Workflow

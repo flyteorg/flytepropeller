@@ -390,6 +390,10 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure("DynamicWorkflowFailure", state.Err.Error(), nil)), err
 	}
 
+	if state.HasTimedOut() {
+		return handler.StatusTimedOut, nil
+	}
+
 	if state.IsComplete() {
 		var o *handler.OutputInfo
 		// If the WF interface has outputs, validate that the outputs file was written.
