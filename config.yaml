@@ -52,11 +52,9 @@ plugins:
     kubernetes-enabled: true
     kubernetes-url: "http://localhost:30082"
 storage:
+  type: s3
   connection:
-    access-key: minio
-    auth-type: accesskey
-    disable-ssl: true
-    endpoint: http://localhost:9000
+    auth-type: iam
     region: us-east-1
     secret-key: miniostorage
   type: minio
