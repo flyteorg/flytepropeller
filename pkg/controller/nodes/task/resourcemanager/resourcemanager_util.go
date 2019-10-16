@@ -19,7 +19,7 @@ func GetResourceManagerByType(ctx context.Context, managerType Type, scope promu
 	switch managerType {
 	case TypeNoop:
 		logger.Infof(ctx, "Using the NOOP resource manager")
-		return NoopResourceManager{}, nil
+		return &NoopResourceManager{}, nil
 	case TypeRedis:
 		logger.Infof(ctx, "Using Redis based resource manager")
 		config := rmConfig.GetResourceManagerConfig()
@@ -31,5 +31,5 @@ func GetResourceManagerByType(ctx context.Context, managerType Type, scope promu
 		return NewRedisResourceManager(ctx, redisClient, scope.NewSubScope(redisResourceManagerPrometheusScope))
 	}
 	logger.Infof(ctx, "Using the NOOP resource manager by default")
-	return NoopResourceManager{}, nil
+	return &NoopResourceManager{}, nil
 }

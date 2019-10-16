@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-redis/redis"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/resourcemanager_interface"
 	rmConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager_interface"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/pkg/errors"
@@ -47,7 +47,7 @@ type RedisResourceManagerMetrics struct {
 	AllocatedTokensGauge prometheus.Gauge
 }
 
-func (r RedisResourceManager) getNamespacedRedisSetKey(namespace resourcemanager_interface.ResourceNamespace) string {
+func (r *RedisResourceManager) getNamespacedRedisSetKey(namespace resourcemanager_interface.ResourceNamespace) string {
 	return fmt.Sprintf("%s:%s", r.redisSetKeyPrefix, namespace)
 }
 
@@ -139,7 +139,7 @@ func (r *RedisResourceManager) RegisterResourceQuota(ctx context.Context, namesp
 	return nil
 }
 
-func (r RedisResourceManager) AllocateResource(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace, allocationToken string) (
+func (r *RedisResourceManager) AllocateResource(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace, allocationToken string) (
 	resourcemanager_interface.AllocationStatus, error) {
 
 	namespacedRedisSetKey := r.getNamespacedRedisSetKey(namespace)
@@ -176,7 +176,7 @@ func (r RedisResourceManager) AllocateResource(ctx context.Context, namespace re
 	return resourcemanager_interface.AllocationStatusGranted, err
 }
 
-func (r RedisResourceManager) ReleaseResource(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace, allocationToken string) error {
+func (r *RedisResourceManager) ReleaseResource(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace, allocationToken string) error {
 	namespacedRedisSetKey := r.getNamespacedRedisSetKey(namespace)
 	countRemoved, err := r.client.SRem(namespacedRedisSetKey, allocationToken).Result()
 	if err != nil {

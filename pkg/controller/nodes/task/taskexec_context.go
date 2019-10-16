@@ -77,7 +77,7 @@ func (t taskExecutionContext) EventsRecorder() pluginCore.EventsRecorder {
 	return t.ber
 }
 
-func (t taskExecutionContext) ResourceManager() pluginCore.ResourceManager {
+func (t taskExecutionContext) ResourceManager() resourcemanager_interface.ResourceManager {
 	return t.rm
 }
 
@@ -105,7 +105,7 @@ func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 	return t.sm
 }
 
-func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.NodeExecutionContext) (*taskExecutionContext, error) {
+func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.NodeExecutionContext, pluginID string) (*taskExecutionContext, error) {
 
 	id := GetTaskExecutionIdentifier(nCtx)
 
@@ -127,11 +127,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to initialize plugin state manager")
 	}
 
-
-	rm, err := resourcemanager.GetResourceManagerByType(ctx, resourcemanager.TypeRedis, )
-	if err != nil {
-		return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to initialize resource manager")
-	}
+	namespacePrefix := resourcemanager_interface.ResourceNamespace(pluginID)
 
 	return &taskExecutionContext{
 		NodeExecutionContext: nCtx,
@@ -141,7 +137,11 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 			o:                     nCtx.Node(),
 		},
 		// TODO add resource manager
-		rm:  rm,
+		rm:  resourcemanager.Proxy{
+			ResourceNegotiator: t.resourceManagerFactory.GetNegotiator(namespacePrefix),
+			ResourceManager:    t.resourceManagerFactory.GetTaskResourceManager(namespacePrefix),
+			NamespacePrefix:    namespacePrefix,
+		},
 		psm: psm,
 		tr:  nCtx.TaskReader(),
 		ow:  ow,

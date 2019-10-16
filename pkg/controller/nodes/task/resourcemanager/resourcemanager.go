@@ -2,7 +2,7 @@ package resourcemanager
 
 import (
 	"context"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager_interface"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/resourcemanager_interface"
 	"github.com/lyft/flytestdlib/promutils"
 )
 

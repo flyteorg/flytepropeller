@@ -273,17 +273,16 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 }
 
 func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
-
-	tCtx, err := t.newTaskExecutionContext(ctx, nCtx)
-	if err != nil {
-		return handler.UnknownTransition, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
-	}
-
-	ttype := tCtx.tr.GetTaskType()
+	ttype := nCtx.TaskReader().GetTaskType()
 	ctx = contextutils.WithTaskType(ctx, ttype)
 	p, err := t.ResolvePlugin(ctx, ttype)
 	if err != nil {
 		return handler.UnknownTransition, errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
+	}
+
+	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p.GetID())
+	if err != nil {
+		return handler.UnknownTransition, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
 	}
 
 	ts := nCtx.NodeStateReader().GetTaskNodeState()
@@ -401,14 +400,16 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
 	logger.Debugf(ctx, "Abort invoked.")
-	tCtx, err := t.newTaskExecutionContext(ctx, nCtx)
-	if err != nil {
-		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
-	}
 
-	p, err := t.ResolvePlugin(ctx, tCtx.tr.GetTaskType())
+	ttype := nCtx.TaskReader().GetTaskType()
+	p, err := t.ResolvePlugin(ctx, ttype)
 	if err != nil {
 		return errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
+	}
+
+	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p.GetID())
+	if err != nil {
+		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
 	}
 
 	err = func() (err error) {
@@ -451,14 +452,15 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 
 func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
 	logger.Debugf(ctx, "Finalize invoked.")
-	tCtx, err := t.newTaskExecutionContext(ctx, nCtx)
-	if err != nil {
-		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
-	}
-
-	p, err := t.ResolvePlugin(ctx, tCtx.tr.GetTaskType())
+	ttype := nCtx.TaskReader().GetTaskType()
+	p, err := t.ResolvePlugin(ctx, ttype)
 	if err != nil {
 		return errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
+	}
+
+	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p.GetID())
+	if err != nil {
+		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
 	}
 
 	return func() (err error) {
