@@ -436,7 +436,11 @@
 
 [[projects]]
   branch = "fix-array"
+<<<<<<< Updated upstream
   digest = "1:07c9f98bf5aa9ba50a76b9899556d5a7197ce760bcf5cb6ac983a94f9b77fd8b"
+=======
+  digest = "1:6420dc85bf429c0271e927d854a58318434f594fbd10865dee272b35125ca921"
+>>>>>>> Stashed changes
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/aws",
@@ -471,7 +475,11 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
+<<<<<<< Updated upstream
   revision = "93ed175a16e751c0873a1daf020e7b7de627e05e"
+=======
+  revision = "545792857933c6ed0197128325e8262f7bb2a894"
+>>>>>>> Stashed changes
 
 [[projects]]
   digest = "1:99b01e45ad16fd2776362b2bcb4ae6ecc857861335ad8680589e4a49aaacf2c5"
@@ -901,7 +909,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f30750276083e38cf246bd068bbe551fe82325a6ab7bb82e6db136e4798c638a"
+  digest = "1:1aba31cff4b575d0fdbf3c4c0979ed1e4c6930cd71d635760d0284ccfd9d3b33"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -919,7 +927,7 @@
     "internal/span",
   ]
   pruneopts = ""
-  revision = "02335f11d59836d522f159307a6cfee10f179add"
+  revision = "0abb09c987dd0257e6bebb29dbcbe4c7bbb69608"
 
 [[projects]]
   branch = "master"
