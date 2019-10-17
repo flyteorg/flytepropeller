@@ -202,13 +202,6 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 		subNodeStatus.ResetDirty()
 
 		n.Id = newID
-
-		// Nil the retries, if needed, the parent node must have retries to reattempt the entire dynamic workflow.
-		if n.Metadata == nil {
-			n.Metadata = &core.NodeMetadata{}
-		}
-
-		n.Metadata.Retries = nil
 	}
 
 	if nCtx.TaskReader().GetTaskID() != nil {
