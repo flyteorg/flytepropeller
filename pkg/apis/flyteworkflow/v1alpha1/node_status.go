@@ -568,5 +568,5 @@ func (in *TaskNodeStatus) Equals(other *TaskNodeStatus) bool {
 	if in == nil || other == nil {
 		return false
 	}
-	return in.Phase == other.Phase && in.PhaseVersion == other.PhaseVersion && in.PluginStateVersion == other.PluginStateVersion && bytes.Equal(in.PluginState, other.PluginState)
+	return in.Phase == other.Phase && in.PhaseVersion == other.PhaseVersion && in.PluginStateVersion == other.PluginStateVersion && bytes.Equal(in.PluginState, other.PluginState) && in.BarrierClockTick == other.BarrierClockTick
 }

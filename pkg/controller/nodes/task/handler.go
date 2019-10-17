@@ -77,6 +77,10 @@ func (p *pluginRequestedTransition) ObservedExecutionError(executionError *io.Ex
 	}
 }
 
+func (p *pluginRequestedTransition) IsPreviouslyObserved() bool {
+	return p.previouslyObserved
+}
+
 func (p *pluginRequestedTransition) TransitionPreviouslyRecorded() {
 	p.previouslyObserved = true
 }
@@ -349,6 +353,10 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			if err != nil {
 				return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
 			}
+			if pluginTrns.IsPreviouslyObserved() {
+				logger.Debugf(ctx, "No state change for Task, previously observed same transition. Short circuiting.")
+				return pluginTrns.FinalTransition(ctx)
+			}
 			// Now no matter what we should update the barrierTick (stored in state)
 			// This is because the state is ahead of the inmemory representation
 			// This can happen in the case where the process restarted or the barrier cache got reset
@@ -370,7 +378,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			// Barrier tick will remain to be the one in cache.
 			// Now it may happen that the cache may get reset before we store the barrier tick
 			// this will cause us to lose that information and potentially replaying.
-			logger.Infof(ctx, "Replaying Barrier transition for Plugin [%s], TaskExecID [%s]. recording: [%s]", p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), prevBarrier.CallLog.PluginTransition.pInfo.String())
+			logger.Infof(ctx, "Replaying Barrier transition for cache tick [%d] < stored tick [%d], Plugin [%s], TaskExecID [%s]. recording: [%s]", barrierTick, ts.BarrierClockTick, p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), prevBarrier.CallLog.PluginTransition.pInfo.String())
 			pluginTrns = prevBarrier.CallLog.PluginTransition
 		}
 	}
