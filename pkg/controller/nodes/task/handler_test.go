@@ -384,10 +384,11 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 		expectedState              fakeplugins.NextPhaseState
 	}
 	type want struct {
-		handlerPhase handler.EPhase
-		wantErr      bool
-		event        bool
-		eventPhase   core.TaskExecution_Phase
+		handlerPhase    handler.EPhase
+		wantErr         bool
+		event           bool
+		eventPhase      core.TaskExecution_Phase
+		skipStateUpdate bool
 	}
 	tests := []struct {
 		name string
@@ -512,8 +513,9 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 				},
 			},
 			want{
-				handlerPhase: handler.EPhaseRunning,
-				event:        false,
+				handlerPhase:    handler.EPhaseRunning,
+				event:           false,
+				skipStateUpdate: true,
 			},
 		},
 		{
@@ -576,8 +578,13 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 						expectedPhase = pluginCore.PhasePermanentFailure
 					}
 				}
-				assert.Equal(t, expectedPhase.String(), state.s.PluginPhase.String())
-				assert.Equal(t, tt.args.expectedState.PhaseVersion, state.s.PluginPhaseVersion)
+				if tt.want.skipStateUpdate {
+					assert.Equal(t, pluginCore.PhaseUndefined, state.s.PluginPhase)
+					assert.Equal(t, uint32(0), state.s.PluginPhaseVersion)
+				} else {
+					assert.Equal(t, expectedPhase.String(), state.s.PluginPhase.String())
+					assert.Equal(t, tt.args.expectedState.PhaseVersion, state.s.PluginPhaseVersion)
+				}
 			}
 		})
 	}
@@ -854,7 +861,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 		}, st))
 		nr := &nodeMocks.NodeStateReader{}
 		nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
-			PluginState: st.Bytes(),
+			PluginState:      st.Bytes(),
 			BarrierClockTick: prevBarrierClockTick,
 		})
 		nCtx.On("NodeStateReader").Return(nr)
@@ -960,7 +967,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 		{
 			"barrier-trns-restart-case",
 			args{
-				prevTick:  2,
+				prevTick: 2,
 				res: []fakeplugins.HandleResponse{
 					{T: pluginCore.DoTransitionType(pluginCore.TransitionTypeBarrier, pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{}))},
 				},
@@ -979,14 +986,14 @@ func Test_task_Handle_Barrier(t *testing.T) {
 		{
 			"barrier-trns-restart-case-ephemeral",
 			args{
-				prevTick:  2,
+				prevTick: 2,
 				res: []fakeplugins.HandleResponse{
 					{T: pluginCore.DoTransitionType(pluginCore.TransitionTypeEphemeral, pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{}))},
 				},
 			},
 			want{
 				wantBarrer: wantBarrier{
-					hit:  false,
+					hit: false,
 				},
 				handlerPhase: handler.EPhaseRunning,
 				eventPhase:   core.TaskExecution_RUNNING,
