@@ -24,7 +24,6 @@
     "autorest",
     "autorest/adal",
     "autorest/azure",
-    "autorest/date",
     "logger",
     "tracing",
   ]
@@ -436,7 +435,7 @@
 
 [[projects]]
   branch = "fix-array"
-  digest = "1:74322e7f7cd95f4a1efd4c2a98f4205f6ce159c7414bb202b8e246252df2976b"
+  digest = "1:3d800fd0c9846d921bb7ccc8dd9a95e14fda854c554de574581b6188b3df59e1"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/aws",
@@ -471,7 +470,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "ed1f68b740d6887a310a7de01cc94c9750f0921d"
+  revision = "abc0ce94546b267bb1319e12b985a36faee915dd"
 
 [[projects]]
   digest = "1:99b01e45ad16fd2776362b2bcb4ae6ecc857861335ad8680589e4a49aaacf2c5"
@@ -901,7 +900,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e3752456d790326c8a04bebb9147fb69255ac17799035e1d603b823f865a662e"
+  digest = "1:f30750276083e38cf246bd068bbe551fe82325a6ab7bb82e6db136e4798c638a"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -916,9 +915,10 @@
     "internal/imports",
     "internal/module",
     "internal/semver",
+    "internal/span",
   ]
   pruneopts = ""
-  revision = "f0068bd333b234c38cb0ed6b2946665a40ad171b"
+  revision = "02335f11d59836d522f159307a6cfee10f179add"
 
 [[projects]]
   branch = "master"
