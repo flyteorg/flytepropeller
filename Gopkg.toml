@@ -57,7 +57,7 @@ required = [
 
 [[constraint]]
   name = "github.com/lyft/flyteplugins"
-  branch = "fix-array"
+  branch = "refactor-plugin-api"
   #version = "^0.1.3"
 
 [[override]]

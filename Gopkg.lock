@@ -24,7 +24,6 @@
     "autorest",
     "autorest/adal",
     "autorest/azure",
-    "autorest/date",
     "logger",
     "tracing",
   ]
@@ -435,12 +434,8 @@
   version = "v0.14.1"
 
 [[projects]]
-  branch = "fix-array"
-<<<<<<< Updated upstream
-  digest = "1:07c9f98bf5aa9ba50a76b9899556d5a7197ce760bcf5cb6ac983a94f9b77fd8b"
-=======
+  branch = "refactor-plugin-api"
   digest = "1:6420dc85bf429c0271e927d854a58318434f594fbd10865dee272b35125ca921"
->>>>>>> Stashed changes
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/aws",
@@ -475,11 +470,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-<<<<<<< Updated upstream
-  revision = "93ed175a16e751c0873a1daf020e7b7de627e05e"
-=======
-  revision = "545792857933c6ed0197128325e8262f7bb2a894"
->>>>>>> Stashed changes
+  revision = "9b80912b70f6bdacfb00fba4624403680e95efd2"
 
 [[projects]]
   digest = "1:99b01e45ad16fd2776362b2bcb4ae6ecc857861335ad8680589e4a49aaacf2c5"
