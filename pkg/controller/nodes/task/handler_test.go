@@ -188,7 +188,8 @@ func Test_task_Setup(t *testing.T) {
 			sCtx.On("EnqueueOwner").Return(pluginCore.EnqueueOwner(func(name types.NamespacedName) error { return nil }))
 			sCtx.On("MetricsScope").Return(promutils.NewTestScope())
 
-			tk := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
+			assert.NoError(t, err)
 			tk.pluginRegistry = tt.registry
 			if err := tk.Setup(context.TODO(), sCtx); err != nil {
 				if !tt.wantErr {
@@ -745,7 +746,8 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			} else {
 				c.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			}
-			tk := New(context.TODO(), mocks.NewFakeKubeClient(), c, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, promutils.NewTestScope())
+			assert.NoError(t, err)
 			tk.plugins = map[pluginCore.TaskType]pluginCore.Plugin{
 				"test": fakeplugins.NewPhaseBasedPlugin(),
 			}
@@ -1000,7 +1002,8 @@ func Test_task_Handle_Barrier(t *testing.T) {
 			nCtx := createNodeContext(ev, "test", state, tt.args.prevTick)
 			c := &pluginCatalogMocks.Client{}
 
-			tk := New(context.TODO(), mocks.NewFakeKubeClient(), c, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, promutils.NewTestScope())
+			assert.NoError(t, err)
 
 			tctx, err := tk.newTaskExecutionContext(context.TODO(), nCtx)
 			assert.NoError(t, err)
@@ -1272,7 +1275,8 @@ Test_task_Finalize(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	got := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
+	got, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
+	assert.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.NotNil(t, got.plugins)
 	assert.NotNil(t, got.metrics)
