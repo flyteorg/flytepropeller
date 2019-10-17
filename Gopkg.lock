@@ -24,6 +24,7 @@
     "autorest",
     "autorest/adal",
     "autorest/azure",
+    "autorest/date",
     "logger",
     "tracing",
   ]
@@ -390,12 +391,12 @@
   revision = "c2b33e84"
 
 [[projects]]
-  digest = "1:e716a02584d94519e2ccf7ac461c4028da736d41a58c1ed95e641c1603bdb056"
+  digest = "1:64bdeae058b988b2b198326b1ca6155497e904e697348d838add8a6e4c25842e"
   name = "github.com/json-iterator/go"
   packages = ["."]
   pruneopts = ""
-  revision = "27518f6661eba504be5a7a9a9f6d9460d892ade3"
-  version = "v1.1.7"
+  revision = "03217c3e97663914aec3faafde50d081f197a0a2"
+  version = "1.1.8"
 
 [[projects]]
   digest = "1:0f51cee70b0d254dbc93c22666ea2abf211af81c1701a96d04e2284b408621db"
@@ -435,7 +436,7 @@
 
 [[projects]]
   branch = "fix-array"
-  digest = "1:3d800fd0c9846d921bb7ccc8dd9a95e14fda854c554de574581b6188b3df59e1"
+  digest = "1:07c9f98bf5aa9ba50a76b9899556d5a7197ce760bcf5cb6ac983a94f9b77fd8b"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/aws",
@@ -470,7 +471,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "abc0ce94546b267bb1319e12b985a36faee915dd"
+  revision = "93ed175a16e751c0873a1daf020e7b7de627e05e"
 
 [[projects]]
   digest = "1:99b01e45ad16fd2776362b2bcb4ae6ecc857861335ad8680589e4a49aaacf2c5"
@@ -922,7 +923,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a291d45e6ddd061d67894749f12ef4fc40f49b99d65803ef453d489a1a39804c"
+  digest = "1:c59a3fca56bb5402be1a647943b2e3cf2bf111229467585790b83766df5a9001"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -936,7 +937,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = ""
-  revision = "39c7bd46a5d3434623dc938a746538c98597248b"
+  revision = "e6ade80c6e2a122a6588f9f827207dcb99da433e"
 
 [[projects]]
   digest = "1:c4404231035fad619a12f82ae3f0f8f9edc1cc7f34e7edad7a28ccac5336cc96"
