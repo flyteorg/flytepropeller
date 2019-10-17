@@ -6,6 +6,7 @@ package v1alpha1
 
 import (
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -365,9 +366,14 @@ func (in *NodeSpec) DeepCopyInto(out *NodeSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.ActiveDeadlineSeconds != nil {
-		in, out := &in.ActiveDeadlineSeconds, &out.ActiveDeadlineSeconds
-		*out = new(int64)
+	if in.ExecutionDeadline != nil {
+		in, out := &in.ExecutionDeadline, &out.ExecutionDeadline
+		*out = new(metav1.Duration)
+		**out = **in
+	}
+	if in.ActiveDeadline != nil {
+		in, out := &in.ActiveDeadline, &out.ActiveDeadline
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	return

@@ -24,8 +24,6 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
-	"k8s.io/client-go/informers/node"
-	"golang.org/x/tools/go/cfg"
 )
 
 type nodeMetrics struct {

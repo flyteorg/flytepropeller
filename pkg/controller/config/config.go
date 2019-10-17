@@ -33,8 +33,8 @@ type Config struct {
 	GCInterval                    config.Duration      `json:"gc-interval" pflag:"\"30m\",Run periodic GC every 30 minutes"`
 	LeaderElection                LeaderElectionConfig `json:"leader-election,omitempty" pflag:",Config for leader election."`
 	PublishK8sEvents              bool                 `json:"publish-k8s-events" pflag:",Enable events publishing to K8s events API."`
-	MaxDatasetSizeBytes	      int64                `json:"max-output-size-bytes" pflag:",Maximum size of outputs per task"`
-        KubeConfig		      KubeClientConfig     `json:"kube-client-config" pflag:",Configuration to control the Kubernetes client"`
+	MaxDatasetSizeBytes           int64                `json:"max-output-size-bytes" pflag:",Maximum size of outputs per task"`
+	KubeConfig                    KubeClientConfig     `json:"kube-client-config" pflag:",Configuration to control the Kubernetes client"`
 	DefaultNodeExecutionDeadline  config.Duration      `json:"node-execution-deadline" pflag:"\"48h0m0s\",Default value of node execution timeout"`
 	DefaultNodeActiveDeadline     config.Duration      `json:"node-active-deadline" pflag:"\"48h0m0s\",Default value of node timeout"`
 	DefaultWorkflowActiveDeadline config.Duration      `json:"workflow-active-deadline" pflag:"\"72h0m0s\",Default value of workflow timeout"`
