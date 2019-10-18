@@ -181,17 +181,12 @@ type ExecutableBranchNode interface {
 }
 
 type ExecutableWorkflowNodeStatus interface {
-	// Name of the child execution. We only store name since the project and domain will be
-	// the same as the parent workflow execution.
-	GetWorkflowExecutionName() string
+	GetWorkflowNodePhase() WorkflowNodePhase
 }
 
 type MutableWorkflowNodeStatus interface {
 	ExecutableWorkflowNodeStatus
-
-	// Sets the name of the child execution. We only store name since the project and domain
-	// will be the same as the parent workflow execution.
-	SetWorkflowExecutionName(name string)
+	SetWorkflowNodePhase(phase WorkflowNodePhase)
 }
 
 type MutableNodeStatus interface {
@@ -207,11 +202,12 @@ type MutableNodeStatus interface {
 	GetBranchStatus() MutableBranchNodeStatus
 	GetOrCreateBranchStatus() MutableBranchNodeStatus
 	GetWorkflowStatus() MutableWorkflowNodeStatus
+	GetOrCreateWorkflowStatus() MutableWorkflowNodeStatus
+
 	ClearWorkflowStatus()
 	GetOrCreateTaskStatus() MutableTaskNodeStatus
 	GetTaskStatus() MutableTaskNodeStatus
 	ClearTaskStatus()
-	ClearSubWorkflowStatus()
 	GetOrCreateDynamicNodeStatus() MutableDynamicNodeStatus
 	GetDynamicNodeStatus() MutableDynamicNodeStatus
 	ClearDynamicNodeStatus()
@@ -234,7 +230,6 @@ type ExecutableNodeStatus interface {
 	GetAttempts() uint32
 	GetWorkflowNodeStatus() ExecutableWorkflowNodeStatus
 	GetTaskNodeStatus() ExecutableTaskNodeStatus
-	GetSubWorkflowNodeStatus() ExecutableSubWorkflowNodeStatus
 
 	IsCached() bool
 	IsDirty() bool

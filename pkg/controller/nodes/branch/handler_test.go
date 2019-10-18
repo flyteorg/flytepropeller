@@ -42,9 +42,13 @@ func (t *branchNodeStateHolder) PutTaskNodeState(s handler.TaskNodeState) error 
 	panic("not implemented")
 }
 
-func (t branchNodeStateHolder) PutBranchNode(s handler.BranchNodeState) error {
+func (t *branchNodeStateHolder) PutBranchNode(s handler.BranchNodeState) error {
 	t.s = s
 	return nil
+}
+
+func (t branchNodeStateHolder) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
+	panic("not implemented")
 }
 
 func (t branchNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) error {

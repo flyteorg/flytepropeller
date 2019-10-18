@@ -18,11 +18,6 @@ func (_m *MutableNodeStatus) ClearDynamicNodeStatus() {
 	_m.Called()
 }
 
-// ClearSubWorkflowStatus provides a mock function with given fields:
-func (_m *MutableNodeStatus) ClearSubWorkflowStatus() {
-	_m.Called()
-}
-
 // ClearTaskStatus provides a mock function with given fields:
 func (_m *MutableNodeStatus) ClearTaskStatus() {
 	_m.Called()

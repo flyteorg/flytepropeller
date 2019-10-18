@@ -163,4 +163,10 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 			logger.Warnf(context.TODO(), "branch node status neither success nor error set")
 		}
 	}
+
+	// Update workflow node status
+	if n.w != nil {
+		t := s.GetOrCreateWorkflowStatus()
+		t.SetWorkflowNodePhase(n.w.Phase)
+	}
 }
