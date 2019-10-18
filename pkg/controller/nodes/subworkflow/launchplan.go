@@ -124,13 +124,20 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 		var oInfo *handler.OutputInfo
 		if wfStatusClosure.GetOutputs() != nil {
 			outputFile := v1alpha1.GetOutputsFile(nodeStatus.GetDataDir())
-
-			uri := wfStatusClosure.GetOutputs().GetUri()
-			store := nCtx.DataStore()
-			err := store.CopyRaw(ctx, storage.DataReference(uri), outputFile, storage.Options{})
-			if err != nil {
-				logger.Warnf(ctx, "remote output for launchplan execution was not found, uri [%s], err %s", uri, err.Error())
-				return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "remote output for launchplan execution was not found, uri [%s]", uri)
+			if wfStatusClosure.GetOutputs().GetUri() != "" {
+				uri := wfStatusClosure.GetOutputs().GetUri()
+				store := nCtx.DataStore()
+				err := store.CopyRaw(ctx, storage.DataReference(uri), outputFile, storage.Options{})
+				if err != nil {
+					logger.Warnf(ctx, "remote output for launchplan execution was not found, uri [%s], err %s", uri, err.Error())
+					return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "remote output for launchplan execution was not found, uri [%s]", uri)
+				}
+			} else {
+				childOutput := wfStatusClosure.GetOutputs().GetValues()
+				if err := nCtx.DataStore().WriteProtobuf(ctx, outputFile, storage.Options{}, childOutput); err != nil {
+					logger.Debugf(ctx, "failed to write data to Storage, err: %v", err.Error())
+					return handler.UnknownTransition, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "failed to copy outputs for child workflow")
+				}
 			}
 			oInfo = &handler.OutputInfo{OutputURI: outputFile}
 		}
