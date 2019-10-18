@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flytestdlib/storage"
+
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
-	"github.com/lyft/flytestdlib/logger"
-	"github.com/lyft/flytestdlib/storage"
-	errors2 "github.com/pkg/errors"
 )
 
 type launchPlanHandler struct {
@@ -50,7 +50,9 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 		if launchplan.IsAlreadyExists(err) {
 			logger.Info(ctx, "Execution already exists [%s].", childID.Name)
 		} else if launchplan.IsUserError(err) {
-			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.RuntimeExecutionError), "failed to create unique ID", nil)), nil
+			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.RuntimeExecutionError), "failed to create unique ID", &handler.ExecutionInfo{
+				WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},
+			})), nil
 		} else {
 			return handler.UnknownTransition, err
 		}
@@ -58,7 +60,9 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 		logger.Infof(ctx, "Launched launchplan with ID [%s]", childID.Name)
 	}
 
-	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)), nil
+	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{
+		WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},
+	})), nil
 }
 
 func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
@@ -79,10 +83,12 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 
 	wfStatusClosure, err := l.launchPlan.GetStatus(ctx, childID)
 	if err != nil {
-		if launchplan.IsNotFound(err) { //NotFound
+		if launchplan.IsNotFound(err) { // NotFound
 			errorCode, _ := errors.GetErrorCode(err)
 			err = errors.Wrapf(errorCode, nCtx.NodeID(), err, "launch-plan not found")
-			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errorCode), err.Error(), nil)), nil
+			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errorCode), err.Error(), &handler.ExecutionInfo{
+				WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},
+			})), nil
 		}
 
 		return handler.UnknownTransition, err
@@ -91,7 +97,9 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 	if wfStatusClosure == nil {
 		logger.Info(ctx, "Retrieved Launch Plan status is nil. This might indicate pressure on the admin cache."+
 			" Consider tweaking its size to allow for more concurrent executions to be cached.")
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)), nil
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{
+			WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},
+		})), nil
 	}
 
 	var wErr error
@@ -99,40 +107,37 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 	case core.WorkflowExecution_ABORTED:
 		wErr = fmt.Errorf("launchplan execution aborted")
 		err = errors.Wrapf(errors.RemoteChildWorkflowExecutionFailed, nCtx.NodeID(), wErr, "launchplan [%s] failed", childID.Name)
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.RemoteChildWorkflowExecutionFailed), err.Error(), nil)), nil
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.RemoteChildWorkflowExecutionFailed), err.Error(), &handler.ExecutionInfo{
+			WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},
+		})), nil
 	case core.WorkflowExecution_FAILED:
 		errMsg := fmt.Sprintf("launchplan execution failed without explicit error")
 		if wfStatusClosure.GetError() != nil {
 			errMsg = fmt.Sprintf(" errorCode[%s]: %s", wfStatusClosure.GetError().Code, wfStatusClosure.GetError().Message)
 		}
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.RemoteChildWorkflowExecutionFailed), errMsg, nil)), nil
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.RemoteChildWorkflowExecutionFailed), errMsg, &handler.ExecutionInfo{
+			WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},
+		})), nil
 	case core.WorkflowExecution_SUCCEEDED:
+		// TODO do we need to massage the output to match the alias or is the alias resolution done at the downstream consumer
+		// nCtx.Node().GetOutputAlias()
+		var oInfo *handler.OutputInfo
 		if wfStatusClosure.GetOutputs() != nil {
 			outputFile := v1alpha1.GetOutputsFile(nodeStatus.GetDataDir())
-			childOutput := &core.LiteralMap{}
+
 			uri := wfStatusClosure.GetOutputs().GetUri()
 			store := nCtx.DataStore()
-
-			if uri != "" {
-				// Copy remote data to local S3 path
-				if err := store.ReadProtobuf(ctx, storage.DataReference(uri), childOutput); err != nil {
-					if storage.IsNotFound(err) {
-						errMsg := fmt.Sprintf("remote output for launchplan execution was not found, uri [%s], err %s", uri, err.Error())
-						return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.RemoteChildWorkflowExecutionFailed), errMsg, nil)), nil
-					}
-					err := errors2.Wrapf(err, "failed to read outputs from child workflow @ [%s]", uri)
-					return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoUndefined), err
-				}
-			} else if wfStatusClosure.GetOutputs().GetValues() != nil {
-				// Store data to S3Path
-				childOutput = wfStatusClosure.GetOutputs().GetValues()
+			err := store.CopyRaw(ctx, storage.DataReference(uri), outputFile, storage.Options{})
+			if err != nil {
+				logger.Warnf(ctx, "remote output for launchplan execution was not found, uri [%s], err %s", uri, err.Error())
+				return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "remote output for launchplan execution was not found, uri [%s]", uri)
 			}
-			if err := store.WriteProtobuf(ctx, outputFile, storage.Options{}, childOutput); err != nil {
-				logger.Debugf(ctx, "failed to write data to Storage, err: %v", err.Error())
-				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoUndefined), errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "failed to copy outputs for child workflow")
-			}
+			oInfo = &handler.OutputInfo{OutputURI: outputFile}
 		}
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(nil)), nil
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{
+			WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},
+			OutputInfo:       oInfo,
+		})), nil
 	}
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)), nil
 }
