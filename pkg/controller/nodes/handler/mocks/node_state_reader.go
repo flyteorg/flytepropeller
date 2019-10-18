@@ -51,3 +51,17 @@ func (_m *NodeStateReader) GetTaskNodeState() handler.TaskNodeState {
 
 	return r0
 }
+
+// GetWorkflowNodeState provides a mock function with given fields:
+func (_m *NodeStateReader) GetWorkflowNodeState() handler.WorkflowNodeState {
+	ret := _m.Called()
+
+	var r0 handler.WorkflowNodeState
+	if rf, ok := ret.Get(0).(func() handler.WorkflowNodeState); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(handler.WorkflowNodeState)
+	}
+
+	return r0
+}

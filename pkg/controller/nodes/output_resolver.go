@@ -62,6 +62,7 @@ func (r remoteFileOutputResolver) ExtractOutput(ctx context.Context, w v1alpha1.
 func resolveSubtaskOutput(ctx context.Context, store storage.ProtobufStore, nodeID string, outputsFileRef storage.DataReference,
 	idx int, varName string) (*core.Literal, error) {
 	d := &core.LiteralMap{}
+	// TODO we should do a head before read and if head results in not found then fail
 	if err := store.ReadProtobuf(ctx, outputsFileRef, d); err != nil {
 		return nil, errors.Wrapf(errors.CausedByError, nodeID, err, "Failed to GetPrevious data from dataDir [%v]",
 			outputsFileRef)

@@ -51,3 +51,17 @@ func (_m *NodeStateWriter) PutTaskNodeState(s handler.TaskNodeState) error {
 
 	return r0
 }
+
+// PutWorkflowNodeState provides a mock function with given fields: s
+func (_m *NodeStateWriter) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
+	ret := _m.Called(s)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(handler.WorkflowNodeState) error); ok {
+		r0 = rf(s)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}

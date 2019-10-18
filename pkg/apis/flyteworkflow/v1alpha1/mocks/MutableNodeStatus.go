@@ -18,11 +18,6 @@ func (_m *MutableNodeStatus) ClearDynamicNodeStatus() {
 	_m.Called()
 }
 
-// ClearSubWorkflowStatus provides a mock function with given fields:
-func (_m *MutableNodeStatus) ClearSubWorkflowStatus() {
-	_m.Called()
-}
-
 // ClearTaskStatus provides a mock function with given fields:
 func (_m *MutableNodeStatus) ClearTaskStatus() {
 	_m.Called()
@@ -107,6 +102,22 @@ func (_m *MutableNodeStatus) GetOrCreateTaskStatus() v1alpha1.MutableTaskNodeSta
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(v1alpha1.MutableTaskNodeStatus)
+		}
+	}
+
+	return r0
+}
+
+// GetOrCreateWorkflowStatus provides a mock function with given fields:
+func (_m *MutableNodeStatus) GetOrCreateWorkflowStatus() v1alpha1.MutableWorkflowNodeStatus {
+	ret := _m.Called()
+
+	var r0 v1alpha1.MutableWorkflowNodeStatus
+	if rf, ok := ret.Get(0).(func() v1alpha1.MutableWorkflowNodeStatus); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha1.MutableWorkflowNodeStatus)
 		}
 	}
 
