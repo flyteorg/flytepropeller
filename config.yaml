@@ -52,20 +52,21 @@ plugins:
     kubernetes-enabled: true
     kubernetes-url: "http://localhost:30082"
 storage:
-  type: s3
   connection:
-    auth-type: iam
+    access-key: minio
+    auth-type: accesskey
+    disable-ssl: true
+    endpoint: http://localhost:9000
     region: us-east-1
-  cache:
-    max_size_mbs: 1024
-    target_gc_percent: 70
-  container: "lyft-modelbuilder"
+    secret-key: miniostorage
+  type: minio
+  container: "my-s3-bucket"
 event:
   type: admin
   rate: 500
   capacity: 1000
 admin:
-  endpoint: localhost:8089
+  endpoint: localhost:30081
   insecure: true
 catalog-cache:
   type: noop

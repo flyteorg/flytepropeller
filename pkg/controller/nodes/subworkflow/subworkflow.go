@@ -4,15 +4,16 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lyft/flytestdlib/storage"
+	errors2 "github.com/pkg/errors"
+
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/lyft/flytestdlib/storage"
-	errors2 "github.com/pkg/errors"
 )
 
-//TODO Add unit tests for subworkflow handler
+// TODO Add unit tests for subworkflow handler
 
 // Subworkflow handler handles inline subworkflows
 type subworkflowHandler struct {
@@ -22,7 +23,7 @@ type subworkflowHandler struct {
 func (s *subworkflowHandler) DoInlineSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext, w v1alpha1.ExecutableWorkflow,
 	parentNodeStatus v1alpha1.ExecutableNodeStatus, startNode v1alpha1.ExecutableNode) (handler.Transition, error) {
 
-	//TODO we need to handle failing and success nodes
+	// TODO we need to handle failing and success nodes
 	state, err := s.nodeExecutor.RecursiveNodeHandler(ctx, w, startNode)
 	if err != nil {
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoUndefined), err
@@ -39,6 +40,7 @@ func (s *subworkflowHandler) DoInlineSubWorkflow(ctx context.Context, nCtx handl
 
 	if state.IsComplete() {
 		// If the WF interface has outputs, validate that the outputs file was written.
+		var oInfo *handler.OutputInfo
 		if outputBindings := w.GetOutputBindings(); len(outputBindings) > 0 {
 			endNodeStatus := w.GetNodeExecutionStatus(v1alpha1.EndNodeID)
 			store := nCtx.DataStore()
@@ -56,14 +58,18 @@ func (s *subworkflowHandler) DoInlineSubWorkflow(ctx context.Context, nCtx handl
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoUndefined), nil
 			}
 
+			// TODO optimization, we could just point the outputInfo to the path of the subworkflows output
 			destinationPath := v1alpha1.GetOutputsFile(parentNodeStatus.GetDataDir())
 			if err := store.CopyRaw(ctx, sourcePath, destinationPath, storage.Options{}); err != nil {
 				errMsg := fmt.Sprintf("Failed to copy subworkflow outputs from [%v] to [%v]", sourcePath, destinationPath)
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.SubWorkflowExecutionFailed), errMsg, nil)), nil
 			}
+			oInfo = &handler.OutputInfo{OutputURI: destinationPath}
 		}
 
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(nil)), nil
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{
+			OutputInfo: oInfo,
+		})), nil
 	}
 
 	if state.PartiallyComplete() {
