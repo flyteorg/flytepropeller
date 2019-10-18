@@ -444,7 +444,7 @@
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:f519677d51f1214d6d10c827582e26fb603b4cd8f28c1ff86876b4f8db04a304"
+  digest = "1:224ad41a84f13a71a4ae5aef0f6bcfbad2e5bb96947dd14ab4463c46f7fdc949"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/aws",
@@ -479,7 +479,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "c0e784731c8c28f8727ba8e0f24e315444aca0ac"
+  revision = "a18b2f50e2ffbbc7b4e71d1ab8de09f188ddd44a"
 
 [[projects]]
   digest = "1:3e9104d1799b7c5fefe63c04a3f877372194743f5baa0096225dc99b1ff42e10"
@@ -909,7 +909,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:59d6415e7d1c7e998eab46500ea7b7b9ef63348aa0d7103f0f1779466a266d26"
+  digest = "1:b9dd05613823e25a68b9608d0dc3becbd2e4d52a494e6d2ae4b74990c629d93d"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -927,7 +927,7 @@
     "internal/span",
   ]
   pruneopts = ""
-  revision = "04252eccb9d565ac559eee6a62be04f927675aab"
+  revision = "ed542cd5b28ad1b474f8ff7ca112cad2c3ac2dc8"
 
 [[projects]]
   branch = "master"

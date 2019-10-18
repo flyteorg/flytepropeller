@@ -531,7 +531,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		nCtx.On("DataStore").Return(mockStore)
 		s, err := h.CheckLaunchPlanStatus(ctx, nCtx)
 		assert.NoError(t, err)
-		assert.Equal(t, s.Info().GetPhase(), handler.EPhaseFailed)
+		assert.Equal(t, s.Info().GetPhase().String(), handler.EPhaseFailed.String())
 	})
 
 	t.Run("outputURISystemError", func(t *testing.T) {
@@ -564,7 +564,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		nCtx.On("DataStore").Return(mockStore)
 		s, err := h.CheckLaunchPlanStatus(ctx, nCtx)
 		assert.Error(t, err)
-		assert.Equal(t, s.Info().GetPhase(), handler.EPhaseUndefined)
+		assert.Equal(t, s.Info().GetPhase().String(), handler.EPhaseUndefined.String())
 	})
 }
 
