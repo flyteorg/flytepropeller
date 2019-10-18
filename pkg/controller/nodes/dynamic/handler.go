@@ -233,7 +233,6 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 
 				if isBelow {
 					iface := t.GetInterface()
-					iface.Inputs = makeArrayInterface(iface.Inputs)
 					iface.Outputs = makeArrayInterface(iface.Outputs)
 				}
 			}
