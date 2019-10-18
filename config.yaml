@@ -48,20 +48,6 @@ plugins:
   logs:
     kubernetes-enabled: true
     kubernetes-url: "http://localhost:30082"
-  aws:
-    region: us-east-1
-    accountId: 173840052742
-    maxErrorLength: 1000
-    batch:
-      getRateLimiter:
-        rate: 15
-        burst: 20
-      defaultRateLimiter:
-        rate: 15
-        burst: 20
-      roleAnnotationKey: "iam.amazonaws.com/role"
-      defaultEnvVars:
-        - FLYTE_STATSD_HOST: localhost
 storage:
   connection:
     access-key: minio
