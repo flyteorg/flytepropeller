@@ -65,7 +65,7 @@ func GenerateTaskOutputsFromArtifact(id core.Identifier, taskInterface core.Type
 	return &core.LiteralMap{Literals: outputs}, nil
 }
 
-func generateDataSetVersionFromTask(ctx context.Context, taskType string, taskInterface core.TypedInterface, cacheVersion string) (string, error) {
+func generateDataSetVersionFromTask(ctx context.Context, taskInterface core.TypedInterface, cacheVersion string) (string, error) {
 	signatureHash, err := generateTaskSignatureHash(ctx, taskInterface)
 	if err != nil {
 		return "", err
@@ -76,7 +76,7 @@ func generateDataSetVersionFromTask(ctx context.Context, taskType string, taskIn
 		return "", fmt.Errorf("task cannot have an empty discoveryVersion %v", cacheVersion)
 	}
 
-	return fmt.Sprintf("%s-%s-%s", cacheVersion, taskType, signatureHash), nil
+	return fmt.Sprintf("%s-%s", cacheVersion, signatureHash), nil
 }
 
 func generateTaskSignatureHash(ctx context.Context, taskInterface core.TypedInterface) (string, error) {
@@ -135,7 +135,7 @@ func GenerateArtifactTagName(ctx context.Context, inputs *core.LiteralMap) (stri
 // NOTE: the version of the task is a combination of both the discoverable_version and the task signature.
 // This is because the interfact may of changed even if the discoverable_version hadn't.
 func GenerateDatasetIDForTask(ctx context.Context, k catalog.Key) (*datacatalog.DatasetID, error) {
-	datasetVersion, err := generateDataSetVersionFromTask(ctx, k.Type, k.TypedInterface, k.CacheVersion)
+	datasetVersion, err := generateDataSetVersionFromTask(ctx, k.TypedInterface, k.CacheVersion)
 	if err != nil {
 		return nil, err
 	}

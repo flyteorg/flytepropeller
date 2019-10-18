@@ -22,7 +22,6 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 	if tk.Metadata.Discoverable {
 		key := catalog.Key{
 			Identifier:     *tk.Id,
-			Type:           tk.Type,
 			CacheVersion:   tk.Metadata.DiscoveryVersion,
 			TypedInterface: *tk.Interface,
 			InputReader:    inputReader,
@@ -126,10 +125,14 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReade
 
 		// ignores discovery write failures
 		if tk.Metadata.Discoverable {
+			cacheVersion := "0"
+			if tk.Metadata != nil {
+				cacheVersion = tk.Metadata.DiscoveryVersion
+			}
+
 			key := catalog.Key{
 				Identifier:     *tk.Id,
-				Type:           tk.Type,
-				CacheVersion:   "",
+				CacheVersion:   cacheVersion,
 				TypedInterface: *tk.Interface,
 				InputReader:    i,
 			}

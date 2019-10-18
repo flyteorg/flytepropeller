@@ -265,8 +265,8 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		// End TODO
 		// -------------------------------------
 		logger.Debugf(ctx, "Task success detected, calling on Task success")
-		outputCommiter := ioutils.NewRemoteFileOutputWriter(ctx, tCtx.DataStore(), tCtx.OutputWriter())
-		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.GetReader(), outputCommiter, tCtx.tr, catalog.Metadata{
+		outputCommitter := ioutils.NewRemoteFileOutputWriter(ctx, tCtx.DataStore(), tCtx.OutputWriter())
+		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.GetReader(), outputCommitter, tCtx.tr, catalog.Metadata{
 			WorkflowExecutionIdentifier: nil,
 			TaskExecutionIdentifier: &core.TaskExecutionIdentifier{
 				TaskId: tCtx.tr.GetTaskID(),
