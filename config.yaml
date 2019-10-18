@@ -4,7 +4,7 @@ propeller:
   workers: 4
   workflow-reeval-duration: 10s
   downstream-eval-duration: 5s
-  limit-namespace: "all"
+  limit-namespace: "flytekit-production"
   prof-port: 11254
   metrics-prefix: flyte
   enable-admin-launcher: true
@@ -44,13 +44,24 @@ plugins:
     default-env-vars:
       - AWS_METADATA_SERVICE_TIMEOUT: 5
       - AWS_METADATA_SERVICE_NUM_ATTEMPTS: 20
-      - FLYTE_AWS_ENDPOINT: "http://minio.flyte:9000"
-      - FLYTE_AWS_ACCESS_KEY_ID: minio
-      - FLYTE_AWS_SECRET_ACCESS_KEY: miniostorage
   # Logging configuration
   logs:
     kubernetes-enabled: true
     kubernetes-url: "http://localhost:30082"
+  aws:
+    region: us-east-1
+    accountId: 173840052742
+    maxErrorLength: 1000
+    batch:
+      getRateLimiter:
+        rate: 15
+        burst: 20
+      defaultRateLimiter:
+        rate: 15
+        burst: 20
+      roleAnnotationKey: "iam.amazonaws.com/role"
+      defaultEnvVars:
+        - FLYTE_STATSD_HOST: localhost
 storage:
   connection:
     access-key: minio
