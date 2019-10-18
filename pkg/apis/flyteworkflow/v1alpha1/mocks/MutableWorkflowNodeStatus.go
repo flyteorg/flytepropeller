@@ -8,22 +8,3 @@ import mock "github.com/stretchr/testify/mock"
 type MutableWorkflowNodeStatus struct {
 	mock.Mock
 }
-
-// GetWorkflowExecutionName provides a mock function with given fields:
-func (_m *MutableWorkflowNodeStatus) GetWorkflowExecutionName() string {
-	ret := _m.Called()
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
-// SetWorkflowExecutionName provides a mock function with given fields: name
-func (_m *MutableWorkflowNodeStatus) SetWorkflowExecutionName(name string) {
-	_m.Called(name)
-}

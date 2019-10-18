@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 
@@ -156,8 +157,13 @@ func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption
 	return opts
 }
 
+func safeMetricName(original string) string {
+	// TODO: Replace all non-prom-compatible charset
+	return strings.Replace(original, "-", "_", -1)
+}
+
 func executeRootCmd(cfg *config2.Config) {
-	baseCtx := context.TODO()
+	baseCtx := context.Background()
 
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler(baseCtx)
@@ -176,7 +182,7 @@ func executeRootCmd(cfg *config2.Config) {
 	flyteworkflowInformerFactory := informers.NewSharedInformerFactoryWithOptions(flyteworkflowClient, cfg.WorkflowReEval.Duration, opts...)
 
 	// Add the propeller subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
-	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(cfg.LimitNamespace)
+	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(safeMetricName(cfg.LimitNamespace))
 
 	go func() {
 		err := profutils.StartProfilingServerWithDefaultHandlers(ctx, cfg.ProfilerPort.Port, nil)

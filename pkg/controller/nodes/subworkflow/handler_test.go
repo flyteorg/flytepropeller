@@ -126,11 +126,6 @@ func TestWorkflowNodeHandler_StartNode_Launchplan(t *testing.T) {
 	mockNodeStatus.On("GetAttempts").Return(attempts)
 	wfStatus := &mocks2.MutableWorkflowNodeStatus{}
 	mockNodeStatus.On("GetOrCreateWorkflowStatus").Return(wfStatus)
-	wfStatus.On("SetWorkflowExecutionName",
-		mock.MatchedBy(func(name string) bool {
-			return name == "x-n1-1"
-		}),
-	).Return()
 	parentID := &core.WorkflowExecutionIdentifier{
 		Name:    "x",
 		Domain:  "y",
@@ -159,7 +154,7 @@ func TestWorkflowNodeHandler_StartNode_Launchplan(t *testing.T) {
 			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
 		).Return(nil)
 
-		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseNone, mockWf, mockNode)
+		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseUndefined, mockWf, mockNode)
 		s, err := h.Handle(ctx, nCtx)
 		assert.NoError(t, err)
 		assert.Equal(t, handler.EPhaseRunning, s.Info().GetPhase())

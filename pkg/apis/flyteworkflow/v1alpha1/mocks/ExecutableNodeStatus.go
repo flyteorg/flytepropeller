@@ -182,22 +182,6 @@ func (_m *ExecutableNodeStatus) GetOrCreateTaskStatus() v1alpha1.MutableTaskNode
 	return r0
 }
 
-// GetOrCreateWorkflowStatus provides a mock function with given fields:
-func (_m *ExecutableNodeStatus) GetOrCreateWorkflowStatus() v1alpha1.MutableWorkflowNodeStatus {
-	ret := _m.Called()
-
-	var r0 v1alpha1.MutableWorkflowNodeStatus
-	if rf, ok := ret.Get(0).(func() v1alpha1.MutableWorkflowNodeStatus); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha1.MutableWorkflowNodeStatus)
-		}
-	}
-
-	return r0
-}
-
 // GetParentNodeID provides a mock function with given fields:
 func (_m *ExecutableNodeStatus) GetParentNodeID() *string {
 	ret := _m.Called()

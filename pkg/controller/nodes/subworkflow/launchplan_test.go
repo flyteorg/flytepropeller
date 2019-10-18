@@ -89,13 +89,8 @@ func TestSubWorkflowHandler_StartLaunchPlan(t *testing.T) {
 
 		wfStatus := &mocks2.MutableWorkflowNodeStatus{}
 		mockNodeStatus.On("GetOrCreateWorkflowStatus").Return(wfStatus)
-		wfStatus.On("SetWorkflowExecutionName",
-			mock.MatchedBy(func(name string) bool {
-				return name == "x-n1-1"
-			}),
-		).Return()
 
-		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseNone, mockWf, mockNode)
+		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseUndefined, mockWf, mockNode)
 		s, err := h.StartLaunchPlan(ctx, nCtx)
 		assert.NoError(t, err)
 		assert.Equal(t, s.Info().GetPhase(), handler.EPhaseRunning)
@@ -121,7 +116,7 @@ func TestSubWorkflowHandler_StartLaunchPlan(t *testing.T) {
 			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
 		).Return(launchplan.Wrapf(launchplan.RemoteErrorAlreadyExists, fmt.Errorf("blah"), "failed"))
 
-		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseNone, mockWf, mockNode)
+		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseUndefined, mockWf, mockNode)
 		s, err := h.StartLaunchPlan(ctx, nCtx)
 		assert.NoError(t, err)
 		assert.Equal(t, s.Info().GetPhase(), handler.EPhaseRunning)

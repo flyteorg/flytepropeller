@@ -14,6 +14,7 @@ type TaskNodeState struct {
 	PluginPhaseVersion uint32
 	PluginState        []byte
 	PluginStateVersion uint32
+	BarrierClockTick   uint32
 }
 
 type BranchNodeState struct {

@@ -62,7 +62,7 @@ func (w *workflowNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecu
 
 	wfNode := nCtx.Node().GetWorkflowNode()
 	workflowPhase := nCtx.NodeStateReader().GetWorkflowNodeState().Phase
-	if workflowPhase == v1alpha1.WorkflowNodePhaseNone {
+	if workflowPhase == v1alpha1.WorkflowNodePhaseUndefined {
 		if wfNode == nil {
 			errMsg := "Invoked workflow handler, for a non workflow Node."
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.RuntimeExecutionError), errMsg, nil)), nil

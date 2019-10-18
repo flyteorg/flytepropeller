@@ -181,18 +181,11 @@ type ExecutableBranchNode interface {
 }
 
 type ExecutableWorkflowNodeStatus interface {
-	// Name of the child execution. We only store name since the project and domain will be
-	// the same as the parent workflow execution.
-	GetWorkflowExecutionName() string
 	GetWorkflowNodePhase() WorkflowNodePhase
 }
 
 type MutableWorkflowNodeStatus interface {
 	ExecutableWorkflowNodeStatus
-
-	// Sets the name of the child execution. We only store name since the project and domain
-	// will be the same as the parent workflow execution.
-	SetWorkflowExecutionName(name string)
 	SetWorkflowNodePhase(phase WorkflowNodePhase)
 }
 
@@ -256,6 +249,7 @@ type ExecutableTaskNodeStatus interface {
 	GetPhaseVersion() uint32
 	GetPluginState() []byte
 	GetPluginStateVersion() uint32
+	GetBarrierClockTick() uint32
 }
 
 type MutableTaskNodeStatus interface {
@@ -264,6 +258,7 @@ type MutableTaskNodeStatus interface {
 	SetPhaseVersion(version uint32)
 	SetPluginState([]byte)
 	SetPluginStateVersion(uint32)
+	SetBarrierClockTick(tick uint32)
 }
 
 // Interface for a Child Workflow Node
