@@ -267,8 +267,8 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		logger.Debugf(ctx, "Task success detected, calling on Task success")
 		outputCommitter := ioutils.NewRemoteFileOutputWriter(ctx, tCtx.DataStore(), tCtx.OutputWriter())
 		execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
-		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.GetReader(), outputCommiter, tCtx.tr, catalog.Metadata{
-			TaskExecutionIdentifier: &execID, 
+		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.GetReader(), outputCommitter, tCtx.tr, catalog.Metadata{
+			TaskExecutionIdentifier: &execID,
 		})
 		if err != nil {
 			return nil, err
