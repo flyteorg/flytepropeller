@@ -530,8 +530,8 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
 		nCtx.On("DataStore").Return(mockStore)
 		s, err := h.CheckLaunchPlanStatus(ctx, nCtx)
-		assert.NoError(t, err)
-		assert.Equal(t, s.Info().GetPhase(), handler.EPhaseFailed)
+		assert.NotNil(t, err)
+		assert.Equal(t, handler.EPhaseUndefined, s.Info().GetPhase())
 	})
 
 	t.Run("outputURISystemError", func(t *testing.T) {
