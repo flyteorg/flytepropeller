@@ -11,10 +11,8 @@ import (
 )
 
 func ToTransitionType(ttype pluginCore.TransitionType) handler.TransitionType {
-	if ttype == pluginCore.TransitionTypeBarrier {
-		return handler.TransitionTypeBarrier
-	}
-	return handler.TransitionTypeEphemeral
+	// TODO this is just a test - dont check this in
+	return handler.TransitionTypeBarrier
 }
 
 func ToTaskEventPhase(p pluginCore.Phase) core.TaskExecution_Phase {
