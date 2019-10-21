@@ -18,7 +18,7 @@ var (
 		MaxPluginPhaseVersions: 100000,
 		BarrierConfig: BarrierConfig{
 			Enabled:   true,
-			CacheSize: 5000,
+			CacheSize: 50000,
 			CacheTTL:  config.Duration{Duration: time.Minute * 30},
 		},
 	}
