@@ -4,11 +4,13 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
@@ -51,65 +53,64 @@ func (r remoteFileOutputResolver) ExtractOutput(ctx context.Context, w v1alpha1.
 		actualVar = variable
 	}
 
-	outputsFileRef = v1alpha1.GetOutputsFile(nodeStatus.GetDataDir())
 	if index == nil {
 		return resolveSingleOutput(ctx, r.store, n.GetID(), outputsFileRef, actualVar)
-	} else {
-		return resolveSubtaskOutput(ctx, r.store, n.GetID(), outputsFileRef, *index, actualVar)
 	}
+	return resolveSubtaskOutput(ctx, r.store, n.GetID(), outputsFileRef, *index, actualVar)
 }
 
-func resolveSubtaskOutput(ctx context.Context, store storage.ProtobufStore, nodeId string, outputsFileRef storage.DataReference,
+func resolveSubtaskOutput(ctx context.Context, store storage.ProtobufStore, nodeID string, outputsFileRef storage.DataReference,
 	idx int, varName string) (*core.Literal, error) {
 	d := &core.LiteralMap{}
+	// TODO we should do a head before read and if head results in not found then fail
 	if err := store.ReadProtobuf(ctx, outputsFileRef, d); err != nil {
-		return nil, errors.Wrapf(errors.CausedByError, nodeId, err, "Failed to GetPrevious data from dataDir [%v]",
+		return nil, errors.Wrapf(errors.CausedByError, nodeID, err, "Failed to GetPrevious data from dataDir [%v]",
 			outputsFileRef)
 	}
 
 	if d.Literals == nil {
-		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeId,
+		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeID,
 			"Outputs not found at [%v]", outputsFileRef)
 	}
 
 	l, ok := d.Literals[varName]
 	if !ok {
-		return nil, errors.Errorf(errors.BadSpecificationError, nodeId, "Output of array tasks is expected to be "+
+		return nil, errors.Errorf(errors.BadSpecificationError, nodeID, "Output of array tasks is expected to be "+
 			"a single literal map entry named 'array' of type LiteralCollection.")
 	}
 
 	if l.GetCollection() == nil {
-		return nil, errors.Errorf(errors.BadSpecificationError, nodeId, "Output of array tasks of key 'array' "+
+		return nil, errors.Errorf(errors.BadSpecificationError, nodeID, "Output of array tasks of key 'array' "+
 			"is of type [%v]. LiteralCollection is expected.", reflect.TypeOf(l.GetValue()))
 	}
 
 	literals := l.GetCollection().Literals
 	if idx >= len(literals) {
-		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeId, "Failed to find [%v[%v].%v]",
-			nodeId, idx, varName)
+		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeID, "Failed to find [%v[%v].%v]",
+			nodeID, idx, varName)
 	}
 
 	return literals[idx], nil
 }
 
-func resolveSingleOutput(ctx context.Context, store storage.ProtobufStore, nodeId string, outputsFileRef storage.DataReference,
+func resolveSingleOutput(ctx context.Context, store storage.ProtobufStore, nodeID string, outputsFileRef storage.DataReference,
 	varName string) (*core.Literal, error) {
 
 	d := &core.LiteralMap{}
 	if err := store.ReadProtobuf(ctx, outputsFileRef, d); err != nil {
-		return nil, errors.Wrapf(errors.CausedByError, nodeId, err, "Failed to GetPrevious data from dataDir [%v]",
+		return nil, errors.Wrapf(errors.CausedByError, nodeID, err, "Failed to GetPrevious data from dataDir [%v]",
 			outputsFileRef)
 	}
 
 	if d.Literals == nil {
-		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeId,
+		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeID,
 			"Outputs not found at [%v]", outputsFileRef)
 	}
 
 	l, ok := d.Literals[varName]
 	if !ok {
-		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeId,
-			"Failed to find [%v].[%v]", nodeId, varName)
+		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeID,
+			"Failed to find [%v].[%v]", nodeID, varName)
 	}
 
 	return l, nil

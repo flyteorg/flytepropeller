@@ -14,6 +14,7 @@ type TaskNodeState struct {
 	PluginPhaseVersion uint32
 	PluginState        []byte
 	PluginStateVersion uint32
+	BarrierClockTick   uint32
 }
 
 type BranchNodeState struct {
@@ -27,14 +28,20 @@ type DynamicNodeState struct {
 	Phase v1alpha1.DynamicNodePhase
 }
 
+type WorkflowNodeState struct {
+	Phase v1alpha1.WorkflowNodePhase
+}
+
 type NodeStateWriter interface {
 	PutTaskNodeState(s TaskNodeState) error
 	PutBranchNode(s BranchNodeState) error
 	PutDynamicNodeState(s DynamicNodeState) error
+	PutWorkflowNodeState(s WorkflowNodeState) error
 }
 
 type NodeStateReader interface {
 	GetTaskNodeState() TaskNodeState
 	GetBranchNode() BranchNodeState
 	GetDynamicNodeState() DynamicNodeState
+	GetWorkflowNodeState() WorkflowNodeState
 }

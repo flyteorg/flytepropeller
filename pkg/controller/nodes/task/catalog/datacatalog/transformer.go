@@ -71,9 +71,11 @@ func generateDataSetVersionFromTask(ctx context.Context, taskInterface core.Type
 		return "", err
 	}
 
-	if strings.Trim(cacheVersion, " ") == "" {
+	cacheVersion = strings.Trim(cacheVersion, " ")
+	if len(cacheVersion) == 0 {
 		return "", fmt.Errorf("task cannot have an empty discoveryVersion %v", cacheVersion)
 	}
+
 	return fmt.Sprintf("%s-%s", cacheVersion, signatureHash), nil
 }
 

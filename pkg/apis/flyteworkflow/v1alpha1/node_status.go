@@ -80,28 +80,23 @@ func (s *DynamicNodeStatus) Equals(o *DynamicNodeStatus) bool {
 	return s.Phase == o.Phase
 }
 
-type SubWorkflowNodeStatus struct {
-	Phase WorkflowPhase `json:"phase"`
-}
+type WorkflowNodePhase int
 
-func (s SubWorkflowNodeStatus) GetPhase() WorkflowPhase {
-	return s.Phase
-}
-
-func (s *SubWorkflowNodeStatus) SetPhase(phase WorkflowPhase) {
-	s.Phase = phase
-}
+const (
+	WorkflowNodePhaseUndefined WorkflowNodePhase = iota
+	WorkflowNodePhaseExecuting
+)
 
 type WorkflowNodeStatus struct {
-	WorkflowName string `json:"name"`
+	Phase WorkflowNodePhase `json:"phase"`
 }
 
-func (in *WorkflowNodeStatus) SetWorkflowExecutionName(name string) {
-	in.WorkflowName = name
+func (in *WorkflowNodeStatus) GetWorkflowNodePhase() WorkflowNodePhase {
+	return in.Phase
 }
 
-func (in *WorkflowNodeStatus) GetWorkflowExecutionName() string {
-	return in.WorkflowName
+func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
+	in.Phase = phase
 }
 
 type NodeStatus struct {
@@ -126,8 +121,7 @@ type NodeStatus struct {
 	WorkflowNodeStatus *WorkflowNodeStatus `json:"workflowNodeStatus,omitempty"`
 	TaskNodeStatus     *TaskNodeStatus     `json:",omitempty"`
 	// TODO not used delete
-	SubWorkflowNodeStatus *SubWorkflowNodeStatus `json:"subWorkflowStatus,omitempty"`
-	DynamicNodeStatus     *DynamicNodeStatus     `json:"dynamicNodeStatus,omitempty"`
+	DynamicNodeStatus *DynamicNodeStatus `json:"dynamicNodeStatus,omitempty"`
 }
 
 func (in *NodeStatus) GetBranchStatus() MutableBranchNodeStatus {
@@ -348,26 +342,6 @@ func (in NodeStatus) GetTaskNodeStatus() ExecutableTaskNodeStatus {
 	return in.TaskNodeStatus
 }
 
-func (in NodeStatus) GetSubWorkflowNodeStatus() ExecutableSubWorkflowNodeStatus {
-	if in.SubWorkflowNodeStatus == nil {
-		return nil
-	}
-
-	return in.SubWorkflowNodeStatus
-}
-
-func (in NodeStatus) GetOrCreateSubWorkflowStatus() MutableSubWorkflowNodeStatus {
-	if in.SubWorkflowNodeStatus == nil {
-		in.SubWorkflowNodeStatus = &SubWorkflowNodeStatus{}
-	}
-
-	return in.SubWorkflowNodeStatus
-}
-
-func (in *NodeStatus) ClearSubWorkflowStatus() {
-	in.SubWorkflowNodeStatus = nil
-}
-
 func (in *NodeStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
 	n, ok := in.SubNodeStatus[id]
 	if ok {
@@ -487,6 +461,15 @@ type TaskNodeStatus struct {
 	PhaseVersion       uint32 `json:"phaseVersion,omitempty"`
 	PluginState        []byte `json:"pState,omitempty"`
 	PluginStateVersion uint32 `json:"psv,omitempty"`
+	BarrierClockTick   uint32 `json:"tick,omitempty"`
+}
+
+func (in *TaskNodeStatus) GetBarrierClockTick() uint32 {
+	return in.BarrierClockTick
+}
+
+func (in *TaskNodeStatus) SetBarrierClockTick(tick uint32) {
+	in.BarrierClockTick = tick
 }
 
 func (in *TaskNodeStatus) SetPluginState(s []byte) {
@@ -559,5 +542,5 @@ func (in *TaskNodeStatus) Equals(other *TaskNodeStatus) bool {
 	if in == nil || other == nil {
 		return false
 	}
-	return in.Phase == other.Phase && in.PhaseVersion == other.PhaseVersion && in.PluginStateVersion == other.PluginStateVersion && bytes.Equal(in.PluginState, other.PluginState)
+	return in.Phase == other.Phase && in.PhaseVersion == other.PhaseVersion && in.PluginStateVersion == other.PluginStateVersion && bytes.Equal(in.PluginState, other.PluginState) && in.BarrierClockTick == other.BarrierClockTick
 }

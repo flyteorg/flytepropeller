@@ -54,7 +54,7 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 		branchNodeState := handler.BranchNodeState{FinalizedNodeID: finalNodeID, Phase: v1alpha1.BranchNodeSuccess}
 		err = nCtx.NodeStateWriter().PutBranchNode(branchNodeState)
 		if err != nil {
-			logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())
+			logger.Errorf(ctx, "Failed to store BranchNode state, err :%s", err.Error())
 			return handler.UnknownTransition, err
 		}
 
@@ -111,7 +111,9 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 		// For branch node we set the output node to be the same as the child nodes output
 		childNodeStatus := w.GetNodeExecutionStatus(branchTakenNode.GetID())
 		nodeStatus.SetDataDir(childNodeStatus.GetDataDir())
-		phase := handler.PhaseInfoSuccess(nil)
+		phase := handler.PhaseInfoSuccess(&handler.ExecutionInfo{
+			OutputInfo: &handler.OutputInfo{OutputURI: v1alpha1.GetOutputsFile(childNodeStatus.GetDataDir())},
+		})
 		return handler.DoTransition(handler.TransitionTypeEphemeral, phase), nil
 	}
 

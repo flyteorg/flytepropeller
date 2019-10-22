@@ -51,17 +51,16 @@ func (f handlerFactory) Setup(ctx context.Context, setup handler.SetupContext) e
 }
 
 func NewHandlerFactory(ctx context.Context, executor executors.Node, workflowLauncher launchplan.Executor, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) (HandlerFactory, error) {
-	newTaskHandler, err := task.New(ctx, kubeClient, client, scope)
+
+	t, err := task.New(ctx, kubeClient, client, scope)
 	if err != nil {
 		return nil, err
 	}
+
 	f := &handlerFactory{
 		handlers: map[v1alpha1.NodeKind]handler.Node{
-			v1alpha1.NodeKindBranch: branch.New(executor, scope),
-			v1alpha1.NodeKindTask: dynamic.New(
-				newTaskHandler,
-				executor,
-				scope),
+			v1alpha1.NodeKindBranch:   branch.New(executor, scope),
+			v1alpha1.NodeKindTask:     dynamic.New(t, executor, scope),
 			v1alpha1.NodeKindWorkflow: subworkflow.New(executor, workflowLauncher, scope),
 			v1alpha1.NodeKindStart:    start.New(),
 			v1alpha1.NodeKindEnd:      end.New(),

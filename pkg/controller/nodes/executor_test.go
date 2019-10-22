@@ -264,7 +264,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 							Phase: parentPhase,
 						},
 					},
-					DataDir: "data",
+					DataDir: "wf-data",
 				},
 				WorkflowSpec: &v1alpha1.WorkflowSpec{
 					ID: "wf",
@@ -312,6 +312,10 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 				assert.Equal(t, test.expectedPhase, s.NodePhase, "expected: %s, received %s", test.expectedPhase.String(), s.NodePhase.String())
 				assert.Equal(t, uint32(0), mockNodeStatus.GetAttempts())
 				assert.Equal(t, test.expectedNodePhase, mockNodeStatus.GetPhase(), "expected %s, received %s", test.expectedNodePhase.String(), mockNodeStatus.GetPhase().String())
+
+				if test.expectedNodePhase == v1alpha1.NodePhaseQueued {
+					assert.Equal(t, mockNodeStatus.GetDataDir(), storage.DataReference("/wf-data/end-node/data"))
+				}
 			})
 		}
 	}

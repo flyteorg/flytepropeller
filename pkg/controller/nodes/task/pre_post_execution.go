@@ -26,14 +26,16 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 			TypedInterface: *tk.Interface,
 			InputReader:    inputReader,
 		}
+
 		if resp, err := t.catalog.Get(ctx, key); err != nil {
-			if taskStatus, ok := status.FromError(err); ok && taskStatus.Code() == codes.NotFound {
+			causeErr := errors.Cause(err)
+			if taskStatus, ok := status.FromError(causeErr); ok && taskStatus.Code() == codes.NotFound {
 				t.metrics.discoveryMissCount.Inc(ctx)
-				logger.Infof(ctx, "Artifact not found in Discovery. Executing Task.")
+				logger.Infof(ctx, "Artifact not found in Catalog. Executing Task.")
 				return false, nil
 			}
 			t.metrics.catalogGetFailureCount.Inc(ctx)
-			logger.Errorf(ctx, "Discovery check failed. err: %v", err.Error())
+			logger.Errorf(ctx, "Catalog memoization check failed. err: %v", err.Error())
 			return false, errors.Wrapf(err, "Failed to check Catalog for previous results")
 		} else if resp != nil {
 			t.metrics.catalogHitCount.Inc(ctx)
@@ -54,7 +56,8 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 	return false, nil
 }
 
-func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReader, r io.OutputReader, tr pluginCore.TaskReader, m catalog.Metadata) (*io.ExecutionError, error) {
+func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReader, r io.OutputReader,
+	outputCommitter io.OutputWriter, tr pluginCore.TaskReader, m catalog.Metadata) (*io.ExecutionError, error) {
 
 	tk, err := tr.Read(ctx)
 	if err != nil {
@@ -98,6 +101,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReade
 			logger.Errorf(ctx, "Failed to check if the output file exists. Error: %s", err.Error())
 			return nil, err
 		}
+
 		if !ok {
 			// Does not exist
 			return &io.ExecutionError{
@@ -111,14 +115,24 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReade
 
 		if !r.IsFile(ctx) {
 			// Read output and write to file
-			logger.Warnf(ctx, "Inputs of type file are only handled currently. Implement other input types")
+			// No need to check for Execution Error here as we have done so above this block.
+			err = outputCommitter.Put(ctx, r)
+			if err != nil {
+				logger.Errorf(ctx, "Failed to commit output to remote location. Error: %v", err)
+				return nil, err
+			}
 		}
 
 		// ignores discovery write failures
 		if tk.Metadata.Discoverable {
+			cacheVersion := "0"
+			if tk.Metadata != nil {
+				cacheVersion = tk.Metadata.DiscoveryVersion
+			}
+
 			key := catalog.Key{
 				Identifier:     *tk.Id,
-				CacheVersion:   "",
+				CacheVersion:   cacheVersion,
 				TypedInterface: *tk.Interface,
 				InputReader:    i,
 			}
@@ -130,5 +144,6 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReade
 			}
 		}
 	}
+
 	return nil, nil
 }

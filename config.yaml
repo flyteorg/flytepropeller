@@ -26,7 +26,7 @@ tasks:
   task-plugins:
     enabled-plugins:
       - container
-      - k8s-array
+      - K8S-ARRAY
       - qubole-hive-executor
 # Sample plugins config
 plugins:
@@ -59,17 +59,14 @@ storage:
     endpoint: http://localhost:9000
     region: us-east-1
     secret-key: miniostorage
-  cache:
-    max_size_mbs: 10
-    target_gc_percent: 100
-  container: myflytecontainer
   type: minio
+  container: "my-s3-bucket"
 event:
   type: admin
   rate: 500
   capacity: 1000
 admin:
-  endpoint: localhost:8089
+  endpoint: localhost:30081
   insecure: true
 catalog-cache:
   type: noop

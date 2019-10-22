@@ -80,6 +80,10 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 	logger.Infof(ctx, "Recording event p[%+v]", nodeEvent)
 	err := c.nodeRecorder.RecordNodeEvent(ctx, nodeEvent)
 	if err != nil {
+		if nodeEvent.GetId().NodeId == v1alpha1.EndNodeID {
+			return nil
+		}
+
 		if eventsErr.IsAlreadyExists(err) {
 			logger.Infof(ctx, "Node event phase: %s, nodeId %s already exist",
 				nodeEvent.Phase.String(), nodeEvent.GetId().NodeId)
@@ -105,16 +109,6 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 	}
 
 	if predicatePhase == PredicatePhaseReady {
-
-		if len(nodeStatus.GetDataDir()) == 0 {
-			// Predicate ready, lets Resolve the data
-			dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, node.GetID())
-			if err != nil {
-				return handler.PhaseInfoUndefined, err
-			}
-
-			nodeStatus.SetDataDir(dataDir)
-		}
 
 		// TODO: Performance problem, we maybe in a retry loop and do not need to resolve the inputs again.
 		// For now we will do this.
@@ -213,6 +207,16 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusUndefined, err
 	}
 
+	if len(nodeStatus.GetDataDir()) == 0 {
+		// Predicate ready, lets Resolve the data
+		dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, node.GetID())
+		if err != nil {
+			return executors.NodeStatusUndefined, err
+		}
+
+		nodeStatus.SetDataDir(dataDir)
+	}
+
 	nCtx, err := c.newNodeExecContextDefault(ctx, w, node, nodeStatus)
 	if err != nil {
 		return executors.NodeStatusUndefined, err
@@ -293,7 +297,6 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying")
 		// We are going to retry in the next round, so we should clear all current state
 		nodeStatus.ClearDynamicNodeStatus()
-		nodeStatus.ClearSubWorkflowStatus()
 		nodeStatus.ClearTaskStatus()
 		nodeStatus.ClearWorkflowStatus()
 		return executors.NodeStatusPending, nil
@@ -343,6 +346,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "could not convert phase info to event")
 		}
+
 		err = c.IdempotentRecordEvent(ctx, nev)
 		if err != nil {
 			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
@@ -458,10 +462,10 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.Exec
 }
 
 func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error {
-	ctx = contextutils.WithNodeID(ctx, currentNode.GetID())
 	nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
 	switch nodeStatus.GetPhase() {
 	case v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseSucceeding, v1alpha1.NodePhaseRetryableFailure, v1alpha1.NodePhaseQueued:
+		ctx = contextutils.WithNodeID(ctx, currentNode.GetID())
 		nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
 
 		// Now depending on the node type decide

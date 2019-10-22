@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"strings"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/logger"
@@ -25,20 +26,25 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 	logger.Infof(ctx, "Enabled plugins: %v", enabledPlugins.List())
 	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all plugins enabled: %v]", allPluginsEnabled)
 	for _, cpe := range pr.GetCorePlugins() {
-		if !allPluginsEnabled && !enabledPlugins.Has(cpe.ID) {
-			logger.Infof(ctx, "Plugin [%s] is DISABLED.", cpe.ID)
+		id := strings.ToLower(cpe.ID)
+		if !allPluginsEnabled && !enabledPlugins.Has(id) {
+			logger.Infof(ctx, "Plugin [%s] is DISABLED (not found in enabled plugins list).", id)
 		} else {
-			logger.Infof(ctx, "Plugin [%s] ENABLED", cpe.ID)
+			logger.Infof(ctx, "Plugin [%s] ENABLED", id)
 			finalizedPlugins = append(finalizedPlugins, cpe)
 		}
 	}
 
-	for _, kpe := range pr.GetK8sPlugins() {
-		if !allPluginsEnabled && !enabledPlugins.Has(kpe.ID) {
-			logger.Infof(ctx, "K8s Plugin [%s] is DISABLED.", kpe.ID)
+	k8sPlugins := pr.GetK8sPlugins()
+	for i := range k8sPlugins {
+		kpe := k8sPlugins[i]
+		id := strings.ToLower(kpe.ID)
+		if !allPluginsEnabled && !enabledPlugins.Has(id) {
+			logger.Infof(ctx, "K8s Plugin [%s] is DISABLED (not found in enabled plugins list).", id)
 		} else {
+			logger.Infof(ctx, "K8s Plugin [%s] is ENABLED.", id)
 			finalizedPlugins = append(finalizedPlugins, core.PluginEntry{
-				ID:                  kpe.ID,
+				ID:                  id,
 				RegisteredTaskTypes: kpe.RegisteredTaskTypes,
 				LoadPlugin: func(ctx context.Context, iCtx core.SetupContext) (plugin core.Plugin, e error) {
 					return k8s.NewPluginManager(ctx, iCtx, kpe)

@@ -6,6 +6,8 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager_interface"
 	"strconv"
 
+	"github.com/lyft/flytestdlib/logger"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	pluginCatalog "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
@@ -63,9 +65,15 @@ type taskExecutionContext struct {
 	c   pluginCatalog.AsyncClient
 }
 
-func (t *taskExecutionContext) GetTaskRefreshIndicator() func() {
-	return func() {
-		_ = t.NodeExecutionContext.EnqueueOwnerFunc()
+func (t *taskExecutionContext) TaskRefreshIndicator() pluginCore.SignalAsync {
+	return func(ctx context.Context) {
+		err := t.NodeExecutionContext.EnqueueOwnerFunc()
+		if err != nil {
+			logger.Errorf(ctx, "Failed to enqueue owner for Task [%v] and Owner [%v]. Error: %v",
+				t.TaskExecutionMetadata().GetTaskExecutionID(),
+				t.TaskExecutionMetadata().GetOwnerID(),
+				err)
+		}
 	}
 }
 

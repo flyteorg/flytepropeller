@@ -38,6 +38,10 @@ func (t dynamicNodeStateHolder) PutBranchNode(s handler.BranchNodeState) error {
 	panic("not implemented")
 }
 
+func (t dynamicNodeStateHolder) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
+	panic("not implemented")
+}
+
 func (t *dynamicNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) error {
 	t.s = s
 	return nil
@@ -313,11 +317,6 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 		nCtx.On("NodeID").Return("n1")
 		nCtx.On("EnqueueOwnerFunc").Return(func() error { return nil })
 
-		w := &flyteMocks.ExecutableWorkflow{}
-		ws := &flyteMocks.ExecutableWorkflowStatus{}
-		w.On("GetExecutionStatus").Return(ws)
-		nCtx.On("Workflow").Return(w)
-
 		endNodeStatus := &flyteMocks.ExecutableNodeStatus{}
 		endNodeStatus.On("GetDataDir").Return(storage.DataReference("end-node"))
 
@@ -326,12 +325,25 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 		subNs.On("ResetDirty").Return()
 		subNs.On("GetDataDir").Return(finalOutput)
 		subNs.On("SetParentTaskID", mock.Anything).Return()
-		subNs.On("GetNodeExecutionStatus", mock.MatchedBy(func(n v1alpha1.NodeID) bool { return n == v1alpha1.EndNodeID })).Return(endNodeStatus)
+
+		dynamicNS := &flyteMocks.ExecutableNodeStatus{}
+		dynamicNS.On("SetDataDir", mock.Anything).Return()
+		dynamicNS.On("SetParentTaskID", mock.Anything).Return()
+		dynamicNS.On("GetNodeExecutionStatus", "n1-Node_1").Return(subNs)
+		dynamicNS.On("GetNodeExecutionStatus", "n1-Node_2").Return(subNs)
+		dynamicNS.On("GetNodeExecutionStatus", "n1-Node_3").Return(subNs)
+		dynamicNS.On("GetNodeExecutionStatus", v1alpha1.EndNodeID).Return(endNodeStatus)
 
 		ns := &flyteMocks.ExecutableNodeStatus{}
 		ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
-		ns.On("GetNodeExecutionStatus", mock.Anything).Return(subNs)
+		ns.On("GetNodeExecutionStatus", dynamicNodeID).Return(dynamicNS)
 		nCtx.On("NodeStatus").Return(ns)
+
+		w := &flyteMocks.ExecutableWorkflow{}
+		ws := &flyteMocks.ExecutableWorkflowStatus{}
+		ws.On("GetNodeExecutionStatus", "n1").Return(ns)
+		w.On("GetExecutionStatus").Return(ws)
+		nCtx.On("Workflow").Return(w)
 
 		r := &nodeMocks.NodeStateReader{}
 		r.On("GetDynamicNodeState").Return(handler.DynamicNodeState{
@@ -382,9 +394,9 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 			}
 			h := &mocks.TaskNodeHandler{}
 			if tt.args.validErr != nil {
-				h.On("ValidateOutputAndCacheAdd", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tt.args.validErr, nil)
+				h.On("ValidateOutputAndCacheAdd", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tt.args.validErr, nil)
 			} else {
-				h.On("ValidateOutputAndCacheAdd", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+				h.On("ValidateOutputAndCacheAdd", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 			}
 			n := &executorMocks.Node{}
 			if tt.args.isErr {
