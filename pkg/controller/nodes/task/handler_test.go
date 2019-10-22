@@ -780,6 +780,12 @@ func Test_task_Handle_Catalog(t *testing.T) {
 					if assert.NotNil(t, got.Info().GetInfo().TaskNodeInfo) {
 						assert.True(t, got.Info().GetInfo().TaskNodeInfo.CacheHit)
 					}
+					assert.NotNil(t, got.Info().GetInfo().OutputInfo)
+					s := storage.DataReference("/data-dir/outputs.pb")
+					assert.Equal(t, s, got.Info().GetInfo().OutputInfo.OutputURI)
+					r, err := nCtx.DataStore().Head(context.TODO(), s)
+					assert.NoError(t, err)
+					assert.True(t, r.Exists())
 				}
 			}
 		})

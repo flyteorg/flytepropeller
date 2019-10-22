@@ -53,13 +53,14 @@ type pluginRequestedTransition struct {
 	pluginStateVersion uint32
 }
 
-func (p *pluginRequestedTransition) CacheHit() {
+func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference) {
 	p.ttype = handler.TransitionTypeEphemeral
 	p.pInfo = pluginCore.PhaseInfoSuccess(nil)
 	if p.execInfo.TaskNodeInfo == nil {
 		p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{}
 	}
 	p.execInfo.TaskNodeInfo.CacheHit = true
+	p.ObserveSuccess(outputPath)
 }
 
 func (p *pluginRequestedTransition) ObservedTransitionAndState(trns pluginCore.Transition, pluginStateVersion uint32, pluginState []byte) {
@@ -330,7 +331,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 					return handler.UnknownTransition, err
 				}
 				pluginTrns = &pluginRequestedTransition{}
-				pluginTrns.CacheHit()
+				pluginTrns.CacheHit(tCtx.ow.GetOutputPath())
 			} else {
 				logger.Errorf(ctx, "no output reader found after a catalog cache hit!")
 			}
