@@ -564,7 +564,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		nCtx.On("DataStore").Return(mockStore)
 		s, err := h.CheckLaunchPlanStatus(ctx, nCtx)
 		assert.Error(t, err)
-		assert.Equal(t, s.Info().GetPhase(), handler.EPhaseUndefined)
+		assert.Equal(t, s.Info().GetPhase().String(), handler.EPhaseUndefined.String())
 	})
 }
 

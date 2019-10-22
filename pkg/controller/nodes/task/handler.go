@@ -233,8 +233,10 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 			logger.Errorf(ctx, "Too many Plugin p versions for plugin [%s]. p versions [%d/%d]", p.GetID(), pluginTrns.pInfo.Version(), t.cfg.MaxPluginPhaseVersions)
 			pluginTrns.ObservedExecutionError(&io.ExecutionError{
 				ExecutionError: &core.ExecutionError{
-					Code:    "TooManyPluginPhaseVersions",
-					Message: fmt.Sprintf("Total number of phase versions exceeded for p [%s] in Plugin [%s], max allowed [%d]", pluginTrns.pInfo.Phase().String(), p.GetID(), t.cfg.MaxPluginPhaseVersions),
+					Code: "TooManyPluginPhaseVersions",
+					Message: fmt.Sprintf("Total number of phase versions exceeded for phase [%s] in Plugin "+
+						"[%s]. Attempted to set version to [%v], max allowed [%d]",
+						pluginTrns.pInfo.Phase().String(), p.GetID(), pluginTrns.pInfo.Version(), t.cfg.MaxPluginPhaseVersions),
 				},
 				IsRecoverable: false,
 			})
@@ -266,14 +268,9 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		// -------------------------------------
 		logger.Debugf(ctx, "Task success detected, calling on Task success")
 		outputCommitter := ioutils.NewRemoteFileOutputWriter(ctx, tCtx.DataStore(), tCtx.OutputWriter())
+		execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.GetReader(), outputCommitter, tCtx.tr, catalog.Metadata{
-			WorkflowExecutionIdentifier: nil,
-			TaskExecutionIdentifier: &core.TaskExecutionIdentifier{
-				TaskId: tCtx.tr.GetTaskID(),
-				// TODO @kumare required before checking in
-				NodeExecutionId: nil,
-				RetryAttempt:    0,
-			},
+			TaskExecutionIdentifier: &execID,
 		})
 		if err != nil {
 			return nil, err

@@ -4,7 +4,7 @@ propeller:
   workers: 4
   workflow-reeval-duration: 10s
   downstream-eval-duration: 5s
-  limit-namespace: "flytekit-production"
+  limit-namespace: "all"
   prof-port: 11254
   metrics-prefix: flyte
   enable-admin-launcher: true
@@ -26,7 +26,7 @@ tasks:
   task-plugins:
     enabled-plugins:
       - container
-      - aws_array
+      - K8S-ARRAY
       - qubole-hive-executor
 # Sample plugins config
 plugins:
@@ -44,6 +44,9 @@ plugins:
     default-env-vars:
       - AWS_METADATA_SERVICE_TIMEOUT: 5
       - AWS_METADATA_SERVICE_NUM_ATTEMPTS: 20
+      - FLYTE_AWS_ENDPOINT: "http://minio.flyte:9000"
+      - FLYTE_AWS_ACCESS_KEY_ID: minio
+      - FLYTE_AWS_SECRET_ACCESS_KEY: miniostorage
   # Logging configuration
   logs:
     kubernetes-enabled: true

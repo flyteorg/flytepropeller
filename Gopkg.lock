@@ -444,7 +444,7 @@
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:f519677d51f1214d6d10c827582e26fb603b4cd8f28c1ff86876b4f8db04a304"
+  digest = "1:91c43f00460dfcaa51b00b26bbe340a95d1261482b58f353a9d81a9a6fa37437"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/aws",
@@ -479,10 +479,10 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "c0e784731c8c28f8727ba8e0f24e315444aca0ac"
+  revision = "4b90207f75f3605be52025853bc301ad87f19152"
 
 [[projects]]
-  digest = "1:3e9104d1799b7c5fefe63c04a3f877372194743f5baa0096225dc99b1ff42e10"
+  digest = "1:32721789007b473f774ccf29e4309440562e02ce2dca8ed3e39924a8c7cdb7a7"
   name = "github.com/lyft/flytestdlib"
   packages = [
     "atomic",
@@ -505,8 +505,8 @@
     "yamlutils",
   ]
   pruneopts = ""
-  revision = "9d0448cd08805c3ae39938d8fcaec34d11db366c"
-  version = "v0.2.24"
+  revision = "c25aca24d0a71894e8061815e266f989118f232c"
+  version = "v0.2.25"
 
 [[projects]]
   branch = "master"
@@ -810,7 +810,7 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:984e93aca9088b440b894df41f2043b6a3db8f9cf30767032770bfc4796993b0"
+  digest = "1:a8e642dd0e6629a94854a2fe446a743a51f44b7360a1910cab5276ca4d668995"
   name = "go.uber.org/zap"
   packages = [
     ".",
@@ -821,8 +821,8 @@
     "zapcore",
   ]
   pruneopts = ""
-  revision = "27376062155ad36be76b0f12cf1572a221d3a48c"
-  version = "v1.10.0"
+  revision = "0065243e7bbd958fab35324e41201f5eb682c527"
+  version = "v1.11.0"
 
 [[projects]]
   branch = "master"
@@ -834,7 +834,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d4d68fea45a3a5fc7645cf2538da3715384ac5eb6bcb72ce82b38cdfca8783e7"
+  digest = "1:acd465770451fe2dd4c15565afc8244859dbcf490bde15cc3447741181e10f29"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -847,7 +847,7 @@
     "trace",
   ]
   pruneopts = ""
-  revision = "da9a3fd4c5820e74b24a6cb7fb438dc9b0dd377c"
+  revision = "ec77196f6094c3492a8b61f2c11cf937f78992ae"
 
 [[projects]]
   branch = "master"
@@ -865,14 +865,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c9face95b239f528e545b3f5d61ed821f3419050f143081e27d37ff26bfc5a42"
+  digest = "1:f7859b24c4f7a2c384c3d6ef5cdd15641e26a22b3649a52b0ac08d35e518a0de"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "727590c5006e77ca5247972f47e877f4929fc985"
+  revision = "3e7259c5e7c2076bb2728047a3df75adb1bad8e5"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -909,7 +909,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:59d6415e7d1c7e998eab46500ea7b7b9ef63348aa0d7103f0f1779466a266d26"
+  digest = "1:db5686867c3ad3b388311eb0be143c62ecbc7e0693092ea4ace41ccf61f70474"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -927,11 +927,11 @@
     "internal/span",
   ]
   pruneopts = ""
-  revision = "04252eccb9d565ac559eee6a62be04f927675aab"
+  revision = "d2fffb4b843bb077b595d8c48cbe19284635caff"
 
 [[projects]]
   branch = "master"
-  digest = "1:291193855b477ead9fc1789cb4a5a9517a691cfd780fa14fcc1dd994ee79051c"
+  digest = "1:8f4d4a0df27e14fa815f83668e2e099c284b03340a6ab84157e3093cd55248e3"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -945,7 +945,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = ""
-  revision = "1c098db1e8d0c17c2819910afd08052313af7a44"
+  revision = "bf72a15fd9e96e2c95d23b53ce419201a6b45f43"
 
 [[projects]]
   digest = "1:c4404231035fad619a12f82ae3f0f8f9edc1cc7f34e7edad7a28ccac5336cc96"
