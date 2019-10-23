@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-redis/redis"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/resourcemanager_interface"
+	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	rmConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
@@ -18,24 +18,94 @@ import (
 // https://redis.io/commands#set
 const RedisSetKeyPrefix = "resourcemanager"
 
-type RedisResourceManager struct {
-	client                 *redis.Client
-	redisSetKeyPrefix      string
-	MetricsScope           promutils.Scope
-	namespacedResourcesMap map[resourcemanager_interface.ResourceNamespace]*Resource
+type RedisResourceManagerBuilder struct {
+	client                *redis.Client
+	MetricsScope		  promutils.Scope
+	redisSetKeyPrefix     string
+	namespacedResourcesMap map[pluginCore.ResourceNamespace]*Resource
 }
 
-func (r *RedisResourceManager) GetNegotiator(namespacePrefix resourcemanager_interface.ResourceNamespace) resourcemanager_interface.ResourceNegotiator {
-	return Proxy{
-		ResourceNegotiator: r,
-		ResourceManager:    r,
+func (r *RedisResourceManagerBuilder) ResourceRegistrar(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceRegistrar {
+	return ResourceRegistrarProxy{
+		ResourceRegistrar:  r,
 		NamespacePrefix:    namespacePrefix,
 	}
 }
 
-func (r *RedisResourceManager) GetTaskResourceManager(namespacePrefix resourcemanager_interface.ResourceNamespace) resourcemanager_interface.ResourceManager {
+func (r *RedisResourceManagerBuilder) RegisterResourceQuota(ctx context.Context, namespace pluginCore.ResourceNamespace, quota int) error {
+
+	if r.client == nil {
+		err := errors.Errorf("Redis client does not exist.")
+		return err
+	}
+	config := rmConfig.GetResourceManagerConfig()
+	if quota <= 0 || quota > config.ResourceMaxQuota {
+		err := errors.Errorf("Invalid request for resource quota (<= 0 || > %v): [%v]", config.ResourceMaxQuota, quota)
+		return err
+	}
+
+	// Checking if the namespace already exists
+	// We use linear search here because this function is only called a few times
+	if _, ok := r.namespacedResourcesMap[namespace]; ok {
+		return errors.Errorf("Resource namespace already exists [%v]", namespace)
+	}
+
+	// TODO: add this back. Do this when building the manager
+
+	prefixedNamespace := r.getNamespacedRedisSetKey(namespace)
+
+
+	metrics := NewRedisResourceManagerMetrics(r.MetricsScope.NewSubScope(prefixedNamespace))
+
+	newResource := &Resource{
+		quota:   quota,
+		metrics: metrics,
+	}
+
+	// Add this registration to the list
+	r.namespacedResourcesMap[namespace] = newResource
+	return nil
+}
+
+func (r *RedisResourceManagerBuilder) BuildResourceManager(ctx context.Context) (pluginCore.ResourceManager, error) {
+	if r.client == nil || r.redisSetKeyPrefix == "" || r.MetricsScope == nil || r.namespacedResourcesMap == nil {
+		return nil, errors.Errorf("Failed to build a redis resource manager. Missing key property(s)")
+	}
+	rm := &RedisResourceManager{
+		client:                 r.client,
+		redisSetKeyPrefix:      r.redisSetKeyPrefix,
+		MetricsScope:           r.MetricsScope,
+		namespacedResourcesMap: r.namespacedResourcesMap,
+	}
+	rm.startMetricsGathering(ctx)
+	return rm, nil
+}
+
+func (r *RedisResourceManagerBuilder) getNamespacedRedisSetKey(namespace pluginCore.ResourceNamespace) string {
+	return fmt.Sprintf("%s:%s", r.redisSetKeyPrefix, namespace)
+}
+
+func NewRedisResourceManagerBuilder(ctx context.Context, client *redis.Client, scope promutils.Scope) (*RedisResourceManagerBuilder, error) {
+	rn := &RedisResourceManagerBuilder{
+		client:                 client,
+		MetricsScope:           scope,
+		redisSetKeyPrefix:      RedisSetKeyPrefix,
+		namespacedResourcesMap: map[pluginCore.ResourceNamespace]*Resource{},
+	}
+	return rn, nil
+}
+
+
+
+type RedisResourceManager struct {
+	client                 *redis.Client
+	redisSetKeyPrefix      string
+	MetricsScope           promutils.Scope
+	namespacedResourcesMap map[pluginCore.ResourceNamespace]*Resource
+}
+
+func (r *RedisResourceManager) GetTaskResourceManager(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceManager {
 	return Proxy{
-		ResourceNegotiator: r,
 		ResourceManager:    r,
 		NamespacePrefix:    namespacePrefix,
 	}
@@ -47,19 +117,17 @@ type RedisResourceManagerMetrics struct {
 	AllocatedTokensGauge prometheus.Gauge
 }
 
-func (r *RedisResourceManager) getNamespacedRedisSetKey(namespace resourcemanager_interface.ResourceNamespace) string {
-	return fmt.Sprintf("%s:%s", r.redisSetKeyPrefix, namespace)
-}
+
 
 func (rrmm RedisResourceManagerMetrics) GetScope() promutils.Scope {
 	return rrmm.Scope
 }
 
-func (r *RedisResourceManager) getResource(namespace resourcemanager_interface.ResourceNamespace) *Resource {
+func (r *RedisResourceManager) getResource(namespace pluginCore.ResourceNamespace) *Resource {
 	return r.namespacedResourcesMap[namespace]
 }
 
-func (r *RedisResourceManager) pollRedis(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace) {
+func (r *RedisResourceManager) pollRedis(ctx context.Context, namespace pluginCore.ResourceNamespace) {
 	namespacedRedisSetKey := r.getNamespacedRedisSetKey(namespace)
 	stopWatch := r.getResource(namespace).metrics.(*RedisResourceManagerMetrics).RedisSizeCheckTime.Start()
 	defer stopWatch.Stop()
@@ -108,39 +176,14 @@ func NewRedisResourceManagerMetrics(scope promutils.Scope) *RedisResourceManager
 	}
 }
 
-func (r *RedisResourceManager) RegisterResourceQuota(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace, quota int) error {
 
-	if r.client == nil {
-		err := errors.Errorf("Redis client does not exist.")
-		return err
-	}
-	config := rmConfig.GetResourceManagerConfig()
-	if quota <= 0 || quota > config.ResourceMaxQuota {
-		err := errors.Errorf("Invalid request for resource quota (<= 0 || > %v): [%v]", config.ResourceMaxQuota, quota)
-		return err
-	}
 
-	// Checking if the namespace already exists
-	// We use linear search here because this function is only called a few times
-	if _, ok := r.namespacedResourcesMap[namespace]; ok {
-		return errors.Errorf("Resource namespace already exists [%v]", namespace)
-	}
-
-	prefixedNamespace := r.getNamespacedRedisSetKey(namespace)
-	metrics := NewRedisResourceManagerMetrics(r.MetricsScope.NewSubScope(prefixedNamespace))
-
-	newResource := &Resource{
-		quota:   quota,
-		metrics: metrics,
-	}
-
-	// Add this registration to the list
-	r.namespacedResourcesMap[namespace] = newResource
-	return nil
+func (r *RedisResourceManager) getNamespacedRedisSetKey(namespace pluginCore.ResourceNamespace) string {
+	return fmt.Sprintf("%s:%s", r.redisSetKeyPrefix, namespace)
 }
 
-func (r *RedisResourceManager) AllocateResource(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace, allocationToken string) (
-	resourcemanager_interface.AllocationStatus, error) {
+func (r *RedisResourceManager) AllocateResource(ctx context.Context, namespace pluginCore.ResourceNamespace, allocationToken string) (
+	pluginCore.AllocationStatus, error) {
 
 	namespacedRedisSetKey := r.getNamespacedRedisSetKey(namespace)
 	namespacedResource := r.getResource(namespace)
@@ -148,35 +191,35 @@ func (r *RedisResourceManager) AllocateResource(ctx context.Context, namespace r
 	found, err := r.client.SIsMember(namespacedRedisSetKey, allocationToken).Result()
 	if err != nil {
 		logger.Errorf(ctx, "Error getting size of Redis set %v", err)
-		return resourcemanager_interface.AllocationUndefined, err
+		return pluginCore.AllocationUndefined, err
 	}
 	if found {
 		logger.Infof(ctx, "Already allocated [%s:%s]", namespace, allocationToken)
-		return resourcemanager_interface.AllocationStatusGranted, nil
+		return pluginCore.AllocationStatusGranted, nil
 	}
 
 	size, err := r.client.SCard(namespacedRedisSetKey).Result()
 	if err != nil {
 		logger.Errorf(ctx, "Error getting size of Redis set %v", err)
-		return resourcemanager_interface.AllocationUndefined, err
+		return pluginCore.AllocationUndefined, err
 	}
 
 	if size > int64(namespacedResource.quota) {
 		logger.Infof(ctx, "Too many allocations (total [%d]), rejecting [%s:%s]", size, namespace, allocationToken)
-		return resourcemanager_interface.AllocationStatusExhausted, nil
+		return pluginCore.AllocationStatusExhausted, nil
 	}
 
 	countAdded, err := r.client.SAdd(namespacedRedisSetKey, allocationToken).Result()
 	if err != nil {
 		logger.Errorf(ctx, "Error adding token [%s:%s] %v", namespace, allocationToken, err)
-		return resourcemanager_interface.AllocationUndefined, err
+		return pluginCore.AllocationUndefined, err
 	}
 	logger.Infof(ctx, "Added %d to the Redis Qubole set", countAdded)
 
-	return resourcemanager_interface.AllocationStatusGranted, err
+	return pluginCore.AllocationStatusGranted, err
 }
 
-func (r *RedisResourceManager) ReleaseResource(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace, allocationToken string) error {
+func (r *RedisResourceManager) ReleaseResource(ctx context.Context, namespace pluginCore.ResourceNamespace, allocationToken string) error {
 	namespacedRedisSetKey := r.getNamespacedRedisSetKey(namespace)
 	countRemoved, err := r.client.SRem(namespacedRedisSetKey, allocationToken).Result()
 	if err != nil {
@@ -188,14 +231,4 @@ func (r *RedisResourceManager) ReleaseResource(ctx context.Context, namespace re
 	return nil
 }
 
-func NewRedisResourceManager(ctx context.Context, client *redis.Client, scope promutils.Scope) (*RedisResourceManager, error) {
 
-	rm := &RedisResourceManager{
-		client:                 client,
-		MetricsScope:           scope,
-		namespacedResourcesMap: map[resourcemanager_interface.ResourceNamespace]*Resource{},
-		redisSetKeyPrefix:      RedisSetKeyPrefix,
-	}
-	rm.startMetricsGathering(ctx)
-	return rm, nil
-}

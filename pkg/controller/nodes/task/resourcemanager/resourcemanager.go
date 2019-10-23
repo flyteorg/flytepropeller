@@ -2,18 +2,11 @@ package resourcemanager
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/resourcemanager_interface"
+	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/promutils"
 )
 
 //go:generate mockery -name ResourceManager -case=underscore
-
-type Type string
-
-const (
-	TypeNoop  Type = "noop"
-	TypeRedis Type = "redis"
-)
 
 
 
@@ -27,35 +20,49 @@ type Metrics interface {
 	GetScope() promutils.Scope
 }
 
+/*
 type Factory interface {
-	GetNegotiator(namespacePrefix resourcemanager_interface.ResourceNamespace) resourcemanager_interface.ResourceNegotiator
-	GetTaskResourceManager(namespacePrefix resourcemanager_interface.ResourceNamespace) resourcemanager_interface.ResourceManager
+	ResourceRegistrar(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceNegotiator
+	GetTaskResourceManager(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceManager
+}
+
+*/
+
+type Builder interface {
+	RegisterResourceQuota(ctx context.Context, namespace pluginCore.ResourceNamespace, quota int) error
+	BuildResourceManager(ctx context.Context) (pluginCore.ResourceManager, error)
 }
 
 type Proxy struct {
-	resourcemanager_interface.ResourceNegotiator
-	resourcemanager_interface.ResourceManager
-	NamespacePrefix resourcemanager_interface.ResourceNamespace
+	pluginCore.ResourceManager
+	NamespacePrefix pluginCore.ResourceNamespace
 }
 
-func (p Proxy) getPrefixedNamespace(namespace resourcemanager_interface.ResourceNamespace) resourcemanager_interface.ResourceNamespace {
+func (p Proxy) getPrefixedNamespace(namespace pluginCore.ResourceNamespace) pluginCore.ResourceNamespace {
 	return p.NamespacePrefix.CreateSubNamespace(namespace)
 }
 
-func (p Proxy) RegisterResourceQuota(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace,
-	quota int) error {
-	return p.ResourceNegotiator.RegisterResourceQuota(ctx, p.getPrefixedNamespace(namespace), quota)
-}
-
-func (p Proxy) AllocateResource(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace,
-	allocationToken string) (resourcemanager_interface.AllocationStatus, error) {
+func (p Proxy) AllocateResource(ctx context.Context, namespace pluginCore.ResourceNamespace,
+	allocationToken string) (pluginCore.AllocationStatus, error) {
 	status, err := p.ResourceManager.AllocateResource(ctx, p.getPrefixedNamespace(namespace), allocationToken)
 	return status, err
 }
 
-func (p Proxy) ReleaseResource(ctx context.Context, namespace resourcemanager_interface.ResourceNamespace,
+func (p Proxy) ReleaseResource(ctx context.Context, namespace pluginCore.ResourceNamespace,
 	allocationToken string) error {
 	err := p.ResourceManager.ReleaseResource(ctx, p.getPrefixedNamespace(namespace), allocationToken)
 	return err
 }
 
+type ResourceRegistrarProxy struct {
+	pluginCore.ResourceRegistrar
+	NamespacePrefix pluginCore.ResourceNamespace
+}
+
+func (p ResourceRegistrarProxy) getPrefixedNamespace(namespace pluginCore.ResourceNamespace) pluginCore.ResourceNamespace {
+	return p.NamespacePrefix.CreateSubNamespace(namespace)
+}
+
+func (p ResourceRegistrarProxy) RegisterResourceQuota(ctx context.Context, namespace pluginCore.ResourceNamespace, quota int) error {
+	return p.ResourceRegistrar.RegisterResourceQuota(ctx, p.getPrefixedNamespace(namespace), quota)
+}

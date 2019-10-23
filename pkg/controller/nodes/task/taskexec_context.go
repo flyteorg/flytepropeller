@@ -3,7 +3,6 @@ package task
 import (
 	"bytes"
 	"context"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager_interface"
 	"strconv"
 
 	"github.com/lyft/flytestdlib/logger"
@@ -56,7 +55,7 @@ func (t taskExecutionMetadata) GetOverrides() pluginCore.TaskOverrides {
 type taskExecutionContext struct {
 	handler.NodeExecutionContext
 	tm  taskExecutionMetadata
-	rm  resourcemanager_interface.ResourceManager
+	rm  pluginCore.ResourceManager
 	psm *pluginStateManager
 	tr  handler.TaskReader
 	ow  *ioutils.BufferedOutputWriter
@@ -85,7 +84,7 @@ func (t taskExecutionContext) EventsRecorder() pluginCore.EventsRecorder {
 	return t.ber
 }
 
-func (t taskExecutionContext) ResourceManager() resourcemanager_interface.ResourceManager {
+func (t taskExecutionContext) ResourceManager() pluginCore.ResourceManager {
 	return t.rm
 }
 
@@ -135,7 +134,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to initialize plugin state manager")
 	}
 
-	namespacePrefix := resourcemanager_interface.ResourceNamespace(pluginID)
+	namespacePrefix := pluginCore.ResourceNamespace(pluginID)
 
 	return &taskExecutionContext{
 		NodeExecutionContext: nCtx,
@@ -144,10 +143,8 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
 			o:                     nCtx.Node(),
 		},
-		// TODO add resource manager
 		rm:  resourcemanager.Proxy{
-			ResourceNegotiator: t.resourceManagerFactory.GetNegotiator(namespacePrefix),
-			ResourceManager:    t.resourceManagerFactory.GetTaskResourceManager(namespacePrefix),
+			ResourceManager: 	t.resourceManager,
 			NamespacePrefix:    namespacePrefix,
 		},
 		psm: psm,

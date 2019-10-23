@@ -57,7 +57,7 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:2daae90a48ed67b02699168fa553c05ce9e0349c08267be41c11fcf685db819d"
+  digest = "1:7dc07318e51b2240c6a87416de0c9b2f46468a5e35c3ca679a2de72042a8d13f"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -104,8 +104,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "4b77f7c2f7303e8c757947ae8aff6a33dce7b8d1"
-  version = "v1.25.16"
+  revision = "ee35eb7f829b84db98fd3c404bf9b5407e3cb653"
+  version = "v1.25.17"
 
 [[projects]]
   branch = "master"
@@ -460,7 +460,7 @@
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:91c43f00460dfcaa51b00b26bbe340a95d1261482b58f353a9d81a9a6fa37437"
+  digest = "1:873b1c21ed76b88e82d9d9ab801a2a620b96a63d2d91da7f520efaf4846f1c52"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/aws",
@@ -479,7 +479,6 @@
     "go/tasks/pluginmachinery/ioutils",
     "go/tasks/pluginmachinery/k8s",
     "go/tasks/pluginmachinery/k8s/mocks",
-    "go/tasks/pluginmachinery/resourcemanager_interface",
     "go/tasks/pluginmachinery/utils",
     "go/tasks/pluginmachinery/workqueue",
     "go/tasks/plugins/array",
@@ -496,10 +495,10 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "4b90207f75f3605be52025853bc301ad87f19152"
+  revision = "4fadfbd8b47ac85daa8e928a7a604eae1496a5fd"
 
 [[projects]]
-  digest = "1:32721789007b473f774ccf29e4309440562e02ce2dca8ed3e39924a8c7cdb7a7"
+  digest = "1:b45fc9c938f69e7cdf6988e60a4d7b45ffbc87e82b7796050527edd508ab52c9"
   name = "github.com/lyft/flytestdlib"
   packages = [
     "atomic",
@@ -522,8 +521,8 @@
     "yamlutils",
   ]
   pruneopts = ""
-  revision = "c25aca24d0a71894e8061815e266f989118f232c"
-  version = "v0.2.25"
+  revision = "f7e4d7a4e5c1ad03dfcedd1026f6ada36b9d3b88"
+  version = "v0.2.26"
 
 [[projects]]
   branch = "master"
@@ -882,14 +881,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f7859b24c4f7a2c384c3d6ef5cdd15641e26a22b3649a52b0ac08d35e518a0de"
+  digest = "1:19c0f90f7eff54a72fb07c6b783bbdd92a89d58966d891d7382583a00b98d719"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "3e7259c5e7c2076bb2728047a3df75adb1bad8e5"
+  revision = "742c48ecaeb7c624c475e02f3eb0827ebb4970d4"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -926,7 +925,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:db5686867c3ad3b388311eb0be143c62ecbc7e0693092ea4ace41ccf61f70474"
+  digest = "1:754b77ebbce2731570824c058a3835c1e2d18012fbac2681eb50092c97c30a73"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -944,11 +943,11 @@
     "internal/span",
   ]
   pruneopts = ""
-  revision = "d2fffb4b843bb077b595d8c48cbe19284635caff"
+  revision = "0bbdf54effa2d03a4c877d09c98ecf9f5bcfb964"
 
 [[projects]]
   branch = "master"
-  digest = "1:8f4d4a0df27e14fa815f83668e2e099c284b03340a6ab84157e3093cd55248e3"
+  digest = "1:bc2feb078ff74c133ac94f8206f24b3336aa7fe4230b7c5458e6894d88dc2912"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -962,7 +961,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = ""
-  revision = "bf72a15fd9e96e2c95d23b53ce419201a6b45f43"
+  revision = "d63bd5fbc004a083dc85ef622366115e8088da62"
 
 [[projects]]
   digest = "1:c4404231035fad619a12f82ae3f0f8f9edc1cc7f34e7edad7a28ccac5336cc96"
@@ -1372,7 +1371,6 @@
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s/mocks",
-    "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/resourcemanager_interface",
     "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils",
     "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch",
     "github.com/lyft/flyteplugins/go/tasks/plugins/array/k8s",

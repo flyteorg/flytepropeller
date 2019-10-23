@@ -12,15 +12,14 @@ const (
 	redisResourceManagerPrometheusScope = propellerPrometheusScope + ":" + "redisresourcemanager"
 )
 
-
-func GetResourceManagerByType(ctx context.Context, managerType Type, scope promutils.Scope) (
-	Factory, error) {
+func GetResourceManagerBuilderByType(ctx context.Context, managerType rmConfig.Type, scope promutils.Scope) (
+	Builder, error) {
 
 	switch managerType {
-	case TypeNoop:
+	case rmConfig.TypeNoop:
 		logger.Infof(ctx, "Using the NOOP resource manager")
-		return &NoopResourceManager{}, nil
-	case TypeRedis:
+		return &NoopResourceManagerBuilder{}, nil
+	case rmConfig.TypeRedis:
 		logger.Infof(ctx, "Using Redis based resource manager")
 		config := rmConfig.GetResourceManagerConfig()
 		redisClient, err := NewRedisClient(ctx, config.RedisHostPath, config.RedisHostKey, config.RedisMaxRetries)
@@ -28,8 +27,9 @@ func GetResourceManagerByType(ctx context.Context, managerType Type, scope promu
 			logger.Errorf(ctx, "Unable to initialize a redis client for the resource manager: [%v]", err)
 			return nil, err
 		}
-		return NewRedisResourceManager(ctx, redisClient, scope.NewSubScope(redisResourceManagerPrometheusScope))
+		// TODO: this has to be replaced by NEwRedisResourceNegotiator
+		return NewRedisResourceManagerBuilder(ctx, redisClient, scope.NewSubScope(redisResourceManagerPrometheusScope))
 	}
 	logger.Infof(ctx, "Using the NOOP resource manager by default")
-	return &NoopResourceManager{}, nil
+	return &NoopResourceManagerBuilder{}, nil
 }

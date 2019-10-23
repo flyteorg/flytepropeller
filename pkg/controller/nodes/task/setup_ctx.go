@@ -2,7 +2,6 @@ package task
 
 import (
 	"context"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager_interface"
 
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/promutils"
@@ -15,11 +14,6 @@ type setupContext struct {
 	handler.SetupContext
 	kubeClient             pluginCore.KubeClient
 	secretManager          pluginCore.SecretManager
-	resourceNegotiator 	   resourcemanager_interface.ResourceNegotiator
-}
-
-func  (s setupContext) GetNegotiator() resourcemanager_interface.ResourceNegotiator {
-	return s.resourceNegotiator
 }
 
 func (s setupContext) SecretManager() pluginCore.SecretManager {
@@ -42,9 +36,27 @@ func (s setupContext) EnqueueOwner() pluginCore.EnqueueOwner {
 }
 
 func (t *Handler) newSetupContext(ctx context.Context, sCtx handler.SetupContext) (*setupContext, error) {
+
 	return &setupContext{
 		SetupContext:  sCtx,
 		kubeClient:    t.kubeClient,
 		secretManager: t.secretManager,
 	}, nil
+}
+
+
+type nameSpacedSetupCtx struct {
+	*setupContext
+	rn pluginCore.ResourceRegistrar
+}
+
+func (n nameSpacedSetupCtx) ResourceRegistrar() pluginCore.ResourceRegistrar{
+	return n.rn
+}
+
+func newNameSpacedSetupCtx(sCtx *setupContext, rn pluginCore.ResourceRegistrar) nameSpacedSetupCtx {
+	return nameSpacedSetupCtx{
+		setupContext: sCtx,
+		rn:           rn,
+	}
 }

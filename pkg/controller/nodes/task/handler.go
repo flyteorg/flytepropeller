@@ -3,7 +3,6 @@ package task
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager_interface"
 	"runtime/debug"
 	"time"
 
@@ -133,7 +132,7 @@ type Handler struct {
 	pluginRegistry PluginRegistryIface
 	kubeClient     pluginCore.KubeClient
 	secretManager  pluginCore.SecretManager
-	resourceManagerFactory resourcemanager.Factory
+	resourceManager pluginCore.ResourceManager
 	barrierCache   *barrier
 	cfg            *config.Config
 }
@@ -158,6 +157,16 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		return err
 	}
 
+	// Create a new base resource negotiator
+	resourceManagerConfig := rmConfig.GetResourceManagerConfig()
+	// TODO: check with Ketan / Haytham if it is OK to use the SetupContext's scope here
+	newResourceManagerBuilder, err := resourcemanager.GetResourceManagerBuilderByType(ctx, resourceManagerConfig.ResourceManagerType, tSCtx.MetricsScope())
+	if err != nil {
+		return err
+	}
+
+	// Create the resource negotiator here
+	// and then convert it to proxies later and pass them to plugins
 	enabledPlugins, err := WranglePluginsAndGenerateFinalList(ctx, &t.cfg.TaskPlugins, t.pluginRegistry)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to finalize enabled plugins. Err: %s", err)
@@ -165,9 +174,17 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	}
 
 	for _, p := range enabledPlugins {
-		tSCtx.resourceNegotiator = t.resourceManagerFactory.GetNegotiator(resourcemanager_interface.ResourceNamespace(p.ID))
+
+		// rn = create a new resource negotiator proxy for each
+		sCtxFinal := newNameSpacedSetupCtx(tSCtx, resourcemanager.ResourceRegistrarProxy{
+			ResourceRegistrar: newResourceManagerBuilder,
+			NamespacePrefix:    pluginCore.ResourceNamespace(p.ID),
+		})
+		// sCtxFinal := newNSSetupCtx(tSCtx)
+		// tSCtx.resourceNegotiator = tSCtx.ResourceRegistrar().ResourceRegistrar(pluginCore.ResourceNamespace(p.ID))
 		logger.Infof(ctx, "Loading Plugin [%s] ENABLED", p.ID)
-		cp, err := p.LoadPlugin(ctx, tSCtx)
+		// cp, err := p.LoadPlugin(ctx, tSCtx)
+		cp, err := p.LoadPlugin(ctx, sCtxFinal)
 		if err != nil {
 			return regErrors.Wrapf(err, "failed to load plugin - %s", p.ID)
 		}
@@ -181,6 +198,14 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 			}
 		}
 	}
+
+	rm, err := newResourceManagerBuilder.BuildResourceManager(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to build a resource manager")
+		return err
+	}
+	t.resourceManager = rm
+
 	return nil
 }
 
@@ -530,9 +555,6 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		return nil, err
 	}
 
-	resourceManagerConfig := rmConfig.GetResourceManagerConfig()
-	newResourceManagerFactory, err := resourcemanager.GetResourceManagerByType(ctx, resourceManagerConfig.ResourceManagerType, scope)
-
 	if err = async.Start(ctx); err != nil {
 		return nil, err
 	}
@@ -553,7 +575,7 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		kubeClient:    kubeClient,
 		catalog:       client,
 		asyncCatalog:  async,
-		resourceManagerFactory: newResourceManagerFactory,
+		resourceManager: nil,
 		secretManager: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
 		barrierCache:  NewLRUBarrier(ctx, cfg.BarrierConfig),
 		cfg:           cfg,

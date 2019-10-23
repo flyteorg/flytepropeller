@@ -2,16 +2,23 @@ package config
 
 import (
 	"github.com/lyft/flytepropeller/pkg/controller/config"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 )
 
 //go:generate pflags Config --default-var=defaultConfig
 
 const resourceManagerConfigSectionKey = "resourcemanager"
 
+type Type string
+
+const (
+	TypeNoop  Type = "noop"
+	TypeRedis Type = "redis"
+)
+
+
 var (
 	defaultConfig = Config{
-		ResourceManagerType:     resourcemanager.TypeNoop,
+		ResourceManagerType:     TypeNoop,
 		ResourceMaxQuota:        1000,
 	}
 
@@ -19,7 +26,7 @@ var (
 )
 
 type Config struct {
-	ResourceManagerType    resourcemanager.Type `json:"resourceManagerType" pflag:"noop,Which resource manager to use"`
+	ResourceManagerType    Type   				`json:"resourceManagerType" pflag:"noop,Which resource manager to use"`
 	ResourceMaxQuota       int                  `json:"resourceQuota" pflag:",Global limit for concurrent Qubole queries"`
 	RedisHostPath          string               `json:"redisHostPath" pflag:",Redis host location"`
 	RedisHostKey           string               `json:"redisHostKey" pflag:",Key for local Redis access"`
