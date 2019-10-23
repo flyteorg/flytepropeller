@@ -542,7 +542,7 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		catalog:       client,
 		asyncCatalog:  async,
 		secretManager: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
-		barrierCache:  NewLRUBarrier(ctx, cfg.BarrierConfig),
+		barrierCache:  newLRUBarrier(ctx, cfg.BarrierConfig),
 		cfg:           cfg,
 	}, nil
 }

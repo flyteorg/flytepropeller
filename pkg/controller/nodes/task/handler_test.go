@@ -549,7 +549,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 					"test": fakeplugins.NewPhaseBasedPlugin(),
 				},
 				catalog: c,
-				barrierCache: NewLRUBarrier(context.TODO(), config.BarrierConfig{
+				barrierCache: newLRUBarrier(context.TODO(), config.BarrierConfig{
 					Enabled: false,
 				}),
 			}
@@ -1180,8 +1180,7 @@ func Test_task_Abort(t *testing.T) {
 	}
 }
 
-func
-Test_task_Finalize(t *testing.T) {
+func Test_task_Finalize(t *testing.T) {
 
 	wfExecID := &core.WorkflowExecutionIdentifier{
 		Project: "project",
