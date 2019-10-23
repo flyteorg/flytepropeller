@@ -12,8 +12,8 @@ import (
 
 type setupContext struct {
 	handler.SetupContext
-	kubeClient             pluginCore.KubeClient
-	secretManager          pluginCore.SecretManager
+	kubeClient    pluginCore.KubeClient
+	secretManager pluginCore.SecretManager
 }
 
 func (s setupContext) SecretManager() pluginCore.SecretManager {
@@ -44,13 +44,12 @@ func (t *Handler) newSetupContext(ctx context.Context, sCtx handler.SetupContext
 	}, nil
 }
 
-
 type nameSpacedSetupCtx struct {
 	*setupContext
 	rn pluginCore.ResourceRegistrar
 }
 
-func (n nameSpacedSetupCtx) ResourceRegistrar() pluginCore.ResourceRegistrar{
+func (n nameSpacedSetupCtx) ResourceRegistrar() pluginCore.ResourceRegistrar {
 	return n.rn
 }
 

@@ -27,7 +27,6 @@ func GetResourceManagerBuilderByType(ctx context.Context, managerType rmConfig.T
 			logger.Errorf(ctx, "Unable to initialize a redis client for the resource manager: [%v]", err)
 			return nil, err
 		}
-		// TODO: this has to be replaced by NEwRedisResourceNegotiator
 		return NewRedisResourceManagerBuilder(ctx, redisClient, scope.NewSubScope(redisResourceManagerPrometheusScope))
 	}
 	logger.Infof(ctx, "Using the NOOP resource manager by default")

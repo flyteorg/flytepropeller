@@ -44,6 +44,7 @@ type metrics struct {
 	pluginExecutionLatency labeled.StopWatch
 
 	// TODO We should have a metric to capture custom state size
+	scope promutils.Scope
 }
 
 type pluginRequestedTransition struct {
@@ -125,17 +126,17 @@ type PluginRegistryIface interface {
 }
 
 type Handler struct {
-	catalog        catalog.Client
-	asyncCatalog   catalog.AsyncClient
-	plugins        map[pluginCore.TaskType]pluginCore.Plugin
-	defaultPlugin  pluginCore.Plugin
-	metrics        *metrics
-	pluginRegistry PluginRegistryIface
-	kubeClient     pluginCore.KubeClient
-	secretManager  pluginCore.SecretManager
+	catalog         catalog.Client
+	asyncCatalog    catalog.AsyncClient
+	plugins         map[pluginCore.TaskType]pluginCore.Plugin
+	defaultPlugin   pluginCore.Plugin
+	metrics         *metrics
+	pluginRegistry  PluginRegistryIface
+	kubeClient      pluginCore.KubeClient
+	secretManager   pluginCore.SecretManager
 	resourceManager pluginCore.ResourceManager
-	barrierCache   *barrier
-	cfg            *config.Config
+	barrierCache    *barrier
+	cfg             *config.Config
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -160,8 +161,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 
 	// Create a new base resource negotiator
 	resourceManagerConfig := rmConfig.GetResourceManagerConfig()
-	// TODO: check with Ketan / Haytham if it is OK to use the SetupContext's scope here
-	newResourceManagerBuilder, err := resourcemanager.GetResourceManagerBuilderByType(ctx, resourceManagerConfig.ResourceManagerType, tSCtx.MetricsScope())
+	newResourceManagerBuilder, err := resourcemanager.GetResourceManagerBuilderByType(ctx, resourceManagerConfig.ResourceManagerType, t.metrics.scope)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		// rn = create a new resource negotiator proxy for each plugin
 		sCtxFinal := newNameSpacedSetupCtx(tSCtx, resourcemanager.ResourceRegistrarProxy{
 			ResourceRegistrar: newResourceManagerBuilder,
-			NamespacePrefix:    pluginCore.ResourceNamespace(p.ID),
+			NamespacePrefix:   pluginCore.ResourceNamespace(p.ID),
 		})
 		// sCtxFinal := newNSSetupCtx(tSCtx)
 		// tSCtx.resourceNegotiator = tSCtx.ResourceRegistrar().ResourceRegistrar(pluginCore.ResourceNamespace(p.ID))
@@ -571,13 +571,14 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 			catalogPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			catalogGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
 			pluginExecutionLatency: labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
+			scope:                  scope,
 		},
-		kubeClient:    kubeClient,
-		catalog:       client,
-		asyncCatalog:  async,
+		kubeClient:      kubeClient,
+		catalog:         client,
+		asyncCatalog:    async,
 		resourceManager: nil,
-		secretManager: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
-		barrierCache:  NewLRUBarrier(ctx, cfg.BarrierConfig),
-		cfg:           cfg,
+		secretManager:   secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
+		barrierCache:    NewLRUBarrier(ctx, cfg.BarrierConfig),
+		cfg:             cfg,
 	}, nil
 }

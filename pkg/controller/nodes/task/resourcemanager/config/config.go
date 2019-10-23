@@ -15,22 +15,21 @@ const (
 	TypeRedis Type = "redis"
 )
 
-
 var (
 	defaultConfig = Config{
-		ResourceManagerType:     TypeNoop,
-		ResourceMaxQuota:        1000,
+		ResourceManagerType: TypeNoop,
+		ResourceMaxQuota:    1000,
 	}
 
 	resourceManagerConfigSection = config.MustRegisterSubSection(resourceManagerConfigSectionKey, &defaultConfig)
 )
 
 type Config struct {
-	ResourceManagerType    Type   				`json:"resourceManagerType" pflag:"noop,Which resource manager to use"`
-	ResourceMaxQuota       int                  `json:"resourceQuota" pflag:",Global limit for concurrent Qubole queries"`
-	RedisHostPath          string               `json:"redisHostPath" pflag:",Redis host location"`
-	RedisHostKey           string               `json:"redisHostKey" pflag:",Key for local Redis access"`
-	RedisMaxRetries        int                  `json:"redisMaxRetries" pflag:",See Redis client options for more info"`
+	ResourceManagerType Type   `json:"resourceManagerType" pflag:"noop,Which resource manager to use"`
+	ResourceMaxQuota    int    `json:"resourceQuota" pflag:",Global limit for concurrent Qubole queries"`
+	RedisHostPath       string `json:"redisHostPath" pflag:",Redis host location"`
+	RedisHostKey        string `json:"redisHostKey" pflag:",Key for local Redis access"`
+	RedisMaxRetries     int    `json:"redisMaxRetries" pflag:",See Redis client options for more info"`
 }
 
 // Retrieves the current config value or default.

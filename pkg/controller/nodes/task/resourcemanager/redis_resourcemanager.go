@@ -19,17 +19,17 @@ import (
 const RedisSetKeyPrefix = "resourcemanager"
 
 type RedisResourceManagerBuilder struct {
-	client                *redis.Client
-	MetricsScope		  promutils.Scope
-	redisSetKeyPrefix     string
+	client            *redis.Client
+	MetricsScope      promutils.Scope
+	redisSetKeyPrefix string
 	// namespacedResourcesQuotaMap map[pluginCore.ResourceNamespace]Resource
 	namespacedResourcesQuotaMap map[pluginCore.ResourceNamespace]int
 }
 
 func (r *RedisResourceManagerBuilder) ResourceRegistrar(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceRegistrar {
 	return ResourceRegistrarProxy{
-		ResourceRegistrar:  r,
-		NamespacePrefix:    namespacePrefix,
+		ResourceRegistrar: r,
+		NamespacePrefix:   namespacePrefix,
 	}
 }
 
@@ -51,10 +51,6 @@ func (r *RedisResourceManagerBuilder) RegisterResourceQuota(ctx context.Context,
 		return errors.Errorf("Resource namespace already exists [%v]", namespace)
 	}
 
-	// TODO: add this back. Do this when building the manager
-
-
-
 	// Add this registration to the list
 	r.namespacedResourcesQuotaMap[namespace] = quota
 	return nil
@@ -64,7 +60,7 @@ func (r *RedisResourceManagerBuilder) BuildResourceManager(ctx context.Context) 
 	if r.client == nil || r.redisSetKeyPrefix == "" || r.MetricsScope == nil || r.namespacedResourcesQuotaMap == nil {
 		return nil, errors.Errorf("Failed to build a redis resource manager. Missing key property(s)")
 	}
-
+	
 	rm := &RedisResourceManager{
 		client:                 r.client,
 		redisSetKeyPrefix:      r.redisSetKeyPrefix,
@@ -100,8 +96,6 @@ func NewRedisResourceManagerBuilder(ctx context.Context, client *redis.Client, s
 	return rn, nil
 }
 
-
-
 type RedisResourceManager struct {
 	client                 *redis.Client
 	redisSetKeyPrefix      string
@@ -111,8 +105,8 @@ type RedisResourceManager struct {
 
 func (r *RedisResourceManager) GetTaskResourceManager(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceManager {
 	return Proxy{
-		ResourceManager:    r,
-		NamespacePrefix:    namespacePrefix,
+		ResourceManager: r,
+		NamespacePrefix: namespacePrefix,
 	}
 }
 
@@ -121,8 +115,6 @@ type RedisResourceManagerMetrics struct {
 	RedisSizeCheckTime   promutils.StopWatch
 	AllocatedTokensGauge prometheus.Gauge
 }
-
-
 
 func (rrmm RedisResourceManagerMetrics) GetScope() promutils.Scope {
 	return rrmm.Scope
@@ -143,8 +135,6 @@ func (r *RedisResourceManager) pollRedis(ctx context.Context, namespace pluginCo
 	}
 	metrics := r.getResource(namespace).metrics.(*RedisResourceManagerMetrics)
 	metrics.AllocatedTokensGauge.Set(float64(size))
-	// g, err := metrics.AllocatedTokensGauge
-	// g.Set(float64(size))
 }
 
 func (r *RedisResourceManager) startMetricsGathering(ctx context.Context) {
@@ -180,8 +170,6 @@ func NewRedisResourceManagerMetrics(scope promutils.Scope) *RedisResourceManager
 			"The number of allocation resourceRegistryTokens currently in the Redis set"),
 	}
 }
-
-
 
 func (r *RedisResourceManager) getNamespacedRedisSetKey(namespace pluginCore.ResourceNamespace) string {
 	return fmt.Sprintf("%s:%s", r.redisSetKeyPrefix, namespace)
@@ -235,5 +223,3 @@ func (r *RedisResourceManager) ReleaseResource(ctx context.Context, namespace pl
 
 	return nil
 }
-
-
