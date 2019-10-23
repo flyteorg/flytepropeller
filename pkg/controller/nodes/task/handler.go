@@ -175,8 +175,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	}
 
 	for _, p := range enabledPlugins {
-
-		// rn = create a new resource negotiator proxy for each
+		// rn = create a new resource negotiator proxy for each plugin
 		sCtxFinal := newNameSpacedSetupCtx(tSCtx, resourcemanager.ResourceRegistrarProxy{
 			ResourceRegistrar: newResourceManagerBuilder,
 			NamespacePrefix:    pluginCore.ResourceNamespace(p.ID),

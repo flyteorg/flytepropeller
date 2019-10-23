@@ -8,8 +8,6 @@ import (
 
 //go:generate mockery -name ResourceManager -case=underscore
 
-
-
 // This struct is designed to serve as the identifier of an user of resource manager
 type Resource struct {
 	quota   int
@@ -19,14 +17,6 @@ type Resource struct {
 type Metrics interface {
 	GetScope() promutils.Scope
 }
-
-/*
-type Factory interface {
-	ResourceRegistrar(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceNegotiator
-	GetTaskResourceManager(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceManager
-}
-
-*/
 
 type Builder interface {
 	RegisterResourceQuota(ctx context.Context, namespace pluginCore.ResourceNamespace, quota int) error

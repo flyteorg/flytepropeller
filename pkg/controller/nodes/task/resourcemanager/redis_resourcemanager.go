@@ -22,7 +22,8 @@ type RedisResourceManagerBuilder struct {
 	client                *redis.Client
 	MetricsScope		  promutils.Scope
 	redisSetKeyPrefix     string
-	namespacedResourcesMap map[pluginCore.ResourceNamespace]*Resource
+	// namespacedResourcesQuotaMap map[pluginCore.ResourceNamespace]Resource
+	namespacedResourcesQuotaMap map[pluginCore.ResourceNamespace]int
 }
 
 func (r *RedisResourceManagerBuilder) ResourceRegistrar(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceRegistrar {
@@ -46,37 +47,41 @@ func (r *RedisResourceManagerBuilder) RegisterResourceQuota(ctx context.Context,
 
 	// Checking if the namespace already exists
 	// We use linear search here because this function is only called a few times
-	if _, ok := r.namespacedResourcesMap[namespace]; ok {
+	if _, ok := r.namespacedResourcesQuotaMap[namespace]; ok {
 		return errors.Errorf("Resource namespace already exists [%v]", namespace)
 	}
 
 	// TODO: add this back. Do this when building the manager
 
-	prefixedNamespace := r.getNamespacedRedisSetKey(namespace)
 
-
-	metrics := NewRedisResourceManagerMetrics(r.MetricsScope.NewSubScope(prefixedNamespace))
-
-	newResource := &Resource{
-		quota:   quota,
-		metrics: metrics,
-	}
 
 	// Add this registration to the list
-	r.namespacedResourcesMap[namespace] = newResource
+	r.namespacedResourcesQuotaMap[namespace] = quota
 	return nil
 }
 
 func (r *RedisResourceManagerBuilder) BuildResourceManager(ctx context.Context) (pluginCore.ResourceManager, error) {
-	if r.client == nil || r.redisSetKeyPrefix == "" || r.MetricsScope == nil || r.namespacedResourcesMap == nil {
+	if r.client == nil || r.redisSetKeyPrefix == "" || r.MetricsScope == nil || r.namespacedResourcesQuotaMap == nil {
 		return nil, errors.Errorf("Failed to build a redis resource manager. Missing key property(s)")
 	}
+
 	rm := &RedisResourceManager{
 		client:                 r.client,
 		redisSetKeyPrefix:      r.redisSetKeyPrefix,
 		MetricsScope:           r.MetricsScope,
-		namespacedResourcesMap: r.namespacedResourcesMap,
+		namespacedResourcesMap: map[pluginCore.ResourceNamespace]Resource{},
 	}
+
+	// building the resources and insert them into the resource manager
+	for namespace, quota := range r.namespacedResourcesQuotaMap {
+		prefixedNamespace := r.getNamespacedRedisSetKey(namespace)
+		metrics := NewRedisResourceManagerMetrics(r.MetricsScope.NewSubScope(prefixedNamespace))
+		rm.namespacedResourcesMap[namespace] = Resource{
+			quota:   quota,
+			metrics: metrics,
+		}
+	}
+
 	rm.startMetricsGathering(ctx)
 	return rm, nil
 }
@@ -87,10 +92,10 @@ func (r *RedisResourceManagerBuilder) getNamespacedRedisSetKey(namespace pluginC
 
 func NewRedisResourceManagerBuilder(ctx context.Context, client *redis.Client, scope promutils.Scope) (*RedisResourceManagerBuilder, error) {
 	rn := &RedisResourceManagerBuilder{
-		client:                 client,
-		MetricsScope:           scope,
-		redisSetKeyPrefix:      RedisSetKeyPrefix,
-		namespacedResourcesMap: map[pluginCore.ResourceNamespace]*Resource{},
+		client:                      client,
+		MetricsScope:                scope,
+		redisSetKeyPrefix:           RedisSetKeyPrefix,
+		namespacedResourcesQuotaMap: map[pluginCore.ResourceNamespace]int{},
 	}
 	return rn, nil
 }
@@ -101,7 +106,7 @@ type RedisResourceManager struct {
 	client                 *redis.Client
 	redisSetKeyPrefix      string
 	MetricsScope           promutils.Scope
-	namespacedResourcesMap map[pluginCore.ResourceNamespace]*Resource
+	namespacedResourcesMap map[pluginCore.ResourceNamespace]Resource
 }
 
 func (r *RedisResourceManager) GetTaskResourceManager(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceManager {
@@ -123,7 +128,7 @@ func (rrmm RedisResourceManagerMetrics) GetScope() promutils.Scope {
 	return rrmm.Scope
 }
 
-func (r *RedisResourceManager) getResource(namespace pluginCore.ResourceNamespace) *Resource {
+func (r *RedisResourceManager) getResource(namespace pluginCore.ResourceNamespace) Resource {
 	return r.namespacedResourcesMap[namespace]
 }
 
