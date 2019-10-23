@@ -13,7 +13,7 @@ import (
 type BarrierKey = string
 
 type PluginCallLog struct {
-	PluginTransition   *pluginRequestedTransition
+	PluginTransition *pluginRequestedTransition
 }
 
 type BarrierTransition struct {
@@ -49,7 +49,7 @@ func (b *barrier) GetPreviousBarrierTransition(ctx context.Context, k BarrierKey
 	return NoBarrierTransition
 }
 
-func NewLRUBarrier(_ context.Context, cfg config.BarrierConfig) *barrier {
+func newLRUBarrier(_ context.Context, cfg config.BarrierConfig) *barrier {
 	b := &barrier{
 		barrierEnabled: cfg.Enabled,
 	}
