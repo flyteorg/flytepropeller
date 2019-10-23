@@ -60,7 +60,7 @@ func (r *RedisResourceManagerBuilder) BuildResourceManager(ctx context.Context) 
 	if r.client == nil || r.redisSetKeyPrefix == "" || r.MetricsScope == nil || r.namespacedResourcesQuotaMap == nil {
 		return nil, errors.Errorf("Failed to build a redis resource manager. Missing key property(s)")
 	}
-	
+
 	rm := &RedisResourceManager{
 		client:                 r.client,
 		redisSetKeyPrefix:      r.redisSetKeyPrefix,

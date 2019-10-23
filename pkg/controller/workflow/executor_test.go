@@ -12,12 +12,11 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
-	"github.com/lyft/flytestdlib/logger"
-	"github.com/lyft/modelbuilderadmin/workflow/sets"
-
 	mocks2 "github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/fakeplugins"
+	"github.com/lyft/flytestdlib/logger"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	eventsErr "github.com/lyft/flyteidl/clients/go/events/errors"
 
