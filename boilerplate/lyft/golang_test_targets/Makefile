@@ -7,7 +7,9 @@ DEP_SHA=1f7c19e5f52f49ffb9f956f64c010be14683468b
 
 .PHONY: lint
 lint: #lints the package for common code smells
-	which golangci-lint || curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b $$GOPATH/bin v1.16.0
+#	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| bash -s -- -b $$GOPATH/bin v1.21.0
+#	which golangci-lint || curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b $$GOPATH/bin v1.16.0
+	which golangci-lint || curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b $$GOPATH/bin v1.21.0
 	golangci-lint run --exclude deprecated
 
 # If code is failing goimports linter, this will fix.
