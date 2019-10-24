@@ -40,7 +40,7 @@ var arrayFlyteKitVersion = semver.MustParse("0.2.3")
 
 type TaskNodeHandler interface {
 	handler.Node
-	ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReader, r io.OutputReader, outputCommitter io.OutputWriter,
+	ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader, r io.OutputReader, outputCommitter io.OutputWriter,
 		tr pluginCore.TaskReader, m catalog.Metadata) (*io.ExecutionError, error)
 }
 
@@ -91,6 +91,7 @@ func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevSt
 			return trns.WithInfo(handler.PhaseInfoRunning(trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}, nil
 		}
 	}
+
 	logger.Infof(ctx, "regular node detected, (no future file found)")
 	return trns, prevState, nil
 }
@@ -111,12 +112,14 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 		outputPaths := ioutils.NewRemoteFileOutputPaths(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetDataDir())
 		execID := task.GetTaskExecutionIdentifier(nCtx)
 		outputReader := ioutils.NewRemoteFileOutputReader(ctx, nCtx.DataStore(), outputPaths, nCtx.MaxDatasetSizeBytes())
-		ee, err := d.TaskNodeHandler.ValidateOutputAndCacheAdd(ctx, nCtx.InputReader(), outputReader, nil, nCtx.TaskReader(), catalog.Metadata{
+		ee, err := d.TaskNodeHandler.ValidateOutputAndCacheAdd(ctx, nCtx.NodeID(), nCtx.InputReader(), outputReader, nil, nCtx.TaskReader(), catalog.Metadata{
 			TaskExecutionIdentifier: execID,
 		})
+
 		if err != nil {
 			return handler.UnknownTransition, err
 		}
+
 		if ee != nil {
 			if ee.IsRecoverable {
 				return trns.WithInfo(handler.PhaseInfoRetryableFailureErr(ee.ExecutionError, trns.Info().GetInfo())), nil
@@ -146,9 +149,11 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 			return trns, err
 		}
 	}
+
 	if err := nCtx.NodeStateWriter().PutDynamicNodeState(newState); err != nil {
 		return handler.UnknownTransition, err
 	}
+
 	return trns, nil
 }
 
