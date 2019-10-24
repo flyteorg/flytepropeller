@@ -89,6 +89,8 @@ func init() {
 		"config file (default is $HOME/config.yaml)")
 
 	configAccessor.InitializePflags(rootCmd.PersistentFlags())
+
+	rootCmd.AddCommand(viper.GetConfigCommand())
 }
 
 func initConfig(_ *cobra.Command, _ []string) error {
