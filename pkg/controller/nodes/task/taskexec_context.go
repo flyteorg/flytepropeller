@@ -143,9 +143,9 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
 			o:                     nCtx.Node(),
 		},
-		rm:  resourcemanager.Proxy{
-			ResourceManager: 	t.resourceManager,
-			NamespacePrefix:    namespacePrefix,
+		rm: resourcemanager.Proxy{
+			ResourceManager: t.resourceManager,
+			NamespacePrefix: namespacePrefix,
 		},
 		psm: psm,
 		tr:  nCtx.TaskReader(),

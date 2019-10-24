@@ -3,6 +3,8 @@ package resourcemanager
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/go-redis/redis"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	rmConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
@@ -11,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"time"
 )
 
 // This is the key that will point to the Redis Set.

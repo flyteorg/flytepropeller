@@ -1,9 +1,10 @@
 package resourcemanager
 
 import (
-"context"
-"github.com/go-redis/redis"
-"github.com/lyft/flytestdlib/logger"
+	"context"
+
+	"github.com/go-redis/redis"
+	"github.com/lyft/flytestdlib/logger"
 )
 
 func NewRedisClient(ctx context.Context, host string, key string, maxRetries int) (*redis.Client, error) {

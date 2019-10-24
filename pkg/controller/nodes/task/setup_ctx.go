@@ -1,8 +1,6 @@
 package task
 
 import (
-	"context"
-
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/promutils"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,13 +33,13 @@ func (s setupContext) EnqueueOwner() pluginCore.EnqueueOwner {
 	}
 }
 
-func (t *Handler) newSetupContext(ctx context.Context, sCtx handler.SetupContext) (*setupContext, error) {
+func (t *Handler) newSetupContext(sCtx handler.SetupContext) *setupContext {
 
 	return &setupContext{
 		SetupContext:  sCtx,
 		kubeClient:    t.kubeClient,
 		secretManager: t.secretManager,
-	}, nil
+	}
 }
 
 type nameSpacedSetupCtx struct {

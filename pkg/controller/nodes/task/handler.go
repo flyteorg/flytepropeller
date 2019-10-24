@@ -154,10 +154,7 @@ func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
 }
 
 func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
-	tSCtx, err := t.newSetupContext(ctx, sCtx)
-	if err != nil {
-		return err
-	}
+	tSCtx := t.newSetupContext(sCtx)
 
 	// Create a new base resource negotiator
 	resourceManagerConfig := rmConfig.GetResourceManagerConfig()

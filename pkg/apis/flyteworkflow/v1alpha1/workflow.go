@@ -32,7 +32,7 @@ type FlyteWorkflow struct {
 	// +optional
 	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
 	// Specifies the time when the workflow has been accepted into the system.
-	AcceptedAt *metav1.Time `json:"acceptedAt,omitEmpty"`
+	AcceptedAt *metav1.Time `json:"acceptedAt,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run this pod.
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
 	// +optional
