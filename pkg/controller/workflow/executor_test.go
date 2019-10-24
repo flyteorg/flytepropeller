@@ -16,11 +16,10 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/lyft/flytestdlib/logger"
 
+	eventsErr "github.com/lyft/flyteidl/clients/go/events/errors"
 	mocks2 "github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/fakeplugins"
-
-	eventsErr "github.com/lyft/flyteidl/clients/go/events/errors"
 
 	wfErrors "github.com/lyft/flytepropeller/pkg/controller/workflow/errors"
 
