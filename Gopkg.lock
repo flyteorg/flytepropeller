@@ -460,7 +460,7 @@
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:d5e047fcfc13e1be9f33a8bd646d499cd134af998f0338c59429a505015357ce"
+  digest = "1:c4e5a903875adb4445bdef97514c7e2af636e162ac00b9358bad1acfc5b2f23f"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/aws",
@@ -495,7 +495,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "a9f2b8f33172aa8fa42e79e6e9a1dfe266cd4534"
+  revision = "f050081c4511e7bb20cf7529a04164f3eb32d6fb"
 
 [[projects]]
   digest = "1:7fee6ae151d081a92d58a53099adcfccf89e424aef03eb20531ae0285da8613d"
@@ -873,14 +873,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0ea38cab044c442017ba2db0de2dd20bf55d286959459633cc84a40d393e196f"
+  digest = "1:0c6765df8f474d0937838f4c4fca248a20428fafa324b2db32d457d7c9310cad"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "f89234f9a2c237c4d4cf7b32e3d9fe2f7c4eacd7"
+  revision = "e66fe6eb8e0cbfacade8b490cf55cd2494f4db62"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -917,7 +917,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4b7a27cc60839a3d981bb54be3c0dd87906f14b1d0c7f6bbd0e1ee70857ea1e2"
+  digest = "1:fd63ea96da5cd0ad888d7f9f418f33da5657a364ce091f707f53c04249647206"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -935,7 +935,7 @@
     "internal/span",
   ]
   pruneopts = ""
-  revision = "7b6f5d95f3a9ab10286a3a4fdde2b87781f40992"
+  revision = "7defa796fec08ff4180eae3379da47019ad16019"
 
 [[projects]]
   branch = "master"
@@ -1368,6 +1368,7 @@
     "github.com/lyft/flyteplugins/go/tasks/plugins/array/k8s",
     "github.com/lyft/flyteplugins/go/tasks/plugins/hive",
     "github.com/lyft/flyteplugins/go/tasks/plugins/k8s/container",
+    "github.com/lyft/flytestdlib/cache",
     "github.com/lyft/flytestdlib/config",
     "github.com/lyft/flytestdlib/config/viper",
     "github.com/lyft/flytestdlib/contextutils",
@@ -1378,7 +1379,6 @@
     "github.com/lyft/flytestdlib/promutils",
     "github.com/lyft/flytestdlib/promutils/labeled",
     "github.com/lyft/flytestdlib/storage",
-    "github.com/lyft/flytestdlib/utils",
     "github.com/lyft/flytestdlib/version",
     "github.com/lyft/flytestdlib/yamlutils",
     "github.com/magiconair/properties/assert",
