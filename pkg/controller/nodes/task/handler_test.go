@@ -1022,7 +1022,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, promutils.NewTestScope())
 			assert.NoError(t, err)
 
-			tctx, err := tk.newTaskExecutionContext(context.TODO(), nCtx)
+			tctx, err := tk.newTaskExecutionContext(context.TODO(), nCtx, "plugin1")
 			assert.NoError(t, err)
 			id := tctx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 

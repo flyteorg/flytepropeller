@@ -88,7 +88,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 		secretManager: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
 	}
 
-	got, err := tk.newTaskExecutionContext(context.TODO(), nCtx)
+	got, err := tk.newTaskExecutionContext(context.TODO(), nCtx, "plugin1")
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 
