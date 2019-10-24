@@ -394,9 +394,9 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 			}
 			h := &mocks.TaskNodeHandler{}
 			if tt.args.validErr != nil {
-				h.On("ValidateOutputAndCacheAdd", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tt.args.validErr, nil)
+				h.OnValidateOutputAndCacheAddMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tt.args.validErr, nil)
 			} else {
-				h.On("ValidateOutputAndCacheAdd", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+				h.OnValidateOutputAndCacheAddMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 			}
 			n := &executorMocks.Node{}
 			if tt.args.isErr {

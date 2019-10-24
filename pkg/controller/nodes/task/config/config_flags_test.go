@@ -99,10 +99,10 @@ func TestConfig_SetFlags(t *testing.T) {
 	cmdFlags := actual.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 
-	t.Run("Test_task-plugins.EnabledPlugins", func(t *testing.T) {
+	t.Run("Test_task-plugins.enabled-plugins", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vStringSlice, err := cmdFlags.GetStringSlice("task-plugins.EnabledPlugins"); err == nil {
+			if vStringSlice, err := cmdFlags.GetStringSlice("task-plugins.enabled-plugins"); err == nil {
 				assert.Equal(t, []string([]string{}), vStringSlice)
 			} else {
 				assert.FailNow(t, err.Error())
@@ -112,8 +112,8 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := join_Config("1,1", ",")
 
-			cmdFlags.Set("task-plugins.EnabledPlugins", testValue)
-			if vStringSlice, err := cmdFlags.GetStringSlice("task-plugins.EnabledPlugins"); err == nil {
+			cmdFlags.Set("task-plugins.enabled-plugins", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("task-plugins.enabled-plugins"); err == nil {
 				testDecodeSlice_Config(t, join_Config(vStringSlice, ","), &actual.TaskPlugins.EnabledPlugins)
 
 			} else {
@@ -137,6 +137,72 @@ func TestConfig_SetFlags(t *testing.T) {
 			cmdFlags.Set("max-plugin-phase-versions", testValue)
 			if vInt32, err := cmdFlags.GetInt32("max-plugin-phase-versions"); err == nil {
 				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt32), &actual.MaxPluginPhaseVersions)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_barrier.enabled", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vBool, err := cmdFlags.GetBool("barrier.enabled"); err == nil {
+				assert.Equal(t, bool(defaultConfig.BarrierConfig.Enabled), vBool)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("barrier.enabled", testValue)
+			if vBool, err := cmdFlags.GetBool("barrier.enabled"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vBool), &actual.BarrierConfig.Enabled)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_barrier.cache-size", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("barrier.cache-size"); err == nil {
+				assert.Equal(t, int(defaultConfig.BarrierConfig.CacheSize), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("barrier.cache-size", testValue)
+			if vInt, err := cmdFlags.GetInt("barrier.cache-size"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.BarrierConfig.CacheSize)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_barrier.cache-ttl", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("barrier.cache-ttl"); err == nil {
+				assert.Equal(t, string(defaultConfig.BarrierConfig.CacheTTL.String()), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := defaultConfig.BarrierConfig.CacheTTL.String()
+
+			cmdFlags.Set("barrier.cache-ttl", testValue)
+			if vString, err := cmdFlags.GetString("barrier.cache-ttl"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.BarrierConfig.CacheTTL)
 
 			} else {
 				assert.FailNow(t, err.Error())

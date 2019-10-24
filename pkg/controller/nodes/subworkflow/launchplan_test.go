@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/lyft/flytestdlib/errors"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -114,7 +116,7 @@ func TestSubWorkflowHandler_StartLaunchPlan(t *testing.T) {
 			}),
 			mock.MatchedBy(func(o *core.Identifier) bool { return lpID == o }),
 			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
-		).Return(launchplan.Wrapf(launchplan.RemoteErrorAlreadyExists, fmt.Errorf("blah"), "failed"))
+		).Return(errors.Wrapf(launchplan.RemoteErrorAlreadyExists, fmt.Errorf("blah"), "failed"))
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseUndefined, mockWf, mockNode)
 		s, err := h.StartLaunchPlan(ctx, nCtx)
@@ -140,7 +142,7 @@ func TestSubWorkflowHandler_StartLaunchPlan(t *testing.T) {
 			}),
 			mock.MatchedBy(func(o *core.Identifier) bool { return lpID == o }),
 			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
-		).Return(launchplan.Wrapf(launchplan.RemoteErrorSystem, fmt.Errorf("blah"), "failed"))
+		).Return(errors.Wrapf(launchplan.RemoteErrorSystem, fmt.Errorf("blah"), "failed"))
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
 		s, err := h.StartLaunchPlan(ctx, nCtx)
@@ -166,7 +168,7 @@ func TestSubWorkflowHandler_StartLaunchPlan(t *testing.T) {
 			}),
 			mock.MatchedBy(func(o *core.Identifier) bool { return lpID == o }),
 			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
-		).Return(launchplan.Wrapf(launchplan.RemoteErrorUser, fmt.Errorf("blah"), "failed"))
+		).Return(errors.Wrapf(launchplan.RemoteErrorUser, fmt.Errorf("blah"), "failed"))
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
 		s, err := h.StartLaunchPlan(ctx, nCtx)
@@ -435,7 +437,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
 				return o.Project == parentID.Project && o.Domain == parentID.Domain
 			}),
-		).Return(nil, launchplan.Wrapf(launchplan.RemoteErrorNotFound, fmt.Errorf("some error"), "not found"))
+		).Return(nil, errors.Wrapf(launchplan.RemoteErrorNotFound, fmt.Errorf("some error"), "not found"))
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
 		s, err := h.CheckLaunchPlanStatus(ctx, nCtx)
@@ -456,7 +458,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
 				return o.Project == parentID.Project && o.Domain == parentID.Domain
 			}),
-		).Return(nil, launchplan.Wrapf(launchplan.RemoteErrorSystem, fmt.Errorf("some error"), "not found"))
+		).Return(nil, errors.Wrapf(launchplan.RemoteErrorSystem, fmt.Errorf("some error"), "not found"))
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
 		s, err := h.CheckLaunchPlanStatus(ctx, nCtx)
