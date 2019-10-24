@@ -6,9 +6,9 @@ import (
 
 //go:generate pflags Config --default-var=defaultConfig
 
-const resourceManagerConfigSectionKey = "resourcemanager"
+const configSectionKey = "resourcemanager"
 
-type Type string
+type Type = string
 
 const (
 	TypeNoop  Type = "noop"
@@ -17,26 +17,30 @@ const (
 
 var (
 	defaultConfig = Config{
-		ResourceManagerType: TypeNoop,
-		ResourceMaxQuota:    1000,
+		Type:             TypeNoop,
+		ResourceMaxQuota: 1000,
 	}
 
-	resourceManagerConfigSection = config.MustRegisterSubSection(resourceManagerConfigSectionKey, &defaultConfig)
+	configSection = config.MustRegisterSubSection(configSectionKey, &defaultConfig)
 )
 
 type Config struct {
-	ResourceManagerType Type   `json:"resourceManagerType" pflag:"noop,Which resource manager to use"`
-	ResourceMaxQuota    int    `json:"resourceQuota" pflag:",Global limit for concurrent Qubole queries"`
-	RedisHostPath       string `json:"redisHostPath" pflag:",Redis host location"`
-	RedisHostKey        string `json:"redisHostKey" pflag:",Key for local Redis access"`
-	RedisMaxRetries     int    `json:"redisMaxRetries" pflag:",See Redis client options for more info"`
+	Type             Type        `json:"type" pflag:"noop,Which resource manager to use"`
+	ResourceMaxQuota int         `json:"resourceMaxQuota" pflag:",Global limit for concurrent Qubole queries"`
+	RedisConfig      RedisConfig `json:"redisConfig" pflag:",Config for Redist resourcemanager."`
+}
+
+type RedisConfig struct {
+	HostPath   string `json:"hostPath" pflag:",Redis host location"`
+	HostKey    string `json:"hostKey" pflag:",Key for local Redis access"`
+	MaxRetries int    `json:"maxRetries" pflag:",See Redis client options for more info"`
 }
 
 // Retrieves the current config value or default.
-func GetResourceManagerConfig() *Config {
-	return resourceManagerConfigSection.GetConfig().(*Config)
+func GetConfig() *Config {
+	return configSection.GetConfig().(*Config)
 }
 
-func SetResourceManagerConfig(cfg *Config) error {
-	return resourceManagerConfigSection.SetConfig(cfg)
+func SetConfig(cfg *Config) error {
+	return configSection.SetConfig(cfg)
 }

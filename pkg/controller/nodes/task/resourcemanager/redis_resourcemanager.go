@@ -40,7 +40,8 @@ func (r *RedisResourceManagerBuilder) RegisterResourceQuota(ctx context.Context,
 		err := errors.Errorf("Redis client does not exist.")
 		return err
 	}
-	config := rmConfig.GetResourceManagerConfig()
+
+	config := rmConfig.GetConfig()
 	if quota <= 0 || quota > config.ResourceMaxQuota {
 		err := errors.Errorf("Invalid request for resource quota (<= 0 || > %v): [%v]", config.ResourceMaxQuota, quota)
 		return err
@@ -144,21 +145,6 @@ func (r *RedisResourceManager) startMetricsGathering(ctx context.Context) {
 			r.pollRedis(ctx, namespace)
 		}
 	}, 10*time.Second, ctx.Done())
-	/*
-		ticker := time.NewTicker(10 * time.Second)
-		go func() {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					for _, rrToken := range r.resourceRegistryTokens {
-						r.pollRedis(ctx, rrToken)
-					}
-				}
-			}
-		}()
-	*/
 }
 
 func NewRedisResourceManagerMetrics(scope promutils.Scope) *RedisResourceManagerMetrics {

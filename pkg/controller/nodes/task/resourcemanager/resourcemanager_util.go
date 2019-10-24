@@ -22,8 +22,8 @@ func GetResourceManagerBuilderByType(ctx context.Context, managerType rmConfig.T
 		return &NoopResourceManagerBuilder{}, nil
 	case rmConfig.TypeRedis:
 		logger.Infof(ctx, "Using Redis based resource manager")
-		config := rmConfig.GetResourceManagerConfig()
-		redisClient, err := NewRedisClient(ctx, config.RedisHostPath, config.RedisHostKey, config.RedisMaxRetries)
+		config := rmConfig.GetConfig()
+		redisClient, err := NewRedisClient(ctx, config.RedisConfig)
 		if err != nil {
 			logger.Errorf(ctx, "Unable to initialize a redis client for the resource manager: [%v]", err)
 			return nil, err
