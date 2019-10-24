@@ -48,7 +48,7 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 	err = l.launchPlan.Launch(ctx, launchCtx, childID, nCtx.Node().GetWorkflowNode().GetLaunchPlanRefID().Identifier, nodeInputs)
 	if err != nil {
 		if launchplan.IsAlreadyExists(err) {
-			logger.Info(ctx, "Execution already exists [%s].", childID.Name)
+			logger.Infof(ctx, "Execution already exists [%s].", childID.Name)
 		} else if launchplan.IsUserError(err) {
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(string(errors.RuntimeExecutionError), "failed to create unique ID", &handler.ExecutionInfo{
 				WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},
