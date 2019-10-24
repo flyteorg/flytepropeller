@@ -299,7 +299,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		logger.Debugf(ctx, "Task success detected, calling on Task success")
 		outputCommitter := ioutils.NewRemoteFileOutputWriter(ctx, tCtx.DataStore(), tCtx.OutputWriter())
 		execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
-		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.InputReader(), tCtx.ow.GetReader(), outputCommitter, tCtx.tr, catalog.Metadata{
+		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.NodeID(), tCtx.InputReader(), tCtx.ow.GetReader(), outputCommitter, tCtx.tr, catalog.Metadata{
 			TaskExecutionIdentifier: &execID,
 		})
 		if err != nil {
@@ -322,6 +322,11 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		return handler.UnknownTransition, errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
 	}
 
+	checkCatalog := !p.GetProperties().DisableNodeLevelCaching
+	if !checkCatalog {
+		logger.Debug(ctx, "Node level caching is disabled. Skipping catalog read.")
+	}
+
 	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p.GetID())
 	if err != nil {
 		return handler.UnknownTransition, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
@@ -336,7 +341,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// TODO @kumare re-evaluate this decision
 
 	// STEP 1: Check Cache
-	if ts.PluginPhase == pluginCore.PhaseUndefined {
+	if ts.PluginPhase == pluginCore.PhaseUndefined && checkCatalog {
 		// This is assumed to be first time. we will check catalog and call handle
 		if ok, err := t.CheckCatalogCache(ctx, tCtx.tr, nCtx.InputReader(), tCtx.ow); err != nil {
 			logger.Errorf(ctx, "failed to check catalog cache with error")

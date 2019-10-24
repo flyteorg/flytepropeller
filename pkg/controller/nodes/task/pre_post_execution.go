@@ -7,6 +7,8 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	errors2 "github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -56,7 +58,7 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 	return false, nil
 }
 
-func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReader, r io.OutputReader,
+func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeId v1alpha1.NodeID, i io.InputReader, r io.OutputReader,
 	outputCommitter io.OutputWriter, tr pluginCore.TaskReader, m catalog.Metadata) (*io.ExecutionError, error) {
 
 	tk, err := tr.Read(ctx)
@@ -125,6 +127,17 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, i io.InputReade
 
 		// ignores discovery write failures
 		if tk.Metadata.Discoverable {
+			p, err := t.ResolvePlugin(ctx, tk.Type)
+			if err != nil {
+				return nil, errors2.Wrapf(errors2.UnsupportedTaskTypeError, nodeId, err, "unable to resolve plugin")
+			}
+
+			writeToCatalog := !p.GetProperties().DisableNodeLevelCaching
+			if !writeToCatalog {
+				logger.Debug(ctx, "Node level caching is disabled. Skipping catalog write.")
+				return nil, nil
+			}
+
 			cacheVersion := "0"
 			if tk.Metadata != nil {
 				cacheVersion = tk.Metadata.DiscoveryVersion

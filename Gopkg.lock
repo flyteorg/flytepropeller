@@ -57,7 +57,7 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:3fc31b56d4eb2ae7d0656f4ad182118a92832d2c79ff79ae1adfb008e277e209"
+  digest = "1:a423172cb0f0efae920cd226fbce53c471b74a31b686b82d97a55c28eab34b1e"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -104,8 +104,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "2f255645ae9fdfd40a709b6ce492c1859b0d47b8"
-  version = "v1.25.18"
+  revision = "13ad2b09f6ff7e16808b4a45c32684e6c66bf86d"
+  version = "v1.25.19"
 
 [[projects]]
   branch = "master"
@@ -460,7 +460,7 @@
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:c4e5a903875adb4445bdef97514c7e2af636e162ac00b9358bad1acfc5b2f23f"
+  digest = "1:002036ac87e88e3a2dada4dbaed7ce84f1af1a0639d988e57124cb493691fa7c"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/aws",
@@ -495,7 +495,7 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "f050081c4511e7bb20cf7529a04164f3eb32d6fb"
+  revision = "16f5a6de729d490d7db53dd920edb849cb480119"
 
 [[projects]]
   digest = "1:7fee6ae151d081a92d58a53099adcfccf89e424aef03eb20531ae0285da8613d"
@@ -873,14 +873,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0c6765df8f474d0937838f4c4fca248a20428fafa324b2db32d457d7c9310cad"
+  digest = "1:37875e50136914fde330600988588f3a5383cb9bb4fb3d13910da5d8e0775307"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "e66fe6eb8e0cbfacade8b490cf55cd2494f4db62"
+  revision = "b4ff53e7a1cb8ab8ce2e12d50d5d63530183e1a9"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -917,7 +917,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:fd63ea96da5cd0ad888d7f9f418f33da5657a364ce091f707f53c04249647206"
+  digest = "1:9903b14e6067cc8e18ca67eb9eda5c8c8b6aecad5336912e80a6ab767fa72c0e"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -935,7 +935,7 @@
     "internal/span",
   ]
   pruneopts = ""
-  revision = "7defa796fec08ff4180eae3379da47019ad16019"
+  revision = "b24f3822ec91a83dea621497a29a1898ff70a3b2"
 
 [[projects]]
   branch = "master"
