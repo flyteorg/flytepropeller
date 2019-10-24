@@ -1371,6 +1371,7 @@
     "github.com/lyft/flytestdlib/config",
     "github.com/lyft/flytestdlib/config/viper",
     "github.com/lyft/flytestdlib/contextutils",
+    "github.com/lyft/flytestdlib/errors",
     "github.com/lyft/flytestdlib/logger",
     "github.com/lyft/flytestdlib/pbhash",
     "github.com/lyft/flytestdlib/profutils",
