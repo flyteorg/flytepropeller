@@ -352,6 +352,7 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 	}
 
 	if state.IsComplete() {
+		var o *handler.OutputInfo
 		// If the WF interface has outputs, validate that the outputs file was written.
 		if outputBindings := dynamicWorkflow.GetOutputBindings(); len(outputBindings) > 0 {
 			endNodeStatus := dynamicWorkflow.GetNodeExecutionStatus(v1alpha1.EndNodeID)
@@ -375,9 +376,12 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 						fmt.Sprintf("Failed to copy subworkflow outputs from [%v] to [%v]", sourcePath, destinationPath), nil),
 				), nil
 			}
+			o = &handler.OutputInfo{OutputURI: destinationPath}
 		}
 
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(nil)), nil
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{
+			OutputInfo: o,
+		})), nil
 	}
 
 	if state.PartiallyComplete() {
