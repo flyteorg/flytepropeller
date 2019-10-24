@@ -57,7 +57,7 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:7dc07318e51b2240c6a87416de0c9b2f46468a5e35c3ca679a2de72042a8d13f"
+  digest = "1:3fc31b56d4eb2ae7d0656f4ad182118a92832d2c79ff79ae1adfb008e277e209"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -104,8 +104,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "ee35eb7f829b84db98fd3c404bf9b5407e3cb653"
-  version = "v1.25.17"
+  revision = "2f255645ae9fdfd40a709b6ce492c1859b0d47b8"
+  version = "v1.25.18"
 
 [[projects]]
   branch = "master"
@@ -202,6 +202,22 @@
   pruneopts = ""
   revision = "03f06a783fbb7dfaf3f629c7825480e43a7105e6"
   version = "v0.1.1"
+
+[[projects]]
+  digest = "1:d0d067915c49fe141c73ce159bcc408796e4f3a9d5ad0a972cb2dbde1dc1ae4f"
+  name = "github.com/go-redis/redis"
+  packages = [
+    ".",
+    "internal",
+    "internal/consistenthash",
+    "internal/hashtag",
+    "internal/pool",
+    "internal/proto",
+    "internal/util",
+  ]
+  pruneopts = ""
+  revision = "7f69d5e32072d151eb6936cbe2306413e8117488"
+  version = "v6.15.6"
 
 [[projects]]
   digest = "1:d69d2ba23955582a64e367ff2b0808cdbd048458c178cea48f11ab8c40bd7aea"
@@ -444,7 +460,7 @@
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:304d42732a47c63cdb4734a822b4185eb00b02e0cfdd0be78143e140c89a3c7f"
+  digest = "1:7d98b9459dd9b5d12733bf972cfc7c1699162aac33ee3ac7e3b3d6eb1ffbb5b9"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/aws",
@@ -479,10 +495,10 @@
     "go/tasks/plugins/k8s/container",
   ]
   pruneopts = ""
-  revision = "89c2cbeb1518947f0b04e1144fdb1ba07cd832c7"
+  revision = "1ef0c097849c7312725c0001730c23e32c11389e"
 
 [[projects]]
-  digest = "1:b45fc9c938f69e7cdf6988e60a4d7b45ffbc87e82b7796050527edd508ab52c9"
+  digest = "1:7fee6ae151d081a92d58a53099adcfccf89e424aef03eb20531ae0285da8613d"
   name = "github.com/lyft/flytestdlib"
   packages = [
     "atomic",
@@ -505,16 +521,8 @@
     "yamlutils",
   ]
   pruneopts = ""
-  revision = "f7e4d7a4e5c1ad03dfcedd1026f6ada36b9d3b88"
-  version = "v0.2.26"
-
-[[projects]]
-  branch = "master"
-  digest = "1:f77e99a0e57a5a006cb5bca760689a95febe155aeb531d4ce8c43ec8bea71461"
-  name = "github.com/lyft/modelbuilderadmin"
-  packages = ["workflow/sets"]
-  pruneopts = ""
-  revision = "31036642688f3f47ac19507fcc8946a860b096cc"
+  revision = "f9214671dc3b5e86ff029bd514fc18be38c1c3f0"
+  version = "v0.2.28"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
@@ -865,14 +873,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:19c0f90f7eff54a72fb07c6b783bbdd92a89d58966d891d7382583a00b98d719"
+  digest = "1:0ea38cab044c442017ba2db0de2dd20bf55d286959459633cc84a40d393e196f"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "742c48ecaeb7c624c475e02f3eb0827ebb4970d4"
+  revision = "f89234f9a2c237c4d4cf7b32e3d9fe2f7c4eacd7"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -901,15 +909,15 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1290297b5048f051e77948812e93c4f09a914d02c8fb02cf2dfdaf23d73a5805"
+  digest = "1:cda80f57e101bff19a8ae77dd8aaa57ed2eede63d1fcaaeeb4b294dac799daaa"
   name = "golang.org/x/time"
   packages = ["rate"]
   pruneopts = ""
-  revision = "c4c64cad1fd0a1a8dab2523e04e61d35308e131e"
+  revision = "6d3f0bb11be5e03f8353894b7240e7d793e40a8f"
 
 [[projects]]
   branch = "master"
-  digest = "1:754b77ebbce2731570824c058a3835c1e2d18012fbac2681eb50092c97c30a73"
+  digest = "1:ccc6d26cd684a03286a44ae6202516f8dbadce972e2f543c1eb7efbc1fa3c75c"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -927,7 +935,7 @@
     "internal/span",
   ]
   pruneopts = ""
-  revision = "0bbdf54effa2d03a4c877d09c98ecf9f5bcfb964"
+  revision = "2b779830f9d33eccacea7d9e741475351b225b1a"
 
 [[projects]]
   branch = "master"
@@ -1324,6 +1332,7 @@
     "github.com/dgrijalva/jwt-go",
     "github.com/fatih/color",
     "github.com/ghodss/yaml",
+    "github.com/go-redis/redis",
     "github.com/gogo/protobuf/proto",
     "github.com/golang/protobuf/jsonpb",
     "github.com/golang/protobuf/proto",
@@ -1371,7 +1380,6 @@
     "github.com/lyft/flytestdlib/utils",
     "github.com/lyft/flytestdlib/version",
     "github.com/lyft/flytestdlib/yamlutils",
-    "github.com/lyft/modelbuilderadmin/workflow/sets",
     "github.com/magiconair/properties/assert",
     "github.com/mitchellh/mapstructure",
     "github.com/operator-framework/operator-sdk/pkg/util/k8sutil",

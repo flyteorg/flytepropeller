@@ -15,6 +15,7 @@ import (
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
@@ -111,7 +112,7 @@ func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 	return t.sm
 }
 
-func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.NodeExecutionContext) (*taskExecutionContext, error) {
+func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.NodeExecutionContext, pluginID string) (*taskExecutionContext, error) {
 
 	id := GetTaskExecutionIdentifier(nCtx)
 
@@ -133,6 +134,8 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to initialize plugin state manager")
 	}
 
+	namespacePrefix := pluginCore.ResourceNamespace(pluginID)
+
 	return &taskExecutionContext{
 		NodeExecutionContext: nCtx,
 		tm: taskExecutionMetadata{
@@ -140,8 +143,10 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
 			o:                     nCtx.Node(),
 		},
-		// TODO add resource manager
-		rm:  dummyRM{},
+		rm:  resourcemanager.Proxy{
+			ResourceManager: 	t.resourceManager,
+			NamespacePrefix:    namespacePrefix,
+		},
 		psm: psm,
 		tr:  nCtx.TaskReader(),
 		ow:  ow,

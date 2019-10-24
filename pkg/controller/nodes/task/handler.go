@@ -16,6 +16,8 @@ import (
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	pluginK8s "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
+	rmConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
@@ -42,6 +44,7 @@ type metrics struct {
 	pluginExecutionLatency labeled.StopWatch
 
 	// TODO We should have a metric to capture custom state size
+	scope promutils.Scope
 }
 
 type pluginRequestedTransition struct {
@@ -123,16 +126,17 @@ type PluginRegistryIface interface {
 }
 
 type Handler struct {
-	catalog        catalog.Client
-	asyncCatalog   catalog.AsyncClient
-	plugins        map[pluginCore.TaskType]pluginCore.Plugin
-	defaultPlugin  pluginCore.Plugin
-	metrics        *metrics
-	pluginRegistry PluginRegistryIface
-	kubeClient     pluginCore.KubeClient
-	secretManager  pluginCore.SecretManager
-	barrierCache   *barrier
-	cfg            *config.Config
+	catalog         catalog.Client
+	asyncCatalog    catalog.AsyncClient
+	plugins         map[pluginCore.TaskType]pluginCore.Plugin
+	defaultPlugin   pluginCore.Plugin
+	metrics         *metrics
+	pluginRegistry  PluginRegistryIface
+	kubeClient      pluginCore.KubeClient
+	secretManager   pluginCore.SecretManager
+	resourceManager pluginCore.ResourceManager
+	barrierCache    *barrier
+	cfg             *config.Config
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -150,8 +154,20 @@ func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
 }
 
 func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
-	tSCtx := t.newSetupContext(ctx, sCtx)
+	tSCtx, err := t.newSetupContext(ctx, sCtx)
+	if err != nil {
+		return err
+	}
 
+	// Create a new base resource negotiator
+	resourceManagerConfig := rmConfig.GetResourceManagerConfig()
+	newResourceManagerBuilder, err := resourcemanager.GetResourceManagerBuilderByType(ctx, resourceManagerConfig.ResourceManagerType, t.metrics.scope)
+	if err != nil {
+		return err
+	}
+
+	// Create the resource negotiator here
+	// and then convert it to proxies later and pass them to plugins
 	enabledPlugins, err := WranglePluginsAndGenerateFinalList(ctx, &t.cfg.TaskPlugins, t.pluginRegistry)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to finalize enabled plugins. Err: %s", err)
@@ -159,8 +175,16 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	}
 
 	for _, p := range enabledPlugins {
+		// rn = create a new resource negotiator proxy for each plugin
+		sCtxFinal := newNameSpacedSetupCtx(tSCtx, resourcemanager.ResourceRegistrarProxy{
+			ResourceRegistrar: newResourceManagerBuilder,
+			NamespacePrefix:   pluginCore.ResourceNamespace(p.ID),
+		})
+		// sCtxFinal := newNSSetupCtx(tSCtx)
+		// tSCtx.resourceNegotiator = tSCtx.ResourceRegistrar().ResourceRegistrar(pluginCore.ResourceNamespace(p.ID))
 		logger.Infof(ctx, "Loading Plugin [%s] ENABLED", p.ID)
-		cp, err := p.LoadPlugin(ctx, tSCtx)
+		// cp, err := p.LoadPlugin(ctx, tSCtx)
+		cp, err := p.LoadPlugin(ctx, sCtxFinal)
 		if err != nil {
 			return regErrors.Wrapf(err, "failed to load plugin - %s", p.ID)
 		}
@@ -174,6 +198,14 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 			}
 		}
 	}
+
+	rm, err := newResourceManagerBuilder.BuildResourceManager(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to build a resource manager")
+		return err
+	}
+	t.resourceManager = rm
+
 	return nil
 }
 
@@ -286,17 +318,16 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 }
 
 func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
-
-	tCtx, err := t.newTaskExecutionContext(ctx, nCtx)
-	if err != nil {
-		return handler.UnknownTransition, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
-	}
-
-	ttype := tCtx.tr.GetTaskType()
+	ttype := nCtx.TaskReader().GetTaskType()
 	ctx = contextutils.WithTaskType(ctx, ttype)
 	p, err := t.ResolvePlugin(ctx, ttype)
 	if err != nil {
 		return handler.UnknownTransition, errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
+	}
+
+	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p.GetID())
+	if err != nil {
+		return handler.UnknownTransition, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
 	}
 
 	ts := nCtx.NodeStateReader().GetTaskNodeState()
@@ -439,14 +470,16 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
 	logger.Debugf(ctx, "Abort invoked.")
-	tCtx, err := t.newTaskExecutionContext(ctx, nCtx)
-	if err != nil {
-		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
-	}
 
-	p, err := t.ResolvePlugin(ctx, tCtx.tr.GetTaskType())
+	ttype := nCtx.TaskReader().GetTaskType()
+	p, err := t.ResolvePlugin(ctx, ttype)
 	if err != nil {
 		return errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
+	}
+
+	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p.GetID())
+	if err != nil {
+		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
 	}
 
 	err = func() (err error) {
@@ -489,14 +522,15 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 
 func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
 	logger.Debugf(ctx, "Finalize invoked.")
-	tCtx, err := t.newTaskExecutionContext(ctx, nCtx)
-	if err != nil {
-		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
-	}
-
-	p, err := t.ResolvePlugin(ctx, tCtx.tr.GetTaskType())
+	ttype := nCtx.TaskReader().GetTaskType()
+	p, err := t.ResolvePlugin(ctx, ttype)
 	if err != nil {
 		return errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
+	}
+
+	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p.GetID())
+	if err != nil {
+		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
 	}
 
 	return func() (err error) {
@@ -537,12 +571,14 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 			catalogPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			catalogGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
 			pluginExecutionLatency: labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
+			scope:                  scope,
 		},
-		kubeClient:    kubeClient,
-		catalog:       client,
-		asyncCatalog:  async,
-		secretManager: secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
-		barrierCache:  newLRUBarrier(ctx, cfg.BarrierConfig),
-		cfg:           cfg,
+		kubeClient:      kubeClient,
+		catalog:         client,
+		asyncCatalog:    async,
+		resourceManager: nil,
+		secretManager:   secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
+		barrierCache:    newLRUBarrier(ctx, cfg.BarrierConfig),
+		cfg:             cfg,
 	}, nil
 }

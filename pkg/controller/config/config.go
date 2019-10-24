@@ -106,3 +106,7 @@ type LeaderElectionConfig struct {
 func GetConfig() *Config {
 	return ConfigSection.GetConfig().(*Config)
 }
+
+func MustRegisterSubSection(subSectionKey string, section config.Config) config.Section {
+	return ConfigSection.MustRegisterSection(subSectionKey, section)
+}

@@ -35,10 +35,27 @@ func (s setupContext) EnqueueOwner() pluginCore.EnqueueOwner {
 	}
 }
 
-func (t *Handler) newSetupContext(_ context.Context, sCtx handler.SetupContext) pluginCore.SetupContext {
+func (t *Handler) newSetupContext(ctx context.Context, sCtx handler.SetupContext) (*setupContext, error) {
+
 	return &setupContext{
 		SetupContext:  sCtx,
 		kubeClient:    t.kubeClient,
 		secretManager: t.secretManager,
+	}, nil
+}
+
+type nameSpacedSetupCtx struct {
+	*setupContext
+	rn pluginCore.ResourceRegistrar
+}
+
+func (n nameSpacedSetupCtx) ResourceRegistrar() pluginCore.ResourceRegistrar {
+	return n.rn
+}
+
+func newNameSpacedSetupCtx(sCtx *setupContext, rn pluginCore.ResourceRegistrar) nameSpacedSetupCtx {
+	return nameSpacedSetupCtx{
+		setupContext: sCtx,
+		rn:           rn,
 	}
 }
