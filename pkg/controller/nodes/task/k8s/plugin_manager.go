@@ -8,6 +8,7 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/lyft/flytestdlib/contextutils"
+	stdErrors "github.com/lyft/flytestdlib/errors"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -132,7 +133,7 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 		}
 		reason := k8serrors.ReasonForError(err)
 		logger.Errorf(ctx, "Failed to launch job, system error. err: %v", err)
-		return pluginsCore.UnknownTransition, errors.Wrapf(errors.ErrorCode(reason), err, "failed to create resource")
+		return pluginsCore.UnknownTransition, errors.Wrapf(stdErrors.ErrorCode(reason), err, "failed to create resource")
 	}
 
 	return pluginsCore.DoTransition(pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "task submitted to K8s")), nil
