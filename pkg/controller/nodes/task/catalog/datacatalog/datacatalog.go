@@ -112,7 +112,7 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (io.OutputRead
 		return nil, err
 	}
 
-	logger.Debugf(ctx, "Retrieved %v artifact outputs from artifact %v", len(outputs.Literals), artifact.Id)
+	logger.Infof(ctx, "Retrieved %v outputs from artifact %v, tag: %v", len(outputs.Literals), artifact.Id, tag)
 	return ioutils.NewInMemoryOutputReader(outputs, nil), nil
 }
 
@@ -231,7 +231,7 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 		logger.Errorf(ctx, "Failed to generate tag for artifact %+v, err: %+v", cachedArtifact.Id, err)
 		return err
 	}
-	logger.Debugf(ctx, "Created tag: %v, for task: %v", tagName, key.Identifier)
+	logger.Infof(ctx, "Cached exec tag: %v, task: %v", tagName, key.Identifier)
 
 	// TODO: We should create the artifact + tag in a transaction when the service supports that
 	tag := &datacatalog.Tag{
@@ -243,10 +243,10 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 	if err != nil {
 		if status.Code(err) == codes.AlreadyExists {
 			logger.Warnf(ctx, "Tag %v already exists for Artifact %v (idempotent)", tagName, cachedArtifact.Id)
+		} else {
+			logger.Errorf(ctx, "Failed to add tag %+v for artifact %+v, err: %+v", tagName, cachedArtifact.Id, err)
+			return err
 		}
-
-		logger.Errorf(ctx, "Failed to add tag %+v for artifact %+v, err: %+v", tagName, cachedArtifact.Id, err)
-		return err
 	}
 
 	return nil
