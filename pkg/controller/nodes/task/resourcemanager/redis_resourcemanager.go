@@ -140,7 +140,7 @@ func (r *RedisResourceManager) pollRedis(ctx context.Context, namespace pluginCo
 }
 
 func (r *RedisResourceManager) startMetricsGathering(ctx context.Context) {
-	wait.Until(func() {
+	go wait.Until(func() {
 		for namespace := range r.namespacedResourcesMap {
 			r.pollRedis(ctx, namespace)
 		}
