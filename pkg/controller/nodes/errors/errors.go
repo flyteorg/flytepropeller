@@ -27,7 +27,7 @@ type NodeErrorWithCause struct {
 }
 
 func (n *NodeErrorWithCause) Error() string {
-	return fmt.Sprintf("%v, caused by: %v", n.NodeError.Error(), errors.Cause(n))
+	return fmt.Sprintf("%v, caused by: %v", n.NodeError.Error(), n.cause)
 }
 
 func (n *NodeErrorWithCause) Cause() error {

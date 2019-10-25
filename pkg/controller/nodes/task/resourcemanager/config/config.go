@@ -17,19 +17,22 @@ const (
 
 var (
 	defaultConfig = Config{
-		Type:             TypeNoop,
+		Type: TypeNoop,
+		// TODO: Noop Resource Manager doesn't use MaxQuota. Maybe we can remove it?
 		ResourceMaxQuota: 1000,
 	}
 
 	configSection = config.MustRegisterSubSection(configSectionKey, &defaultConfig)
 )
 
+// Configs for Resource Manager
 type Config struct {
 	Type             Type        `json:"type" pflag:"noop,Which resource manager to use"`
 	ResourceMaxQuota int         `json:"resourceMaxQuota" pflag:",Global limit for concurrent Qubole queries"`
 	RedisConfig      RedisConfig `json:"redis" pflag:",Config for Redist resourcemanager."`
 }
 
+// Specific configs for Redis resource manager
 type RedisConfig struct {
 	HostPath   string `json:"hostPath" pflag:",Redis host location"`
 	HostKey    string `json:"hostKey" pflag:",Key for local Redis access"`
