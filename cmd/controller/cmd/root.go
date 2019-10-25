@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
@@ -77,6 +78,7 @@ func Execute() {
 
 func init() {
 	// allows `$ flytepropeller --logtostderr` to work
+	klog.InitFlags(flag.CommandLine)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	err := flag.CommandLine.Parse([]string{})
 	if err != nil {
