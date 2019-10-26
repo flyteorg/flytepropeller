@@ -25,6 +25,7 @@ func ResolveBindingData(ctx context.Context, outputResolver OutputResolver, w v1
 
 			literalCollection = append(literalCollection, l)
 		}
+
 		literal.Value = &core.Literal_Collection{
 			Collection: &core.LiteralCollection{
 				Literals: literalCollection,
@@ -40,6 +41,7 @@ func ResolveBindingData(ctx context.Context, outputResolver OutputResolver, w v1
 
 			literalMap[k] = l
 		}
+
 		literal.Value = &core.Literal_Map{
 			Map: &core.LiteralMap{
 				Literals: literalMap,
@@ -69,6 +71,7 @@ func ResolveBindingData(ctx context.Context, outputResolver OutputResolver, w v1
 	case *core.BindingData_Scalar:
 		literal.Value = &core.Literal_Scalar{Scalar: bindingData.GetScalar()}
 	}
+
 	return literal, nil
 }
 

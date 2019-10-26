@@ -36,6 +36,7 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 				logger.Infof(ctx, "Artifact not found in Catalog. Executing Task.")
 				return false, nil
 			}
+
 			t.metrics.catalogGetFailureCount.Inc(ctx)
 			logger.Errorf(ctx, "Catalog memoization check failed. err: %v", err.Error())
 			return false, errors.Wrapf(err, "Failed to check Catalog for previous results")

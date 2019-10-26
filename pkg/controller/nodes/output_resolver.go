@@ -56,6 +56,7 @@ func (r remoteFileOutputResolver) ExtractOutput(ctx context.Context, w v1alpha1.
 	if index == nil {
 		return resolveSingleOutput(ctx, r.store, n.GetID(), outputsFileRef, actualVar)
 	}
+
 	return resolveSubtaskOutput(ctx, r.store, n.GetID(), outputsFileRef, *index, actualVar)
 }
 
