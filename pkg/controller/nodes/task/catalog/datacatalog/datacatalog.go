@@ -129,7 +129,7 @@ func (m *CatalogClient) CreateDataset(ctx context.Context, key catalog.Key, meta
 	}
 
 	_, err = m.client.CreateDataset(ctx, &datacatalog.CreateDatasetRequest{Dataset: newDataset})
-	if err == nil {
+	if err != nil {
 		logger.Debugf(ctx, "Create dataset %v return err %v", datasetID, err)
 		if status.Code(err) == codes.AlreadyExists {
 			logger.Debugf(ctx, "Create Dataset for ID %s already exists", key.Identifier)
@@ -138,6 +138,7 @@ func (m *CatalogClient) CreateDataset(ctx context.Context, key catalog.Key, meta
 			return nil, err
 		}
 	}
+
 	return datasetID, nil
 }
 
