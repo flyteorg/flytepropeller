@@ -464,7 +464,7 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:b8a5dd502461caca270a001089dd5dda700a409c79748cef84742e27f03ed83a"
+  digest = "1:9e4e045ec65bbb0957802031385bc370d2947b116ae9e882f4a301c193765a31"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks",
@@ -486,9 +486,9 @@
     "go/tasks/v1/utils",
   ]
   pruneopts = ""
-  revision = "5592b9fb09a8f67cd0086ef1c623aa1cb1a2030f"
+  revision = "301315810dbc9361567645c6961b97d5c968f2a3"
   source = "https://github.com/lyft/flyteplugins"
-  version = "v0.1.8"
+  version = "v0.1.10"
 
 [[projects]]
   digest = "1:5104368cc09cd0fc24fe067ee2ec9f7865986f16a5329efca26f5176cf81ea95"
