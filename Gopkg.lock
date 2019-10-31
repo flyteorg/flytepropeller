@@ -447,7 +447,7 @@
 
 [[projects]]
   branch = "refactor-plugin-api"
-  digest = "1:a91c429ab2913d913182aa5203c8b1648367a46112353a7e0a42752697827b0e"
+  digest = "1:c4f5f9fddecb0e59dd47be68330855a06787962b6ab6fa47e4f0c66aa50a1d39"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/aws",
@@ -483,7 +483,7 @@
     "tests",
   ]
   pruneopts = ""
-  revision = "a92a28250e6a69f10766c01ec47cdb56546f6ca5"
+  revision = "7f7f8ddab9c31638794e2f96addb17ffa7af85f0"
 
 [[projects]]
   digest = "1:7fee6ae151d081a92d58a53099adcfccf89e424aef03eb20531ae0285da8613d"
@@ -1394,6 +1394,7 @@
     "k8s.io/client-go/discovery/fake",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/scheme",
+    "k8s.io/client-go/kubernetes/typed/coordination/v1",
     "k8s.io/client-go/kubernetes/typed/core/v1",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/testing",
