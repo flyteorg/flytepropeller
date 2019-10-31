@@ -236,7 +236,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		numWorkers: cfg.Workers,
 	}
 
-	lock, err := newResourceLock(kubeclientset.CoreV1(), eventRecorder, cfg.LeaderElection)
+	lock, err := newResourceLock(kubeclientset.CoreV1(), kubeclientset.CoordinationV1(), eventRecorder, cfg.LeaderElection)
 	if err != nil {
 		logger.Errorf(ctx, "failed to initialize resource lock.")
 		return nil, errors.Wrapf(err, "failed to initialize resource lock.")

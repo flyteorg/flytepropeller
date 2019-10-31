@@ -64,20 +64,27 @@ required = [
   name = "github.com/lyft/flytestdlib"
   version = "^0.2.16"
 
-# Spark has a dependency on 1.11.2, so we cannot upgrade yet
 [[override]]
-  name = "k8s.io/api"
-  revision = "27b77cf22008a0bf6e510b2a500b8885805a1b68"
-  source = "https://github.com/lyft/api"
-
-[[override]]
-  name = "k8s.io/apimachinery"
-  source = "https://github.com/lyft/apimachinery"
-  revision = "695912cabb3a9c08353fbe628115867d47f56b1f"
+  name = "sigs.k8s.io/controller-runtime"
+  revision = "40070e2a1958c3d974ba95da883a2bd088137789"
+  #  version = "^0.3.0"
 
 [[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.13.5"
+  version = "kubernetes-1.16.2"
+
+[[override]]
+  name = "k8s.io/api"
+  revision = "b49a72c274e072a6e385d55c671acb3717186ce5"
+  source = "https://github.com/lyft/api"
+
+# Type resource.Quantity unmarshals with json, but not jsonpb (https://github.com/kubernetes/apimachinery/issues/59).
+# Because we embed k8s protos in our own proto definitions we need to be able to call jsonpb marshal/unmarshal in order
+# to use the k8s types in our our struct messages.
+[[override]]
+  name = "k8s.io/apimachinery"
+  source = "https://github.com/lyft/apimachinery"
+  revision = "047e3ea32d7fb5984f444d7dd9510cfd362d7d7c"
 
 [[constraint]]
   name = "github.com/DiSiqueira/GoTree"
@@ -90,7 +97,7 @@ required = [
 [[override]]
   name = "k8s.io/code-generator"
   # revision = "6702109cc68eb6fe6350b83e14407c8d7309fd1a"
-  version = "kubernetes-1.13.5"
+  version = "kubernetes-1.16.2"
 
 [[override]]
   name = "github.com/graymeta/stow"
@@ -101,9 +108,11 @@ required = [
   version = "^1.1.5"
 
 [[override]]
-  name = "sigs.k8s.io/controller-runtime"
-  version = "=v0.1.12"
-
-[[override]]
   branch = "master"
   name = "golang.org/x/net"
+
+# For dependency below: Refer to issue https://github.com/golang/dep/issues/1799
+[[override]]
+  name = "gopkg.in/fsnotify.v1"
+  source = "https://github.com/fsnotify/fsnotify.git"
+  version="v1.4.7"

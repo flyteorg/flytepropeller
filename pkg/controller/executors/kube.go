@@ -31,9 +31,9 @@ func (c fallbackClientReader) Get(ctx context.Context, key client.ObjectKey, out
 	return
 }
 
-func (c fallbackClientReader) List(ctx context.Context, opts *client.ListOptions, list runtime.Object) (err error) {
+func (c fallbackClientReader) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) (err error) {
 	for _, k8sClient := range c.orderedClients {
-		if err = k8sClient.List(ctx, opts, list); err == nil {
+		if err = k8sClient.List(ctx, list, opts...); err == nil {
 			return nil
 		}
 	}
