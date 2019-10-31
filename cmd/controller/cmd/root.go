@@ -27,7 +27,6 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/profutils"
 	"github.com/lyft/flytestdlib/promutils"
-	"github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 
@@ -104,13 +103,6 @@ func initConfig(_ *cobra.Command, _ []string) error {
 	err := configAccessor.UpdateConfig(context.TODO())
 	if err != nil {
 		return err
-	}
-
-	// Operator-SDK expects kube config to be in KUBERNETES_CONFIG env var.
-	controllerCfg := config2.GetConfig()
-	if controllerCfg.KubeConfigPath != "" {
-		fmt.Printf("Setting env variable for operator-sdk, %v\n", controllerCfg.KubeConfigPath)
-		return os.Setenv(k8sutil.KubeConfigEnvVar, os.ExpandEnv(controllerCfg.KubeConfigPath))
 	}
 
 	fmt.Printf("Started in-cluster mode\n")

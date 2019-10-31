@@ -65,7 +65,7 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:5d0ec03e08eb414c47274d496b1af87be3dda7a98f6c0c94c0cdf505d1c79aa3"
+  digest = "1:5cd3c3d202b439040a051b6fa21f538af6469c94f9758dfb4f97a24ceb144149"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -112,8 +112,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "95379426c152508a15cb44ed649fde05fa8d232b"
-  version = "v1.25.23"
+  revision = "2f232d11486e77d344da0723340b566d3ff7865a"
+  version = "v1.25.24"
 
 [[projects]]
   branch = "master"
@@ -609,14 +609,6 @@
   revision = "a24ef33bc9b7e59ae4bed9e87a51d7bc76122731"
 
 [[projects]]
-  digest = "1:c1a07a723fa656d4ba5ac489fcb4dfa3aef0fec6b34e415f0002dfc5ee2ba872"
-  name = "github.com/operator-framework/operator-sdk"
-  packages = ["pkg/util/k8sutil"]
-  pruneopts = ""
-  revision = "e5a0ab096e1a7c0e6b937d2b41707eccb82c3c77"
-  version = "v0.0.7"
-
-[[projects]]
   digest = "1:a5484d4fa43127138ae6e7b2299a6a52ae006c7f803d98d717f60abf3e97192e"
   name = "github.com/pborman/uuid"
   packages = ["."]
@@ -980,21 +972,21 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3817fedb896b763b28b06e0735bcc579a0f79f59f4599a4e1347a25614bcf5ca"
+  digest = "1:6cad05171b0cb6abda71bcea1abfc392b32816264a0cfd15ea3ed629a25219df"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
-    "googleapi/internal/uritemplates",
     "googleapi/transport",
     "internal",
     "internal/gensupport",
+    "internal/third_party/uritemplates",
     "option",
     "storage/v1",
     "transport/http",
     "transport/http/internal/propagation",
   ]
   pruneopts = ""
-  revision = "b3261cb52896f0a973350f8516d3e162b47bbc58"
+  revision = "4b5ab5e994c422e7c6359a085062f721716b4c22"
 
 [[projects]]
   digest = "1:c4404231035fad619a12f82ae3f0f8f9edc1cc7f34e7edad7a28ccac5336cc96"
@@ -1458,7 +1450,6 @@
     "github.com/lyft/flytestdlib/yamlutils",
     "github.com/magiconair/properties/assert",
     "github.com/mitchellh/mapstructure",
-    "github.com/operator-framework/operator-sdk/pkg/util/k8sutil",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/spf13/cobra",
