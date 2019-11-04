@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"runtime/debug"
 	"time"
 
@@ -148,7 +149,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			}()
 
 			if err != nil {
-				logger.Errorf(ctx, "Error when trying to reconcile workflow. Error [%v]", err)
+				logger.Errorf(ctx, "Error when trying to reconcile workflow. Error [%v]. Error Type[%v]", err, reflect.TypeOf(err))
 				// Let's mark these as system errors.
 				// We only want to increase failed attempts and discard any other partial changes to the CRD.
 				wfDeepCopy = w.DeepCopy()
