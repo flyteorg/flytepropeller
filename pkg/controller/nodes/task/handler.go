@@ -16,14 +16,15 @@ import (
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	pluginK8s "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
-	rmConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
 	"github.com/lyft/flytestdlib/storage"
 	regErrors "github.com/pkg/errors"
+
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
+	rmConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
 
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
@@ -39,7 +40,8 @@ type metrics struct {
 	unsupportedTaskType    labeled.Counter
 	catalogPutFailureCount labeled.Counter
 	catalogGetFailureCount labeled.Counter
-	discoveryMissCount     labeled.Counter
+	catalogPutSuccessCount labeled.Counter
+	catalogMissCount       labeled.Counter
 	catalogHitCount        labeled.Counter
 	pluginExecutionLatency labeled.StopWatch
 
@@ -569,7 +571,8 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 			pluginPanics:           labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),
 			unsupportedTaskType:    labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),
 			catalogHitCount:        labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", scope),
-			discoveryMissCount:     labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
+			catalogMissCount:       labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
+			catalogPutSuccessCount: labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", scope),
 			catalogPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			catalogGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
 			pluginExecutionLatency: labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),

@@ -32,7 +32,7 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 		if resp, err := t.catalog.Get(ctx, key); err != nil {
 			causeErr := errors.Cause(err)
 			if taskStatus, ok := status.FromError(causeErr); ok && taskStatus.Code() == codes.NotFound {
-				t.metrics.discoveryMissCount.Inc(ctx)
+				t.metrics.catalogMissCount.Inc(ctx)
 				logger.Infof(ctx, "Artifact not found in Catalog. Executing Task.")
 				return false, nil
 			}
@@ -154,6 +154,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeId v1alpha1
 				t.metrics.catalogPutFailureCount.Inc(ctx)
 				logger.Errorf(ctx, "Failed to write results to catalog for Task [%v]. Err: %v", tk.GetId(), err2)
 			} else {
+				t.metrics.catalogPutSuccessCount.Inc(ctx)
 				logger.Debugf(ctx, "Successfully cached results to catalog - Task [%v]", tk.GetId())
 			}
 		}
