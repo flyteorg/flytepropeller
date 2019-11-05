@@ -175,10 +175,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 
 	for _, p := range enabledPlugins {
 		// rn = create a new resource negotiator proxy for each plugin
-		sCtxFinal := newNameSpacedSetupCtx(tSCtx, resourcemanager.ResourceRegistrarProxy{
-			ResourceRegistrar: newResourceManagerBuilder,
-			NamespacePrefix:   pluginCore.ResourceNamespace(p.ID),
-		})
+		sCtxFinal := newNameSpacedSetupCtx(tSCtx, newResourceManagerBuilder.ResourceRegistrar(pluginCore.ResourceNamespace(p.ID)))
 		// sCtxFinal := newNSSetupCtx(tSCtx)
 		// tSCtx.resourceNegotiator = tSCtx.ResourceRegistrar().ResourceRegistrar(pluginCore.ResourceNamespace(p.ID))
 		logger.Infof(ctx, "Loading Plugin [%s] ENABLED", p.ID)
@@ -203,6 +200,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		logger.Errorf(ctx, "Failed to build a resource manager")
 		return err
 	}
+
 	t.resourceManager = rm
 
 	return nil

@@ -55,6 +55,7 @@ func (r *RedisResourceManagerBuilder) RegisterResourceQuota(ctx context.Context,
 
 	// Add this registration to the list
 	r.namespacedResourcesQuotaMap[namespace] = quota
+	logger.Infof(ctx, "Registering resource quota for Namespace [%v]. Quota [%v]", namespace, quota)
 	return nil
 }
 
@@ -105,7 +106,7 @@ type RedisResourceManager struct {
 	namespacedResourcesMap map[pluginCore.ResourceNamespace]Resource
 }
 
-func (r *RedisResourceManager) GetTaskResourceManager(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceManager {
+func GetTaskResourceManager(r pluginCore.ResourceManager, namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceManager {
 	return Proxy{
 		ResourceManager: r,
 		NamespacePrefix: namespacePrefix,
@@ -194,6 +195,7 @@ func (r *RedisResourceManager) AllocateResource(ctx context.Context, namespace p
 		logger.Errorf(ctx, "Error adding token [%s:%s] %v", namespace, allocationToken, err)
 		return pluginCore.AllocationUndefined, err
 	}
+
 	logger.Infof(ctx, "Added %d to the Redis Qubole set", countAdded)
 
 	return pluginCore.AllocationStatusGranted, err

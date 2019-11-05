@@ -20,7 +20,7 @@ type Metrics interface {
 }
 
 type Builder interface {
-	RegisterResourceQuota(ctx context.Context, namespace pluginCore.ResourceNamespace, quota int) error
+	ResourceRegistrar(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceRegistrar
 	BuildResourceManager(ctx context.Context) (pluginCore.ResourceManager, error)
 }
 

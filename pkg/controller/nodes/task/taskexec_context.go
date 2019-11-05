@@ -5,6 +5,8 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
+
 	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -15,7 +17,6 @@ import (
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
@@ -143,10 +144,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
 			o:                     nCtx.Node(),
 		},
-		rm: resourcemanager.Proxy{
-			ResourceManager: t.resourceManager,
-			NamespacePrefix: namespacePrefix,
-		},
+		rm:  resourcemanager.GetTaskResourceManager(t.resourceManager, namespacePrefix),
 		psm: psm,
 		tr:  nCtx.TaskReader(),
 		ow:  ow,
