@@ -9,8 +9,7 @@ import (
 )
 
 const (
-	propellerPrometheusScope            = "flytepropeller"
-	redisResourceManagerPrometheusScope = propellerPrometheusScope + ":" + "redisresourcemanager"
+	redisResourceManagerPrometheusScope = "redis"
 )
 
 func GetResourceManagerBuilderByType(ctx context.Context, managerType rmConfig.Type, scope promutils.Scope) (

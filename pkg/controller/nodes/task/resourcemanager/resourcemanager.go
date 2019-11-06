@@ -2,6 +2,7 @@ package resourcemanager
 
 import (
 	"context"
+	"sync"
 
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/promutils"
@@ -11,8 +12,9 @@ import (
 
 // This struct is designed to serve as the identifier of an user of resource manager
 type Resource struct {
-	quota   int
-	metrics Metrics
+	quota          int
+	metrics        Metrics
+	rejectedTokens sync.Map
 }
 
 type Metrics interface {

@@ -39,7 +39,7 @@ type extendedFakeClient struct {
 	GetError    error
 }
 
-func (e extendedFakeClient) Create(ctx context.Context, obj runtime.Object) error {
+func (e extendedFakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
 	if e.CreateError != nil {
 		return e.CreateError
 	}
@@ -252,6 +252,7 @@ func TestK8sTaskExecutor_Handle_LaunchResource(t *testing.T) {
 		err = fakeClient.Get(ctx, k8stypes.NamespacedName{Namespace: tctx.TaskExecutionMetadata().GetNamespace(),
 			Name: tctx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()}, createdPod)
 		assert.Error(t, err)
+		t.Log(err)
 		assert.True(t, k8serrors.IsNotFound(err))
 	})
 

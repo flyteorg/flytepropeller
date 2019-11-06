@@ -3,6 +3,7 @@ package resourcemanager
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -20,10 +21,9 @@ import (
 const RedisSetKeyPrefix = "resourcemanager"
 
 type RedisResourceManagerBuilder struct {
-	client            *redis.Client
-	MetricsScope      promutils.Scope
-	redisSetKeyPrefix string
-	// namespacedResourcesQuotaMap map[pluginCore.ResourceNamespace]Resource
+	client                      *redis.Client
+	MetricsScope                promutils.Scope
+	redisSetKeyPrefix           string
 	namespacedResourcesQuotaMap map[pluginCore.ResourceNamespace]int
 }
 
@@ -76,8 +76,9 @@ func (r *RedisResourceManagerBuilder) BuildResourceManager(ctx context.Context) 
 		prefixedNamespace := r.getNamespacedRedisSetKey(namespace)
 		metrics := NewRedisResourceManagerMetrics(r.MetricsScope.NewSubScope(prefixedNamespace))
 		rm.namespacedResourcesMap[namespace] = Resource{
-			quota:   quota,
-			metrics: metrics,
+			quota:          quota,
+			metrics:        metrics,
+			rejectedTokens: sync.Map{},
 		}
 	}
 
@@ -89,13 +90,14 @@ func (r *RedisResourceManagerBuilder) getNamespacedRedisSetKey(namespace pluginC
 	return fmt.Sprintf("%s:%s", r.redisSetKeyPrefix, namespace)
 }
 
-func NewRedisResourceManagerBuilder(ctx context.Context, client *redis.Client, scope promutils.Scope) (*RedisResourceManagerBuilder, error) {
+func NewRedisResourceManagerBuilder(_ context.Context, client *redis.Client, scope promutils.Scope) (*RedisResourceManagerBuilder, error) {
 	rn := &RedisResourceManagerBuilder{
 		client:                      client,
 		MetricsScope:                scope,
 		redisSetKeyPrefix:           RedisSetKeyPrefix,
 		namespacedResourcesQuotaMap: map[pluginCore.ResourceNamespace]int{},
 	}
+
 	return rn, nil
 }
 
@@ -114,9 +116,10 @@ func GetTaskResourceManager(r pluginCore.ResourceManager, namespacePrefix plugin
 }
 
 type RedisResourceManagerMetrics struct {
-	Scope                promutils.Scope
-	RedisSizeCheckTime   promutils.StopWatch
-	AllocatedTokensGauge prometheus.Gauge
+	Scope                     promutils.Scope
+	RedisSizeCheckTime        promutils.StopWatch
+	AllocatedTokensGauge      prometheus.Gauge
+	ApproximateBackedUpLength prometheus.Gauge
 }
 
 func (rrmm RedisResourceManagerMetrics) GetScope() promutils.Scope {
@@ -129,15 +132,23 @@ func (r *RedisResourceManager) getResource(namespace pluginCore.ResourceNamespac
 
 func (r *RedisResourceManager) pollRedis(ctx context.Context, namespace pluginCore.ResourceNamespace) {
 	namespacedRedisSetKey := r.getNamespacedRedisSetKey(namespace)
-	stopWatch := r.getResource(namespace).metrics.(*RedisResourceManagerMetrics).RedisSizeCheckTime.Start()
+	resource := r.getResource(namespace)
+	stopWatch := resource.metrics.(*RedisResourceManagerMetrics).RedisSizeCheckTime.Start()
 	defer stopWatch.Stop()
 	size, err := r.client.SCard(namespacedRedisSetKey).Result()
 	if err != nil {
 		logger.Errorf(ctx, "Error getting size of Redis set in metrics poller %v", err)
 		return
 	}
-	metrics := r.getResource(namespace).metrics.(*RedisResourceManagerMetrics)
+
+	metrics := resource.metrics.(*RedisResourceManagerMetrics)
 	metrics.AllocatedTokensGauge.Set(float64(size))
+	rejectedTokensCount := 0
+	resource.rejectedTokens.Range(func(key, value interface{}) bool {
+		rejectedTokensCount++
+		return true
+	})
+	metrics.ApproximateBackedUpLength.Set(float64(rejectedTokensCount))
 }
 
 func (r *RedisResourceManager) startMetricsGathering(ctx context.Context) {
@@ -151,11 +162,14 @@ func (r *RedisResourceManager) startMetricsGathering(ctx context.Context) {
 func NewRedisResourceManagerMetrics(scope promutils.Scope) *RedisResourceManagerMetrics {
 	return &RedisResourceManagerMetrics{
 		Scope: scope,
-		RedisSizeCheckTime: scope.MustNewStopWatch("redis:size_check_time_ms",
+		RedisSizeCheckTime: scope.MustNewStopWatch("size_check_time_ms",
 			"The time it takes to measure the size of the Redis Set where all utilized resource are stored", time.Millisecond),
 
 		AllocatedTokensGauge: scope.MustNewGauge("size",
 			"The number of allocation resourceRegistryTokens currently in the Redis set"),
+
+		ApproximateBackedUpLength: scope.MustNewGauge("approx_backup",
+			"Approximation for how long the current not-fulfilled-tokens queue is."),
 	}
 }
 
@@ -187,6 +201,7 @@ func (r *RedisResourceManager) AllocateResource(ctx context.Context, namespace p
 
 	if size > int64(namespacedResource.quota) {
 		logger.Infof(ctx, "Too many allocations (total [%d]), rejecting [%s:%s]", size, namespace, allocationToken)
+		namespacedResource.rejectedTokens.Store(allocationToken, struct{}{})
 		return pluginCore.AllocationStatusExhausted, nil
 	}
 
@@ -197,6 +212,7 @@ func (r *RedisResourceManager) AllocateResource(ctx context.Context, namespace p
 	}
 
 	logger.Infof(ctx, "Added %d to the Redis Qubole set", countAdded)
+	namespacedResource.rejectedTokens.Delete(allocationToken)
 
 	return pluginCore.AllocationStatusGranted, err
 }
@@ -208,6 +224,9 @@ func (r *RedisResourceManager) ReleaseResource(ctx context.Context, namespace pl
 		logger.Errorf(ctx, "Error removing token [%v:%s] %v", namespace, allocationToken, err)
 		return err
 	}
+
+	namespacedResource := r.getResource(namespace)
+	namespacedResource.rejectedTokens.Delete(allocationToken)
 	logger.Infof(ctx, "Removed %d token: %s", countRemoved, allocationToken)
 
 	return nil

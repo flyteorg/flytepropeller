@@ -160,7 +160,8 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 
 	// Create a new base resource negotiator
 	resourceManagerConfig := rmConfig.GetConfig()
-	newResourceManagerBuilder, err := resourcemanager.GetResourceManagerBuilderByType(ctx, resourceManagerConfig.Type, t.metrics.scope)
+	newResourceManagerBuilder, err := resourcemanager.GetResourceManagerBuilderByType(ctx, resourceManagerConfig.Type,
+		t.metrics.scope.NewSubScope("resourcemanager"))
 	if err != nil {
 		return err
 	}
