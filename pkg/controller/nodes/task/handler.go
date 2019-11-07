@@ -95,6 +95,7 @@ func (p *pluginRequestedTransition) FinalTaskEvent(id *core.TaskExecutionIdentif
 	if p.previouslyObserved {
 		return nil, nil
 	}
+
 	return ToTaskExecutionEvent(id, in, out, p.pInfo)
 }
 
@@ -220,6 +221,14 @@ func (t Handler) ResolvePlugin(ctx context.Context, ttype string) (pluginCore.Pl
 	return nil, fmt.Errorf("no plugin defined for Handler type [%s] and no defaultPlugin configured", ttype)
 }
 
+func validateTransition(ctx context.Context, transition pluginCore.Transition) error {
+	if info := transition.Info(); info.Err() == nil && info.Info() == nil {
+		return fmt.Errorf("transition doesn't have task info nor an execution error filled [%v]", transition)
+	}
+
+	return nil
+}
+
 func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *taskExecutionContext, ts handler.TaskNodeState) (*pluginRequestedTransition, error) {
 	pluginTrns := &pluginRequestedTransition{}
 
@@ -241,6 +250,8 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		logger.Warnf(ctx, "Runtime error from plugin [%s]. Error: %s", p.GetID(), err.Error())
 		return nil, regErrors.Wrapf(err, "failed to execute handle for plugin [%s]", p.GetID())
 	}
+
+	err = validateTransition(ctx, trns)
 
 	var b []byte
 	var v uint32
@@ -312,6 +323,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath())
 		}
 	}
+
 	return pluginTrns, nil
 }
 

@@ -49,8 +49,8 @@ func ToTaskExecutionEvent(taskExecID *core.TaskExecutionIdentifier, in io.InputF
 
 	tm := ptypes.TimestampNow()
 	var err error
-	if info.Info().OccurredAt != nil {
-		tm, err = ptypes.TimestampProto(*info.Info().OccurredAt)
+	if i := info.Info(); i != nil && i.OccurredAt != nil {
+		tm, err = ptypes.TimestampProto(*i.OccurredAt)
 		if err != nil {
 			return nil, err
 		}
@@ -73,15 +73,21 @@ func ToTaskExecutionEvent(taskExecID *core.TaskExecutionIdentifier, in io.InputF
 		}
 	}
 
+	if info.Phase().IsFailure() && info.Err() != nil {
+		tev.OutputResult = &event.TaskExecutionEvent_Error{
+			Error: info.Err(),
+		}
+	}
+
 	if info.Info() != nil {
 		tev.Logs = info.Info().Logs
 		tev.CustomInfo = info.Info().CustomInfo
 	}
+
 	return tev, nil
 }
 
 func GetTaskExecutionIdentifier(nCtx handler.NodeExecutionContext) *core.TaskExecutionIdentifier {
-
 	return &core.TaskExecutionIdentifier{
 		TaskId:       nCtx.TaskReader().GetTaskID(),
 		RetryAttempt: nCtx.CurrentAttempt(),
