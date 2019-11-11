@@ -41,6 +41,18 @@
   version = "2.0.3"
 
 [[projects]]
+  digest = "1:e1549ae10031ac55dd7d26ac4d480130ddbdf97f9a26ebbedff089aa0335798f"
+  name = "github.com/GoogleCloudPlatform/spark-on-k8s-operator"
+  packages = [
+    "pkg/apis/sparkoperator.k8s.io",
+    "pkg/apis/sparkoperator.k8s.io/v1beta1",
+  ]
+  pruneopts = ""
+  revision = "5306d013b4dbd6a9c75879c1643c7fcb237560ec"
+  source = "https://github.com/lyft/spark-on-k8s-operator"
+  version = "v0.1.3"
+
+[[projects]]
   digest = "1:78d2a7d3aac5f79d447a0aa7f0acc10fa2006cbb70acfe2fb5369e3c0d6bfe7f"
   name = "github.com/Masterminds/semver"
   packages = ["."]
@@ -480,6 +492,8 @@
     "go/tasks/plugins/hive/client",
     "go/tasks/plugins/hive/config",
     "go/tasks/plugins/k8s/container",
+    "go/tasks/plugins/k8s/sidecar",
+    "go/tasks/plugins/k8s/spark",
     "tests",
   ]
   pruneopts = ""
@@ -722,15 +736,15 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:381bcbeb112a51493d9d998bbba207a529c73dbb49b3fd789e48c63fac1f192c"
+  digest = "1:f7b541897bcde05a04a044c342ddc7425aab7e331f37b47fbb486cd16324b48e"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
     "mock",
   ]
   pruneopts = ""
-  revision = "ffdc059bfe9ce6a4e144ba849dbedead332c6053"
-  version = "v1.3.0"
+  revision = "221dbe5ed46703ee255b1da0dec05086f5035f62"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:61ff2a14b0f9a396d92bb6967ecd1ae4c4767ff3e008acdfd8291af134336d9f"
@@ -759,11 +773,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ca6a57b56c4a49d5d5675f8f67d98529c3dfbe948e9c50434b560504a76bffc8"
+  digest = "1:f48ed2088ddc8e6a3b152e34b78a1ab2173211f4e8cbc3a486d85c958ef3f46b"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   pruneopts = ""
-  revision = "bd318be0434a57050ed475e0f45c3dbb16c09c2e"
+  revision = "16651526fdb40c41f6e4da1ad8138f08f012e842"
 
 [[projects]]
   branch = "master"
@@ -1348,6 +1362,8 @@
     "github.com/lyft/flyteplugins/go/tasks/plugins/array/k8s",
     "github.com/lyft/flyteplugins/go/tasks/plugins/hive",
     "github.com/lyft/flyteplugins/go/tasks/plugins/k8s/container",
+    "github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sidecar",
+    "github.com/lyft/flyteplugins/go/tasks/plugins/k8s/spark",
     "github.com/lyft/flytestdlib/cache",
     "github.com/lyft/flytestdlib/config",
     "github.com/lyft/flytestdlib/config/viper",
