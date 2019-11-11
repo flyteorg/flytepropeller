@@ -458,7 +458,6 @@
   version = "v0.14.1"
 
 [[projects]]
-  branch = "refactor-plugin-api"
   digest = "1:6bc66b5c0aa492593f0b2ca3b463c961b0e5b02e6c84b1167fc0944fc8b7f071"
   name = "github.com/lyft/flyteplugins"
   packages = [
@@ -497,7 +496,8 @@
     "tests",
   ]
   pruneopts = ""
-  revision = "caa0afda12c1a875b54433ffdba24dfdf0ecdbbc"
+  revision = "c7dd2ebbc8982984422a91394d6490a76d2c2e7f"
+  version = "v0.2.0"
 
 [[projects]]
   digest = "1:7fee6ae151d081a92d58a53099adcfccf89e424aef03eb20531ae0285da8613d"
