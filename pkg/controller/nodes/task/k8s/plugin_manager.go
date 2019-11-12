@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flytestdlib/contextutils"
 	stdErrors "github.com/lyft/flytestdlib/errors"
 	"k8s.io/client-go/util/workqueue"
@@ -166,18 +167,27 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 		e.metrics.ResourceDeleted.Inc(ctx)
 	}
 
-	p, err := e.plugin.GetTaskPhase(ctx, tCtx, o)
+	pCtx := newPluginContext(tCtx)
+	p, err := e.plugin.GetTaskPhase(ctx, pCtx, o)
 	if err != nil {
 		logger.Warnf(ctx, "failed to check status of resource in plugin [%s], with error: %s", e.GetID(), err.Error())
 		return pluginsCore.UnknownTransition, err
 	}
 
 	if p.Phase() == pluginsCore.PhaseSuccess {
-		opReader := ioutils.NewRemoteFileOutputReader(ctx, tCtx.DataStore(), tCtx.OutputWriter(), tCtx.MaxDatasetSizeBytes())
+		var opReader io.OutputReader
+		if pCtx.ow == nil {
+			logger.Infof(ctx, "Plugin [%s] returned no outputReader, assuming file based outputs", e.id)
+			opReader = ioutils.NewRemoteFileOutputReader(ctx, tCtx.DataStore(), tCtx.OutputWriter(), tCtx.MaxDatasetSizeBytes())
+		} else {
+			logger.Infof(ctx, "Plugin [%s] returned outputReader", e.id)
+			opReader = pCtx.ow.GetReader()
+		}
 		err := tCtx.OutputWriter().Put(ctx, opReader)
 		if err != nil {
 			return pluginsCore.UnknownTransition, err
 		}
+
 		return pluginsCore.DoTransition(p), nil
 	}
 
