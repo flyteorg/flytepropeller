@@ -856,7 +856,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:29abf014d5f21a1e25ab55fc021b47613fe134617fb317078657376b6fdde879"
+  digest = "1:c22e93a039a8143bc67d24c32e2789e2d4ac877205eb26797d78ac063ba397fa"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -874,7 +874,7 @@
     "internal/span",
   ]
   pruneopts = ""
-  revision = "9d59ce8a7f66443c9a512593b020a8248c2e4e1c"
+  revision = "a3f652f18032afc555e2a78e1e1c213be762260c"
 
 [[projects]]
   branch = "master"
@@ -897,7 +897,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:48cb9ca0ab0439b89809d74ae30f17bcc5edc5e37c6efd95176054047d2294b9"
+  digest = "1:690c1642de5538593cc8e717e277c3a4ad5ea653f2f315a2f0e9190adddba7bf"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -911,7 +911,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = ""
-  revision = "54910a47699574f642f3f4c8839fdc9f60ee09ee"
+  revision = "aaf7193ea9c397b5b60ab9749b85f36955d3b2be"
 
 [[projects]]
   digest = "1:c4404231035fad619a12f82ae3f0f8f9edc1cc7f34e7edad7a28ccac5336cc96"
@@ -1172,6 +1172,7 @@
     "rest/watch",
     "restmapper",
     "testing",
+    "third_party/forked/golang/template",
     "tools/auth",
     "tools/cache",
     "tools/clientcmd",
@@ -1190,6 +1191,7 @@
     "util/connrotation",
     "util/flowcontrol",
     "util/homedir",
+    "util/jsonpath",
     "util/keyutil",
     "util/retry",
     "util/workqueue",
@@ -1415,6 +1417,7 @@
     "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/kubernetes/typed/coordination/v1",
     "k8s.io/client-go/kubernetes/typed/core/v1",
+    "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/cache",
