@@ -59,7 +59,7 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 	return false, nil
 }
 
-func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeId v1alpha1.NodeID, i io.InputReader, r io.OutputReader,
+func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader, r io.OutputReader,
 	outputCommitter io.OutputWriter, tr pluginCore.TaskReader, m catalog.Metadata) (*io.ExecutionError, error) {
 
 	tk, err := tr.Read(ctx)
@@ -130,7 +130,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeId v1alpha1
 		if tk.Metadata.Discoverable {
 			p, err := t.ResolvePlugin(ctx, tk.Type)
 			if err != nil {
-				return nil, errors2.Wrapf(errors2.UnsupportedTaskTypeError, nodeId, err, "unable to resolve plugin")
+				return nil, errors2.Wrapf(errors2.UnsupportedTaskTypeError, nodeID, err, "unable to resolve plugin")
 			}
 
 			writeToCatalog := !p.GetProperties().DisableNodeLevelCaching

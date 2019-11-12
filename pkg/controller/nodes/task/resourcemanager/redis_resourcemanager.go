@@ -68,14 +68,14 @@ func (r *RedisResourceManagerBuilder) BuildResourceManager(ctx context.Context) 
 		client:                 r.client,
 		redisSetKeyPrefix:      r.redisSetKeyPrefix,
 		MetricsScope:           r.MetricsScope,
-		namespacedResourcesMap: map[pluginCore.ResourceNamespace]Resource{},
+		namespacedResourcesMap: map[pluginCore.ResourceNamespace]*Resource{},
 	}
 
 	// building the resources and insert them into the resource manager
 	for namespace, quota := range r.namespacedResourcesQuotaMap {
 		prefixedNamespace := r.getNamespacedRedisSetKey(namespace)
 		metrics := NewRedisResourceManagerMetrics(r.MetricsScope.NewSubScope(prefixedNamespace))
-		rm.namespacedResourcesMap[namespace] = Resource{
+		rm.namespacedResourcesMap[namespace] = &Resource{
 			quota:          quota,
 			metrics:        metrics,
 			rejectedTokens: sync.Map{},
@@ -105,7 +105,7 @@ type RedisResourceManager struct {
 	client                 *redis.Client
 	redisSetKeyPrefix      string
 	MetricsScope           promutils.Scope
-	namespacedResourcesMap map[pluginCore.ResourceNamespace]Resource
+	namespacedResourcesMap map[pluginCore.ResourceNamespace]*Resource
 }
 
 func GetTaskResourceManager(r pluginCore.ResourceManager, namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceManager {
@@ -126,7 +126,7 @@ func (rrmm RedisResourceManagerMetrics) GetScope() promutils.Scope {
 	return rrmm.Scope
 }
 
-func (r *RedisResourceManager) getResource(namespace pluginCore.ResourceNamespace) Resource {
+func (r *RedisResourceManager) getResource(namespace pluginCore.ResourceNamespace) *Resource {
 	return r.namespacedResourcesMap[namespace]
 }
 
