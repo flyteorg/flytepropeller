@@ -456,10 +456,12 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, w v1alpha1.Executab
 		if err != nil {
 			return executors.NodeStatusUndefined, err
 		}
+
 		if state.HasFailed() {
 			logger.Debugf(ctx, "Some downstream node has failed, %s", state.Err.Error())
 			return state, nil
 		}
+
 		if !state.IsComplete() {
 			allCompleted = false
 		}
