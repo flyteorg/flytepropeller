@@ -55,8 +55,8 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "flyte-propeller",
-	Short: "Operator for running Flyte Workflows",
+	Use:   "flytepropeller",
+	Short: "Controller for running Flyte Workflows",
 	Long: `Flyte Propeller runs a workflow to completion by recursing through the nodes, 
 			handling their tasks to completion and propagating their status upstream.`,
 	PreRunE: initConfig,
