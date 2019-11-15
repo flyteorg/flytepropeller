@@ -193,7 +193,7 @@ func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx handler.N
 			return nil
 		}
 
-		return d.nodeExecutor.FinalizeHandler(ctx, dynamicWF, dynamicWF.StartNode(), reason)
+		return d.nodeExecutor.FinalizeHandler(ctx, dynamicWF, dynamicWF.StartNode())
 	default:
 		return d.TaskNodeHandler.Finalize(ctx, nCtx)
 	}
