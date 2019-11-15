@@ -461,6 +461,59 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.Exec
 	return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, currentNode.GetID(), "Should never reach here")
 }
 
+func (c *nodeExecutor) FinalizeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error {
+	nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
+	switch nodeStatus.GetPhase() {
+	case v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseSucceeding, v1alpha1.NodePhaseRetryableFailure, v1alpha1.NodePhaseQueued:
+		ctx = contextutils.WithNodeID(ctx, currentNode.GetID())
+		nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
+
+		// Now depending on the node type decide
+		h, err := c.nodeHandlerFactory.GetHandler(currentNode.GetKind())
+		if err != nil {
+			return err
+		}
+
+		nCtx, err := c.newNodeExecContextDefault(ctx, w, currentNode, nodeStatus)
+		if err != nil {
+			return err
+		}
+		// Abort this node
+		err = c.finalize(ctx, h, nCtx)
+		if err != nil {
+			return err
+		}
+	default:
+		// Abort downstream nodes
+		downstreamNodes, err := w.FromNode(currentNode.GetID())
+		if err != nil {
+			logger.Debugf(ctx, "Error when retrieving downstream nodes. Error [%v]", err)
+			return nil
+		}
+
+		errs := make([]error, 0, len(downstreamNodes))
+		for _, d := range downstreamNodes {
+			downstreamNode, ok := w.GetNode(d)
+			if !ok {
+				return errors.Errorf(errors.BadSpecificationError, currentNode.GetID(), "Unable to find Downstream Node [%v]", d)
+			}
+
+			if err := c.FinalizeHandler(ctx, w, downstreamNode); err != nil {
+				logger.Infof(ctx, "Failed to abort node [%v]. Error: %v", d, err)
+				errs = append(errs, err)
+			}
+		}
+
+		if len(errs) > 0 {
+			return errors.ErrorCollection{Errors: errs}
+		}
+
+		return nil
+	}
+
+	return nil
+}
+
 func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error {
 	nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
 	switch nodeStatus.GetPhase() {
@@ -509,15 +562,24 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWo
 			logger.Debugf(ctx, "Error when retrieving downstream nodes. Error [%v]", err)
 			return nil
 		}
+
+		errs := make([]error, 0, len(downstreamNodes))
 		for _, d := range downstreamNodes {
 			downstreamNode, ok := w.GetNode(d)
 			if !ok {
 				return errors.Errorf(errors.BadSpecificationError, currentNode.GetID(), "Unable to find Downstream Node [%v]", d)
 			}
+
 			if err := c.AbortHandler(ctx, w, downstreamNode, reason); err != nil {
-				return err
+				logger.Infof(ctx, "Failed to abort node [%v]. Error: %v", d, err)
+				errs = append(errs, err)
 			}
 		}
+
+		if len(errs) > 0 {
+			return errors.ErrorCollection{Errors: errs}
+		}
+
 		return nil
 	default:
 		logger.Warnf(ctx, "Trying to abort a node in state [%s]", nodeStatus.GetPhase().String())

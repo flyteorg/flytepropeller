@@ -2,6 +2,7 @@ package errors
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -79,4 +80,17 @@ func GetErrorCode(err error) (code ErrorCode, isNodeError bool) {
 	}
 
 	return
+}
+
+type ErrorCollection struct {
+	Errors []error
+}
+
+func (e ErrorCollection) Error() string {
+	sb := strings.Builder{}
+	for idx, err := range e.Errors {
+		sb.WriteString(fmt.Sprintf("%v: %v\r\n", idx, err))
+	}
+
+	return sb.String()
 }

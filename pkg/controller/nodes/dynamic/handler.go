@@ -181,7 +181,22 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 // This is a weird method. We should always finalize before we set the dynamic parent node phase as complete?
 // TODO we are finalizing the parent node only after sub tasks are completed
 func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
-	return d.TaskNodeHandler.Finalize(ctx, nCtx)
+	ds := nCtx.NodeStateReader().GetDynamicNodeState()
+	switch ds.Phase {
+	case v1alpha1.DynamicNodePhaseExecuting:
+		dynamicWF, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
+		if err != nil {
+			return err
+		}
+
+		if !isDynamic {
+			return nil
+		}
+
+		return d.nodeExecutor.FinalizeHandler(ctx, dynamicWF, dynamicWF.StartNode(), reason)
+	default:
+		return d.TaskNodeHandler.Finalize(ctx, nCtx)
+	}
 }
 
 func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Context, djSpec *core.DynamicJobSpec, nCtx handler.NodeExecutionContext, parentNodeStatus v1alpha1.ExecutableNodeStatus) (
