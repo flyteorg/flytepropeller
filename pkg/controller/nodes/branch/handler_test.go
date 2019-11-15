@@ -27,11 +27,13 @@ import (
 
 type recursiveNodeHandlerFn func(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error)
 type abortNodeHandlerCbFn func(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error
+type finalizeNodeHandlerCbFn func(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error
 
 type mockNodeExecutor struct {
 	executors.Node
 	RecursiveNodeHandlerCB recursiveNodeHandlerFn
 	AbortNodeHandlerCB     abortNodeHandlerCbFn
+	FinalizeNodeHandlerCB  finalizeNodeHandlerCbFn
 }
 
 type branchNodeStateHolder struct {
@@ -55,12 +57,16 @@ func (t branchNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) e
 	panic("not implemented")
 }
 
-func (m *mockNodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
+func (m *mockNodeExecutor) Handle(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
 	return m.RecursiveNodeHandlerCB(ctx, w, currentNode)
 }
 
-func (m *mockNodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error {
+func (m *mockNodeExecutor) Abort(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error {
 	return m.AbortNodeHandlerCB(ctx, w, currentNode)
+}
+
+func (m *mockNodeExecutor) Finalize(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error {
+	return m.FinalizeNodeHandlerCB(ctx, w, currentNode)
 }
 
 func createNodeContext(phase v1alpha1.BranchNodePhase, childNodeID *v1alpha1.NodeID, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode, inputs *core.LiteralMap) *mocks.NodeExecutionContext {
@@ -309,8 +315,8 @@ func TestBranchHandler_HandleNode(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			res := &v12.ResourceRequirements{}
 			n := &mocks2.ExecutableNode{}
-			n.On("GetResources").Return(res)
-			n.On("GetBranchNode").Return(nil)
+			n.OnGetResources().Return(res)
+			n.OnGetBranchNode().Return(nil)
 			nCtx := createNodeContext(v1alpha1.BranchNodeSuccess, &childNodeID, w, n, inputs)
 
 			s, err := branch.Handle(ctx, nCtx)

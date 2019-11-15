@@ -24,7 +24,7 @@ func (s *subworkflowHandler) DoInlineSubWorkflow(ctx context.Context, nCtx handl
 	parentNodeStatus v1alpha1.ExecutableNodeStatus, startNode v1alpha1.ExecutableNode) (handler.Transition, error) {
 
 	// TODO we need to handle failing and success nodes
-	state, err := s.nodeExecutor.RecursiveNodeHandler(ctx, w, startNode)
+	state, err := s.nodeExecutor.Handle(ctx, w, startNode)
 	if err != nil {
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoUndefined), err
 	}
@@ -83,7 +83,7 @@ func (s *subworkflowHandler) DoInlineSubWorkflow(ctx context.Context, nCtx handl
 
 func (s *subworkflowHandler) DoInFailureHandling(ctx context.Context, nCtx handler.NodeExecutionContext, w v1alpha1.ExecutableWorkflow) (handler.Transition, error) {
 	if w.GetOnFailureNode() != nil {
-		state, err := s.nodeExecutor.RecursiveNodeHandler(ctx, w, w.GetOnFailureNode())
+		state, err := s.nodeExecutor.Handle(ctx, w, w.GetOnFailureNode())
 		if err != nil {
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoUndefined), err
 		}
@@ -201,7 +201,7 @@ func (s *subworkflowHandler) HandleAbort(ctx context.Context, nCtx handler.NodeE
 		return fmt.Errorf("no sub workflow [%s] found in node [%s]", workflowID, nCtx.NodeID())
 	}
 
-	return s.nodeExecutor.AbortHandler(ctx, contextualSubWorkflow, startNode, "")
+	return s.nodeExecutor.Abort(ctx, contextualSubWorkflow, startNode, "")
 }
 
 func newSubworkflowHandler(nodeExecutor executors.Node) subworkflowHandler {

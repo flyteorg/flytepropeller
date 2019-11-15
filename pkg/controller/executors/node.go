@@ -52,6 +52,14 @@ func (p NodePhase) String() string {
 	return fmt.Sprintf("Unknown - %d", p)
 }
 
+type NodeAction = int8
+
+const (
+	NodeActionHandle NodeAction = iota
+	NodeActionAbort
+	NodeActionFinalize
+)
+
 // Core Node Executor that is used to execute a node. This is a recursive node executor and understands node dependencies
 type Node interface {
 	// This method is used specifically to set inputs for start node. This is because start node does not retrieve inputs
@@ -63,10 +71,12 @@ type Node interface {
 	// - 1. It finds a blocking node (not ready, or running)
 	// - 2. A node fails and hence the workflow will fail
 	// - 3. The final/end node has completed and the workflow should be stopped
-	RecursiveNodeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (NodeStatus, error)
+	Handle(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (NodeStatus, error)
 
 	// This aborts the given node. If the given node is complete then it recursively finds the running nodes and aborts them
-	AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error
+	Abort(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error
+
+	Finalize(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error
 
 	// This method should be used to initialize Node executor
 	Initialize(ctx context.Context) error

@@ -115,7 +115,7 @@ func (c *workflowExecutor) handleRunningWorkflow(ctx context.Context, w *v1alpha
 	if startNode == nil {
 		return StatusFailed(errors.Errorf(errors.IllegalStateError, w.GetID(), "StartNode not found in running workflow?")), nil
 	}
-	state, err := c.nodeExecutor.RecursiveNodeHandler(ctx, contextualWf, startNode)
+	state, err := c.nodeExecutor.Handle(ctx, contextualWf, startNode)
 	if err != nil {
 		return StatusRunning, err
 	}
@@ -141,7 +141,7 @@ func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha
 
 	errorNode := contextualWf.GetOnFailureNode()
 	if errorNode != nil {
-		state, err := c.nodeExecutor.RecursiveNodeHandler(ctx, contextualWf, errorNode)
+		state, err := c.nodeExecutor.Handle(ctx, contextualWf, errorNode)
 		if err != nil {
 			return StatusFailing(nil), err
 		}
@@ -383,7 +383,7 @@ func (c *workflowExecutor) cleanupRunningNodes(ctx context.Context, w v1alpha1.E
 		return errors.Errorf(errors.IllegalStateError, w.GetID(), "StartNode not found in running workflow?")
 	}
 
-	if err := c.nodeExecutor.AbortHandler(ctx, w, startNode, reason); err != nil {
+	if err := c.nodeExecutor.Abort(ctx, w, startNode, reason); err != nil {
 		return errors.Errorf(errors.CausedByError, w.GetID(), "Failed to propagate Abort for workflow. Error: %v", err)
 	}
 

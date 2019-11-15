@@ -158,10 +158,10 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 }
 
 func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
-
 	ds := nCtx.NodeStateReader().GetDynamicNodeState()
 	switch ds.Phase {
 	case v1alpha1.DynamicNodePhaseExecuting:
+		logger.Infof(ctx, "Recursively aborting nodes in dynamic workflow.")
 		dynamicWF, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 		if err != nil {
 			return err
@@ -171,7 +171,7 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 			return nil
 		}
 
-		return d.nodeExecutor.AbortHandler(ctx, dynamicWF, dynamicWF.StartNode(), reason)
+		return d.nodeExecutor.Abort(ctx, dynamicWF, dynamicWF.StartNode(), reason)
 	default:
 		// The parent node has not yet completed, so we will abort the parent node
 		return d.TaskNodeHandler.Abort(ctx, nCtx, reason)
@@ -179,9 +179,25 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 }
 
 // This is a weird method. We should always finalize before we set the dynamic parent node phase as complete?
-// TODO we are finalizing the parent node only after sub tasks are completed
 func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
-	return d.TaskNodeHandler.Finalize(ctx, nCtx)
+	ds := nCtx.NodeStateReader().GetDynamicNodeState()
+	switch ds.Phase {
+	case v1alpha1.DynamicNodePhaseExecuting:
+		logger.Infof(ctx, "Recursively finalizing nodes in dynamic workflow.")
+		dynamicWF, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
+		if err != nil {
+			return err
+		}
+
+		if !isDynamic {
+			return nil
+		}
+
+		return d.nodeExecutor.Finalize(ctx, dynamicWF, dynamicWF.StartNode())
+	default:
+		// The parent node has not yet completed, so we will abort the parent node
+		return d.TaskNodeHandler.Finalize(ctx, nCtx)
+	}
 }
 
 func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Context, djSpec *core.DynamicJobSpec, nCtx handler.NodeExecutionContext, parentNodeStatus v1alpha1.ExecutableNodeStatus) (
@@ -281,6 +297,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	nStatus.SetDataDir(nCtx.NodeStatus().GetDataDir())
 	nStatus.SetParentTaskID(execID)
 
+	// TODO: EngHabu, enable after investigating
 	// cacheHitStopWatch := d.metrics.CacheHit.Start(ctx)
 	// Check if we have compiled the workflow before:
 	// If there is a cached compiled Workflow, load and return it.
@@ -337,7 +354,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context, dynamicWorkflow v1alpha1.ExecutableWorkflow,
 	nCtx handler.NodeExecutionContext) (handler.Transition, error) {
 
-	state, err := d.nodeExecutor.RecursiveNodeHandler(ctx, dynamicWorkflow, dynamicWorkflow.StartNode())
+	state, err := d.nodeExecutor.Handle(ctx, dynamicWorkflow, dynamicWorkflow.StartNode())
 	if err != nil {
 		return handler.UnknownTransition, err
 	}

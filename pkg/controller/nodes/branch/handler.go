@@ -102,7 +102,7 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 
 func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.NodeExecutionContext, nodeStatus v1alpha1.ExecutableNodeStatus, branchTakenNode v1alpha1.ExecutableNode) (handler.Transition, error) {
 	w := nCtx.Workflow()
-	downstreamStatus, err := b.nodeExecutor.RecursiveNodeHandler(ctx, w, branchTakenNode)
+	downstreamStatus, err := b.nodeExecutor.Handle(ctx, w, branchTakenNode)
 	if err != nil {
 		return handler.UnknownTransition, err
 	}
@@ -160,7 +160,7 @@ func (b *branchHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionCon
 	}
 
 	// Recurse downstream
-	return b.nodeExecutor.AbortHandler(ctx, w, branchTakenNode, reason)
+	return b.nodeExecutor.Abort(ctx, w, branchTakenNode, reason)
 }
 
 func (b *branchHandler) Finalize(ctx context.Context, executionContext handler.NodeExecutionContext) error {
