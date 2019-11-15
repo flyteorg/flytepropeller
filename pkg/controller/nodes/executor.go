@@ -582,6 +582,7 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWo
 
 		return nil
 	default:
+		ctx = contextutils.WithNodeID(ctx, currentNode.GetID())
 		logger.Warnf(ctx, "Trying to abort a node in state [%s]", nodeStatus.GetPhase().String())
 	}
 	return nil
