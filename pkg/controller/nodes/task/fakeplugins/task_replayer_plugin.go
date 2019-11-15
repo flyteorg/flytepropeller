@@ -62,9 +62,11 @@ func (r ReplayerPlugin) Handle(_ context.Context, tCtx pluginCore.TaskExecutionC
 	defer func() {
 		s.nextOnHandleResponseIdx++
 	}()
-	if s.nextOnHandleResponseIdx > len(r.orderedOnHandleResponses) {
-		return pluginCore.UnknownTransition, fmt.Errorf("plugin Handle Invoked [%d] times, expected [%d] for task [%s]", s.nextOnHandleResponseIdx, len(r.orderedOnHandleResponses), n)
+
+	if s.nextOnHandleResponseIdx >= len(r.orderedOnHandleResponses) {
+		return pluginCore.UnknownTransition, fmt.Errorf("plugin Handle Invoked [%d] times, expected [%d] for task [%s]", s.nextOnHandleResponseIdx+1, len(r.orderedOnHandleResponses), n)
 	}
+
 	hr := r.orderedOnHandleResponses[s.nextOnHandleResponseIdx]
 	return hr.T, hr.Err
 }

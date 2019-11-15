@@ -56,6 +56,10 @@ const (
 	NodePhaseRetryableFailure
 )
 
+func (p NodePhase) IsTerminal() bool {
+	return p == NodePhaseFailed || p == NodePhaseSucceeded || p == NodePhaseSkipped
+}
+
 func (p NodePhase) String() string {
 	switch p {
 	case NodePhaseNotYetStarted:

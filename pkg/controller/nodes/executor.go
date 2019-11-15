@@ -514,33 +514,41 @@ func (c *nodeExecutor) Finalize(ctx context.Context, w v1alpha1.ExecutableWorkfl
 
 func (c *nodeExecutor) recursiveHandle(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode,
 	nodeAction executors.NodeAction, reason string) (executors.NodeStatus, error) {
-	status, err := c.handleDownstream(ctx, w, currentNode, nodeAction, reason)
-	if err != nil {
-		return status, err
-	}
-
 	currentNodeCtx := contextutils.WithNodeID(ctx, currentNode.GetID())
+
 	switch nodeAction {
 	case executors.NodeActionHandle:
+		s := w.GetNodeExecutionStatus(currentNode.GetID())
+		if phase := s.GetPhase(); phase == v1alpha1.NodePhaseSucceeded || phase == v1alpha1.NodePhaseSkipped {
+			return c.handleDownstream(ctx, w, currentNode, nodeAction, reason)
+		}
+
 		t := c.metrics.NodeExecutionTime.Start(currentNodeCtx)
 		defer t.Stop()
 		return c.handleNode(currentNodeCtx, w, currentNode)
+
 		// TODO we can optimize skip state handling by iterating down the graph and marking all as skipped
 		// Currently we treat either Skip or Success the same way. In this approach only one node will be skipped
 		// at a time. As we iterate down, further nodes will be skipped
 	case executors.NodeActionAbort:
-		err = c.abort(currentNodeCtx, w, currentNode, reason)
+		_, err := c.handleDownstream(ctx, w, currentNode, nodeAction, reason)
 		if err != nil {
-			return status, err
+			return executors.NodeStatusUndefined, err
 		}
-	case executors.NodeActionFinalize:
-		err = c.finalize(currentNodeCtx, w, currentNode)
-		if err != nil {
-			return status, err
-		}
-	}
 
-	return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, currentNode.GetID(), "Should never reach here")
+		err = c.abort(currentNodeCtx, w, currentNode, reason)
+		return executors.NodeStatusComplete, err
+	case executors.NodeActionFinalize:
+		_, err := c.handleDownstream(ctx, w, currentNode, nodeAction, reason)
+		if err != nil {
+			return executors.NodeStatusUndefined, err
+		}
+
+		err = c.finalize(currentNodeCtx, w, currentNode)
+		return executors.NodeStatusComplete, err
+	default:
+		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, currentNode.GetID(), "Unknown node action [%v]", nodeAction)
+	}
 }
 
 func (c *nodeExecutor) Abort(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error {
