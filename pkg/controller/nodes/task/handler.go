@@ -510,6 +510,7 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", tCtx.tr.GetTaskType(), string(stack))
 			}
 		}()
+
 		childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
 		err = p.Abort(childCtx, tCtx)
 		return

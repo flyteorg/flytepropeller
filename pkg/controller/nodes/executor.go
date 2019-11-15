@@ -180,6 +180,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 }
 
 func (c *nodeExecutor) abort(ctx context.Context, h handler.Node, nCtx *execContext, reason string) error {
+	logger.Debugf(ctx, "Calling aborting & finalize")
 	if err := h.Abort(ctx, nCtx, reason); err != nil {
 		return err
 	}
