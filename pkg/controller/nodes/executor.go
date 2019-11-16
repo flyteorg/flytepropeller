@@ -274,6 +274,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		if err := c.finalize(ctx, h, nCtx); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
+
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), nodeStatus.GetMessage())
 		c.metrics.FailureDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		// TODO we need to have a way to find the error message from failing to failed!
@@ -285,6 +286,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		if err := c.finalize(ctx, h, nCtx); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
+
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully")
 		c.metrics.SuccessDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		return executors.NodeStatusSuccess, nil

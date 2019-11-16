@@ -56,6 +56,7 @@ type DynamicNodePhase int
 const (
 	DynamicNodePhaseNone DynamicNodePhase = iota
 	DynamicNodePhaseExecuting
+	DynamicNodePhaseFailing
 )
 
 type DynamicNodeStatus struct {
