@@ -151,6 +151,8 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 			logger.Errorf(ctx, "Failing to finalize dynamic workflow")
 			return trns, err
 		}
+
+		trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure("DynamicNodeFailed", ds.Reason, nil))
 	} else {
 		trns, newState, err = d.handleParentNode(ctx, ds, nCtx)
 		if err != nil {

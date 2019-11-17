@@ -176,6 +176,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 		// Retrying to clearing all status
 		nCtx.nsm.clearNodeStatus()
 	}
+
 	return t.Info(), nil
 }
 
@@ -236,7 +237,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			return executors.NodeStatusUndefined, err
 		}
 		if p.GetPhase() == handler.EPhaseUndefined {
-			return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "received undefined phase from ")
+			return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "received undefined phase.")
 		}
 		if p.GetPhase() == handler.EPhaseNotReady {
 			return executors.NodeStatusPending, nil
@@ -323,13 +324,16 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		logger.Errorf(ctx, "failed Execute for node. Error: %s", err.Error())
 		return executors.NodeStatusUndefined, err
 	}
+
 	if p.GetPhase() == handler.EPhaseUndefined {
-		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "received undefined phase from ")
+		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "received undefined phase.")
 	}
+
 	np, err := ToNodePhase(p.GetPhase())
 	if err != nil {
 		return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "failed to move from queued")
 	}
+
 	finalStatus := executors.NodeStatusRunning
 	if np == v1alpha1.NodePhaseFailing && !h.FinalizeRequired() {
 		logger.Infof(ctx, "Finalize not required, moving node to Failed")
