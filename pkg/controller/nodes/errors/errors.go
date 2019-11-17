@@ -13,18 +13,30 @@ type ErrorMessage = string
 
 type NodeError struct {
 	errors.StackTrace
-	Code    ErrorCode
+	ErrCode ErrorCode
 	Message ErrorMessage
 	Node    v1alpha1.NodeID
 }
 
+func (n *NodeError) Code() ErrorCode {
+	return n.ErrCode
+}
+
 func (n *NodeError) Error() string {
-	return fmt.Sprintf("failed at Node[%s]. %v: %v", n.Node, n.Code, n.Message)
+	return fmt.Sprintf("failed at Node[%s]. %v: %v", n.Node, n.ErrCode, n.Message)
 }
 
 type NodeErrorWithCause struct {
 	NodeError error
 	cause     error
+}
+
+func (n *NodeErrorWithCause) Code() ErrorCode {
+	if asNodeErr, casted := n.NodeError.(*NodeError); casted {
+		return asNodeErr.Code()
+	}
+
+	return ""
 }
 
 func (n *NodeErrorWithCause) Error() string {
@@ -37,7 +49,7 @@ func (n *NodeErrorWithCause) Cause() error {
 
 func errorf(c ErrorCode, n v1alpha1.NodeID, msgFmt string, args ...interface{}) error {
 	return &NodeError{
-		Code:    c,
+		ErrCode: c,
 		Node:    n,
 		Message: fmt.Sprintf(msgFmt, args...),
 	}
@@ -66,14 +78,14 @@ func GetErrorCode(err error) (code ErrorCode, isNodeError bool) {
 	isNodeError = false
 	e, ok := err.(*NodeError)
 	if ok {
-		code = e.Code
+		code = e.ErrCode
 		isNodeError = true
 		return
 	}
 
 	if e2, ok := err.(*NodeErrorWithCause); ok {
 		if ne, ok := e2.NodeError.(*NodeError); ok {
-			code = ne.Code
+			code = ne.ErrCode
 			isNodeError = true
 			return
 		}

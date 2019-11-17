@@ -1,6 +1,8 @@
 package errors
 
-type ErrorCode string
+import "github.com/lyft/flytestdlib/errors"
+
+type ErrorCode = errors.ErrorCode
 
 const (
 	UnknownError                       ErrorCode = "UnknownError"
