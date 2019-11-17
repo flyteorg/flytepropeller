@@ -167,6 +167,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 		if nCtx.Node().GetRetryStrategy() != nil && nCtx.Node().GetRetryStrategy().MinAttempts != nil {
 			maxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
 		}
+
 		attempts := nodeStatus.IncrementAttempts()
 		if attempts > maxAttempts {
 			return handler.PhaseInfoFailure(
