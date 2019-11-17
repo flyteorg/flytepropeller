@@ -212,7 +212,7 @@ func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx handler.N
 			return nil
 		}
 
-		return d.nodeExecutor.AbortHandler(ctx, dynamicWF, dynamicWF.StartNode(), "Failing")
+		return d.nodeExecutor.AbortHandler(ctx, dynamicWF, dynamicWF.StartNode(), "Dynamic workflow is failing.")
 	default:
 		return d.TaskNodeHandler.Finalize(ctx, nCtx)
 	}
