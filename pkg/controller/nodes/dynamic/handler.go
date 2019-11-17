@@ -406,7 +406,7 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 			destinationPath := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetDataDir())
 			if err := nCtx.DataStore().CopyRaw(ctx, sourcePath, destinationPath, storage.Options{}); err != nil {
 				return handler.DoTransition(handler.TransitionTypeEphemeral,
-						handler.PhaseInfoFailure(errors.OutputsNotFoundError.String(),
+						handler.PhaseInfoFailure(errors.OutputsNotFoundError,
 							fmt.Sprintf("Failed to copy subworkflow outputs from [%v] to [%v]", sourcePath, destinationPath), nil),
 					), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing},
 					nil

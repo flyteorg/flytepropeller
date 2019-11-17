@@ -24,7 +24,3 @@ const (
 	EventRecordingFailed               ErrorCode = "EventRecordingFailed"
 	CatalogCallFailed                  ErrorCode = "CatalogCallFailed"
 )
-
-func (e ErrorCode) String() string {
-	return string(e)
-}
