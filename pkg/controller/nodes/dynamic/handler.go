@@ -96,6 +96,19 @@ func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevSt
 	return trns, prevState, nil
 }
 
+func canRetry(node v1alpha1.ExecutableNode, currentAttempt uint32) bool {
+	maxAttempts := uint32(0)
+	if node.GetRetryStrategy() != nil && node.GetRetryStrategy().MinAttempts != nil {
+		maxAttempts = uint32(*node.GetRetryStrategy().MinAttempts)
+	}
+
+	if currentAttempt > maxAttempts {
+		return false
+	}
+
+	return true
+}
+
 func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, nCtx handler.NodeExecutionContext, prevState handler.DynamicNodeState) (handler.Transition, handler.DynamicNodeState, error) {
 	dynamicWF, _, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 	if err != nil {
@@ -123,7 +136,11 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 
 		if ee != nil {
 			if ee.IsRecoverable {
-				return trns.WithInfo(handler.PhaseInfoRetryableFailureErr(ee.ExecutionError, trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
+				if canRetry(nCtx.Node(), nCtx.CurrentAttempt()) {
+					return trns.WithInfo(handler.PhaseInfoRetryableFailureErr(ee.ExecutionError, trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
+				} else {
+					return trns.WithInfo(handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
+				}
 			}
 
 			return trns.WithInfo(handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
@@ -152,7 +169,11 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 			return trns, err
 		}
 
-		trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure("DynamicNodeFailed", ds.Reason, nil))
+		if canRetry(nCtx.Node(), nCtx.CurrentAttempt()) {
+			trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure("DynamicNodeFailed", ds.Reason, nil))
+		} else {
+			trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure("DynamicNodeFailed", ds.Reason, nil))
+		}
 	} else {
 		trns, newState, err = d.handleParentNode(ctx, ds, nCtx)
 		if err != nil {
@@ -387,7 +408,7 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 		if outputBindings := dynamicWorkflow.GetOutputBindings(); len(outputBindings) > 0 {
 			endNodeStatus := dynamicWorkflow.GetNodeExecutionStatus(v1alpha1.EndNodeID)
 			if endNodeStatus == nil {
-				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure("MalformedDynamicWorkflow", "no end-node found in dynamic workflow", nil)),
+				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure("MalformedDynamicWorkflow", "no end-node found in dynamic workflow", nil)),
 					handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: "no end-node found in dynamic workflow"},
 					nil
 			}
@@ -395,9 +416,15 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 			sourcePath := v1alpha1.GetOutputsFile(endNodeStatus.GetDataDir())
 			if metadata, err := nCtx.DataStore().Head(ctx, sourcePath); err == nil {
 				if !metadata.Exists() {
-					return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure("DynamicWorkflowOutputsNotFound", " is expected to produce outputs but no outputs file was written to %v.", nil)),
-						handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: "DynamicWorkflow is expected to produce outputs but no outputs file was written"},
-						nil
+					if canRetry(nCtx.Node(), nCtx.CurrentAttempt()) {
+						return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure("DynamicWorkflowOutputsNotFound", " is expected to produce outputs but no outputs file was written to %v.", nil)),
+							handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: "DynamicWorkflow is expected to produce outputs but no outputs file was written"},
+							nil
+					} else {
+						return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure("DynamicWorkflowOutputsNotFound", " is expected to produce outputs but no outputs file was written to %v.", nil)),
+							handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: "DynamicWorkflow is expected to produce outputs but no outputs file was written"},
+							nil
+					}
 				}
 			} else {
 				return handler.UnknownTransition, prevState, err
