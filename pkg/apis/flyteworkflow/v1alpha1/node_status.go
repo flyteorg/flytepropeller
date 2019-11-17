@@ -60,11 +60,20 @@ const (
 )
 
 type DynamicNodeStatus struct {
-	Phase DynamicNodePhase `json:"phase"`
+	Phase  DynamicNodePhase `json:"phase"`
+	Reason string           `json:"reason"`
 }
 
 func (s *DynamicNodeStatus) GetDynamicNodePhase() DynamicNodePhase {
 	return s.Phase
+}
+
+func (s *DynamicNodeStatus) GetDynamicNodeReason() string {
+	return s.Reason
+}
+
+func (s *DynamicNodeStatus) SetDynamicNodeReason(reason string) {
+	s.Reason = reason
 }
 
 func (s *DynamicNodeStatus) SetDynamicNodePhase(phase DynamicNodePhase) {
@@ -78,7 +87,7 @@ func (s *DynamicNodeStatus) Equals(o *DynamicNodeStatus) bool {
 	if s == nil || o == nil {
 		return false
 	}
-	return s.Phase == o.Phase
+	return s.Phase == o.Phase && s.Reason == o.Reason
 }
 
 type WorkflowNodePhase int
