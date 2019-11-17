@@ -146,7 +146,7 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 			return trns, err
 		}
 	} else if ds.Phase == v1alpha1.DynamicNodePhaseFailing {
-		err = d.Finalize(ctx, nCtx)
+		err = d.Abort(ctx, nCtx, ds.Reason)
 		if err != nil {
 			logger.Errorf(ctx, "Failing to finalize dynamic workflow")
 			return trns, err
@@ -167,9 +167,10 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 }
 
 func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
-
 	ds := nCtx.NodeStateReader().GetDynamicNodeState()
 	switch ds.Phase {
+	case v1alpha1.DynamicNodePhaseFailing:
+		fallthrough
 	case v1alpha1.DynamicNodePhaseExecuting:
 		dynamicWF, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 		if err != nil {
@@ -191,6 +192,8 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
 	ds := nCtx.NodeStateReader().GetDynamicNodeState()
 	switch ds.Phase {
+	case v1alpha1.DynamicNodePhaseFailing:
+		fallthrough
 	case v1alpha1.DynamicNodePhaseExecuting:
 		dynamicWF, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 		if err != nil {
@@ -202,17 +205,6 @@ func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx handler.N
 		}
 
 		return d.nodeExecutor.FinalizeHandler(ctx, dynamicWF, dynamicWF.StartNode())
-	case v1alpha1.DynamicNodePhaseFailing:
-		dynamicWF, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
-		if err != nil {
-			return err
-		}
-
-		if !isDynamic {
-			return nil
-		}
-
-		return d.nodeExecutor.AbortHandler(ctx, dynamicWF, dynamicWF.StartNode(), "Dynamic workflow is failing.")
 	default:
 		return d.TaskNodeHandler.Finalize(ctx, nCtx)
 	}
@@ -382,9 +374,9 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 			logger.Errorf(ctx, "We do not support failure nodes in dynamic workflow today")
 		}
 
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure("DynamicWorkflowFailure", state.Err.Error(), nil)),
-			handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing},
-			err
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)),
+			handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: state.Err.Error()},
+			nil
 	}
 
 	if state.IsComplete() {
