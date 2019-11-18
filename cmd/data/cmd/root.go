@@ -7,32 +7,20 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/config/viper"
 	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flytestdlib/promutils"
+	"github.com/lyft/flytestdlib/storage"
 	"github.com/lyft/flytestdlib/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-var cfgFile string
-
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "data",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
-}
-
 type RootOptions struct {
 	showSource bool
+	Scope      promutils.Scope
+	Store      *storage.DataStore
 }
 
 func (r *RootOptions) executeRootCmd() error {
@@ -41,6 +29,24 @@ func (r *RootOptions) executeRootCmd() error {
 	logger.Infof(ctx, "Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
 	version.LogBuildInformation("flytedata")
 	return fmt.Errorf("use one of the sub-commands")
+}
+
+func (r RootOptions) UploadError(ctx context.Context, code string, recvErr error, prefix storage.DataReference) error {
+	if recvErr == nil {
+		recvErr = fmt.Errorf("unknown error")
+	}
+	errorPath, err := r.Store.ConstructReference(ctx, prefix, "errors.pb")
+	if err != nil {
+		logger.Errorf(ctx, "failed to create error file path err: %s", err)
+		return err
+	}
+	return r.Store.WriteProtobuf(ctx, errorPath, storage.Options{}, &core.ErrorDocument{
+		Error: &core.ContainerError{
+			Code:    code,
+			Message: recvErr.Error(),
+			Kind:    core.ContainerError_RECOVERABLE,
+		},
+	})
 }
 
 // NewCommand returns a new instance of an argo command
@@ -59,6 +65,7 @@ func NewDataCommand() *cobra.Command {
 	}
 
 	command.AddCommand(NewDownloadCommand(rootOpts))
+	command.AddCommand(NewUploadCommand(rootOpts))
 
 	command.PersistentFlags().BoolVarP(&rootOpts.showSource, "show-source", "s", false, "Show line number for errors")
 	command.AddCommand(viper.GetConfigCommand())

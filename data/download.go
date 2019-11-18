@@ -161,20 +161,25 @@ func (d Downloader) RecursiveDownload(ctx context.Context, inputs *core.LiteralM
 
 	vmap := make(VarMap, len(f))
 	for variable, future := range f {
+		logger.Infof(ctx, "Waiting for [%s] to be persisted", variable)
 		v, err := future.Get(childCtx)
 		if err != nil && err != AsyncFutureCanceledErr {
+			logger.Infof(ctx, "Failed to persist [%s]", variable)
 			return nil, errors.Wrapf(err, "failed to download and store data for variable [%s]", variable)
 		}
 		vmap[variable] = v
+		logger.Infof(ctx, "Completed persisting [%s]", variable)
 	}
 
 	return vmap, nil
 }
 
 func (d Downloader) DownloadInputs(ctx context.Context, inputRef storage.DataReference, outputDir string) error {
+	logger.Infof(ctx, "Downloading inputs from [%s]", inputRef)
 	inputs := &core.LiteralMap{}
 	err := d.store.ReadProtobuf(ctx, inputRef, inputs)
 	if err != nil {
+		logger.Errorf(ctx, "Failed to download inputs from [%s], err [%s]", inputRef, err)
 		return errors.Wrapf(err, "failed to download input metadata message from remote store")
 	}
 	varMap, err := d.RecursiveDownload(ctx, inputs, outputDir)
@@ -191,7 +196,7 @@ func (d Downloader) DownloadInputs(ctx context.Context, inputRef storage.DataRef
 	return ioutil.WriteFile(aggregatePath, m, os.ModePerm)
 }
 
-func NewDownloader(ctx context.Context, store *storage.DataStore, format Format) Downloader {
+func NewDownloader(_ context.Context, store *storage.DataStore, format Format) Downloader {
 	m := json.Marshal
 	if format == FormatYAML {
 		m = yaml.Marshal

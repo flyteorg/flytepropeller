@@ -3,16 +3,19 @@ package data
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/lyft/envoy/bazel-envoy/external/com_github_gogo_protobuf/jsonpb"
+	"github.com/lyft/envoy/bazel-envoy/external/com_github_gogo_protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
@@ -21,9 +24,10 @@ import (
 
 const maxPrimitiveSize = 1024
 
+type Unmarshal func(r io.Reader, msg proto.Message) error
 type Uploader struct {
-	format  Format
-	marshal func(v interface{}) ([]byte, error)
+	format    Format
+	unmarshal Unmarshal
 	// TODO support multiple buckets
 	store                   *storage.DataStore
 	aggregateOutputFileName string
@@ -248,5 +252,43 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 				return u.handleSimpleType(ctx2, varType.GetSimple(), varPath)
 			})
 		}
+	}
+
+	outputs := &core.LiteralMap{
+		Literals: make(map[string]*core.Literal, len(varFutures)),
+	}
+	for k, f := range varFutures {
+		logger.Infof(ctx, "Waiting for [%s] to complete (it may have a background upload too)", k)
+		v, err := f.Get(ctx)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to upload [%s], reason [%s]", k, err)
+			return err
+		}
+		l, ok := v.(*core.Literal)
+		if !ok {
+			return fmt.Errorf("IllegalState, expected core.Literal, received [%s]", reflect.TypeOf(v))
+		}
+		outputs.Literals[k] = l
+		logger.Infof(ctx, "Var [%s] completed", k)
+	}
+
+	toOutputPath, err := u.store.ConstructReference(ctx, toPathPrefix, u.aggregateOutputFileName)
+	if err != nil {
+		return err
+	}
+	logger.Infof(ctx, "Uploading final outputs to [%s]", toOutputPath)
+	if err := u.store.WriteProtobuf(ctx, toPathPrefix, storage.Options{}, outputs); err != nil {
+		logger.Errorf(ctx, "Failed to upload final outputs file to [%s], err [%s]", toOutputPath, err)
+		return err
+	}
+	logger.Infof(ctx, "Uploaded final outputs to [%s]", toOutputPath)
+	return nil
+}
+
+func NewUploader(_ context.Context, store *storage.DataStore, format Format) Uploader {
+	return Uploader{
+		format:                  format,
+		store:                   store,
+		aggregateOutputFileName: "outputs.pb",
 	}
 }

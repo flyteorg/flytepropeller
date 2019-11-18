@@ -15,49 +15,38 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"time"
 
+	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flytestdlib/storage"
 	"github.com/spf13/cobra"
+
+	"github.com/lyft/flytepropeller/data"
 )
-
-type ExplodeType = string
-
-const (
-	// will convert flyte proto to one file per variable, the output format will match as specified
-	ExplodeTypeOnePerVar ExplodeType = "one-per-var"
-	// Will download contents to one file in the output format specified. For Blob, Multipart-Blobs, Schemas and other large datatypes
-	// A reference to a local file path will be stored in this file
-	ExplodeTypeSingleFile ExplodeType = "single-file-json"
-)
-
-var explodeTypes = []ExplodeType{
-	ExplodeTypeOnePerVar,
-	ExplodeTypeSingleFile,
-}
-
-type OutputFormat = string
-
-const (
-	OutputFormatJSON OutputFormat = "json"
-	OutputFormatYAML OutputFormat = "yaml"
-)
-
-var outputFormats = []OutputFormat{
-	OutputFormatJSON,
-	OutputFormatYAML,
-}
 
 type DownloadOptions struct {
 	*RootOptions
-	remotePath         string
-	localDirectoryPath string
+	remoteInputsPath    string
+	remoteOutputsPrefix string
+	localDirectoryPath  string
 	// Non primitive types will be dumped in this output format
-	outputFormat OutputFormat
-	// Directive on how should the data be exploded into the local path
-	explodeType ExplodeType
+	outputFormat data.Format
+	timeout      time.Duration
 }
 
-func (d *DownloadOptions) Download() error {
+func (d *DownloadOptions) Download(ctx context.Context) error {
+	dl := data.NewDownloader(ctx, d.Store, d.outputFormat)
+	childCtx, _ := context.WithTimeout(ctx, d.timeout)
+	err := dl.DownloadInputs(childCtx, storage.DataReference(d.remoteInputsPath), d.localDirectoryPath)
+	if err != nil {
+		logger.Errorf(ctx, "Downloading failed, err %s", err)
+		if err := d.UploadError(ctx, "InputDownloadFailed", err, storage.DataReference(d.remoteOutputsPrefix)); err != nil {
+			logger.Errorf(ctx, "Failed to write error document, err :%s", err)
+		}
+		return err
+	}
 	return nil
 }
 
@@ -73,14 +62,14 @@ func NewDownloadCommand(opts *RootOptions) *cobra.Command {
 		Short: "downloads flytedata from the remotepath to a local directory.",
 		Long:  `Currently it looks at the outputs.pb and creates one file per variable.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return downloadOpts.Download()
+			return downloadOpts.Download(context.Background())
 		},
 	}
 
-	downloadCmd.Flags().StringVarP(&downloadOpts.remotePath, "from-remote", "f", "", "The remote path/key for stow store.")
-	downloadCmd.Flags().StringVarP(&downloadOpts.localDirectoryPath, "to-local", "t", "", "The local directory on disk where data should be downloaded.")
-	downloadCmd.Flags().StringVarP(&downloadOpts.explodeType, "explode", "x", "one-per-var", fmt.Sprintf("How to explode the input data. Options [%v]", explodeTypes))
-	downloadCmd.Flags().StringVarP(&downloadOpts.outputFormat, "format", "m", "json", fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", outputFormats))
-
+	downloadCmd.Flags().StringVarP(&downloadOpts.remoteInputsPath, "from-remote", "f", "", "The remote path/key for inputs in stow store.")
+	downloadCmd.Flags().StringVarP(&downloadOpts.remoteOutputsPrefix, "to-remote-prefix", "p", "", "The remote path/key prefix for outputs in stow store. this is mostly used to write errors.pb.")
+	downloadCmd.Flags().StringVarP(&downloadOpts.localDirectoryPath, "to-local-dir", "d", "", "The local directory on disk where data should be downloaded.")
+	downloadCmd.Flags().StringVarP(&downloadOpts.outputFormat, "format", "m", "json", fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", data.AllOutputFormats))
+	downloadCmd.Flags().DurationVarP(&downloadOpts.timeout, "timeout", "t", time.Hour*1, "Max time to allow for downloads to complete, default is 1H")
 	return downloadCmd
 }
