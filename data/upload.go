@@ -12,10 +12,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/lyft/envoy/bazel-envoy/external/com_github_gogo_protobuf/jsonpb"
-	"github.com/lyft/envoy/bazel-envoy/external/com_github_gogo_protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
@@ -85,7 +85,11 @@ func MakeLiteralForSimpleType(_ context.Context, t core.SimpleType, s string) (*
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to parse Datetime in RFC3339 format")
 			}
-			p.Value = &core.Primitive_Datetime{Datetime: v}
+			ts, err := ptypes.TimestampProto(v)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to convert datetime to proto")
+			}
+			p.Value = &core.Primitive_Datetime{Datetime: ts}
 		}
 		scalar.Value = &core.Scalar_Primitive{Primitive: p}
 	}

@@ -80,4 +80,5 @@ func NewAsyncFuture(ctx context.Context, closure func(context.Context) (interfac
 		val, err := closure(ctx2)
 		f.set(val, err)
 	}(childCtx)
+	return f
 }
