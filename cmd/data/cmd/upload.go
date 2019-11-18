@@ -1,24 +1,12 @@
-// Copyright © 2019 NAME HERE <EMAIL ADDRESS>
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package cmd
 
 import (
 	"context"
 	"fmt"
+	"path"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
@@ -37,14 +25,65 @@ type UploadOptions struct {
 	outputFormat    data.Format
 	timeout         time.Duration
 	outputInterface []byte
+	useSuccessFile  bool
+}
+
+func WaitForSuccessFileToExist(path string) error {
+	w, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err := w.Close()
+		if err != nil {
+			logger.Errorf(context.TODO(), "failed to close file watcher")
+		}
+	}()
+	done := make(chan error)
+	go func() {
+		for {
+			select {
+			case event, ok := <-w.Events:
+				if !ok {
+					done <- fmt.Errorf("failed to watch")
+					return
+				}
+				if event.Op == fsnotify.Create || event.Op == fsnotify.Write {
+					done <- nil
+					return
+				}
+			case err, ok := <-w.Errors:
+				if !ok {
+					done <- fmt.Errorf("failed to watch")
+					return
+				}
+				done <- err
+				return
+			}
+		}
+	}()
+	if err := w.Add(path); err != nil {
+		return err
+	}
+	return <-done
 }
 
 func (u *UploadOptions) Upload(ctx context.Context) error {
+
+	if u.outputInterface == nil {
+		return fmt.Errorf("output interface is required")
+	}
 
 	outputInterface := &core.VariableMap{}
 	if err := proto.Unmarshal(u.outputInterface, outputInterface); err != nil {
 		logger.Errorf(ctx, "Bad output interface passed, failed to unmarshal err :%s", err)
 		return errors.Wrap(err, "Bad output interface passed, failed to unmarshal")
+	}
+
+	if u.useSuccessFile {
+		if err := WaitForSuccessFileToExist(path.Join(u.localDirectoryPath, "_SUCCESS")); err != nil {
+			return err
+		}
 	}
 
 	dl := data.NewUploader(ctx, u.Store, u.outputFormat)
@@ -81,5 +120,6 @@ func NewUploadCommand(opts *RootOptions) *cobra.Command {
 	uploadCmd.Flags().StringVarP(&uploadOptions.outputFormat, "format", "m", "json", fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", data.AllOutputFormats))
 	uploadCmd.Flags().DurationVarP(&uploadOptions.timeout, "timeout", "t", time.Hour*1, "Max time to allow for downloads to complete, default is 1H")
 	uploadCmd.Flags().BytesBase64VarP(&uploadOptions.outputInterface, "output-interface", "i", nil, "Output interface proto message - core.VariableMap, base64 encoced string")
+	uploadCmd.Flags().BoolVarP(&uploadOptions.useSuccessFile, "use-success-file", "s", true, "Upload will wait for a success file to be written before starting upload process.")
 	return uploadCmd
 }
