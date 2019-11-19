@@ -165,7 +165,7 @@ func (v perNSCounter) CalculateQuotaString() string {
 		if !ok {
 			continue
 		}
-		per := float64(used)/float64(hard) * 100.0
+		per := float64(used) / float64(hard) * 100.0
 		sb.WriteString(fmt.Sprintf("%s=%.2f%%,", k, per))
 	}
 	return sb.String()
@@ -258,7 +258,6 @@ func (g *GetOpts) listWorkflows() error {
 				}
 			}
 			c := perNS[q.Namespace]
-			fmt.Printf("Quota %s %s\n", q.Status.Hard, q.Status.Used)
 			c.hard = q.Status.Hard
 			c.used = q.Status.Used
 			return nil
