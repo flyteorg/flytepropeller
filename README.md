@@ -7,7 +7,7 @@ Flyte Propeller
 [![CodeCoverage](https://img.shields.io/codecov/c/github/lyft/flytepropeller.svg)](https://codecov.io/gh/lyft/flytepropeller)
 [![Go Report Card](https://goreportcard.com/badge/github.com/lyft/flytepropeller)](https://goreportcard.com/report/github.com/lyft/flytepropeller)
 ![Commit activity](https://img.shields.io/github/commit-activity/w/lyft/flytepropeller.svg?style=plastic)
-![Commit since last releast](https://img.shields.io/github/commits-since/lyft/flytepropeller/latest.svg?style=plastic)
+![Commit since last release](https://img.shields.io/github/commits-since/lyft/flytepropeller/latest.svg?style=plastic)
 
 Kubernetes operator to executes Flyte graphs natively on kubernetes
 
