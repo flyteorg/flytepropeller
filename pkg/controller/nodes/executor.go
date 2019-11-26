@@ -169,10 +169,10 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 		}
 
 		attempts := nodeStatus.IncrementAttempts()
-		if attempts > maxAttempts {
+		if attempts >= maxAttempts {
 			return handler.PhaseInfoFailure(
 				fmt.Sprintf("RetriesExhausted|%s", t.Info().GetErr().Code),
-				fmt.Sprintf("[%d/%d] attempts done. Last Error: %s", attempts-1, maxAttempts, t.Info().GetErr().Message),
+				fmt.Sprintf("[%d/%d] attempts done. Last Error: %s", attempts, maxAttempts, t.Info().GetErr().Message),
 				t.Info().GetInfo(),
 			), nil
 		}
@@ -475,7 +475,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.Exec
 func (c *nodeExecutor) FinalizeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error {
 	nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
 	switch nodeStatus.GetPhase() {
-	case v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseSucceeding, v1alpha1.NodePhaseRetryableFailure, v1alpha1.NodePhaseQueued:
+	case v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseSucceeding, v1alpha1.NodePhaseRetryableFailure:
 		ctx = contextutils.WithNodeID(ctx, currentNode.GetID())
 		nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
 
