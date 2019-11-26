@@ -156,10 +156,12 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 				// We only want to increase failed attempts and discard any other partial changes to the CRD.
 				wfDeepCopy = w.DeepCopy()
 				wfDeepCopy.GetExecutionStatus().IncFailedAttempts()
+				// wfDeepCopy.GetExecutionStatus().IncBackedOffAttempts()
 				wfDeepCopy.GetExecutionStatus().SetMessage(err.Error())
 				p.metrics.SystemError.Inc(ctx)
 			} else {
 				// No updates in the status we detected, we will skip writing to KubeAPI
+				wfDeepCopy.GetExecutionStatus().ResetBackedOffAttempts()
 				if wfDeepCopy.Status.Equals(&w.Status) {
 					logger.Info(ctx, "WF hasn't been updated in this round.")
 					return nil

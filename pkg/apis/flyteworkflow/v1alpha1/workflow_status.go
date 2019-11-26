@@ -27,6 +27,8 @@ type WorkflowStatus struct {
 	// that spin in an error loop. The value should be set at the global level and will be enforced. At the end of
 	// the retries the workflow will fail
 	FailedAttempts uint32 `json:"failedAttempts,omitempty"`
+
+	BackedOffAttempts uint32 `json:"backedOffAttempts,omitempty"`
 }
 
 func IsWorkflowPhaseTerminal(p WorkflowPhase) bool {
@@ -58,6 +60,10 @@ func (in *WorkflowStatus) UpdatePhase(p WorkflowPhase, msg string) {
 
 func (in *WorkflowStatus) IncFailedAttempts() {
 	in.FailedAttempts++
+}
+
+func (in *WorkflowStatus) IncBackedOffAttempts() {
+	in.BackedOffAttempts++
 }
 
 func (in *WorkflowStatus) GetPhase() WorkflowPhase {
