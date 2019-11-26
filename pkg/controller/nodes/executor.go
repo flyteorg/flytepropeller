@@ -168,7 +168,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 			maxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
 		}
 
-		attempts := nodeStatus.IncrementAttempts()
+		attempts := nodeStatus.GetAttempts() + 1
 		if attempts >= maxAttempts {
 			return handler.PhaseInfoFailure(
 				fmt.Sprintf("RetriesExhausted|%s", t.Info().GetErr().Code),
@@ -176,6 +176,8 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 				t.Info().GetInfo(),
 			), nil
 		}
+
+		nodeStatus.IncrementAttempts()
 		// Retrying to clearing all status
 		nCtx.nsm.clearNodeStatus()
 	}
