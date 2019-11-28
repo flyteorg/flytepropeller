@@ -12,7 +12,6 @@ require (
 	github.com/aws/aws-sdk-go v1.25.33 // indirect
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cheekybits/is v0.0.0-20150225183255-68e9c0620927 // indirect
 	github.com/coocood/freecache v1.1.0 // indirect
 	github.com/dnaeon/go-vcr v1.0.1 // indirect
@@ -23,6 +22,7 @@ require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/golang/protobuf v1.3.2
+	github.com/golangci/golangci-lint v1.21.0 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/graymeta/stow v0.0.0-20190522170649-903027f87de7 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
@@ -37,7 +37,6 @@ require (
 	github.com/lyft/flyteplugins v0.2.2
 	github.com/lyft/flytestdlib v0.2.28
 	github.com/magiconair/properties v1.8.1
-	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.10 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/ncw/swift v1.0.49-0.20191112130638-27a552ee74bc // indirect
