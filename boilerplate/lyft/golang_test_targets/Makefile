@@ -18,8 +18,7 @@ goimports:
 
 .PHONY: install
 install: #download dependencies (including test deps) for the package
-	which dep || (curl "https://raw.githubusercontent.com/golang/dep/${DEP_SHA}/install.sh" | sh)
-	dep ensure
+	go mod download
 
 .PHONY: test_unit
 test_unit:
