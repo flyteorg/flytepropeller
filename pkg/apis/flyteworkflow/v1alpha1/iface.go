@@ -70,11 +70,14 @@ func (p NodePhase) String() string {
 		return "Succeeded"
 	case NodePhaseFailed:
 		return "Failed"
+	case NodePhaseFailing:
+		return "Failing"
 	case NodePhaseSkipped:
 		return "Skipped"
 	case NodePhaseRetryableFailure:
 		return "RetryableFailure"
 	}
+
 	return "Unknown"
 }
 

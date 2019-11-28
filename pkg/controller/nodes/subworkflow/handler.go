@@ -44,7 +44,8 @@ func (w *workflowNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecu
 	logger.Debug(ctx, "Starting workflow Node")
 	invalidWFNodeError := func() (handler.Transition, error) {
 		errMsg := "workflow wfNode does not have a subworkflow or child workflow reference"
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(errors.BadSpecificationError, errMsg, nil)), nil
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(
+			errors.BadSpecificationError, errMsg, nil)), nil
 	}
 
 	updateNodeStateFn := func(transition handler.Transition, err error) (handler.Transition, error) {
