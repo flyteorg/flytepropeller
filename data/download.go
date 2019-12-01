@@ -62,11 +62,12 @@ func (d Downloader) downloadFromStorage(ctx context.Context, ref storage.DataRef
 func (d Downloader) downloadFromHttp(ctx context.Context, ref storage.DataReference) (io.ReadCloser, error) {
 	resp, err := http.Get(ref.String())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Failed to download from url :%s", ref)
 	}
 	return resp.Body, nil
 }
 
+// TODO add support for multipart blobs
 func (d Downloader) handleBlob(ctx context.Context, blob *core.Blob, toFilePath string) (interface{}, error) {
 	ref := storage.DataReference(blob.Uri)
 	scheme, _, _, err := ref.Split()
@@ -80,7 +81,7 @@ func (d Downloader) handleBlob(ctx context.Context, blob *core.Blob, toFilePath 
 		reader, err = d.downloadFromStorage(ctx, ref)
 	}
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to download from given url [%s]", ref)
+		return nil, err
 	}
 	defer func() {
 		err := reader.Close()
@@ -102,7 +103,7 @@ func (d Downloader) handleBlob(ctx context.Context, blob *core.Blob, toFilePath 
 		return nil, errors.Wrapf(err, "failed to write remote data to local filesystem")
 	}
 	logger.Infof(ctx, "Successfully copied [%d] bytes remote data from [%s] to local [%s]", v, ref, toFilePath)
-	return ref.String(), nil
+	return toFilePath, nil
 }
 
 func (d Downloader) handlePrimitive(primitive *core.Primitive, toFilePath string) (interface{}, error) {
@@ -165,7 +166,7 @@ func (d Downloader) RecursiveDownload(ctx context.Context, inputs *core.LiteralM
 		v, err := future.Get(childCtx)
 		if err != nil && err != AsyncFutureCanceledErr {
 			logger.Infof(ctx, "Failed to persist [%s]", variable)
-			return nil, errors.Wrapf(err, "failed to download and store data for variable [%s]", variable)
+			return nil, errors.Wrapf(err, "variable [%s] download/store failed", variable)
 		}
 		vmap[variable] = v
 		logger.Infof(ctx, "Completed persisting [%s]", variable)
@@ -176,6 +177,7 @@ func (d Downloader) RecursiveDownload(ctx context.Context, inputs *core.LiteralM
 
 func (d Downloader) DownloadInputs(ctx context.Context, inputRef storage.DataReference, outputDir string) error {
 	logger.Infof(ctx, "Downloading inputs from [%s]", inputRef)
+	defer logger.Infof(ctx, "Exited downloading inputs from [%s]", inputRef)
 	inputs := &core.LiteralMap{}
 	err := d.store.ReadProtobuf(ctx, inputRef, inputs)
 	if err != nil {

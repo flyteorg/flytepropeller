@@ -143,7 +143,7 @@ func (u Uploader) handleSimpleType(ctx context.Context, t core.SimpleType, fileP
 		return nil, err
 	} else {
 		if info.IsDir() {
-			return nil, fmt.Errorf("expected file for type [%s], found dir at path [%s]", filePath)
+			return nil, fmt.Errorf("expected file for type [%s], found dir at path [%s]", t.String(), filePath)
 		}
 		if info.Size() > maxPrimitiveSize {
 			return nil, fmt.Errorf("maximum allowed filesize is [%d], but found [%d]", maxPrimitiveSize, info.Size())

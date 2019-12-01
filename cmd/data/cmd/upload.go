@@ -6,7 +6,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
@@ -14,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/lyft/flytepropeller/cmd/data/cmd/containercompletion"
 	"github.com/lyft/flytepropeller/data"
 )
 
@@ -25,53 +25,30 @@ type UploadOptions struct {
 	outputFormat    data.Format
 	timeout         time.Duration
 	outputInterface []byte
-	useSuccessFile  bool
+	watcherType     containercompletion.WatcherType
+	containerInfo   containercompletion.ContainerInformation
 }
 
-func WaitForSuccessFileToExist(path string) error {
-	w, err := fsnotify.NewWatcher()
-	if err != nil {
-		return err
+func (u *UploadOptions) createWatcher(ctx context.Context, w containercompletion.WatcherType) (containercompletion.Watcher, error) {
+	switch w {
+	case containercompletion.WatcherTypeKubeAPI:
+		return containercompletion.NewKubeAPIWatcher(ctx, u.RootOptions.kubeClient.CoreV1())
+	case containercompletion.WatcherTypeSuccessFile:
+		return containercompletion.NewSuccessFileWatcher(ctx, path.Join(u.localDirectoryPath, "_SUCCESS"))
+	case containercompletion.WatcherTypeSharedProcessNS:
+		return containercompletion.NewSharedProcessNSWatcher(ctx)
 	}
-	defer func() {
-		err := w.Close()
-		if err != nil {
-			logger.Errorf(context.TODO(), "failed to close file watcher")
-		}
-	}()
-	done := make(chan error)
-	go func() {
-		for {
-			select {
-			case event, ok := <-w.Events:
-				if !ok {
-					done <- fmt.Errorf("failed to watch")
-					return
-				}
-				if event.Op == fsnotify.Create || event.Op == fsnotify.Write {
-					done <- nil
-					return
-				}
-			case err, ok := <-w.Errors:
-				if !ok {
-					done <- fmt.Errorf("failed to watch")
-					return
-				}
-				done <- err
-				return
-			}
-		}
-	}()
-	if err := w.Add(path); err != nil {
-		return err
-	}
-	return <-done
+	return nil, fmt.Errorf("unsupported watcher type")
 }
 
-func (u *UploadOptions) Upload(ctx context.Context) error {
-
+func (u *UploadOptions) uploader(ctx context.Context) error {
 	if u.outputInterface == nil {
 		return fmt.Errorf("output interface is required")
+	}
+
+	if u.outputInterface == nil {
+		logger.Infof(ctx, "No output interface provided. Assuming Void outputs.")
+		return nil
 	}
 
 	outputInterface := &core.VariableMap{}
@@ -80,21 +57,37 @@ func (u *UploadOptions) Upload(ctx context.Context) error {
 		return errors.Wrap(err, "Bad output interface passed, failed to unmarshal")
 	}
 
-	if u.useSuccessFile {
-		if err := WaitForSuccessFileToExist(path.Join(u.localDirectoryPath, "_SUCCESS")); err != nil {
-			return err
-		}
+	if outputInterface.Variables == nil || len(outputInterface.Variables) == 0 {
+		logger.Infof(ctx, "Empty output interface received. Assuming void outputs.")
+		return nil
+	}
+
+	w, err := u.createWatcher(ctx, u.watcherType)
+	if err != nil {
+		return err
+	}
+	if err := w.WaitForContainerToComplete(ctx, u.containerInfo); err != nil {
+		logger.Errorf(ctx, "Failed waiting for container to exit. Err: %s", err)
+		return err
 	}
 
 	dl := data.NewUploader(ctx, u.Store, u.outputFormat)
 	childCtx, _ := context.WithTimeout(ctx, u.timeout)
-	err := dl.RecursiveUpload(childCtx, outputInterface, u.localDirectoryPath, storage.DataReference(u.remoteOutputsPrefix))
-	if err != nil {
+	if err := dl.RecursiveUpload(childCtx, outputInterface, u.localDirectoryPath, storage.DataReference(u.remoteOutputsPrefix)); err != nil {
+		logger.Errorf(ctx, "Uploading failed, err %s", err)
+		return err
+	}
+	return nil
+}
+
+func (u *UploadOptions) Upload(ctx context.Context) error {
+
+	if err := u.uploader(ctx); err != nil {
 		logger.Errorf(ctx, "Uploading failed, err %s", err)
 		if err := u.UploadError(ctx, "OutputUploadFailed", err, storage.DataReference(u.remoteOutputsPrefix)); err != nil {
 			logger.Errorf(ctx, "Failed to write error document, err :%s", err)
+			return err
 		}
-		return err
 	}
 	return nil
 }
@@ -120,6 +113,6 @@ func NewUploadCommand(opts *RootOptions) *cobra.Command {
 	uploadCmd.Flags().StringVarP(&uploadOptions.outputFormat, "format", "m", "json", fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", data.AllOutputFormats))
 	uploadCmd.Flags().DurationVarP(&uploadOptions.timeout, "timeout", "t", time.Hour*1, "Max time to allow for downloads to complete, default is 1H")
 	uploadCmd.Flags().BytesBase64VarP(&uploadOptions.outputInterface, "output-interface", "i", nil, "Output interface proto message - core.VariableMap, base64 encoced string")
-	uploadCmd.Flags().BoolVarP(&uploadOptions.useSuccessFile, "use-success-file", "s", true, "Upload will wait for a success file to be written before starting upload process.")
+	uploadCmd.Flags().StringVarP(&uploadOptions.watcherType, "watcher-type", "w", containercompletion.WatcherTypeKubeAPI, fmt.Sprintf("Upload will wait for completion of the container before starting upload process. Watcher type makes the type configurable. Avaialble Type %+v", containercompletion.AllWatcherTypes))
 	return uploadCmd
 }

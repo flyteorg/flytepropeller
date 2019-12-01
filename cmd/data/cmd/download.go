@@ -23,15 +23,27 @@ type DownloadOptions struct {
 }
 
 func (d *DownloadOptions) Download(ctx context.Context) error {
+	if d.localDirectoryPath == "" {
+		return fmt.Errorf("to-local-dir is required")
+	}
+	if d.remoteOutputsPrefix == "" {
+		return fmt.Errorf("to-remoute-prefix is required")
+	}
+	if d.remoteInputsPath == "" {
+		return fmt.Errorf("from-remote is required")
+	}
 	dl := data.NewDownloader(ctx, d.Store, d.outputFormat)
-	childCtx, _ := context.WithTimeout(ctx, d.timeout)
+	childCtx := ctx
+	if d.timeout > 0 {
+		childCtx, _ = context.WithTimeout(ctx, d.timeout)
+	}
 	err := dl.DownloadInputs(childCtx, storage.DataReference(d.remoteInputsPath), d.localDirectoryPath)
 	if err != nil {
 		logger.Errorf(ctx, "Downloading failed, err %s", err)
 		if err := d.UploadError(ctx, "InputDownloadFailed", err, storage.DataReference(d.remoteOutputsPrefix)); err != nil {
 			logger.Errorf(ctx, "Failed to write error document, err :%s", err)
+			return err
 		}
-		return err
 	}
 	return nil
 }
