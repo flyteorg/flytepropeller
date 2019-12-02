@@ -171,6 +171,7 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 	if err != nil {
 		errs.Collect(errors.NewWorkflowBuildError(err))
 	}
+	obj.ObjectMeta.Labels[WorkflowIDLabel] = primarySpec.ID
 
 	if obj.Nodes == nil || obj.Connections.DownstreamEdges == nil {
 		// If we come here, we'd better have an error generated earlier. Otherwise, add one to make sure build fails.
