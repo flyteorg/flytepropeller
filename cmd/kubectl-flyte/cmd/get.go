@@ -140,7 +140,6 @@ func (g *GetOpts) iterateOverQuotas(f func(quota *v12.ResourceQuota) error, batc
 type perNSCounter struct {
 	ns        string
 	total     int
-	completed int
 	succeeded int
 	failed    int
 	waiting   int
