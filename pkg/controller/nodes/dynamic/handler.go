@@ -148,7 +148,7 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 	} else if ds.Phase == v1alpha1.DynamicNodePhaseFailing {
 		err = d.Abort(ctx, nCtx, ds.Reason)
 		if err != nil {
-				logger.Errorf(ctx, "Failing to abort dynamic workflow")
+			logger.Errorf(ctx, "Failing to abort dynamic workflow")
 			return trns, err
 		}
 
