@@ -43,10 +43,6 @@ func (u *UploadOptions) createWatcher(ctx context.Context, w containercompletion
 
 func (u *UploadOptions) uploader(ctx context.Context) error {
 	if u.outputInterface == nil {
-		return fmt.Errorf("output interface is required")
-	}
-
-	if u.outputInterface == nil {
 		logger.Infof(ctx, "No output interface provided. Assuming Void outputs.")
 		return nil
 	}

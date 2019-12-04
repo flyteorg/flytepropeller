@@ -16,7 +16,7 @@ import (
 
 func TestUploadOptions_Upload_SuccessFile(t *testing.T) {
 	tmpFolderLocation := ""
-	tmpPrefix := "download_test"
+	tmpPrefix := "upload_test"
 	outputPath := "output"
 
 	ctx := context.TODO()
