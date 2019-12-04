@@ -14,6 +14,8 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 )
 
+const NodeIDLabel = "node-id"
+
 type execMetadata struct {
 	v1alpha1.WorkflowMeta
 }
@@ -38,6 +40,7 @@ type execContext struct {
 	nsm                 *nodeStateManager
 	enqueueOwner        func() error
 	w                   v1alpha1.ExecutableWorkflow
+	nodeLabels          map[string]string
 }
 
 func (e execContext) EnqueueOwnerFunc() func() error {
@@ -96,9 +99,16 @@ func (e execContext) MaxDatasetSizeBytes() int64 {
 	return e.maxDatasetSizeBytes
 }
 
+func (e execContext) GetLabels() map[string]string {
+	return e.nodeLabels
+}
+
 func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error) *execContext {
+	md := execMetadata{WorkflowMeta: w}
+	nodeLabels := md.GetLabels()
+	nodeLabels[NodeIDLabel] = node.GetID()
 	return &execContext{
-		md:                  execMetadata{WorkflowMeta: w},
+		md:                  md,
 		store:               store,
 		node:                node,
 		nodeStatus:          nodeStatus,
@@ -109,6 +119,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.
 		nsm:                 nsm,
 		enqueueOwner:        enqueueOwner,
 		w:                   w,
+		nodeLabels:          nodeLabels,
 	}
 }
 
