@@ -12,6 +12,7 @@ import (
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
 const NodeIDLabel = "node-id"
@@ -106,7 +107,10 @@ func (e execContext) GetLabels() map[string]string {
 func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error) *execContext {
 	md := execMetadata{WorkflowMeta: w}
 	nodeLabels := md.GetLabels()
-	nodeLabels[NodeIDLabel] = node.GetID()
+	if nodeLabels == nil {
+		nodeLabels = make(map[string]string)
+	}
+	nodeLabels[NodeIDLabel] = utils.SanitizeLabelValue(node.GetID())
 	return &execContext{
 		md:                  md,
 		store:               store,
