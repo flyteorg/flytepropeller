@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"path"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -34,7 +33,7 @@ func (u *UploadOptions) createWatcher(ctx context.Context, w containercompletion
 	case containercompletion.WatcherTypeKubeAPI:
 		return containercompletion.NewKubeAPIWatcher(ctx, u.RootOptions.kubeClient.CoreV1())
 	case containercompletion.WatcherTypeSuccessFile:
-		return containercompletion.NewSuccessFileWatcher(ctx, path.Join(u.localDirectoryPath, "_SUCCESS"))
+		return containercompletion.NewSuccessFileWatcher(ctx, u.localDirectoryPath, "_SUCCESS")
 	case containercompletion.WatcherTypeSharedProcessNS:
 		return containercompletion.NewSharedProcessNSWatcher(ctx)
 	}

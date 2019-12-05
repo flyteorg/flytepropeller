@@ -1,10 +1,15 @@
 # This is a sample configuration file.
 # Real configuration when running inside K8s (local or otherwise) lives in a ConfigMap
-storage:
-  connection:
-    endpoint: "./_test"
-  type: local
-  container: "bucket"
 logger:
   level: 4
   show-source: true
+storage:
+  connection:
+    access-key: minio
+    auth-type: accesskey
+    disable-ssl: true
+    endpoint: http://localhost:9000
+    region: us-east-1
+    secret-key: miniostorage
+  type: minio
+  container: "my-s3-bucket"

@@ -281,7 +281,7 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 		return err
 	}
 	logger.Infof(ctx, "Uploading final outputs to [%s]", toOutputPath)
-	if err := u.store.WriteProtobuf(ctx, toPathPrefix, storage.Options{}, outputs); err != nil {
+	if err := u.store.WriteProtobuf(ctx, toOutputPath, storage.Options{}, outputs); err != nil {
 		logger.Errorf(ctx, "Failed to upload final outputs file to [%s], err [%s]", toOutputPath, err)
 		return err
 	}

@@ -78,15 +78,23 @@ func (d Downloader) handleBlob(ctx context.Context, blob *core.Blob, toFilePath 
 	if scheme == "http" || scheme == "https" {
 		reader, err = d.downloadFromHttp(ctx, ref)
 	} else {
+		if blob.GetMetadata().GetType().Dimensionality == core.BlobType_MULTIPART {
+			logger.Warnf(ctx, "Currently only single part blobs are supported, we will force multipart to be 'path/00000'")
+			ref, err = d.store.ConstructReference(ctx, ref, "000000")
+			if err != nil {
+				return nil, err
+			}
+		}
 		reader, err = d.downloadFromStorage(ctx, ref)
 	}
 	if err != nil {
+		logger.Errorf(ctx, "Failed to download from ref [%s]", ref)
 		return nil, err
 	}
 	defer func() {
 		err := reader.Close()
 		if err != nil {
-			logger.Errorf(ctx, "failed to close Blob read stream. Error: %s", err)
+			logger.Errorf(ctx, "failed to close Blob read stream @ref [%s]. Error: %s", ref, err)
 		}
 	}()
 
@@ -104,6 +112,11 @@ func (d Downloader) handleBlob(ctx context.Context, blob *core.Blob, toFilePath 
 	}
 	logger.Infof(ctx, "Successfully copied [%d] bytes remote data from [%s] to local [%s]", v, ref, toFilePath)
 	return toFilePath, nil
+}
+
+func (d Downloader) handleSchema(ctx context.Context, schema *core.Schema, toFilePath string) (interface{}, error) {
+	// TODO Handle schema type
+	return d.handleBlob(ctx, &core.Blob{Uri: schema.Uri, Metadata: &core.BlobMetadata{Type: &core.BlobType{Dimensionality: core.BlobType_MULTIPART}}}, toFilePath)
 }
 
 func (d Downloader) handlePrimitive(primitive *core.Primitive, toFilePath string) (interface{}, error) {
@@ -143,6 +156,12 @@ func (d Downloader) handleScalar(ctx context.Context, scalar *core.Scalar, toFil
 		return NewAsyncFuture(ctx, func(ctx2 context.Context) (interface{}, error) {
 			return d.handleBlob(ctx2, b, p)
 		})
+	case *core.Scalar_Schema:
+		b := scalar.GetSchema()
+		p := toFilePath
+		return NewAsyncFuture(ctx, func(ctx2 context.Context) (interface{}, error) {
+			return d.handleSchema(ctx2, b, p)
+		})
 	}
 	return NewSyncFuture(nil, fmt.Errorf("unsupported scalar type [%v]", reflect.TypeOf(scalar.GetValue())))
 }
@@ -178,6 +197,10 @@ func (d Downloader) RecursiveDownload(ctx context.Context, inputs *core.LiteralM
 func (d Downloader) DownloadInputs(ctx context.Context, inputRef storage.DataReference, outputDir string) error {
 	logger.Infof(ctx, "Downloading inputs from [%s]", inputRef)
 	defer logger.Infof(ctx, "Exited downloading inputs from [%s]", inputRef)
+	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
+		logger.Errorf(ctx, "Failed to create output directories, err: %s", err)
+		return err
+	}
 	inputs := &core.LiteralMap{}
 	err := d.store.ReadProtobuf(ctx, inputRef, inputs)
 	if err != nil {

@@ -2,10 +2,14 @@ package cmd
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/lyft/envoy/bazel-envoy/external/com_github_gogo_protobuf/proto"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
@@ -45,4 +49,18 @@ func TestUploadOptions_Upload_SuccessFile(t *testing.T) {
 
 		assert.NoError(t, uopts.Upload(ctx))
 	})
+
+	uopts.outputInterface = nil
+	vmap := &core.VariableMap{
+		Variables: map[string]*core.Variable{
+			"x_test": {
+				Type:        &core.LiteralType{Type: &core.LiteralType_Blob{Blob: &core.BlobType{Dimensionality: core.BlobType_SINGLE}}},
+				Description: "example",
+			},
+		},
+	}
+	d, err := proto.Marshal(vmap)
+	assert.NoError(t, err)
+	fmt.Println("========")
+	fmt.Println(base64.StdEncoding.EncodeToString(d))
 }
