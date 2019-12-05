@@ -14,6 +14,7 @@ import (
 type successFileWatcher struct {
 	watchDir    string
 	successFile string
+	errorFile   string
 }
 
 func FileExists(filePath string) (bool, error) {
@@ -50,10 +51,12 @@ func (k successFileWatcher) WaitForContainerToComplete(ctx context.Context, info
 					done <- fmt.Errorf("failed to watch")
 					return
 				}
-				logger.Infof(ctx, "event for :%s", event)
-				if event.Name == k.successFile && (event.Op == fsnotify.Create || event.Op == fsnotify.Write) {
-					done <- nil
-					return
+				if event.Op == fsnotify.Create || event.Op == fsnotify.Write {
+					if event.Name == k.successFile || event.Name == k.errorFile {
+						logger.Infof(ctx, "%s file detected", event.Name)
+						done <- nil
+						return
+					}
 				}
 			case err, ok := <-w.Errors:
 				if !ok {
@@ -75,9 +78,16 @@ func (k successFileWatcher) WaitForContainerToComplete(ctx context.Context, info
 		logger.Infof(ctx, "File Already exists")
 		return nil
 	}
+	if ok, err := FileExists(k.errorFile); err != nil {
+		logger.Errorf(ctx, "Failed to check existence of file, err: %s", err)
+		return err
+	} else if ok {
+		logger.Infof(ctx, "File Already exists")
+		return nil
+	}
 	return <-done
 }
 
-func NewSuccessFileWatcher(_ context.Context, watchDir, successFileName string) (Watcher, error) {
-	return successFileWatcher{successFile: path.Join(watchDir, successFileName), watchDir: watchDir}, nil
+func NewSuccessFileWatcher(_ context.Context, watchDir, successFileName, errorFileName string) (Watcher, error) {
+	return successFileWatcher{successFile: path.Join(watchDir, successFileName), errorFile: path.Join(watchDir, errorFileName), watchDir: watchDir}, nil
 }

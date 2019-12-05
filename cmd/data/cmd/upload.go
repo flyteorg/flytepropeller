@@ -16,6 +16,11 @@ import (
 	"github.com/lyft/flytepropeller/data"
 )
 
+const (
+	SuccessFile = "_SUCCESS"
+	ErrorFile   = "_ERROR"
+)
+
 type UploadOptions struct {
 	*RootOptions
 	remoteOutputsPrefix string
@@ -33,7 +38,7 @@ func (u *UploadOptions) createWatcher(ctx context.Context, w containercompletion
 	case containercompletion.WatcherTypeKubeAPI:
 		return containercompletion.NewKubeAPIWatcher(ctx, u.RootOptions.kubeClient.CoreV1())
 	case containercompletion.WatcherTypeSuccessFile:
-		return containercompletion.NewSuccessFileWatcher(ctx, u.localDirectoryPath, "_SUCCESS")
+		return containercompletion.NewSuccessFileWatcher(ctx, u.localDirectoryPath, SuccessFile, ErrorFile)
 	case containercompletion.WatcherTypeSharedProcessNS:
 		return containercompletion.NewSharedProcessNSWatcher(ctx)
 	}
@@ -66,7 +71,7 @@ func (u *UploadOptions) uploader(ctx context.Context) error {
 		return err
 	}
 
-	dl := data.NewUploader(ctx, u.Store, u.outputFormat)
+	dl := data.NewUploader(ctx, u.Store, u.outputFormat, ErrorFile)
 	childCtx, _ := context.WithTimeout(ctx, u.timeout)
 	if err := dl.RecursiveUpload(childCtx, outputInterface, u.localDirectoryPath, storage.DataReference(u.remoteOutputsPrefix)); err != nil {
 		logger.Errorf(ctx, "Uploading failed, err %s", err)

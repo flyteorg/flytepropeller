@@ -31,6 +31,7 @@ type Uploader struct {
 	// TODO support multiple buckets
 	store                   *storage.DataStore
 	aggregateOutputFileName string
+	errorFileName           string
 }
 
 type dirFile struct {
@@ -232,6 +233,24 @@ func (u Uploader) handleBlobType(ctx context.Context, localPath string, toPath s
 func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, fromPath string, toPathPrefix storage.DataReference) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	errFile := path.Join(fromPath, u.errorFileName)
+	if info, err := os.Stat(errFile); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	} else if info.Size() > 1024*1024 {
+		return fmt.Errorf("error file too large %s", info.Size())
+	} else if info.IsDir() {
+		return fmt.Errorf("error file is a directory")
+	} else {
+		if b, err := ioutil.ReadFile(errFile); err != nil {
+			return err
+		} else {
+			return errors.Errorf("User Error: %s", string(b))
+		}
+	}
+
 	varFutures := make(map[string]Future, len(vars.Variables))
 	for varName, variable := range vars.Variables {
 		varPath := path.Join(fromPath, varName)
@@ -289,10 +308,11 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 	return nil
 }
 
-func NewUploader(_ context.Context, store *storage.DataStore, format Format) Uploader {
+func NewUploader(_ context.Context, store *storage.DataStore, format Format, errorFileName string) Uploader {
 	return Uploader{
 		format:                  format,
 		store:                   store,
 		aggregateOutputFileName: "outputs.pb",
+		errorFileName:           errorFileName,
 	}
 }
