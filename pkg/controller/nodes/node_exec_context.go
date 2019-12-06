@@ -16,6 +16,7 @@ import (
 )
 
 const NodeIDLabel = "node-id"
+const TaskNameLabel = "task-name"
 
 type execMetadata struct {
 	v1alpha1.WorkflowMeta
@@ -111,6 +112,9 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.
 		nodeLabels = make(map[string]string)
 	}
 	nodeLabels[NodeIDLabel] = utils.SanitizeLabelValue(node.GetID())
+	if tr != nil && tr.GetTaskID() != nil {
+		nodeLabels[TaskNameLabel] = utils.SanitizeLabelValue(tr.GetTaskID().Name)
+	}
 	return &execContext{
 		md:                  md,
 		store:               store,
