@@ -9,8 +9,8 @@ import (
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/compiler/common"
 	"github.com/lyft/flytepropeller/pkg/compiler/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"github.com/lyft/flytepropeller/pkg/utils"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const ExecutionIDLabel = "execution-id"

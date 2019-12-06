@@ -1,8 +1,8 @@
 package utils
 
 import (
-	"strings"
 	"regexp"
+	"strings"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
