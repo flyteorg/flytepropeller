@@ -115,6 +115,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.
 	if tr != nil && tr.GetTaskID() != nil {
 		nodeLabels[TaskNameLabel] = utils.SanitizeLabelValue(tr.GetTaskID().Name)
 	}
+
 	return &execContext{
 		md:                  md,
 		store:               store,
