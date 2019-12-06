@@ -14,7 +14,7 @@ import (
 )
 
 const ExecutionIDLabel = "execution-id"
-const WorkflowIDLabel = "workflow-id"
+const WorkflowNameLabel = "workflow-name"
 
 func requiresInputs(w *core.WorkflowTemplate) bool {
 	if w == nil || w.GetInterface() == nil || w.GetInterface().GetInputs() == nil ||
@@ -181,7 +181,7 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 	if err != nil {
 		errs.Collect(errors.NewWorkflowBuildError(err))
 	}
-	obj.ObjectMeta.Labels[WorkflowIDLabel] = utils.SanitizeLabelValue(WorkflowNameFromID(primarySpec.ID))
+	obj.ObjectMeta.Labels[WorkflowNameLabel] = utils.SanitizeLabelValue(WorkflowNameFromID(primarySpec.ID))
 
 	if obj.Nodes == nil || obj.Connections.DownstreamEdges == nil {
 		// If we come here, we'd better have an error generated earlier. Otherwise, add one to make sure build fails.
