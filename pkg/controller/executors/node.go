@@ -30,6 +30,8 @@ const (
 	NodePhaseFailed
 	// Internal error observed. This state should always be accompanied with an `error`. if not the behavior is undefined
 	NodePhaseUndefined
+	// Node failed because execution timed out
+	NodePhaseTimedOut
 )
 
 func (p NodePhase) String() string {
@@ -48,6 +50,8 @@ func (p NodePhase) String() string {
 		return "Complete"
 	case NodePhaseUndefined:
 		return "Undefined"
+	case NodePhaseTimedOut:
+		return "NodePhaseTimedOut"
 	}
 	return fmt.Sprintf("Unknown - %d", p)
 }
@@ -88,6 +92,10 @@ func (n *NodeStatus) HasFailed() bool {
 	return n.NodePhase == NodePhaseFailed
 }
 
+func (n *NodeStatus) HasTimedOut() bool {
+	return n.NodePhase == NodePhaseTimedOut
+}
+
 func (n *NodeStatus) PartiallyComplete() bool {
 	return n.NodePhase == NodePhaseSuccess
 }
@@ -98,6 +106,7 @@ var NodeStatusRunning = NodeStatus{NodePhase: NodePhaseRunning}
 var NodeStatusSuccess = NodeStatus{NodePhase: NodePhaseSuccess}
 var NodeStatusComplete = NodeStatus{NodePhase: NodePhaseComplete}
 var NodeStatusUndefined = NodeStatus{NodePhase: NodePhaseUndefined}
+var NodeStatusTimedOut = NodeStatus{NodePhase: NodePhaseTimedOut}
 
 func NodeStatusFailed(err error) NodeStatus {
 	return NodeStatus{NodePhase: NodePhaseFailed, Err: err}
