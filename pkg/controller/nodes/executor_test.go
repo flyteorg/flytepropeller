@@ -44,8 +44,6 @@ func TestSetInputsForStartNode(t *testing.T) {
 	mockStorage := createInmemoryDataStore(t, testScope.NewSubScope("f"))
 	enQWf := func(workflowID v1alpha1.WorkflowID) {}
 
-	//func NewExecutor(ctx context.Context, cfg *config.Config, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink, workflowLauncher launchplan.Executor, maxDatasetSize int64, kubeClient executors.Client, catalogClient catalog.Client, scope promutils.Scope) (executors.Node, error) {
-
 	exec, err := NewExecutor(ctx, config.GetConfig(), mockStorage, enQWf, events.NewMockEventSink(), launchplan.NewFailFastLaunchPlanExecutor(), 10, fakeKubeClient, catalogClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	inputs := &core.LiteralMap{
