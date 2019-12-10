@@ -158,7 +158,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 	return handler.PhaseInfoNotReady("predecessor node not yet complete"), nil
 }
 
-func (c *nodeExecutor) isTimeoutExpired(ctx context.Context, nCtx handler.NodeExecutionContext, h handler.Node, queuedAt *metav1.Time, timeout time.Duration) bool {
+func (c *nodeExecutor) isTimeoutExpired(queuedAt *metav1.Time, timeout time.Duration) bool {
 	if !queuedAt.IsZero() && timeout != 0 {
 		deadline := queuedAt.Add(timeout)
 		if deadline.Before(time.Now()) {
@@ -184,7 +184,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 		if nCtx.Node().GetActiveDeadline() != nil {
 			activeDeadline = *nCtx.Node().GetActiveDeadline()
 		}
-		if c.isTimeoutExpired(ctx, nCtx, h, nodeStatus.GetQueuedAt(), activeDeadline) {
+		if c.isTimeoutExpired(nodeStatus.GetQueuedAt(), activeDeadline) {
 			logger.Errorf(ctx, "Node has timed out; timeout configured: %v", activeDeadline)
 			return handler.PhaseInfoTimedOut(nil, "active deadline elapsed"), nil
 		}
@@ -194,7 +194,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 		if nCtx.Node().GetExecutionDeadline() != nil {
 			executionDeadline = *nCtx.Node().GetExecutionDeadline()
 		}
-		if c.isTimeoutExpired(ctx, nCtx, h, nodeStatus.GetLastAttemptStartedAt(), executionDeadline) {
+		if c.isTimeoutExpired(nodeStatus.GetLastAttemptStartedAt(), executionDeadline) {
 			logger.Errorf(ctx, "Current execution for the node timed out; timeout configured: %v", executionDeadline)
 			return handler.PhaseInfoRetryableFailure("TimeOut", "node execution timed out", nil), nil
 		}
