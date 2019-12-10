@@ -110,17 +110,16 @@ func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
 }
 
 type NodeStatus struct {
-	Phase                NodePhase       `json:"phase"`
-	QueuedAt             *metav1.Time    `json:"queuedAt,omitempty"`
-	StartedAt            *metav1.Time    `json:"startedAt,omitempty"`
-	StoppedAt            *metav1.Time    `json:"stoppedAt,omitempty"`
-	LastUpdatedAt        *metav1.Time    `json:"lastUpdatedAt,omitempty"`
-	LastAttemptStartedAt *metav1.Time    `json:"laStartedAt,omitempty"`
-	Message              string          `json:"message,omitempty"`
-	DataDir              DataReference   `json:"dataDir,omitempty"`
-	Attempts             uint32          `json:"attempts"`
-	Cached               bool            `json:"cached"`
-	FailureType          NodeFailureType `json:"failureType,omitempty"`
+	Phase                NodePhase     `json:"phase"`
+	QueuedAt             *metav1.Time  `json:"queuedAt,omitempty"`
+	StartedAt            *metav1.Time  `json:"startedAt,omitempty"`
+	StoppedAt            *metav1.Time  `json:"stoppedAt,omitempty"`
+	LastUpdatedAt        *metav1.Time  `json:"lastUpdatedAt,omitempty"`
+	LastAttemptStartedAt *metav1.Time  `json:"laStartedAt,omitempty"`
+	Message              string        `json:"message,omitempty"`
+	DataDir              DataReference `json:"dataDir,omitempty"`
+	Attempts             uint32        `json:"attempts"`
+	Cached               bool          `json:"cached"`
 
 	dirty bool
 	// This is useful only for branch nodes. If this is set, then it can be used to determine if execution can proceed
@@ -136,15 +135,6 @@ type NodeStatus struct {
 	// TODO not used delete
 	DynamicNodeStatus *DynamicNodeStatus `json:"dynamicNodeStatus,omitempty"`
 }
-
-type NodeFailureType int
-
-const (
-	NodeFailureUnknown NodeFailureType = iota
-	NodeFailureSystemError
-	NodeFailureUserError
-	NodeFailureTimeout
-)
 
 func (in *NodeStatus) GetBranchStatus() MutableBranchNodeStatus {
 	if in.BranchStatus == nil {
@@ -283,7 +273,7 @@ func (in *NodeStatus) GetOrCreateTaskStatus() MutableTaskNodeStatus {
 	return in.TaskNodeStatus
 }
 
-func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason string, failureType NodeFailureType) {
+func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason string) {
 	if in.Phase == p {
 		// We will not update the phase multiple times. This prevents the comparison from returning false positive
 		return
@@ -294,8 +284,6 @@ func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason st
 	if len(reason) > maxMessageSize {
 		in.Message = reason[:maxMessageSize]
 	}
-
-	in.FailureType = failureType
 
 	n := occurredAt
 	if occurredAt.IsZero() {

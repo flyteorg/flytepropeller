@@ -506,7 +506,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockN2Status.On("GetDataDir").Return(storage.DataReference("blah"))
 			mockN2Status.On("GetWorkflowNodeStatus").Return(nil)
 			mockN2Status.On("GetStoppedAt").Return(nil)
-			mockN2Status.On("UpdatePhase", expectedN2Phase, mock.Anything, mock.AnythingOfType("string"), mock.Anything)
+			mockN2Status.On("UpdatePhase", expectedN2Phase, mock.Anything, mock.AnythingOfType("string"))
 			mockN2Status.On("IsDirty").Return(false)
 			mockN2Status.On("GetTaskNodeStatus").Return(nil)
 			mockN2Status.On("ClearDynamicNodeStatus").Return(nil)

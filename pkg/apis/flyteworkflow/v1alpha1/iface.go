@@ -56,6 +56,7 @@ const (
 	NodePhaseFailed
 	NodePhaseSkipped
 	NodePhaseRetryableFailure
+	NodePhaseTimingOut
 	NodePhaseTimedOut
 )
 
@@ -67,6 +68,8 @@ func (p NodePhase) String() string {
 		return "Queued"
 	case NodePhaseRunning:
 		return "Running"
+	case NodePhaseTimingOut:
+		return "NodePhaseTimingOut"
 	case NodePhaseTimedOut:
 		return "NodePhaseTimedOut"
 	case NodePhaseSucceeding:
@@ -204,7 +207,7 @@ type MutableNodeStatus interface {
 	SetDataDir(DataReference)
 	SetParentNodeID(n *NodeID)
 	SetParentTaskID(t *core.TaskExecutionIdentifier)
-	UpdatePhase(phase NodePhase, occurredAt metav1.Time, reason string, failureType NodeFailureType)
+	UpdatePhase(phase NodePhase, occurredAt metav1.Time, reason string)
 	IncrementAttempts() uint32
 	SetCached()
 	ResetDirty()

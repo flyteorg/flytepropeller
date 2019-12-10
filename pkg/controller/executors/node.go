@@ -30,6 +30,8 @@ const (
 	NodePhaseFailed
 	// Internal error observed. This state should always be accompanied with an `error`. if not the behavior is undefined
 	NodePhaseUndefined
+	// Finalize node failing due to timeout
+	NodePhaseTimingOut
 	// Node failed because execution timed out
 	NodePhaseTimedOut
 )

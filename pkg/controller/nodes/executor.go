@@ -240,7 +240,6 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	logger.Debugf(ctx, "Handling Node [%s]", node.GetID())
 	defer logger.Debugf(ctx, "Completed node [%s]", node.GetID())
 
-	var failureType v1alpha1.NodeFailureType
 	nodeExecID := &core.NodeExecutionIdentifier{
 		NodeId:      node.GetID(),
 		ExecutionId: w.GetExecutionID().WorkflowExecutionIdentifier,
@@ -303,7 +302,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 				logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
 				return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, node.GetID(), err, "failed to record node event")
 			}
-			UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus, failureType)
+			UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
 			c.RecordTransitionLatency(ctx, w, node, nodeStatus)
 		}
 		if np == v1alpha1.NodePhaseQueued {
@@ -320,10 +319,21 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			return executors.NodeStatusUndefined, err
 		}
 
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), nodeStatus.GetMessage(), v1alpha1.NodeFailureUnknown)
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), nodeStatus.GetMessage())
 		c.metrics.FailureDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		// TODO we need to have a way to find the error message from failing to failed!
 		return executors.NodeStatusFailed(fmt.Errorf(nodeStatus.GetMessage())), nil
+	}
+
+	if currentPhase == v1alpha1.NodePhaseTimingOut {
+		logger.Debugf(ctx, "node timing out")
+		if err := c.finalize(ctx, h, nCtx); err != nil {
+			return executors.NodeStatusUndefined, err
+		}
+
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseTimedOut, v1.Now(), nodeStatus.GetMessage())
+		c.metrics.TimedOutFailure.Inc(ctx)
+		return executors.NodeStatusTimedOut, nil
 	}
 
 	if currentPhase == v1alpha1.NodePhaseSucceeding {
@@ -332,7 +342,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			return executors.NodeStatusUndefined, err
 		}
 
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully", v1alpha1.NodeFailureUnknown)
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully")
 		c.metrics.SuccessDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		return executors.NodeStatusSuccess, nil
 	}
@@ -343,7 +353,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			return executors.NodeStatusUndefined, err
 		}
 
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying", v1alpha1.NodeFailureUnknown)
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying")
 		// We are going to retry in the next round, so we should clear all current state
 		nodeStatus.ClearDynamicNodeStatus()
 		nodeStatus.ClearTaskStatus()
@@ -375,9 +385,6 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "received undefined phase.")
 	}
 
-	if p.GetPhase() == handler.EPhaseTimedout {
-		failureType = v1alpha1.NodeFailureTimeout
-	}
 	np, err := ToNodePhase(p.GetPhase())
 	if err != nil {
 		return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "failed to move from queued")
@@ -386,13 +393,13 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	finalStatus := executors.NodeStatusRunning
 	if np == v1alpha1.NodePhaseFailing && !h.FinalizeRequired() {
 		logger.Infof(ctx, "Finalize not required, moving node to Failed")
-		if failureType == v1alpha1.NodeFailureTimeout {
-			np = v1alpha1.NodePhaseTimedOut
-			finalStatus = executors.NodeStatusTimedOut
-		} else {
-			np = v1alpha1.NodePhaseFailed
-			finalStatus = executors.NodeStatusFailed(fmt.Errorf(ToError(p.GetErr(), p.GetReason())))
-		}
+		np = v1alpha1.NodePhaseFailed
+		finalStatus = executors.NodeStatusFailed(fmt.Errorf(ToError(p.GetErr(), p.GetReason())))
+	}
+	if np == v1alpha1.NodePhaseTimingOut && !h.FinalizeRequired() {
+		logger.Infof(ctx, "Finalize not required, moving node to TimedOut")
+		np = v1alpha1.NodePhaseTimedOut
+		finalStatus = executors.NodeStatusTimedOut
 	}
 	if np == v1alpha1.NodePhaseSucceeding && !h.FinalizeRequired() {
 		logger.Infof(ctx, "Finalize not required, moving node to Succeeded")
@@ -420,7 +427,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			}
 		}
 	}
-	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus, failureType)
+	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
 	return finalStatus, nil
 }
 
