@@ -1181,7 +1181,6 @@ func Test_nodeExecutor_timeout(t *testing.T) {
 	queuedAtTime := &v1.Time{Time: queuedAt}
 	ns.On("GetQueuedAt").Return(queuedAtTime)
 	ns.On("GetLastAttemptStartedAt").Return(queuedAtTime)
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &nodeExecutor{}
