@@ -26,6 +26,8 @@ import (
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 
+	"errors"
+
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/config"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
@@ -1119,6 +1121,104 @@ func Test_nodeExecutor_RecordTransitionLatency(t *testing.T) {
 			ch := make(chan prometheus.Metric, 2)
 			tt.fields.metrics.TransitionLatency.Collect(ch)
 			assert.Equal(t, len(ch) == 1, tt.recordingExpected)
+		})
+	}
+}
+
+func Test_nodeExecutor_timeout(t *testing.T) {
+	tests := []struct {
+		name              string
+		phaseInfo         handler.PhaseInfo
+		expectedPhase     handler.EPhase
+		activeDeadline    time.Duration
+		executionDeadline time.Duration
+		err               error
+	}{
+		{
+			name:              "timeout",
+			phaseInfo:         handler.PhaseInfoRunning(nil),
+			expectedPhase:     handler.EPhaseTimedout,
+			activeDeadline:    time.Second * 5,
+			executionDeadline: time.Second * 5,
+			err:               nil,
+		},
+		{
+			name:              "retryable-failure",
+			phaseInfo:         handler.PhaseInfoRunning(nil),
+			expectedPhase:     handler.EPhaseRetryableFailure,
+			activeDeadline:    time.Second * 15,
+			executionDeadline: time.Second * 5,
+			err:               nil,
+		},
+		{
+			name:              "expired-but-terminal-phase",
+			phaseInfo:         handler.PhaseInfoSuccess(nil),
+			expectedPhase:     handler.EPhaseSuccess,
+			activeDeadline:    time.Second * 10,
+			executionDeadline: time.Second * 5,
+			err:               nil,
+		},
+		{
+			name:              "not-expired",
+			phaseInfo:         handler.PhaseInfoRunning(nil),
+			expectedPhase:     handler.EPhaseRunning,
+			activeDeadline:    time.Second * 15,
+			executionDeadline: time.Second * 15,
+			err:               nil,
+		},
+		{
+			name:              "handler-failure",
+			phaseInfo:         handler.PhaseInfoRunning(nil),
+			expectedPhase:     handler.EPhaseUndefined,
+			activeDeadline:    time.Second * 15,
+			executionDeadline: time.Second * 15,
+			err:               errors.New("test-error"),
+		},
+	}
+	// mocking status
+	queuedAt := time.Now().Add(-1 * time.Second * 10)
+	ns := &mocks.ExecutableNodeStatus{}
+	queuedAtTime := &v1.Time{Time: queuedAt}
+	ns.On("GetQueuedAt").Return(queuedAtTime)
+	ns.On("GetLastAttemptStartedAt").Return(queuedAtTime)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &nodeExecutor{}
+			handlerReturn := func() (handler.Transition, error) {
+				return handler.DoTransition(handler.TransitionTypeEphemeral, tt.phaseInfo), tt.err
+			}
+			h := &nodeHandlerMocks.Node{}
+			h.On("Handle",
+				mock.MatchedBy(func(ctx context.Context) bool { return true }),
+				mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
+			).Return(handlerReturn())
+			h.On("FinalizeRequired").Return(true)
+			h.On("Finalize", mock.Anything, mock.Anything).Return(nil)
+
+			hf := &mocks2.HandlerFactory{}
+			hf.On("GetHandler", v1alpha1.NodeKindStart).Return(h, nil)
+			c.nodeHandlerFactory = hf
+
+			mockNode := &mocks.ExecutableNode{}
+			mockNode.On("GetID").Return("node")
+			mockNode.On("GetBranchNode").Return(nil)
+			mockNode.On("GetKind").Return(v1alpha1.NodeKindTask)
+			mockNode.On("IsStartNode").Return(false)
+			mockNode.On("IsEndNode").Return(false)
+			mockNode.On("GetInputBindings").Return([]*v1alpha1.Binding{})
+			mockNode.On("GetActiveDeadline").Return(&tt.activeDeadline)
+			mockNode.On("GetExecutionDeadline").Return(&tt.executionDeadline)
+
+			nCtx := &execContext{node: mockNode, nsm: &nodeStateManager{}}
+			phaseInfo, err := c.execute(context.TODO(), h, nCtx, ns)
+
+			if tt.err != nil {
+				assert.EqualError(t, err, tt.err.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tt.expectedPhase, phaseInfo.GetPhase())
 		})
 	}
 }

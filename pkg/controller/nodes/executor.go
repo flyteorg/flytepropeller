@@ -158,7 +158,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 	return handler.PhaseInfoNotReady("predecessor node not yet complete"), nil
 }
 
-func (c *nodeExecutor) isTimeoutExpired(ctx context.Context, nCtx *execContext, h handler.Node, queuedAt *metav1.Time, timeout time.Duration) bool {
+func (c *nodeExecutor) isTimeoutExpired(ctx context.Context, nCtx handler.NodeExecutionContext, h handler.Node, queuedAt *metav1.Time, timeout time.Duration) bool {
 	if !queuedAt.IsZero() && timeout != 0 {
 		deadline := queuedAt.Add(timeout)
 		if deadline.Before(time.Now()) {
@@ -186,9 +186,10 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 	// check for timeout for non-terminal phases
 	if !phase.IsTerminal() {
 		activeDeadline := c.defaultActiveDeadline
-		if nCtx.node.GetActiveDeadline() != nil {
-			activeDeadline = *nCtx.node.GetActiveDeadline()
+		if nCtx.Node().GetActiveDeadline() != nil {
+			activeDeadline = *nCtx.Node().GetActiveDeadline()
 		}
+
 		if c.isTimeoutExpired(ctx, nCtx, h, nodeStatus.GetQueuedAt(), activeDeadline) {
 			logger.Errorf(ctx, "Node has timed out; timeout configured: %v", activeDeadline)
 			return handler.PhaseInfoTimedOut(nil, "active deadline elapsed"), nil
@@ -196,8 +197,8 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 
 		// Execution timeout is a retry-able error
 		executionDeadline := c.defaultExecutionDeadline
-		if nCtx.node.GetExecutionDeadline() != nil {
-			executionDeadline = *nCtx.node.GetExecutionDeadline()
+		if nCtx.Node().GetExecutionDeadline() != nil {
+			executionDeadline = *nCtx.Node().GetExecutionDeadline()
 		}
 		if c.isTimeoutExpired(ctx, nCtx, h, nodeStatus.GetLastAttemptStartedAt(), executionDeadline) {
 			logger.Errorf(ctx, "Current execution for the node timed out; timeout configured: %v", executionDeadline)
@@ -237,7 +238,7 @@ func (c *nodeExecutor) abort(ctx context.Context, h handler.Node, nCtx *execCont
 
 }
 
-func (c *nodeExecutor) finalize(ctx context.Context, h handler.Node, nCtx *execContext) error {
+func (c *nodeExecutor) finalize(ctx context.Context, h handler.Node, nCtx handler.NodeExecutionContext) error {
 	return h.Finalize(ctx, nCtx)
 }
 
