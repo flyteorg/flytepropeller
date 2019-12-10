@@ -223,7 +223,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 	return t.Info(), nil
 }
 
-func (c *nodeExecutor) abort(ctx context.Context, h handler.Node, nCtx *execContext, reason string) error {
+func (c *nodeExecutor) abort(ctx context.Context, h handler.Node, nCtx handler.NodeExecutionContext, reason string) error {
 	logger.Debugf(ctx, "Calling aborting & finalize")
 	if err := h.Abort(ctx, nCtx, reason); err != nil {
 		return err
@@ -327,7 +327,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 
 	if currentPhase == v1alpha1.NodePhaseTimingOut {
 		logger.Debugf(ctx, "node timing out")
-		if err := c.finalize(ctx, h, nCtx); err != nil {
+		if err := c.abort(ctx, h, nCtx, "node timed out"); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
 
