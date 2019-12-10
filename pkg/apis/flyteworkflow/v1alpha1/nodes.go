@@ -140,6 +140,8 @@ type NodeSpec struct {
 	// Value must be a positive integer. This includes time spent waiting in the queue.
 	// +optional
 	ActiveDeadline *v1.Duration `json:"activeDeadline,omitempty"`
+	// TODO 12-10-2019: For backward compatibility, remove it in future release
+	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
 }
 
 func (in *NodeSpec) GetRetryStrategy() *RetryStrategy {

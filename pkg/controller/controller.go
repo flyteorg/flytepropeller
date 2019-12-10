@@ -291,7 +291,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 
 	controller.workflowStore = workflowstore.NewPassthroughWorkflowStore(ctx, scope, flytepropellerClientset.FlyteworkflowV1alpha1(), flyteworkflowInformer.Lister())
 
-	nodeExecutor, err := nodes.NewExecutor(ctx, cfg, store, controller.enqueueWorkflowForNodeUpdates, eventSink, wfLauncher, cfg.MaxDatasetSizeBytes, kubeClient, catalogClient, scope)
+	nodeExecutor, err := nodes.NewExecutor(ctx, cfg.DefaultDeadlines, store, controller.enqueueWorkflowForNodeUpdates, eventSink, wfLauncher, cfg.MaxDatasetSizeBytes, kubeClient, catalogClient, scope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create Controller.")
 	}

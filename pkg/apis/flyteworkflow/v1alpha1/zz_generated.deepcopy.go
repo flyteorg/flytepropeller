@@ -376,6 +376,11 @@ func (in *NodeSpec) DeepCopyInto(out *NodeSpec) {
 		*out = new(metav1.Duration)
 		**out = **in
 	}
+	if in.ActiveDeadlineSeconds != nil {
+		in, out := &in.ActiveDeadlineSeconds, &out.ActiveDeadlineSeconds
+		*out = new(int64)
+		**out = **in
+	}
 	return
 }
 

@@ -114,7 +114,7 @@ func ToNodePhase(p handler.EPhase) (v1alpha1.NodePhase, error) {
 	case handler.EPhaseFailed:
 		return v1alpha1.NodePhaseFailing, nil
 	case handler.EPhaseTimedout:
-		return v1alpha1.NodePhaseTimedOut, nil
+		return v1alpha1.NodePhaseFailing, nil
 	}
 	return v1alpha1.NodePhaseNotYetStarted, fmt.Errorf("no known conversion from handlerPhase[%d] to NodePhase", p)
 }
@@ -133,10 +133,10 @@ func ToError(executionError *core.ExecutionError, reason string) string {
 	return "unknown error"
 }
 
-func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateManager, s v1alpha1.ExecutableNodeStatus) {
+func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateManager, s v1alpha1.ExecutableNodeStatus, failureType v1alpha1.NodeFailureType) {
 	// We update the phase only if it is not already updated
 	if np != s.GetPhase() {
-		s.UpdatePhase(np, ToK8sTime(p.GetOccurredAt()), ToError(p.GetErr(), p.GetReason()))
+		s.UpdatePhase(np, ToK8sTime(p.GetOccurredAt()), ToError(p.GetErr(), p.GetReason()), failureType)
 	}
 	// Update TaskStatus
 	if n.t != nil {

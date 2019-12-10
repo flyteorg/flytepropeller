@@ -204,7 +204,7 @@ type MutableNodeStatus interface {
 	SetDataDir(DataReference)
 	SetParentNodeID(n *NodeID)
 	SetParentTaskID(t *core.TaskExecutionIdentifier)
-	UpdatePhase(phase NodePhase, occurredAt metav1.Time, reason string)
+	UpdatePhase(phase NodePhase, occurredAt metav1.Time, reason string, failureType NodeFailureType)
 	IncrementAttempts() uint32
 	SetCached()
 	ResetDirty()
