@@ -115,3 +115,8 @@ required = [
   name = "gopkg.in/fsnotify.v1"
   source = "https://github.com/fsnotify/fsnotify.git"
   version="v1.4.7"
+
+[[constraint]]
+  name = "github.com/mitchellh/go-ps"
+  revision = "621e5597135b1d14a7d9c2bfc7bc312e7c58463c"
+

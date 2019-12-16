@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/lyft/envoy/bazel-envoy/external/com_github_gogo_protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/storage"
