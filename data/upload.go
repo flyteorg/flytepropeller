@@ -230,7 +230,7 @@ func (u Uploader) handleBlobType(ctx context.Context, localPath string, toPath s
 	}
 }
 
-func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, fromPath string, toPathPrefix storage.DataReference) error {
+func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, fromPath string, metadataPath, dataSandbox storage.DataReference) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -260,9 +260,9 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 			var varOutputPath storage.DataReference
 			var err error
 			if varName == u.aggregateOutputFileName {
-				varOutputPath, err = u.store.ConstructReference(ctx, toPathPrefix, "_"+varName)
+				varOutputPath, err = u.store.ConstructReference(ctx, dataSandbox, "_"+varName)
 			} else {
-				varOutputPath, err = u.store.ConstructReference(ctx, toPathPrefix, varName)
+				varOutputPath, err = u.store.ConstructReference(ctx, dataSandbox, varName)
 			}
 			if err != nil {
 				return err
@@ -295,7 +295,7 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 		logger.Infof(ctx, "Var [%s] completed", k)
 	}
 
-	toOutputPath, err := u.store.ConstructReference(ctx, toPathPrefix, u.aggregateOutputFileName)
+	toOutputPath, err := u.store.ConstructReference(ctx, metadataPath, u.aggregateOutputFileName)
 	if err != nil {
 		return err
 	}

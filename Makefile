@@ -10,6 +10,7 @@ update_boilerplate:
 linux_compile:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /artifacts/flytepropeller ./cmd/controller/main.go
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /artifacts/kubectl-flyte ./cmd/kubectl-flyte/main.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /artifacts/flytedata ./cmd/data/main.go
 
 .PHONY: compile
 compile:

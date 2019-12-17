@@ -65,7 +65,7 @@ func NewDownloadCommand(opts *RootOptions) *cobra.Command {
 	}
 
 	downloadCmd.Flags().StringVarP(&downloadOpts.remoteInputsPath, "from-remote", "f", "", "The remote path/key for inputs in stow store.")
-	downloadCmd.Flags().StringVarP(&downloadOpts.remoteOutputsPrefix, "to-remote-prefix", "p", "", "The remote path/key prefix for outputs in stow store. this is mostly used to write errors.pb.")
+	downloadCmd.Flags().StringVarP(&downloadOpts.remoteOutputsPrefix, "to-output-prefix", "p", "", "The remote path/key prefix for outputs in stow store. this is mostly used to write errors.pb.")
 	downloadCmd.Flags().StringVarP(&downloadOpts.localDirectoryPath, "to-local-dir", "d", "", "The local directory on disk where data should be downloaded.")
 	downloadCmd.Flags().StringVarP(&downloadOpts.outputFormat, "format", "m", "json", fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", data.AllOutputFormats))
 	downloadCmd.Flags().DurationVarP(&downloadOpts.timeout, "timeout", "t", time.Hour*1, "Max time to allow for downloads to complete, default is 1H")
