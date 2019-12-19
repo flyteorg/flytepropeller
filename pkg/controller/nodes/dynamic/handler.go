@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Masterminds/semver"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
@@ -34,9 +32,6 @@ import (
 //go:generate mockery -all -case=underscore
 
 const dynamicNodeID = "dynamic-node"
-
-// TODO: Remove after deploying version 0.2.4
-var arrayFlyteKitVersion = semver.MustParse("0.2.3")
 
 type TaskNodeHandler interface {
 	handler.Node
@@ -174,6 +169,7 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 	case v1alpha1.DynamicNodePhaseFailing:
 		fallthrough
 	case v1alpha1.DynamicNodePhaseExecuting:
+		logger.Infof(ctx, "Aborting dynamic workflow.")
 		dynamicWF, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 		if err != nil {
 			return err
@@ -185,6 +181,7 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 
 		return d.nodeExecutor.AbortHandler(ctx, dynamicWF, dynamicWF.StartNode(), reason)
 	default:
+		logger.Infof(ctx, "Aborting regular node.")
 		// The parent node has not yet completed, so we will abort the parent node
 		return d.TaskNodeHandler.Abort(ctx, nCtx, reason)
 	}
@@ -197,6 +194,7 @@ func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx handler.N
 	case v1alpha1.DynamicNodePhaseFailing:
 		fallthrough
 	case v1alpha1.DynamicNodePhaseExecuting:
+		logger.Infof(ctx, "Finalizing dynamic workflow")
 		dynamicWF, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 		if err != nil {
 			return err
@@ -208,6 +206,7 @@ func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx handler.N
 
 		return d.nodeExecutor.FinalizeHandler(ctx, dynamicWF, dynamicWF.StartNode())
 	default:
+		logger.Infof(ctx, "Finalizing regular node")
 		return d.TaskNodeHandler.Finalize(ctx, nCtx)
 	}
 }
@@ -257,17 +256,8 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 			// TODO: This is a hack since array tasks' interfaces are malformed. Remove after
 			// FlyteKit version that generates the right interfaces is deployed.
 			if t.Type == "container_array" {
-				isBelow, err := isFlyteKitVersionBelow(t.GetMetadata().Runtime, arrayFlyteKitVersion)
-				if err != nil {
-					logger.Warnf(ctx, "Failed to validate flytekit version of task [%v] will skip array"+
-						" interface manipulation.", t.GetId())
-					continue
-				}
-
-				if isBelow {
-					iface := t.GetInterface()
-					iface.Outputs = makeArrayInterface(iface.Outputs)
-				}
+				iface := t.GetInterface()
+				iface.Outputs = makeArrayInterface(iface.Outputs)
 			}
 		}
 	}
@@ -379,6 +369,15 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)),
 			handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: state.Err.Error()},
 			nil
+	}
+
+	if state.HasTimedOut() {
+		if dynamicWorkflow.GetOnFailureNode() != nil {
+			// TODO Once we migrate to closure node we need to handle subworkflow using the subworkflow handler
+			logger.Errorf(ctx, "We do not support failure nodes in dynamic workflow today")
+		}
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure("DynamicNodeTimeout", "timed out", nil)),
+			handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: "dynamic node timed out"}, nil
 	}
 
 	if state.IsComplete() {

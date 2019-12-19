@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  digest = "1:6187184f69efd82ef48558d39555a76a396fd0e72bca361ba4b7af292b485eab"
+  digest = "1:5d1e48d7e44f35b6f45c411fc3334f318c8094e2f596bb2707a6b6f32cd0d462"
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
   pruneopts = ""
-  revision = "d1ee711ee996fa74abaffbdb572963f368f215a9"
-  version = "v0.49.0"
+  revision = "5d03b9fdabc3f75630183d940a54b0047106bf8a"
+  version = "v0.48.0"
 
 [[projects]]
   digest = "1:9a11be778d5fcb8e4873e64a097dfd2862d8665d9e2d969b90810d5272e51acb"
@@ -53,15 +53,15 @@
   version = "v0.1.3"
 
 [[projects]]
-  digest = "1:02764515020367c16bd6a00848f7dfa70cb9632e9e310f9bd3479a97e25f8bbf"
+  digest = "1:78d2a7d3aac5f79d447a0aa7f0acc10fa2006cbb70acfe2fb5369e3c0d6bfe7f"
   name = "github.com/Masterminds/semver"
   packages = ["."]
   pruneopts = ""
-  revision = "910aa146bd66780c2815d652b92a7fc5331e533c"
-  version = "v3.0.3"
+  revision = "fe7c21038085e01e67044ec1efe3afb1eaa59f75"
+  version = "v3.0.1"
 
 [[projects]]
-  digest = "1:9a473f05637a8b730326f21902866f3c1d50dee7cdcbd7e7c434f8d363d9a5c0"
+  digest = "1:398fb2fefe5082fe2f97ff739ba397c9e5254379599fa8dbd07d1f943a76ff53"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -110,8 +110,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "b4f52c45248fcab90c27f5509504b840ca2fcf10"
-  version = "v1.26.2"
+  revision = "1f695d7d0a6868d10ae378c7499f5adbbb343e8d"
+  version = "v1.25.33"
 
 [[projects]]
   branch = "master"
@@ -502,7 +502,7 @@
   version = "v0.2.3"
 
 [[projects]]
-  digest = "1:57f5e620f7b5a3a2bada8a62e47f527306b59aeb6c80123fc06f7c3f021cef5f"
+  digest = "1:7fee6ae151d081a92d58a53099adcfccf89e424aef03eb20531ae0285da8613d"
   name = "github.com/lyft/flytestdlib"
   packages = [
     "atomic",
@@ -525,8 +525,8 @@
     "yamlutils",
   ]
   pruneopts = ""
-  revision = "c0c53d1f2ef0d6fa0969b749f81649f07eabf695"
-  version = "v0.2.30"
+  revision = "f9214671dc3b5e86ff029bd514fc18be38c1c3f0"
+  version = "v0.2.28"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
@@ -698,12 +698,12 @@
   version = "v1.2.2"
 
 [[projects]]
-  digest = "1:ae3493c780092be9d576a1f746ab967293ec165e8473425631f06658b6212afc"
+  digest = "1:0a3d8f7dc17afdc30a5a5becb45fb91ff28aaa64645c69836ccd600d88e9ed9e"
   name = "github.com/spf13/cast"
   packages = ["."]
   pruneopts = ""
-  revision = "8c9545af88b134710ab1cd196795e7f2388358d7"
-  version = "v1.3.0"
+  revision = "1ffadf551085444af981432dd0f6d1160c11ec64"
+  version = "v1.3.1"
 
 [[projects]]
   digest = "1:0c63b3c7ad6d825a898f28cb854252a3b29d37700c68a117a977263f5ec94efe"
@@ -830,14 +830,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e41b436f0e1f102888fb00cbfc148526db803468f17cc72b28a8c11337dd86d8"
+  digest = "1:ce5c4c25692f4be3e5ce9f548e9376caf65f221a84e4f85055dddfa930ed90c2"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "ac6580df4449443a05718fd7858c1f91ad5f8d20"
+  revision = "59a1497f0cead4659791683f1514d15ae8cf3934"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -874,7 +874,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bee425fbe4d597b38f4e9fc9e26df039ed2bb5a466ee85b0c5a4238d0865e5a7"
+  digest = "1:4e383b37b01115d5d4a5c9d13a4e331976188f239d2a14a7a28904fc4a61cbbc"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -891,7 +891,7 @@
     "internal/semver",
   ]
   pruneopts = ""
-  revision = "49a3e744a42570834b70bfa2a7308c73f5bc6bc3"
+  revision = "76a3b8da50ef7c9da5c87b2fdff51392aad781a0"
 
 [[projects]]
   branch = "master"
@@ -914,7 +914,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:362d78312b8579c79f4cbad32fe85a9086c03496205087a3be8f64255e33a9ee"
+  digest = "1:6851ceedb69d0827007487f622347aa27104df25b73ec45267bf6057edf5dcb5"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -928,7 +928,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = ""
-  revision = "0aa2214fb2bb8d102cee8406f80891eb0aab247f"
+  revision = "8a53bfa9f89bb02e241f553e212e3f2171cdea3a"
 
 [[projects]]
   digest = "1:c4404231035fad619a12f82ae3f0f8f9edc1cc7f34e7edad7a28ccac5336cc96"
@@ -951,7 +951,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ffb7d88143a1635c7226256ac80cdfd51763473dd666c793830c0de0c1233c2b"
+  digest = "1:b9fb3d58f5ef727a7ba2a82baea481e974f75e627ca1d159516d3a0b33b5dbdf"
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api/annotations",
@@ -960,13 +960,14 @@
     "protobuf/field_mask",
   ]
   pruneopts = ""
-  revision = "0243a4be9c8f1264d238fdc2895620b4d9baf9e1"
+  revision = "16a3f7862a1a494c52b23987ef8a993fd3f9a85e"
 
 [[projects]]
-  digest = "1:ec89356e95f2a8983928a7872f71f0f934f97932353af4fe1a76d322db5eaf7b"
+  digest = "1:7af390490e636a6adc9c76b37a3c823195fbf375a02c4d9506b4dd49d5d2409a"
   name = "google.golang.org/grpc"
   packages = [
     ".",
+    "attributes",
     "backoff",
     "balancer",
     "balancer/base",
@@ -1003,8 +1004,8 @@
     "tap",
   ]
   pruneopts = ""
-  revision = "1a3960e4bd028ac0cec0a2afd27d7d8e67c11514"
-  version = "v1.25.1"
+  revision = "f5b0812e6fe574d90da76b205e9eb51f6ddb1919"
+  version = "v1.26.0"
 
 [[projects]]
   digest = "1:eb53021a8aa3f599d29c7102e65026242bdedce998a54837dc67f14b6a97c5fd"
@@ -1292,7 +1293,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a8a2e6bbef691323b833d0eb11bb0e570e7eb9619ac76f7b11265530e1cac922"
+  digest = "1:eea15d4ad177b9185f26550b314024a374838830b33a0954b179cad16f2e39a7"
   name = "k8s.io/utils"
   packages = [
     "buffer",
@@ -1300,7 +1301,7 @@
     "trace",
   ]
   pruneopts = ""
-  revision = "6ca3b61696b65b0e81f1a39b4937fc2d2994ed6a"
+  revision = "2b95a09bc58df43d4032504619706b6a38293a47"
 
 [[projects]]
   digest = "1:d65cadd0126bf9385147e2853e53fda65fc419c04da329b3b077fb4765e3737c"
@@ -1350,7 +1351,6 @@
   analyzer-version = 1
   input-imports = [
     "github.com/DiSiqueira/GoTree",
-    "github.com/Masterminds/semver",
     "github.com/dgrijalva/jwt-go",
     "github.com/fatih/color",
     "github.com/fsnotify/fsnotify",
@@ -1438,6 +1438,7 @@
     "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/apimachinery/pkg/util/sets",
     "k8s.io/apimachinery/pkg/util/uuid",
+    "k8s.io/apimachinery/pkg/util/validation",
     "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/discovery",
