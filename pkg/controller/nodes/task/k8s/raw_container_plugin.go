@@ -19,17 +19,23 @@ import (
 )
 
 const (
-	containerTaskType = "raw_container"
-	flyteDataVolume   = "flyte-data-vol"
-	flyteDataPath     = "/var/flyte/data"
+	containerTaskType     = "raw_container"
+	flyteDataVolume       = "flyte-data-vol"
+	flyteDataPath         = "/var/flyte/data"
+	flyteDataConfigVolume = "data-config-volume"
+	flyteDataConfigPath   = "/etc/flyte/config-data"
+	flyteDataConfigMap    = "flyte-data-config"
+	flyteDataDockerImage = "localhost:5000/test-data:1"
 )
+
+var pTraceCapability = v1.Capability("SYS_PTRACE")
 
 func FlyteDataContainer() v1.Container {
 
 	return v1.Container{
-		Name:       "flyteData",
-		Image:      "test-data",
-		Command:    []string{"/bin/flytedata"},
+		Name:       "flytedata",
+		Image:      flyteDataDockerImage,
+		Command:    []string{"/bin/flytedata", "--config", "/etc/flyte/config**/*"},
 		Args:       nil,
 		WorkingDir: "/",
 		Resources:  v1.ResourceRequirements{},
@@ -38,20 +44,29 @@ func FlyteDataContainer() v1.Container {
 				Name:      flyteDataVolume,
 				MountPath: flyteDataPath, // TODO maybe we can restrict this to uploader and download only
 			},
+			{
+				Name:      flyteDataConfigVolume,
+				MountPath: flyteDataConfigPath,
+			},
 		},
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+		ImagePullPolicy:          v1.PullIfNotPresent,
 	}
 }
 
-func UploadCommandArgs(fromLocalPath string, outputPrefix, outputSandbox storage.DataReference, outputInterface *core.VariableMap) ([]string, error) {
+func UploadCommandArgs(mainContainerName, fromLocalPath string, outputPrefix, outputSandbox storage.DataReference, outputInterface *core.VariableMap) ([]string, error) {
 	args := []string{
 		"upload",
+		"--start-timeout",
+		"30s",
 		"--to-sandbox",
 		outputSandbox.String(),
 		"--to-output-prefix",
 		outputPrefix.String(),
 		"--from-local-dir",
 		fromLocalPath,
+		"--watch-container",
+		mainContainerName,
 	}
 	if outputInterface != nil {
 		b, err := proto.Marshal(outputInterface)
@@ -86,6 +101,18 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 	if err != nil {
 		return nil, err
 	}
+	c.VolumeMounts = append(c.VolumeMounts, v1.VolumeMount{
+		Name:      flyteDataVolume,
+		MountPath: flyteDataPath,
+	})
+	c.Resources = v1.ResourceRequirements{}
+	if c.SecurityContext == nil {
+		c.SecurityContext = &v1.SecurityContext{}
+	}
+	if c.SecurityContext.Capabilities == nil {
+		c.SecurityContext.Capabilities = &v1.Capabilities{}
+	}
+	c.SecurityContext.Capabilities.Add = append(c.SecurityContext.Capabilities.Add, pTraceCapability)
 
 	remoteInputPath := inputs.GetInputPath()
 	remoteOutputPrefix := outputPaths.GetOutputPrefixPath()
@@ -99,7 +126,8 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 	flyteData := FlyteDataContainer()
 
 	uploader := flyteData.DeepCopy()
-	uploaderArgs, err := UploadCommandArgs(flyteOutputPath, remoteOutputPrefix, remoteOutputPrefix, outputInterface)
+	uploader.Name = "uploader"
+	uploaderArgs, err := UploadCommandArgs(c.Name, flyteOutputPath, remoteOutputPrefix, remoteOutputPrefix, outputInterface)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create uploader arguments")
 	}
@@ -110,6 +138,7 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 	}
 
 	downloader := flyteData.DeepCopy()
+	downloader.Name = "downloader"
 	downloader.Args = DownloadCommandArgs(remoteInputPath, remoteOutputPrefix, flyteInputPath)
 	initContainers := []v1.Container{
 		*downloader,
@@ -130,6 +159,16 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 				Name: flyteDataVolume,
 				VolumeSource: v1.VolumeSource{
 					EmptyDir: &v1.EmptyDirVolumeSource{},
+				},
+			},
+			{
+				Name: flyteDataConfigVolume,
+				VolumeSource: v1.VolumeSource{
+					ConfigMap: &v1.ConfigMapVolumeSource{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: flyteDataConfigMap,
+						},
+					},
 				},
 			},
 		},

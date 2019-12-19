@@ -2,6 +2,7 @@ package containercompletion
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -41,6 +42,8 @@ type sharedProcessNSWatcher struct {
 	cyclesToWait int
 }
 
+var timeoutError = fmt.Errorf("timedout waiting for process to start")
+
 func (k sharedProcessNSWatcher) WaitForContainerToStart(ctx context.Context, information ContainerInformation) error {
 	t := k.c.NewTimer(k.pollInterval)
 	defer t.Stop()
@@ -48,7 +51,7 @@ func (k sharedProcessNSWatcher) WaitForContainerToStart(ctx context.Context, inf
 	for ; ; {
 		select {
 		case <-ctx.Done():
-			return errors.Errorf("Context canceled while waiting for Container [%s] to start.", name)
+			return timeoutError
 		case <-t.C():
 			logger.Debugf(ctx, "Checking processes to see if any process was started in namespace [%s]", name)
 			procs, err := ps.Processes()
@@ -104,6 +107,10 @@ func (k sharedProcessNSWatcher) WaitForContainerToComplete(ctx context.Context, 
 	}
 	if err := k.WaitForContainerToStart(timeoutCtx, information); err != nil {
 		logger.Errorf(ctx, "Failed while waiting for Container to start. Err: %s", err)
+		if err == timeoutError {
+			logger.Warnf(ctx, "Timeout while waiting to start. Assuming the process completed, will return success.")
+			return nil
+		}
 		return err
 	}
 	if err := k.WaitForContainerToExit(ctx, information); err != nil {

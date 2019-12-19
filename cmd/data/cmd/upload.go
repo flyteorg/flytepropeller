@@ -39,6 +39,8 @@ type UploadOptions struct {
 func (u *UploadOptions) createWatcher(ctx context.Context, w containercompletion.WatcherType) (containercompletion.Watcher, error) {
 	switch w {
 	case containercompletion.WatcherTypeKubeAPI:
+		// TODO, in this case container info should have namespace and podname and we can get it using downwardapi
+		// TODO https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/
 		return containercompletion.NewKubeAPIWatcher(ctx, u.RootOptions.kubeClient.CoreV1())
 	case containercompletion.WatcherTypeSuccessFile:
 		return containercompletion.NewSuccessFileWatcher(ctx, u.localDirectoryPath, SuccessFile, ErrorFile)
@@ -49,6 +51,9 @@ func (u *UploadOptions) createWatcher(ctx context.Context, w containercompletion
 }
 
 func (u *UploadOptions) uploader(ctx context.Context) error {
+	if u.containerInfo.Name == "" {
+		return fmt.Errorf("watch container name is a required field, system error")
+	}
 	if u.outputInterface == nil {
 		logger.Infof(ctx, "No output interface provided. Assuming Void outputs.")
 		return nil
@@ -119,5 +124,8 @@ func NewUploadCommand(opts *RootOptions) *cobra.Command {
 	uploadCmd.Flags().DurationVarP(&uploadOptions.containerStartTimeout, "start-timeout", "u", 0, "Max time to allow for container to startup. 0 indicates wait for ever.")
 	uploadCmd.Flags().BytesBase64VarP(&uploadOptions.outputInterface, "output-interface", "i", nil, "Output interface proto message - core.VariableMap, base64 encoced string")
 	uploadCmd.Flags().StringVarP(&uploadOptions.watcherType, "watcher-type", "w", containercompletion.WatcherTypeSharedProcessNS, fmt.Sprintf("Upload will wait for completion of the container before starting upload process. Watcher type makes the type configurable. Avaialble Type %+v", containercompletion.AllWatcherTypes))
+	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "watch-container", "c", "", "Wait for this container to exit.")
+	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Namespace, "namespace", "n", "", "Namespace of the pod [optional]")
+	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "pod-name", "o", "", "Name of the pod [optional].")
 	return uploadCmd
 }
