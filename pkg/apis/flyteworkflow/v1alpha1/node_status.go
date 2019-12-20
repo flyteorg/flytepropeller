@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"reflect"
+	"time"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -482,11 +483,12 @@ func (in *CustomState) DeepCopy() *CustomState {
 }
 
 type TaskNodeStatus struct {
-	Phase              int    `json:"phase,omitempty"`
-	PhaseVersion       uint32 `json:"phaseVersion,omitempty"`
-	PluginState        []byte `json:"pState,omitempty"`
-	PluginStateVersion uint32 `json:"psv,omitempty"`
-	BarrierClockTick   uint32 `json:"tick,omitempty"`
+	Phase              int       `json:"phase,omitempty"`
+	PhaseVersion       uint32    `json:"phaseVersion,omitempty"`
+	PluginState        []byte    `json:"pState,omitempty"`
+	PluginStateVersion uint32    `json:"psv,omitempty"`
+	BarrierClockTick   uint32    `json:"tick,omitempty"`
+	LastPhaseUpdatedAt time.Time `json:"tick,omitempty"`
 }
 
 func (in *TaskNodeStatus) GetBarrierClockTick() uint32 {
@@ -499,6 +501,10 @@ func (in *TaskNodeStatus) SetBarrierClockTick(tick uint32) {
 
 func (in *TaskNodeStatus) SetPluginState(s []byte) {
 	in.PluginState = s
+}
+
+func (in TaskNodeStatus) SetLastPhaseUpdatedAt(updatedAt time.Time) {
+	in.LastPhaseUpdatedAt = updatedAt
 }
 
 func (in *TaskNodeStatus) SetPluginStateVersion(v uint32) {
@@ -523,6 +529,10 @@ func (in *TaskNodeStatus) SetPhaseVersion(version uint32) {
 
 func (in TaskNodeStatus) GetPhase() int {
 	return in.Phase
+}
+
+func (in TaskNodeStatus) GetLastPhaseUpdatedAt() time.Time {
+	return in.LastPhaseUpdatedAt
 }
 
 func (in TaskNodeStatus) GetPhaseVersion() uint32 {
