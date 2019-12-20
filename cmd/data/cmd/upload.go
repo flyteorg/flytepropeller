@@ -13,11 +13,12 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/utils/clock"
 
-	"github.com/lyft/flytepropeller/cmd/data/cmd/containercompletion"
+	"github.com/lyft/flytepropeller/cmd/data/cmd/containerwatcher"
 	"github.com/lyft/flytepropeller/data"
 )
 
 const (
+	StartFile   = "_START"
 	SuccessFile = "_SUCCESS"
 	ErrorFile   = "_ERROR"
 )
@@ -32,20 +33,21 @@ type UploadOptions struct {
 	timeout               time.Duration
 	containerStartTimeout time.Duration
 	outputInterface       []byte
-	watcherType           containercompletion.WatcherType
-	containerInfo         containercompletion.ContainerInformation
+	startWatcherType      containerwatcher.WatcherType
+	exitWatcherType       containerwatcher.WatcherType
+	containerInfo         containerwatcher.ContainerInformation
 }
 
-func (u *UploadOptions) createWatcher(ctx context.Context, w containercompletion.WatcherType) (containercompletion.Watcher, error) {
+func (u *UploadOptions) createWatcher(ctx context.Context, w containerwatcher.WatcherType) (containerwatcher.Watcher, error) {
 	switch w {
-	case containercompletion.WatcherTypeKubeAPI:
+	case containerwatcher.WatcherTypeKubeAPI:
 		// TODO, in this case container info should have namespace and podname and we can get it using downwardapi
 		// TODO https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/
-		return containercompletion.NewKubeAPIWatcher(ctx, u.RootOptions.kubeClient.CoreV1())
-	case containercompletion.WatcherTypeSuccessFile:
-		return containercompletion.NewSuccessFileWatcher(ctx, u.localDirectoryPath, SuccessFile, ErrorFile)
-	case containercompletion.WatcherTypeSharedProcessNS:
-		return containercompletion.NewSharedProcessNSWatcher(ctx, clock.RealClock{}, time.Second*2, u.containerStartTimeout, 2)
+		return containerwatcher.NewKubeAPIWatcher(ctx, u.RootOptions.kubeClient.CoreV1(), u.containerInfo)
+	case containerwatcher.WatcherTypeFile:
+		return containerwatcher.NewSuccessFileWatcher(ctx, u.localDirectoryPath, StartFile, SuccessFile, ErrorFile)
+	case containerwatcher.WatcherTypeSharedProcessNS:
+		return containerwatcher.NewSharedProcessNSWatcher(ctx, clock.RealClock{}, time.Second*2, 2)
 	}
 	return nil, fmt.Errorf("unsupported watcher type")
 }
@@ -70,17 +72,30 @@ func (u *UploadOptions) uploader(ctx context.Context) error {
 		return nil
 	}
 
-	w, err := u.createWatcher(ctx, u.watcherType)
+	w, err := u.createWatcher(ctx, u.startWatcherType)
 	if err != nil {
 		return err
 	}
-	if err := w.WaitForContainerToComplete(ctx, u.containerInfo); err != nil {
+
+	childCtx, _ := context.WithTimeout(ctx, u.containerStartTimeout)
+	err = w.WaitToStart(childCtx)
+	if err != nil && err != containerwatcher.TimeoutError {
+		return err
+	}
+
+	if u.startWatcherType != u.exitWatcherType {
+		w, err = u.createWatcher(ctx, u.exitWatcherType)
+		if err != nil {
+			return err
+		}
+	}
+	if err := w.WaitToExit(ctx); err != nil {
 		logger.Errorf(ctx, "Failed waiting for container to exit. Err: %s", err)
 		return err
 	}
 
 	dl := data.NewUploader(ctx, u.Store, u.outputFormat, ErrorFile)
-	childCtx, _ := context.WithTimeout(ctx, u.timeout)
+	childCtx, _ = context.WithTimeout(ctx, u.timeout)
 	if err := dl.RecursiveUpload(childCtx, outputInterface, u.localDirectoryPath, storage.DataReference(u.remoteOutputsPrefix), storage.DataReference(u.remoteOutputsSandbox)); err != nil {
 		logger.Errorf(ctx, "Uploading failed, err %s", err)
 		return err
@@ -121,11 +136,12 @@ func NewUploadCommand(opts *RootOptions) *cobra.Command {
 	uploadCmd.Flags().StringVarP(&uploadOptions.localDirectoryPath, "from-local-dir", "d", "", "The local directory on disk where data will be available for upload.")
 	uploadCmd.Flags().StringVarP(&uploadOptions.outputFormat, "format", "m", "json", fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", data.AllOutputFormats))
 	uploadCmd.Flags().DurationVarP(&uploadOptions.timeout, "timeout", "t", time.Hour*1, "Max time to allow for uploads to complete, default is 1H")
-	uploadCmd.Flags().DurationVarP(&uploadOptions.containerStartTimeout, "start-timeout", "u", 0, "Max time to allow for container to startup. 0 indicates wait for ever.")
 	uploadCmd.Flags().BytesBase64VarP(&uploadOptions.outputInterface, "output-interface", "i", nil, "Output interface proto message - core.VariableMap, base64 encoced string")
-	uploadCmd.Flags().StringVarP(&uploadOptions.watcherType, "watcher-type", "w", containercompletion.WatcherTypeSharedProcessNS, fmt.Sprintf("Upload will wait for completion of the container before starting upload process. Watcher type makes the type configurable. Avaialble Type %+v", containercompletion.AllWatcherTypes))
-	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "watch-container", "c", "", "Wait for this container to exit.")
-	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Namespace, "namespace", "n", "", "Namespace of the pod [optional]")
-	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "pod-name", "o", "", "Name of the pod [optional].")
+	uploadCmd.Flags().DurationVarP(&uploadOptions.containerStartTimeout, "start-timeout", "u", 0, "Max time to allow for container to startup. 0 indicates wait for ever.")
+	uploadCmd.Flags().StringVarP(&uploadOptions.startWatcherType, "start-watcher-type", "w", containerwatcher.WatcherTypeSharedProcessNS, fmt.Sprintf("Upload will wait for container before starting upload process. Watcher type makes the type configurable. Avaialble Type %+v", containerwatcher.AllWatcherTypes))
+	uploadCmd.Flags().StringVarP(&uploadOptions.exitWatcherType, "exit-watcher-type", "k", containerwatcher.WatcherTypeSharedProcessNS, fmt.Sprintf("Upload will wait for completion of the container before starting upload process. Watcher type makes the type configurable. Avaialble Type %+v", containerwatcher.AllWatcherTypes))
+	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "watch-container", "c", "", "For KubeAPI watcher, Wait for this container to exit.")
+	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Namespace, "namespace", "n", "", "For KubeAPI watcher, Namespace of the pod [optional]")
+	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "pod-name", "o", "", "For KubeAPI watcher, Name of the pod [optional].")
 	return uploadCmd
 }

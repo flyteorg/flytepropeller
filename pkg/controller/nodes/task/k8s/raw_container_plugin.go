@@ -25,7 +25,7 @@ const (
 	flyteDataConfigVolume = "data-config-volume"
 	flyteDataConfigPath   = "/etc/flyte/config-data"
 	flyteDataConfigMap    = "flyte-data-config"
-	flyteDataDockerImage = "localhost:5000/test-data:1"
+	flyteDataDockerImage = "test-data:1"
 )
 
 var pTraceCapability = v1.Capability("SYS_PTRACE")

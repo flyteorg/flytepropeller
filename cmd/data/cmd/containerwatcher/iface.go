@@ -1,17 +1,17 @@
-package containercompletion
+package containerwatcher
 
 import (
 	"context"
+	"fmt"
 )
 
-type ContainerInformation struct {
-	Namespace string
-	PodName   string
-	Name      string
-}
+
+
+var TimeoutError = fmt.Errorf("timeout while waiting")
 
 type Watcher interface {
-	WaitForContainerToComplete(ctx context.Context, information ContainerInformation) error
+	WaitToStart(ctx context.Context) error
+	WaitToExit(ctx context.Context) error
 }
 
 type WatcherType = string
@@ -21,8 +21,8 @@ const (
 	WatcherTypeKubeAPI WatcherType = "kube-api"
 	// Uses a success file to determine if the container has completed.
 	// CAUTION: Does not work if the container exits because of OOM, etc
-	WatcherTypeSuccessFile WatcherType = "success-file"
-	// Uses Kube 1.16 Beta feature - https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/
+	WatcherTypeFile WatcherType = "file"
+	// Uses Kube 1.17 feature - https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/
 	// To look for pid in the shared namespace.
 	WatcherTypeSharedProcessNS WatcherType = "shared-process-ns"
 )
@@ -30,5 +30,5 @@ const (
 var AllWatcherTypes = []WatcherType{
 	WatcherTypeKubeAPI,
 	WatcherTypeSharedProcessNS,
-	WatcherTypeSuccessFile,
+	WatcherTypeFile,
 }
