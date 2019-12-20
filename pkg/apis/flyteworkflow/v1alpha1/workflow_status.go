@@ -97,8 +97,8 @@ func (in *WorkflowStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus
 	return newNodeStatus
 }
 
-func (in *WorkflowStatus) ConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor, name NodeID) (storage.DataReference, error) {
-	return constructor.ConstructReference(ctx, in.GetDataDir(), name, "data")
+func (in *WorkflowStatus) ConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor, name NodeID, attempt uint32) (storage.DataReference, error) {
+	return constructor.ConstructReference(ctx, in.GetDataDir(), name, "data", string(attempt))
 }
 
 func (in *WorkflowStatus) GetDataDir() DataReference {
