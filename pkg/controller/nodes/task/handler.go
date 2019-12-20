@@ -608,7 +608,7 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 			catalogPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			catalogGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
 			pluginExecutionLatency: labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
-			pluginQueueLatency:     labeled.NewStopWatch("plugin_queue_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
+			pluginQueueLatency:     labeled.NewStopWatch("plugin_queue_latecny", "Time spent by plugin in queued phase", time.Microsecond, scope),
 			scope:                  scope,
 		},
 		kubeClient:      kubeClient,
