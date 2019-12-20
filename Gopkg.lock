@@ -138,6 +138,14 @@
   version = "v1.1.0"
 
 [[projects]]
+  digest = "1:379d34d9efc755fab444199f007819fe99718640f9ccfbdd3f0430340bb02b07"
+  name = "github.com/coreos/go-oidc"
+  packages = ["."]
+  pruneopts = ""
+  revision = "2be1c5b8a260760503f66dc0996e102b683b3ac3"
+  version = "v2.1.0"
+
+[[projects]]
   digest = "1:0deddd908b6b4b768cfc272c16ee61e7088a60f7fe2f06c547bd3d8e1f8b8e77"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -432,7 +440,7 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:dec8d616f023c717c476cad2b30d5afebb4b6ed2f23d215bf309b9889c2a377b"
+  digest = "1:24508da9d4741637264e1f5deeceb58150415974ce08efe1f0764ffa881d833d"
   name = "github.com/lyft/flyteidl"
   packages = [
     "clients/go/admin",
@@ -448,11 +456,11 @@
     "gen/pb-go/flyteidl/service",
   ]
   pruneopts = ""
-  revision = "fac461ff1d6926e98b48e2f3374419afdb69de18"
-  version = "v0.14.1"
+  revision = "7f8cdc2cb0f613bb62b8b44167828326b733f8a5"
+  version = "v0.16.3"
 
 [[projects]]
-  digest = "1:0f2319c4da524090f6db2e99eaf2da31c907a81b39ff2c6b399c8288557f9648"
+  digest = "1:a91f67d1fe58f403725f532bb149f38bbfaeb7ad200ad84e862086c798d5cd4a"
   name = "github.com/lyft/flyteplugins"
   packages = [
     "go/tasks/aws",
@@ -490,8 +498,8 @@
     "tests",
   ]
   pruneopts = ""
-  revision = "3a30f6d7f5b17f788b2f28a6700ebf97b58dca0d"
-  version = "v0.2.2"
+  revision = "40c2addb5eebb6e5a1065b741cb8adcfcc32b818"
+  version = "v0.2.4"
 
 [[projects]]
   digest = "1:7fee6ae151d081a92d58a53099adcfccf89e424aef03eb20531ae0285da8613d"
@@ -610,6 +618,17 @@
   pruneopts = ""
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:de5481dda0c081b66450e391bbb1a5c4435b13e3c0bbf0133ba1a5baeda7b7af"
+  name = "github.com/pquerna/cachecontrol"
+  packages = [
+    ".",
+    "cacheobject",
+  ]
+  pruneopts = ""
+  revision = "1555304b9b35fdd2b425bccf1a5613677705e7d0"
 
 [[projects]]
   digest = "1:c826496cad27bd9a7644a01230a79d472b4093dd33587236e8f8369bb1d8534e"
@@ -769,7 +788,12 @@
   branch = "master"
   digest = "1:af51232d5990d72e4be609640e2885c16db404ec419283caa6d97a311cb4e29d"
   name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
+  packages = [
+    "ed25519",
+    "ed25519/internal/edwards25519",
+    "pbkdf2",
+    "ssh/terminal",
+  ]
   pruneopts = ""
   revision = "e7c4368fe9ddd156b5f1463283cb51c5b400c373"
 
@@ -796,6 +820,7 @@
   name = "golang.org/x/oauth2"
   packages = [
     ".",
+    "clientcredentials",
     "google",
     "internal",
     "jws",
@@ -998,6 +1023,18 @@
   pruneopts = ""
   revision = "d2d2541c53f18d2a059457998ce2876cc8e67cbf"
   version = "v0.9.1"
+
+[[projects]]
+  digest = "1:edd75ef05376347c02f40c36f2896d4aee3b8cbfe8247299c71aefd7ca28f443"
+  name = "gopkg.in/square/go-jose.v2"
+  packages = [
+    ".",
+    "cipher",
+    "json",
+  ]
+  pruneopts = ""
+  revision = "4ef0f1b175ccd65472d154e1207c4d7b8102545f"
+  version = "v2.4.1"
 
 [[projects]]
   digest = "1:5a53f6ef09fb1ac261a97f8a72e8837ff53cbaa969022a6679da210e4cbe9b0f"
