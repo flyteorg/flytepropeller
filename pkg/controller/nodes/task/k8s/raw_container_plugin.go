@@ -54,7 +54,7 @@ func FlyteDataContainer() v1.Container {
 	}
 }
 
-func UploadCommandArgs(mainContainerName, fromLocalPath string, outputPrefix, outputSandbox storage.DataReference, outputInterface *core.VariableMap) ([]string, error) {
+func UploadCommandArgs(fromLocalPath string, outputPrefix, outputSandbox storage.DataReference, outputInterface *core.VariableMap) ([]string, error) {
 	args := []string{
 		"upload",
 		"--start-timeout",
@@ -65,8 +65,6 @@ func UploadCommandArgs(mainContainerName, fromLocalPath string, outputPrefix, ou
 		outputPrefix.String(),
 		"--from-local-dir",
 		fromLocalPath,
-		"--watch-container",
-		mainContainerName,
 	}
 	if outputInterface != nil {
 		b, err := proto.Marshal(outputInterface)
@@ -127,7 +125,7 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 
 	uploader := flyteData.DeepCopy()
 	uploader.Name = "uploader"
-	uploaderArgs, err := UploadCommandArgs(c.Name, flyteOutputPath, remoteOutputPrefix, remoteOutputPrefix, outputInterface)
+	uploaderArgs, err := UploadCommandArgs(flyteOutputPath, remoteOutputPrefix, remoteOutputPrefix, outputInterface)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create uploader arguments")
 	}

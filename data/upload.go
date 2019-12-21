@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -41,6 +42,7 @@ type dirFile struct {
 }
 
 func MakeLiteralForSimpleType(_ context.Context, t core.SimpleType, s string) (*core.Literal, error) {
+	s = strings.Trim(s, " \n\t")
 	scalar := &core.Scalar{}
 	switch t {
 	case core.SimpleType_STRUCT:

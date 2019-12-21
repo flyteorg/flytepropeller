@@ -132,7 +132,7 @@ func TestBuildResource(t *testing.T) {
 			"y": utils.MustMakeLiteral(1),
 		},
 	}
-	taskExecCtx := dummyContainerTaskContext(resourceRequirements, []string{"cd /var/flyte/data; sleep 30; mkdir outputs; paste ./inputs/x ./inputs/y | awk '{print ($1 + $2)}' > ./outputs/o"}, iface, "s3://my-s3-bucket/data/test1")
+	taskExecCtx := dummyContainerTaskContext(resourceRequirements, []string{"cd /var/flyte/data; mkdir outputs; paste ./inputs/x ./inputs/y | awk '{print ($1 + $2)}' > ./outputs/o"}, iface, "s3://my-s3-bucket/data/test1")
 
 	u, _ := url.Parse("http://localhost:9000")
 	store, err := storage.NewDataStore(&storage.Config{

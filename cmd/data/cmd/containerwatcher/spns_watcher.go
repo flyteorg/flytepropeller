@@ -9,7 +9,6 @@ import (
 	"github.com/mitchellh/go-ps"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/utils/clock"
 )
 
 const (
@@ -27,8 +26,8 @@ func FilterProcessList(procs []ps.Process, filterPids sets.Int, allowedParentPid
 		proc := p
 		if proc.PPid() == allowedParentPid {
 			if !filterPids.Has(proc.Pid()) {
+				filteredProcs = append(filteredProcs, proc)
 			}
-			filteredProcs = append(filteredProcs, proc)
 		}
 	}
 	return filteredProcs, nil
@@ -65,8 +64,6 @@ func (s *SharedNamespaceProcessLister) ListRunningProcesses(ctx context.Context)
 // This is only available as Beta as of 1.16, so we will launch with this feature only as beta
 // But this is the most efficient way to monitor the pod
 type sharedProcessNSWatcher struct {
-	// Fake clock to aid in testing
-	c clock.Clock
 	// Rate at which to poll the process list
 	pollInterval time.Duration
 	// Number of cycles to wait before finalizing exit of container
@@ -76,15 +73,16 @@ type sharedProcessNSWatcher struct {
 }
 
 func (k sharedProcessNSWatcher) wait(ctx context.Context, cyclesToWait int, f func(ctx context.Context, otherProcessRunning bool) bool) error {
-	t := k.c.NewTimer(k.pollInterval)
+	t := time.NewTicker(k.pollInterval)
 	defer t.Stop()
 	cyclesOfMissingProcesses := 0
 	for ; ; {
 		select {
 		case <-ctx.Done():
+			logger.Infof(ctx, "Context canceled")
 			return TimeoutError
-		case <-t.C():
-			logger.Debugf(ctx, "Checking processes to see if any process were started")
+		case <-t.C:
+			logger.Infof(ctx, "Checking processes to see if any process were started...")
 			if yes, err := k.s.AnyProcessRunning(ctx); err != nil {
 				return err
 			} else {
@@ -96,17 +94,22 @@ func (k sharedProcessNSWatcher) wait(ctx context.Context, cyclesToWait int, f fu
 					}
 				}
 			}
+			logger.Infof(ctx, "process not yet started")
 		}
 	}
 }
 
 func (k sharedProcessNSWatcher) WaitToStart(ctx context.Context) error {
-	return k.wait(ctx, k.cyclesToWait, func(ctx context.Context, otherProcessRunning bool) bool {
+	logger.Infof(ctx, "SNPS Watcher waiting for other processes to start")
+	defer logger.Infof(ctx, "SNPS Watcher detected process start")
+	return k.wait(ctx, 1, func(ctx context.Context, otherProcessRunning bool) bool {
 		return otherProcessRunning
 	})
 }
 
 func (k sharedProcessNSWatcher) WaitToExit(ctx context.Context) error {
+	logger.Infof(ctx, "SNPS Watcher waiting for other process to exit")
+	defer logger.Infof(ctx, "SNPS Watcher detected process exit")
 	return k.wait(ctx, k.cyclesToWait, func(ctx context.Context, otherProcessRunning bool) bool {
 		return !otherProcessRunning
 	})
@@ -116,10 +119,10 @@ func (k sharedProcessNSWatcher) WaitToExit(ctx context.Context) error {
 // pollInterval -> time.Duration, wait for this amount of time between successive process checks
 // waitNumIntervalsBeforeFinalize -> Number of successive poll intervals of missing processes for the container, before assuming process is complete. 0/1 indicate the first time a process is detected to be missing, the wait if finalized.
 // containerStartupTimeout -> Duration for which to wait for the container to start up. If the container has not started up in this time, exit with error.
-func NewSharedProcessNSWatcher(_ context.Context, c clock.Clock, pollInterval time.Duration, waitNumIntervalsBeforeFinalize int) (Watcher, error) {
+func NewSharedProcessNSWatcher(ctx context.Context, pollInterval time.Duration, waitNumIntervalsBeforeFinalize int) (Watcher, error) {
+	logger.Infof(ctx, "SNPS created with poll interval %s", pollInterval.String())
 	currentPid := os.Getpid()
 	return sharedProcessNSWatcher{
-		c:            c,
 		pollInterval: pollInterval,
 		cyclesToWait: waitNumIntervalsBeforeFinalize,
 		s: SharedNamespaceProcessLister{

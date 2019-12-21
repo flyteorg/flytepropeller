@@ -11,7 +11,6 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"k8s.io/utils/clock"
 
 	"github.com/lyft/flytepropeller/cmd/data/cmd/containerwatcher"
 	"github.com/lyft/flytepropeller/data"
@@ -47,15 +46,12 @@ func (u *UploadOptions) createWatcher(ctx context.Context, w containerwatcher.Wa
 	case containerwatcher.WatcherTypeFile:
 		return containerwatcher.NewSuccessFileWatcher(ctx, u.localDirectoryPath, StartFile, SuccessFile, ErrorFile)
 	case containerwatcher.WatcherTypeSharedProcessNS:
-		return containerwatcher.NewSharedProcessNSWatcher(ctx, clock.RealClock{}, time.Second*2, 2)
+		return containerwatcher.NewSharedProcessNSWatcher(ctx, time.Second*2, 2)
 	}
 	return nil, fmt.Errorf("unsupported watcher type")
 }
 
 func (u *UploadOptions) uploader(ctx context.Context) error {
-	if u.containerInfo.Name == "" {
-		return fmt.Errorf("watch container name is a required field, system error")
-	}
 	if u.outputInterface == nil {
 		logger.Infof(ctx, "No output interface provided. Assuming Void outputs.")
 		return nil
@@ -72,27 +68,38 @@ func (u *UploadOptions) uploader(ctx context.Context) error {
 		return nil
 	}
 
+	logger.Infof(ctx, "Creating start watcher type: %s", u.startWatcherType)
 	w, err := u.createWatcher(ctx, u.startWatcherType)
 	if err != nil {
 		return err
 	}
 
+	logger.Infof(ctx, "Waiting for Container to start with timeout %s.", u.containerStartTimeout)
 	childCtx, _ := context.WithTimeout(ctx, u.containerStartTimeout)
 	err = w.WaitToStart(childCtx)
 	if err != nil && err != containerwatcher.TimeoutError {
 		return err
 	}
 
+	if err != nil {
+		logger.Warnf(ctx, "Container start detection aborted, :%s", err.Error())
+	}
+
 	if u.startWatcherType != u.exitWatcherType {
+		logger.Infof(ctx, "Creating watcher type: %s", u.exitWatcherType)
 		w, err = u.createWatcher(ctx, u.exitWatcherType)
 		if err != nil {
 			return err
 		}
 	}
+
+	logger.Infof(ctx, "Waiting for Container to exit.")
 	if err := w.WaitToExit(ctx); err != nil {
 		logger.Errorf(ctx, "Failed waiting for container to exit. Err: %s", err)
 		return err
 	}
+
+	logger.Infof(ctx, "Container Exited! uploading data.")
 
 	dl := data.NewUploader(ctx, u.Store, u.outputFormat, ErrorFile)
 	childCtx, _ = context.WithTimeout(ctx, u.timeout)
@@ -100,6 +107,8 @@ func (u *UploadOptions) uploader(ctx context.Context) error {
 		logger.Errorf(ctx, "Uploading failed, err %s", err)
 		return err
 	}
+
+	logger.Infof(ctx, "Uploader completed successfully!")
 	return nil
 }
 
