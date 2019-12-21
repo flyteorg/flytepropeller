@@ -642,5 +642,4 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_EventFailure(t *testing.T) {
 		assert.Error(t, err)
 		assert.True(t, wfErrors.Matches(err, wfErrors.EventRecordingError))
 	})
-
 }

@@ -124,7 +124,7 @@ type NodeStatus struct {
 	dirty bool
 	// This is useful only for branch nodes. If this is set, then it can be used to determine if execution can proceed
 	ParentNode    *NodeID                  `json:"parentNode,omitempty"`
-	ParentTask    *TaskExecutionIdentifier `json:"parentTask,omitempty"`
+	ParentTask    *TaskExecutionIdentifier `json:"-,omitempty"`
 	BranchStatus  *BranchNodeStatus        `json:"branchStatus,omitempty"`
 	SubNodeStatus map[NodeID]*NodeStatus   `json:"subNodeStatus,omitempty"`
 	// We can store the outputs at this layer

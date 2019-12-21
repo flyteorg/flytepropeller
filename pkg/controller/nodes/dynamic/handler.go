@@ -3,6 +3,7 @@ package dynamic
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
@@ -219,11 +220,12 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 		return nil, err
 	}
 
+	currentAttemptStr := strconv.Itoa(int(nCtx.CurrentAttempt()))
 	// Modify node IDs to include lineage, the entire system assumes node IDs are unique per parent WF.
 	// We keep track of the original node ids because that's where inputs are written to.
 	parentNodeID := nCtx.NodeID()
 	for _, n := range djSpec.Nodes {
-		newID, err := hierarchicalNodeID(parentNodeID, n.Id)
+		newID, err := hierarchicalNodeID(parentNodeID, currentAttemptStr, n.Id)
 		if err != nil {
 			return nil, err
 		}
@@ -263,7 +265,7 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 	}
 
 	for _, o := range djSpec.Outputs {
-		err = updateBindingNodeIDsWithLineage(parentNodeID, o.Binding)
+		err = updateBindingNodeIDsWithLineage(parentNodeID, currentAttemptStr, o.Binding)
 		if err != nil {
 			return nil, err
 		}

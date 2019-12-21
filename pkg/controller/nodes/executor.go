@@ -355,9 +355,9 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying")
 		// We are going to retry in the next round, so we should clear all current state
-		nodeStatus.ClearDynamicNodeStatus()
 		nodeStatus.ClearTaskStatus()
 		nodeStatus.ClearWorkflowStatus()
+		nodeStatus.ClearDynamicNodeStatus()
 		nodeStatus.ClearLastAttemptStartedAt()
 		return executors.NodeStatusPending, nil
 	}
