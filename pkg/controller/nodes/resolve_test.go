@@ -106,7 +106,9 @@ func (d *dummyBaseWorkflow) GetNodeExecutionStatus(id v1alpha1.NodeID) v1alpha1.
 	if ok {
 		return n
 	}
-	n = &v1alpha1.NodeStatus{}
+	n = &v1alpha1.NodeStatus{
+		MutableStruct: v1alpha1.MutableStruct{},
+	}
 	d.Status[id] = n
 	return n
 }

@@ -22,7 +22,7 @@ func (m MutableStruct) IsDirty() bool {
 }
 
 type BranchNodeStatus struct {
-	*MutableStruct
+	MutableStruct
 	Phase           BranchNodePhase `json:"phase"`
 	FinalizedNodeID *NodeID         `json:"finalNodeId"`
 }
@@ -75,7 +75,7 @@ const (
 )
 
 type DynamicNodeStatus struct {
-	*MutableStruct
+	MutableStruct
 	Phase  DynamicNodePhase `json:"phase"`
 	Reason string           `json:"reason"`
 }
@@ -115,7 +115,7 @@ const (
 )
 
 type WorkflowNodeStatus struct {
-	*MutableStruct
+	MutableStruct
 	Phase WorkflowNodePhase `json:"phase"`
 }
 
@@ -128,7 +128,7 @@ func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
 }
 
 type NodeStatus struct {
-	*MutableStruct
+	MutableStruct
 	Phase                NodePhase     `json:"phase"`
 	QueuedAt             *metav1.Time  `json:"queuedAt,omitempty"`
 	StartedAt            *metav1.Time  `json:"startedAt,omitempty"`
@@ -258,7 +258,7 @@ func (in *NodeStatus) GetOrCreateDynamicNodeStatus() MutableDynamicNodeStatus {
 	if in.DynamicNodeStatus == nil {
 		in.SetDirty()
 		in.DynamicNodeStatus = &DynamicNodeStatus{
-			MutableStruct: &MutableStruct{},
+			MutableStruct: MutableStruct{},
 		}
 	}
 
@@ -274,7 +274,7 @@ func (in *NodeStatus) GetOrCreateBranchStatus() MutableBranchNodeStatus {
 	if in.BranchStatus == nil {
 		in.SetDirty()
 		in.BranchStatus = &BranchNodeStatus{
-			MutableStruct: &MutableStruct{},
+			MutableStruct: MutableStruct{},
 		}
 	}
 
@@ -305,7 +305,7 @@ func (in *NodeStatus) GetOrCreateTaskStatus() MutableTaskNodeStatus {
 	if in.TaskNodeStatus == nil {
 		in.SetDirty()
 		in.TaskNodeStatus = &TaskNodeStatus{
-			MutableStruct: &MutableStruct{},
+			MutableStruct: MutableStruct{},
 		}
 	}
 
@@ -346,10 +346,7 @@ func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason st
 		in.StoppedAt = &n
 	}
 
-	if in.Phase != p {
-		in.LastUpdatedAt = &n
-	}
-
+	in.LastUpdatedAt = &n
 	in.SetDirty()
 }
 
@@ -392,7 +389,7 @@ func (in *NodeStatus) GetOrCreateWorkflowStatus() MutableWorkflowNodeStatus {
 	if in.WorkflowNodeStatus == nil {
 		in.SetDirty()
 		in.WorkflowNodeStatus = &WorkflowNodeStatus{
-			MutableStruct: &MutableStruct{},
+			MutableStruct: MutableStruct{},
 		}
 	}
 
@@ -418,7 +415,9 @@ func (in *NodeStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
 		in.SubNodeStatus = make(map[NodeID]*NodeStatus)
 	}
 
-	newNodeStatus := &NodeStatus{}
+	newNodeStatus := &NodeStatus{
+		MutableStruct: MutableStruct{},
+	}
 	newNodeStatus.SetParentTaskID(in.GetParentTaskID())
 	newNodeStatus.SetParentNodeID(in.GetParentNodeID())
 
@@ -528,7 +527,7 @@ func (in *CustomState) DeepCopy() *CustomState {
 }
 
 type TaskNodeStatus struct {
-	*MutableStruct
+	MutableStruct
 	Phase              int    `json:"phase,omitempty"`
 	PhaseVersion       uint32 `json:"phaseVersion,omitempty"`
 	PluginState        []byte `json:"pState,omitempty"`
