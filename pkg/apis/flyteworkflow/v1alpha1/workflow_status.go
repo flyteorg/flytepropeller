@@ -89,12 +89,15 @@ func (in *WorkflowStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus
 	if ok {
 		return n
 	}
+
 	if in.NodeStatus == nil {
 		in.NodeStatus = make(map[NodeID]*NodeStatus)
 	}
+
 	newNodeStatus := &NodeStatus{
 		MutableStruct: MutableStruct{},
 	}
+
 	in.NodeStatus[id] = newNodeStatus
 	return newNodeStatus
 }

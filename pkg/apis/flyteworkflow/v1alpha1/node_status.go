@@ -580,9 +580,12 @@ func (in TaskNodeStatus) GetPhaseVersion() uint32 {
 }
 
 func (in *TaskNodeStatus) UpdatePhase(phase int, phaseVersion uint32) {
+	if in.Phase != phase || in.PhaseVersion != phaseVersion {
+		in.SetDirty()
+	}
+
 	in.Phase = phase
 	in.PhaseVersion = phaseVersion
-	in.SetDirty()
 }
 
 func (in *TaskNodeStatus) DeepCopyInto(out *TaskNodeStatus) {

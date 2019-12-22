@@ -116,7 +116,6 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 	}
 
 	if predicatePhase == PredicatePhaseReady {
-
 		// TODO: Performance problem, we maybe in a retry loop and do not need to resolve the inputs again.
 		// For now we will do this.
 		dataDir := nodeStatus.GetDataDir()
@@ -146,8 +145,10 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 
 			logger.Debugf(ctx, "Node Data Directory [%s].", nodeStatus.GetDataDir())
 		}
+
 		return handler.PhaseInfoQueued("node queued"), nil
 	}
+
 	// Now that we have resolved the inputs, we can record as a transition latency. This is because we have completed
 	// all the overhead that we have to compute. Any failures after this will incur this penalty, but it could be due
 	// to various external reasons - like queuing, overuse of quota, plugin overhead etc.
@@ -155,6 +156,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 	if predicatePhase == PredicatePhaseSkip {
 		return handler.PhaseInfoSkip(nil, "Node Skipped as parent node was skipped"), nil
 	}
+
 	return handler.PhaseInfoNotReady("predecessor node not yet complete"), nil
 }
 
@@ -279,9 +281,11 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			logger.Errorf(ctx, "failed preExecute for node. Error: %s", err.Error())
 			return executors.NodeStatusUndefined, err
 		}
+
 		if p.GetPhase() == handler.EPhaseUndefined {
 			return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, node.GetID(), "received undefined phase.")
 		}
+
 		if p.GetPhase() == handler.EPhaseNotReady {
 			return executors.NodeStatusPending, nil
 		}
@@ -290,6 +294,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, node.GetID(), err, "failed to move from queued")
 		}
+
 		if np != nodeStatus.GetPhase() {
 			// assert np == Queued!
 			logger.Infof(ctx, "Change in node state detected from [%s] -> [%s]", nodeStatus.GetPhase().String(), np.String())
@@ -305,11 +310,13 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
 			c.RecordTransitionLatency(ctx, w, node, nodeStatus)
 		}
+
 		if np == v1alpha1.NodePhaseQueued {
 			return executors.NodeStatusQueued, nil
 		} else if np == v1alpha1.NodePhaseSkipped {
 			return executors.NodeStatusSuccess, nil
 		}
+
 		return executors.NodeStatusPending, nil
 	}
 
