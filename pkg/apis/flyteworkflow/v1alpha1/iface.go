@@ -165,6 +165,7 @@ type ExecutableBranchNodeStatus interface {
 }
 
 type MutableBranchNodeStatus interface {
+	Mutable
 	ExecutableBranchNodeStatus
 
 	SetBranchNodeError()
@@ -178,6 +179,7 @@ type ExecutableDynamicNodeStatus interface {
 }
 
 type MutableDynamicNodeStatus interface {
+	Mutable
 	ExecutableDynamicNodeStatus
 
 	SetDynamicNodePhase(phase DynamicNodePhase)
@@ -198,11 +200,17 @@ type ExecutableWorkflowNodeStatus interface {
 }
 
 type MutableWorkflowNodeStatus interface {
+	Mutable
 	ExecutableWorkflowNodeStatus
 	SetWorkflowNodePhase(phase WorkflowNodePhase)
 }
 
+type Mutable interface {
+	IsDirty() bool
+}
+
 type MutableNodeStatus interface {
+	Mutable
 	// Mutation API's
 	SetDataDir(DataReference)
 	SetParentNodeID(n *NodeID)
@@ -247,7 +255,6 @@ type ExecutableNodeStatus interface {
 	GetTaskNodeStatus() ExecutableTaskNodeStatus
 
 	IsCached() bool
-	IsDirty() bool
 }
 
 type ExecutableSubWorkflowNodeStatus interface {
@@ -255,6 +262,7 @@ type ExecutableSubWorkflowNodeStatus interface {
 }
 
 type MutableSubWorkflowNodeStatus interface {
+	Mutable
 	ExecutableSubWorkflowNodeStatus
 	SetPhase(phase WorkflowPhase)
 }
@@ -268,6 +276,7 @@ type ExecutableTaskNodeStatus interface {
 }
 
 type MutableTaskNodeStatus interface {
+	Mutable
 	ExecutableTaskNodeStatus
 	SetPhase(phase int)
 	SetPhaseVersion(version uint32)

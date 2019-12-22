@@ -238,8 +238,6 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 		}
 
 		subNodeStatus.SetDataDir(originalNodePath)
-		subNodeStatus.ResetDirty()
-
 		n.Id = newID
 	}
 
