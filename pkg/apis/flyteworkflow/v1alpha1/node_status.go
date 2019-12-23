@@ -72,6 +72,7 @@ const (
 	DynamicNodePhaseNone DynamicNodePhase = iota
 	DynamicNodePhaseExecuting
 	DynamicNodePhaseFailing
+	DynamicNodePhaseValidatingDynamicSpec
 )
 
 type DynamicNodeStatus struct {
@@ -451,6 +452,10 @@ func (in *NodeStatus) SetDataDir(d DataReference) {
 func (in *NodeStatus) Equals(other *NodeStatus) bool {
 	// Assuming in is never nil
 	if other == nil {
+		return false
+	}
+
+	if in.IsDirty() != other.IsDirty() {
 		return false
 	}
 

@@ -25,6 +25,12 @@ func TestHierarchicalNodeID(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "fpa3kc3y", actual)
 	})
+
+	t.Run("Real case", func(t *testing.T) {
+		actual, err := hierarchicalNodeID("ensure-tables-task", "0", "2499f2af-7c23-42fd-8e62-01bf93cea82d")
+		assert.NoError(t, err)
+		assert.Equal(t, "fyvhfkda", actual)
+	})
 }
 
 func TestUnderlyingInterface(t *testing.T) {

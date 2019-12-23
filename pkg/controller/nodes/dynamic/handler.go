@@ -84,7 +84,7 @@ func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevSt
 			// directly to progress the dynamically generated workflow.
 			logger.Infof(ctx, "future file detected, assuming dynamic node")
 			// There is a futures file, so we need to continue running the node with the modified state
-			return trns.WithInfo(handler.PhaseInfoRunning(trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}, nil
+			return trns.WithInfo(handler.PhaseInfoRunning(trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseValidatingDynamicSpec}, nil
 		}
 	}
 
@@ -135,13 +135,30 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 	var trns handler.Transition
 	newState := ds
 	logger.Infof(ctx, "Dynamic handler.Handle's called with phase %v.", ds.Phase)
-	if ds.Phase == v1alpha1.DynamicNodePhaseExecuting {
+	switch ds.Phase {
+	case v1alpha1.DynamicNodePhaseValidatingDynamicSpec:
+		_, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
+		if err != nil {
+			newState = handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: err.Error()}
+			trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(
+				"DynamicWorkflowBuildFailed", err.Error(), nil))
+		} else if !isDynamic {
+			reason := "Expecting a valid DynamicSpec but haven't found one to execute."
+			logger.Warnf(ctx, reason)
+			newState = handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: reason}
+			trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(
+				"DynamicWorkflowBuildFailed", reason, nil))
+		} else { //isDynamic
+			newState = handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}
+			trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil))
+		}
+	case v1alpha1.DynamicNodePhaseExecuting:
 		trns, newState, err = d.handleDynamicSubNodes(ctx, nCtx, ds)
 		if err != nil {
 			logger.Errorf(ctx, "handling dynamic subnodes failed with error: %s", err.Error())
 			return trns, err
 		}
-	} else if ds.Phase == v1alpha1.DynamicNodePhaseFailing {
+	case v1alpha1.DynamicNodePhaseFailing:
 		err = d.Abort(ctx, nCtx, ds.Reason)
 		if err != nil {
 			logger.Errorf(ctx, "Failing to abort dynamic workflow")
@@ -149,7 +166,7 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 		}
 
 		trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure("DynamicNodeFailed", ds.Reason, nil))
-	} else {
+	default:
 		trns, newState, err = d.handleParentNode(ctx, ds, nCtx)
 		if err != nil {
 			logger.Errorf(ctx, "handling parent node failed with error: %s", err.Error())

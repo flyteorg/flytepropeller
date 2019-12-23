@@ -374,11 +374,6 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusFailed(fmt.Errorf(nodeStatus.GetMessage())), nil
 	}
 
-	if currentPhase == v1alpha1.NodePhaseFailed {
-		// This should never happen
-		return executors.NodeStatusSuccess, nil
-	}
-
 	// case v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseRetryableFailure:
 	logger.Debugf(ctx, "node executing, current phase [%s]", currentPhase)
 	defer logger.Debugf(ctx, "node execution completed")
