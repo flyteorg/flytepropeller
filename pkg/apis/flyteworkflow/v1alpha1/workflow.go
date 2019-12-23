@@ -190,6 +190,7 @@ func (in *WorkflowSpec) FromNode(name NodeID) ([]NodeID, error) {
 	if _, ok := in.Nodes[name]; !ok {
 		return nil, errors.Errorf("Bad Node [%v], is not defined in the Workflow [%v]", name, in.ID)
 	}
+
 	downstreamNodes := in.Connections.DownstreamEdges[name]
 	return downstreamNodes, nil
 }
