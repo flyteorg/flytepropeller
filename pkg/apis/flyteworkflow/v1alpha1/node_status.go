@@ -374,15 +374,21 @@ func (in *NodeStatus) GetParentTaskID() *core.TaskExecutionIdentifier {
 }
 
 func (in *NodeStatus) SetParentNodeID(n *NodeID) {
-	in.ParentNode = n
-	in.SetDirty()
+	if in.ParentNode == nil || in.ParentNode != n {
+		in.ParentNode = n
+		in.SetDirty()
+	}
 }
 
 func (in *NodeStatus) SetParentTaskID(t *core.TaskExecutionIdentifier) {
-	in.ParentTask = &TaskExecutionIdentifier{
-		TaskExecutionIdentifier: t,
+	if in.ParentTask == nil || in.ParentTask.TaskExecutionIdentifier != t {
+		in.ParentTask = &TaskExecutionIdentifier{
+			TaskExecutionIdentifier: t,
+		}
+
+		// We do not need to set Dirty here because this field is not persisted.
+		//in.SetDirty()
 	}
-	in.SetDirty()
 }
 
 func (in *NodeStatus) GetOrCreateWorkflowStatus() MutableWorkflowNodeStatus {
@@ -408,6 +414,7 @@ func (in NodeStatus) GetTaskNodeStatus() ExecutableTaskNodeStatus {
 func (in *NodeStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
 	n, ok := in.SubNodeStatus[id]
 	if ok {
+		n.SetParentTaskID(in.GetParentTaskID())
 		return n
 	}
 
