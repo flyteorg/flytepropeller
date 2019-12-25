@@ -80,6 +80,10 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 		return fmt.Errorf("event recording attempt of Nil Node execution event")
 	}
 
+	if nodeEvent.Phase == core.NodeExecution_RUNNING && nodeEvent.Id.NodeId[0] == 'f' {
+		logger.Printf(ctx, "Found one of your nodes!")
+	}
+
 	if nodeEvent.Id == nil {
 		return fmt.Errorf("event recording attempt of with nil node Event ID")
 	}
@@ -247,6 +251,10 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		ExecutionId: w.GetExecutionID().WorkflowExecutionIdentifier,
 	}
 	nodeStatus := w.GetNodeExecutionStatus(node.GetID())
+
+	if nodeStatus.IsDirty() {
+		return executors.NodeStatusRunning, nil
+	}
 
 	// Now depending on the node type decide
 	h, err := c.nodeHandlerFactory.GetHandler(node.GetKind())
