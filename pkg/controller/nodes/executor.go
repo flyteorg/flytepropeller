@@ -252,30 +252,14 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	}
 	nodeStatus := w.GetNodeExecutionStatus(node.GetID())
 
-	if node.GetID() == "f11aw4sa" {
-		logger.Debugf(ctx, "Node ID is f11aw4sa.")
-	}
-
 	if nodeStatus.IsDirty() {
 		return executors.NodeStatusRunning, nil
-	} else {
-		logger.Debugf(ctx, "Node status is not dirty.")
 	}
 
 	// Now depending on the node type decide
 	h, err := c.nodeHandlerFactory.GetHandler(node.GetKind())
 	if err != nil {
 		return executors.NodeStatusUndefined, err
-	}
-
-	if len(nodeStatus.GetDataDir()) == 0 {
-		// Predicate ready, lets Resolve the data
-		dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, node.GetID())
-		if err != nil {
-			return executors.NodeStatusUndefined, err
-		}
-
-		nodeStatus.SetDataDir(dataDir)
 	}
 
 	nCtx, err := c.newNodeExecContextDefault(ctx, w, node, nodeStatus)
@@ -534,6 +518,13 @@ func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, w v1alpha1.Bas
 func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
 	currentNodeCtx := contextutils.WithNodeID(ctx, currentNode.GetID())
 	nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
+
+	dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, currentNode.GetID())
+	if err != nil {
+		return executors.NodeStatusUndefined, err
+	}
+	nodeStatus.SetDataDir(dataDir)
+
 	switch nodeStatus.GetPhase() {
 	case v1alpha1.NodePhaseNotYetStarted, v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseTimingOut, v1alpha1.NodePhaseRetryableFailure, v1alpha1.NodePhaseSucceeding:
 		logger.Debugf(currentNodeCtx, "Handling node Status [%v]", nodeStatus.GetPhase().String())
