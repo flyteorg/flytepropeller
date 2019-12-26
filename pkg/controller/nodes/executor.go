@@ -113,7 +113,7 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) (handler.PhaseInfo, error) {
 	logger.Debugf(ctx, "Node not yet started")
 	// Query the nodes information to figure out if it can be executed.
-	predicatePhase, err := CanExecute(ctx, w, node)
+	predicatePhase, err := CanExecute(ctx, w, c, node)
 	if err != nil {
 		logger.Debugf(ctx, "Node failed in CanExecute. Error [%s]", err)
 		return handler.PhaseInfoUndefined, err

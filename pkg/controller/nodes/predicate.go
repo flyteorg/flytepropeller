@@ -37,14 +37,14 @@ func (p PredicatePhase) String() string {
 	return "undefined"
 }
 
-func CanExecute(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.BaseNode) (PredicatePhase, error) {
+func CanExecute(ctx context.Context, w v1alpha1.ExecutableWorkflow, nodeStatusGetter v1alpha1.NodeStatusGetter, node v1alpha1.BaseNode) (PredicatePhase, error) {
 	nodeID := node.GetID()
 	if nodeID == v1alpha1.StartNodeID {
 		logger.Debugf(ctx, "Start Node id is assumed to be ready.")
 		return PredicatePhaseReady, nil
 	}
 
-	nodeStatus := w.GetNodeExecutionStatus(nodeID)
+	nodeStatus := nodeStatusGetter.GetNodeExecutionStatus(nodeID)
 	parentNodeID := nodeStatus.GetParentNodeID()
 	upstreamNodes, ok := w.GetConnections().UpstreamEdges[nodeID]
 	if !ok {
@@ -53,7 +53,7 @@ func CanExecute(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha
 
 	skipped := false
 	for _, upstreamNodeID := range upstreamNodes {
-		upstreamNodeStatus := w.GetNodeExecutionStatus(upstreamNodeID)
+		upstreamNodeStatus := nodeStatusGetter.GetNodeExecutionStatus(upstreamNodeID)
 
 		if upstreamNodeStatus.IsDirty() {
 			return PredicatePhaseNotReady, nil
