@@ -250,7 +250,10 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		NodeId:      node.GetID(),
 		ExecutionId: w.GetExecutionID().WorkflowExecutionIdentifier,
 	}
-	nodeStatus := w.GetNodeExecutionStatus(node.GetID())
+	nodeStatus, err := c.getNodeExecutionStatus(ctx, w, node.GetID())
+	if err != nil {
+		return executors.NodeStatusUndefined, err
+	}
 
 	if nodeStatus.IsDirty() {
 		return executors.NodeStatusRunning, nil
@@ -491,7 +494,7 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, w v1alpha1.Executab
 	return executors.NodeStatusPending, nil
 }
 
-func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, w v1alpha1.BaseWorkflowWithStatus, inputs *core.LiteralMap) (executors.NodeStatus, error) {
+func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, w v1alpha1.ExecutableWorkflow, inputs *core.LiteralMap) (executors.NodeStatus, error) {
 	startNode := w.StartNode()
 	if startNode == nil {
 		return executors.NodeStatusFailed(errors.Errorf(errors.BadSpecificationError, v1alpha1.StartNodeID, "Start node not found")), nil
@@ -502,10 +505,15 @@ func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, w v1alpha1.Bas
 		return executors.NodeStatusComplete, nil
 	}
 	// StartNode is special. It does not have any processing step. It just takes the workflow (or subworkflow) inputs and converts to its own outputs
-	nodeStatus := w.GetNodeExecutionStatus(startNode.GetID())
+	nodeStatus, err := c.getNodeExecutionStatus(ctx, w, startNode.GetID())
+	if err != nil {
+		return executors.NodeStatusUndefined, err
+	}
+
 	if nodeStatus.GetDataDir() == "" {
 		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, startNode.GetID(), "no data-dir set, cannot store inputs")
 	}
+
 	outputFile := v1alpha1.GetOutputsFile(nodeStatus.GetDataDir())
 	so := storage.Options{}
 	if err := c.store.WriteProtobuf(ctx, outputFile, so, inputs); err != nil {
@@ -517,13 +525,10 @@ func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, w v1alpha1.Bas
 
 func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
 	currentNodeCtx := contextutils.WithNodeID(ctx, currentNode.GetID())
-	nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
-
-	dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, currentNode.GetID())
+	nodeStatus, err := c.getNodeExecutionStatus(ctx, w, currentNode.GetID())
 	if err != nil {
 		return executors.NodeStatusUndefined, err
 	}
-	nodeStatus.SetDataDir(dataDir)
 
 	switch nodeStatus.GetPhase() {
 	case v1alpha1.NodePhaseNotYetStarted, v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseTimingOut, v1alpha1.NodePhaseRetryableFailure, v1alpha1.NodePhaseSucceeding:
@@ -549,11 +554,14 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.Exec
 }
 
 func (c *nodeExecutor) FinalizeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error {
-	nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
+	nodeStatus, err := c.getNodeExecutionStatus(ctx, w, currentNode.GetID())
+	if err != nil {
+		return err
+	}
+
 	switch nodeStatus.GetPhase() {
 	case v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseSucceeding, v1alpha1.NodePhaseRetryableFailure:
 		ctx = contextutils.WithNodeID(ctx, currentNode.GetID())
-		nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
 
 		// Now depending on the node type decide
 		h, err := c.nodeHandlerFactory.GetHandler(currentNode.GetKind())
@@ -601,12 +609,28 @@ func (c *nodeExecutor) FinalizeHandler(ctx context.Context, w v1alpha1.Executabl
 	return nil
 }
 
+func (c *nodeExecutor) getNodeExecutionStatus(ctx context.Context, w v1alpha1.ExecutableWorkflow, nodeID v1alpha1.NodeID) (
+	v1alpha1.ExecutableNodeStatus, error) {
+
+	dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, nodeID)
+	if err != nil {
+		return nil, err
+	}
+
+	nodeStatus := w.GetNodeExecutionStatus(nodeID)
+	nodeStatus.SetDataDir(dataDir)
+	return nodeStatus, nil
+}
+
 func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error {
-	nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
+	nodeStatus, err := c.getNodeExecutionStatus(ctx, w, currentNode.GetID())
+	if err != nil {
+		return err
+	}
+
 	switch nodeStatus.GetPhase() {
 	case v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseSucceeding, v1alpha1.NodePhaseRetryableFailure, v1alpha1.NodePhaseQueued:
 		ctx = contextutils.WithNodeID(ctx, currentNode.GetID())
-		nodeStatus := w.GetNodeExecutionStatus(currentNode.GetID())
 
 		// Now depending on the node type decide
 		h, err := c.nodeHandlerFactory.GetHandler(currentNode.GetKind())
