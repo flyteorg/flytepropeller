@@ -295,6 +295,8 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 	logger.Infof(ctx, "Handling Workflow [%s], id: [%s], p [%s]", w.GetName(), w.GetExecutionID(), w.GetExecutionStatus().GetPhase().String())
 	defer logger.Infof(ctx, "Handling Workflow [%s] Done", w.GetName())
 
+	w.DataReferenceConstructor = c.store
+
 	wStatus := w.GetExecutionStatus()
 	// Initialize the Status if not already initialized
 	switch wStatus.GetPhase() {
@@ -352,6 +354,8 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 }
 
 func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow, maxRetries uint32) error {
+	w.DataReferenceConstructor = c.store
+
 	if !w.Status.IsTerminated() {
 		reason := "User initiated workflow abort."
 		c.metrics.IncompleteWorkflowAborted.Inc(ctx)

@@ -297,7 +297,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		}, nil)
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
-		nCtx.On("DataStore").Return(mockStore)
+		nCtx.On("DataReferenceConstructor").Return(mockStore)
 		s, err := h.CheckLaunchPlanStatus(ctx, nCtx)
 		assert.NoError(t, err)
 		assert.Equal(t, handler.EPhaseSuccess, s.Info().GetPhase())
@@ -338,7 +338,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		}, nil)
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
-		nCtx.On("DataStore").Return(mockStore)
+		nCtx.On("DataReferenceConstructor").Return(mockStore)
 		s, err := h.CheckLaunchPlanStatus(ctx, nCtx)
 		assert.NoError(t, err)
 		assert.Equal(t, s.Info().GetPhase(), handler.EPhaseSuccess)
@@ -497,7 +497,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		}, nil)
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
-		nCtx.On("DataStore").Return(mockStore)
+		nCtx.On("DataReferenceConstructor").Return(mockStore)
 		s, err := h.CheckLaunchPlanStatus(ctx, nCtx)
 		assert.Error(t, err)
 		assert.Equal(t, s.Info().GetPhase(), handler.EPhaseUndefined)
@@ -530,7 +530,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		}, nil)
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
-		nCtx.On("DataStore").Return(mockStore)
+		nCtx.On("DataReferenceConstructor").Return(mockStore)
 		s, err := h.CheckLaunchPlanStatus(ctx, nCtx)
 		assert.NotNil(t, err)
 		assert.Equal(t, handler.EPhaseUndefined, s.Info().GetPhase())
@@ -563,7 +563,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		}, nil)
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockWf, mockNode)
-		nCtx.On("DataStore").Return(mockStore)
+		nCtx.On("DataReferenceConstructor").Return(mockStore)
 		s, err := h.CheckLaunchPlanStatus(ctx, nCtx)
 		assert.Error(t, err)
 		assert.Equal(t, s.Info().GetPhase().String(), handler.EPhaseUndefined.String())

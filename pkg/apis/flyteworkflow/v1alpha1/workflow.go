@@ -2,7 +2,12 @@ package v1alpha1
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+
+	"github.com/lyft/flytestdlib/logger"
+
+	"github.com/lyft/flytestdlib/storage"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -39,6 +44,9 @@ type FlyteWorkflow struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty" protobuf:"bytes,8,opt,name=serviceAccountName"`
 	// Status is the only mutable section in the workflow. It holds all the execution information
 	Status WorkflowStatus `json:"status,omitempty"`
+
+	// non-Serialized fields
+	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
 }
 
 var FlyteWorkflowGVK = SchemeGroupVersion.WithKind(FlyteWorkflowKind)
@@ -84,7 +92,15 @@ func (in *FlyteWorkflow) FindSubWorkflow(subID WorkflowID) ExecutableSubWorkflow
 }
 
 func (in *FlyteWorkflow) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
-	return in.Status.GetNodeExecutionStatus(id)
+	nodeStatus := in.Status.GetNodeExecutionStatus(id)
+	dataDir, err := in.Status.ConstructNodeDataDir(context.TODO(), in.DataReferenceConstructor, id)
+	if err != nil {
+		logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v], exec id [%v]", id, in.Name)
+		return nodeStatus
+	}
+
+	nodeStatus.SetDataDir(dataDir)
+	return nodeStatus
 }
 
 func (in *FlyteWorkflow) GetServiceAccountName() string {
