@@ -90,12 +90,17 @@ func (in *DynamicNodeStatus) GetDynamicNodeReason() string {
 }
 
 func (in *DynamicNodeStatus) SetDynamicNodeReason(reason string) {
-	in.SetDirty()
-	in.Reason = reason
+	if in.Reason != reason {
+		in.SetDirty()
+		in.Reason = reason
+	}
 }
 
 func (in *DynamicNodeStatus) SetDynamicNodePhase(phase DynamicNodePhase) {
-	in.Phase = phase
+	if in.Phase != phase {
+		in.SetDirty()
+		in.Phase = phase
+	}
 }
 
 func (in *DynamicNodeStatus) Equals(o *DynamicNodeStatus) bool {
@@ -125,7 +130,10 @@ func (in *WorkflowNodeStatus) GetWorkflowNodePhase() WorkflowNodePhase {
 }
 
 func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
-	in.Phase = phase
+	if in.Phase != phase {
+		in.SetDirty()
+		in.Phase = phase
+	}
 }
 
 type NodeStatus struct {
@@ -553,6 +561,7 @@ func (in *TaskNodeStatus) GetBarrierClockTick() uint32 {
 
 func (in *TaskNodeStatus) SetBarrierClockTick(tick uint32) {
 	in.BarrierClockTick = tick
+	in.SetDirty()
 }
 
 func (in *TaskNodeStatus) SetPluginState(s []byte) {
