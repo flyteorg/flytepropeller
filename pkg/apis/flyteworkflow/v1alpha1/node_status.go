@@ -145,7 +145,7 @@ type NodeStatus struct {
 	LastUpdatedAt        *metav1.Time  `json:"lastUpdatedAt,omitempty"`
 	LastAttemptStartedAt *metav1.Time  `json:"laStartedAt,omitempty"`
 	Message              string        `json:"message,omitempty"`
-	DataDir              DataReference `json:"dataDir,omitempty"`
+	DataDir              DataReference `json:"-"`
 	Attempts             uint32        `json:"attempts"`
 	Cached               bool          `json:"cached"`
 
@@ -452,9 +452,9 @@ func (in *NodeStatus) GetDataDir() DataReference {
 
 func (in *NodeStatus) SetDataDir(d DataReference) {
 	in.DataDir = d
-	if in.DataDir != d {
-		in.SetDirty()
-	}
+
+	// We do not need to set Dirty here because this field is not persisted.
+	//in.SetDirty()
 }
 
 func (in *NodeStatus) Equals(other *NodeStatus) bool {

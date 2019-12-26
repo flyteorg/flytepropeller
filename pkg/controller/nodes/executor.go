@@ -252,8 +252,14 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	}
 	nodeStatus := w.GetNodeExecutionStatus(node.GetID())
 
+	if node.GetID() == "f11aw4sa" {
+		logger.Debugf(ctx, "Node ID is f11aw4sa.")
+	}
+
 	if nodeStatus.IsDirty() {
 		return executors.NodeStatusRunning, nil
+	} else {
+		logger.Debugf(ctx, "Node status is not dirty.")
 	}
 
 	// Now depending on the node type decide
