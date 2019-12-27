@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/lyft/flytestdlib/storage"
+
 	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -166,7 +168,7 @@ type NodeStatus struct {
 	DynamicNodeStatus *DynamicNodeStatus `json:"dynamicNodeStatus,omitempty"`
 
 	// Not Persisted
-	ParentWorkflowStatus *WorkflowStatus `json:"-"`
+	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
 }
 
 func (in *NodeStatus) IsDirty() bool {
@@ -430,14 +432,16 @@ func (in *NodeStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
 	n, ok := in.SubNodeStatus[id]
 	if ok {
 		n.SetParentTaskID(in.GetParentTaskID())
-		dataDir, err := in.ParentWorkflowStatus.ConstructNodeDataDir(context.TODO(), id)
-		if err != nil {
-			logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v]", id)
-			return n
-		}
+		n.DataReferenceConstructor = in.DataReferenceConstructor
+		if len(n.GetDataDir()) == 0 {
+			dataDir, err := in.DataReferenceConstructor.ConstructReference(context.TODO(), in.GetDataDir(), id)
+			if err != nil {
+				logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v]", id)
+				return n
+			}
 
-		n.SetDataDir(dataDir)
-		n.ParentWorkflowStatus = in.ParentWorkflowStatus
+			n.SetDataDir(dataDir)
+		}
 
 		return n
 	}
@@ -451,14 +455,14 @@ func (in *NodeStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
 	}
 	newNodeStatus.SetParentTaskID(in.GetParentTaskID())
 	newNodeStatus.SetParentNodeID(in.GetParentNodeID())
-	dataDir, err := in.ParentWorkflowStatus.ConstructNodeDataDir(context.TODO(), id)
+	dataDir, err := in.DataReferenceConstructor.ConstructReference(context.TODO(), in.GetDataDir(), id)
 	if err != nil {
 		logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v]", id)
 		return n
 	}
 
 	newNodeStatus.SetDataDir(dataDir)
-	newNodeStatus.ParentWorkflowStatus = in.ParentWorkflowStatus
+	newNodeStatus.DataReferenceConstructor = in.DataReferenceConstructor
 
 	in.SubNodeStatus[id] = newNodeStatus
 	in.SetDirty()

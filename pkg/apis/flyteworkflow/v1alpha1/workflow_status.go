@@ -92,14 +92,17 @@ func (in *WorkflowStatus) GetMessage() string {
 func (in *WorkflowStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
 	n, ok := in.NodeStatus[id]
 	if ok {
-		dataDir, err := in.ConstructNodeDataDir(context.TODO(), id)
-		if err != nil {
-			logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v]", id)
-			return n
+		n.DataReferenceConstructor = in.DataReferenceConstructor
+		if len(n.GetDataDir()) == 0 {
+			dataDir, err := in.ConstructNodeDataDir(context.TODO(), id)
+			if err != nil {
+				logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v]", id)
+				return n
+			}
+
+			n.SetDataDir(dataDir)
 		}
 
-		n.SetDataDir(dataDir)
-		n.ParentWorkflowStatus = in
 		return n
 	}
 
@@ -118,7 +121,7 @@ func (in *WorkflowStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus
 	}
 
 	newNodeStatus.SetDataDir(dataDir)
-	newNodeStatus.ParentWorkflowStatus = in
+	newNodeStatus.DataReferenceConstructor = in.DataReferenceConstructor
 
 	in.NodeStatus[id] = newNodeStatus
 	return newNodeStatus
