@@ -91,7 +91,7 @@ func (c *workflowExecutor) handleReadyWorkflow(ctx context.Context, w *v1alpha1.
 	// Before starting the subworkflow, lets set the inputs for the Workflow. The inputs for a SubWorkflow are essentially
 	// Copy of the inputs to the Node
 	nodeStatus := w.GetNodeExecutionStatus(startNode.GetID())
-	dataDir, err := c.store.ConstructReference(ctx, ref, startNode.GetID(), "data")
+	dataDir, err := c.store.ConstructReference(ctx, ref, startNode.GetID(), "data", "0")
 	if err != nil {
 		return StatusFailing(errors.Wrapf(errors.CausedByError, w.GetID(), err, "failed to create metadata prefix for start node.")), nil
 	}

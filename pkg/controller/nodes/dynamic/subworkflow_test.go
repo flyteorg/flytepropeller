@@ -45,8 +45,8 @@ func TestConstructNodeDataDir(t *testing.T) {
 	assert.NoError(t, err)
 	cWF := newContextualWorkflowStatus(wfStatus, nodeStatus)
 
-	dataDir, err := cWF.ConstructNodeDataDir(context.TODO(), ds, "my_node")
+	dataDir, err := cWF.ConstructNodeDataDir(context.TODO(), ds, "my_node", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, dataDir)
-	assert.Equal(t, "fk://right/my_node", dataDir.String())
+	assert.Equal(t, "fk://right/my_node/0", dataDir.String())
 }

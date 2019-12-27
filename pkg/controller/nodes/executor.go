@@ -252,15 +252,11 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusUndefined, err
 	}
 
-	{
-		// Predicate ready, lets Resolve the data
-		dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, node.GetID(), nodeStatus.GetAttempts())
-		if err != nil {
-			return executors.NodeStatusUndefined, err
-		}
-
-		nodeStatus.SetDataDir(dataDir)
+	dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, node.GetID(), nodeStatus.GetAttempts())
+	if err != nil {
+		return executors.NodeStatusUndefined, err
 	}
+	nodeStatus.SetDataDir(dataDir)
 
 	nCtx, err := c.newNodeExecContextDefault(ctx, w, node, nodeStatus)
 	if err != nil {

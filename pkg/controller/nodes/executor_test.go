@@ -317,7 +317,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 				assert.Equal(t, test.expectedNodePhase, mockNodeStatus.GetPhase(), "expected %s, received %s", test.expectedNodePhase.String(), mockNodeStatus.GetPhase().String())
 
 				if test.expectedNodePhase == v1alpha1.NodePhaseQueued {
-					assert.Equal(t, mockNodeStatus.GetDataDir(), storage.DataReference("/wf-data/end-node/data"))
+					assert.Equal(t, mockNodeStatus.GetDataDir(), storage.DataReference("/wf-data/end-node/data/0"))
 				}
 			})
 		}
@@ -505,11 +505,13 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockN2Status.On("SetDataDir", mock.AnythingOfType(reflect.TypeOf(storage.DataReference("x")).String()))
 			mockN2Status.On("GetDataDir").Return(storage.DataReference("blah"))
 			mockN2Status.On("GetWorkflowNodeStatus").Return(nil)
+
 			mockN2Status.On("GetStoppedAt").Return(nil)
 			mockN2Status.On("UpdatePhase", expectedN2Phase, mock.Anything, mock.AnythingOfType("string"))
 			mockN2Status.On("IsDirty").Return(false)
 			mockN2Status.On("GetTaskNodeStatus").Return(nil)
 			mockN2Status.On("ClearDynamicNodeStatus").Return(nil)
+			mockN2Status.On("GetAttempts").Return(uint32(0))
 
 			mockNode := &mocks.ExecutableNode{}
 			mockNode.On("GetID").Return(nodeN2)
@@ -529,6 +531,8 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockNodeN0.On("GetTaskID").Return(&taskID0)
 			mockN0Status := &mocks.ExecutableNodeStatus{}
 			mockN0Status.On("GetPhase").Return(n0Phase)
+			mockN0Status.On("GetAttempts").Return(uint32(0))
+
 			mockN0Status.On("IsDirty").Return(false)
 			mockN0Status.On("GetParentTaskID").Return(nil)
 			n := v1.Now()
@@ -552,6 +556,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockWf.On("GetTask", taskID).Return(tk, nil)
 			mockWf.On("GetLabels").Return(make(map[string]string))
 			mockWfStatus.On("GetDataDir").Return(storage.DataReference("x"))
+			mockWfStatus.On("ConstructNodeDataDir", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(storage.DataReference("x"), nil)
 			return mockWf, mockN2Status
 		}
 
