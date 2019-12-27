@@ -339,6 +339,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			return executors.NodeStatusUndefined, err
 		}
 
+		nodeStatus.ClearSubNodeStatus()
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseTimedOut, v1.Now(), nodeStatus.GetMessage())
 		c.metrics.TimedOutFailure.Inc(ctx)
 		return executors.NodeStatusTimedOut, nil
@@ -350,6 +351,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			return executors.NodeStatusUndefined, err
 		}
 
+		nodeStatus.ClearSubNodeStatus()
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully")
 		c.metrics.SuccessDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		return executors.NodeStatusSuccess, nil
@@ -363,6 +365,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying")
 		// We are going to retry in the next round, so we should clear all current state
+		nodeStatus.ClearSubNodeStatus()
 		nodeStatus.ClearTaskStatus()
 		nodeStatus.ClearWorkflowStatus()
 		nodeStatus.ClearDynamicNodeStatus()

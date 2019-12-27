@@ -28,6 +28,11 @@ func (_m *ExecutableNodeStatus) ClearLastAttemptStartedAt() {
 	_m.Called()
 }
 
+// ClearSubNodeStatus provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) ClearSubNodeStatus() {
+	_m.Called()
+}
+
 // ClearTaskStatus provides a mock function with given fields:
 func (_m *ExecutableNodeStatus) ClearTaskStatus() {
 	_m.Called()

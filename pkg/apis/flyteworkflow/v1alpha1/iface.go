@@ -233,6 +233,7 @@ type MutableNodeStatus interface {
 	GetDynamicNodeStatus() MutableDynamicNodeStatus
 	ClearDynamicNodeStatus()
 	ClearLastAttemptStartedAt()
+	ClearSubNodeStatus()
 }
 
 // Interface for a Node p. This provides a mutable API.

@@ -77,7 +77,6 @@ const (
 	DynamicNodePhaseNone DynamicNodePhase = iota
 	DynamicNodePhaseExecuting
 	DynamicNodePhaseFailing
-	DynamicNodePhaseValidatingDynamicSpec
 )
 
 type DynamicNodeStatus struct {
@@ -236,6 +235,11 @@ func (in *NodeStatus) ClearTaskStatus() {
 
 func (in *NodeStatus) ClearLastAttemptStartedAt() {
 	in.LastAttemptStartedAt = nil
+	in.SetDirty()
+}
+
+func (in *NodeStatus) ClearSubNodeStatus() {
+	in.SubNodeStatus = nil
 	in.SetDirty()
 }
 
