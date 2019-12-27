@@ -23,7 +23,7 @@ func TestNewContextualWorkflow(t *testing.T) {
 	wf.On("GetExecutionStatus").Return(&mocks.ExecutableWorkflowStatus{})
 
 	subwf := &mocks.ExecutableSubWorkflow{}
-	cWF := newContextualWorkflow(wf, subwf, nil, nil, nil)
+	cWF := newContextualWorkflow(wf, subwf, nil, nil, nil, nil)
 	cWF.GetAnnotations()
 
 	assert.True(t, calledBase)

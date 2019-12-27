@@ -2,10 +2,7 @@ package v1alpha1
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-
-	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flytestdlib/storage"
 
@@ -69,7 +66,9 @@ func (in *FlyteWorkflow) GetTask(id TaskID) (ExecutableTask, error) {
 }
 
 func (in *FlyteWorkflow) GetExecutionStatus() ExecutableWorkflowStatus {
-	return &in.Status
+	s := &in.Status
+	s.DataReferenceConstructor = in.DataReferenceConstructor
+	return s
 }
 
 func (in *FlyteWorkflow) GetK8sWorkflowID() types.NamespacedName {
@@ -92,15 +91,7 @@ func (in *FlyteWorkflow) FindSubWorkflow(subID WorkflowID) ExecutableSubWorkflow
 }
 
 func (in *FlyteWorkflow) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
-	nodeStatus := in.Status.GetNodeExecutionStatus(id)
-	dataDir, err := in.Status.ConstructNodeDataDir(context.TODO(), in.DataReferenceConstructor, id)
-	if err != nil {
-		logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v], exec id [%v]", id, in.Name)
-		return nodeStatus
-	}
-
-	nodeStatus.SetDataDir(dataDir)
-	return nodeStatus
+	return in.GetExecutionStatus().GetNodeExecutionStatus(id)
 }
 
 func (in *FlyteWorkflow) GetServiceAccountName() string {

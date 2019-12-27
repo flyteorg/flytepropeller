@@ -2,8 +2,11 @@ package v1alpha1
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"reflect"
+
+	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -161,6 +164,9 @@ type NodeStatus struct {
 
 	TaskNodeStatus    *TaskNodeStatus    `json:",omitempty"`
 	DynamicNodeStatus *DynamicNodeStatus `json:"dynamicNodeStatus,omitempty"`
+
+	// Not Persisted
+	ParentWorkflowStatus *WorkflowStatus `json:"-"`
 }
 
 func (in *NodeStatus) IsDirty() bool {
@@ -424,6 +430,15 @@ func (in *NodeStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
 	n, ok := in.SubNodeStatus[id]
 	if ok {
 		n.SetParentTaskID(in.GetParentTaskID())
+		dataDir, err := in.ParentWorkflowStatus.ConstructNodeDataDir(context.TODO(), id)
+		if err != nil {
+			logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v]", id)
+			return n
+		}
+
+		n.SetDataDir(dataDir)
+		n.ParentWorkflowStatus = in.ParentWorkflowStatus
+
 		return n
 	}
 
@@ -436,6 +451,14 @@ func (in *NodeStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
 	}
 	newNodeStatus.SetParentTaskID(in.GetParentTaskID())
 	newNodeStatus.SetParentNodeID(in.GetParentNodeID())
+	dataDir, err := in.ParentWorkflowStatus.ConstructNodeDataDir(context.TODO(), id)
+	if err != nil {
+		logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v]", id)
+		return n
+	}
+
+	newNodeStatus.SetDataDir(dataDir)
+	newNodeStatus.ParentWorkflowStatus = in.ParentWorkflowStatus
 
 	in.SubNodeStatus[id] = newNodeStatus
 	in.SetDirty()

@@ -612,7 +612,7 @@ func (c *nodeExecutor) FinalizeHandler(ctx context.Context, w v1alpha1.Executabl
 func (c *nodeExecutor) getNodeExecutionStatus(ctx context.Context, w v1alpha1.ExecutableWorkflow, nodeID v1alpha1.NodeID) (
 	v1alpha1.ExecutableNodeStatus, error) {
 
-	dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, nodeID)
+	dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, nodeID)
 	if err != nil {
 		return nil, err
 	}

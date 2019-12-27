@@ -125,8 +125,7 @@ func (s *subworkflowHandler) StartSubWorkflow(ctx context.Context, nCtx handler.
 	// Copy of the inputs to the Node
 	nodeStatus := contextualSubWorkflow.GetNodeExecutionStatus(startNode.GetID())
 	if len(nodeStatus.GetDataDir()) == 0 {
-		store := nCtx.DataStore()
-		dataDir, err := contextualSubWorkflow.GetExecutionStatus().ConstructNodeDataDir(ctx, store, startNode.GetID())
+		dataDir, err := contextualSubWorkflow.GetExecutionStatus().ConstructNodeDataDir(ctx, startNode.GetID())
 		if err != nil {
 			err = errors2.Wrapf(err, "Failed to create metadata store key. Error [%v]", err)
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoUndefined), err

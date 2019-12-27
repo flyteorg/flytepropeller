@@ -329,7 +329,7 @@ type ExecutableWorkflowStatus interface {
 	SetOutputReference(reference DataReference)
 	IncFailedAttempts()
 	SetMessage(msg string)
-	ConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor, name NodeID) (storage.DataReference, error)
+	ConstructNodeDataDir(ctx context.Context, name NodeID) (storage.DataReference, error)
 }
 
 type BaseWorkflow interface {
