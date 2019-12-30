@@ -225,18 +225,10 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 	// Modify node IDs to include lineage, the entire system assumes node IDs are unique per parent WF.
 	// We keep track of the original node ids because that's where inputs are written to.
 	parentNodeID := nCtx.NodeID()
-	collisionCounter := map[string]int{}
 	for _, n := range djSpec.Nodes {
 		newID, err := hierarchicalNodeID(parentNodeID, currentAttemptStr, n.Id)
 		if err != nil {
 			return nil, err
-		}
-
-		if existingCount, found := collisionCounter[newID]; found {
-			collisionCounter[newID] = existingCount + 1
-			newID = fmt.Sprintf("%v-%v", newID, existingCount+1)
-		} else {
-			collisionCounter[newID] = 1
 		}
 
 		// Instantiate a nodeStatus using the modified name but set its data directory using the original name.
