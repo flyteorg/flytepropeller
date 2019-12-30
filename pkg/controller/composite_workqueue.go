@@ -85,8 +85,8 @@ func (b *BatchingWorkQueue) Start(ctx context.Context) {
 }
 
 func (b *BatchingWorkQueue) runSubQueueHandler(ctx context.Context) {
-	//logger.Debugf(ctx, "Subqueue handler batch round")
-	//defer logger.Debugf(ctx, "Exiting SubQueue handler batch round")
+	logger.Debugf(ctx, "Subqueue handler batch round")
+	defer logger.Debugf(ctx, "Exiting SubQueue handler batch round")
 	if b.subQueue.ShuttingDown() {
 		return
 	}
@@ -95,7 +95,7 @@ func (b *BatchingWorkQueue) runSubQueueHandler(ctx context.Context) {
 		numToRetrieve = b.subQueue.Len()
 	}
 
-	//logger.Debugf(ctx, "Dynamically configured batch size [%d]", b.batchSize)
+	logger.Debugf(ctx, "Dynamically configured batch size [%d]", b.batchSize)
 	// Run batches forever
 	objectsRetrieved := make([]interface{}, numToRetrieve)
 	for i := 0; i < numToRetrieve; i++ {
