@@ -232,7 +232,7 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 		}
 
 		// Instantiate a nodeStatus using the modified name but set its data directory using the original name.
-		subNodeStatus := parentNodeStatus.GetNodeExecutionStatus(newID)
+		subNodeStatus := parentNodeStatus.GetNodeExecutionStatus(ctx, newID)
 		originalNodePath, err := nCtx.DataStore().ConstructReference(ctx, nCtx.NodeStatus().GetDataDir(), n.Id)
 		if err != nil {
 			return nil, err
@@ -296,7 +296,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 
 	// TODO: This is a hack to set parent task execution id, we should move to node-node relationship.
 	execID := task.GetTaskExecutionIdentifier(nCtx)
-	nStatus := nCtx.NodeStatus().GetNodeExecutionStatus(dynamicNodeID)
+	nStatus := nCtx.NodeStatus().GetNodeExecutionStatus(ctx, dynamicNodeID)
 	nStatus.SetDataDir(nCtx.NodeStatus().GetDataDir())
 	nStatus.SetParentTaskID(execID)
 
@@ -385,7 +385,7 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 		var o *handler.OutputInfo
 		// If the WF interface has outputs, validate that the outputs file was written.
 		if outputBindings := dynamicWorkflow.GetOutputBindings(); len(outputBindings) > 0 {
-			endNodeStatus := dynamicWorkflow.GetNodeExecutionStatus(v1alpha1.EndNodeID)
+			endNodeStatus := dynamicWorkflow.GetNodeExecutionStatus(ctx, v1alpha1.EndNodeID)
 			if endNodeStatus == nil {
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure("MalformedDynamicWorkflow", "no end-node found in dynamic workflow", nil)),
 					handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: "no end-node found in dynamic workflow"},

@@ -80,10 +80,6 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 		return fmt.Errorf("event recording attempt of Nil Node execution event")
 	}
 
-	if nodeEvent.Phase == core.NodeExecution_RUNNING && nodeEvent.Id.NodeId[0] == 'f' {
-		logger.Printf(ctx, "Found one of your nodes!")
-	}
-
 	if nodeEvent.Id == nil {
 		return fmt.Errorf("event recording attempt of with nil node Event ID")
 	}
@@ -250,10 +246,8 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		NodeId:      node.GetID(),
 		ExecutionId: w.GetExecutionID().WorkflowExecutionIdentifier,
 	}
-	nodeStatus, err := c.getNodeExecutionStatus(ctx, w, node.GetID())
-	if err != nil {
-		return executors.NodeStatusUndefined, err
-	}
+
+	nodeStatus := w.GetExecutionStatus().GetNodeExecutionStatus(ctx, node.GetID())
 
 	if nodeStatus.IsDirty() {
 		return executors.NodeStatusRunning, nil
@@ -502,16 +496,15 @@ func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, w v1alpha1.Exe
 	if startNode == nil {
 		return executors.NodeStatusFailed(errors.Errorf(errors.BadSpecificationError, v1alpha1.StartNodeID, "Start node not found")), nil
 	}
+
 	ctx = contextutils.WithNodeID(ctx, startNode.GetID())
 	if inputs == nil {
 		logger.Infof(ctx, "No inputs for the workflow. Skipping storing inputs")
 		return executors.NodeStatusComplete, nil
 	}
+
 	// StartNode is special. It does not have any processing step. It just takes the workflow (or subworkflow) inputs and converts to its own outputs
-	nodeStatus, err := c.getNodeExecutionStatus(ctx, w, startNode.GetID())
-	if err != nil {
-		return executors.NodeStatusUndefined, err
-	}
+	nodeStatus := w.GetNodeExecutionStatus(ctx, startNode.GetID())
 
 	if nodeStatus.GetDataDir() == "" {
 		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, startNode.GetID(), "no data-dir set, cannot store inputs")
@@ -523,15 +516,13 @@ func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, w v1alpha1.Exe
 		logger.Errorf(ctx, "Failed to write protobuf (metadata). Error [%v]", err)
 		return executors.NodeStatusUndefined, errors.Wrapf(errors.CausedByError, startNode.GetID(), err, "Failed to store workflow inputs (as start node)")
 	}
+
 	return executors.NodeStatusComplete, nil
 }
 
 func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
 	currentNodeCtx := contextutils.WithNodeID(ctx, currentNode.GetID())
-	nodeStatus, err := c.getNodeExecutionStatus(ctx, w, currentNode.GetID())
-	if err != nil {
-		return executors.NodeStatusUndefined, err
-	}
+	nodeStatus := w.GetNodeExecutionStatus(ctx, currentNode.GetID())
 
 	switch nodeStatus.GetPhase() {
 	case v1alpha1.NodePhaseNotYetStarted, v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseTimingOut, v1alpha1.NodePhaseRetryableFailure, v1alpha1.NodePhaseSucceeding:
@@ -557,10 +548,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, w v1alpha1.Exec
 }
 
 func (c *nodeExecutor) FinalizeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error {
-	nodeStatus, err := c.getNodeExecutionStatus(ctx, w, currentNode.GetID())
-	if err != nil {
-		return err
-	}
+	nodeStatus := w.GetExecutionStatus().GetNodeExecutionStatus(ctx, currentNode.GetID())
 
 	switch nodeStatus.GetPhase() {
 	case v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseSucceeding, v1alpha1.NodePhaseRetryableFailure:
@@ -620,16 +608,13 @@ func (c *nodeExecutor) getNodeExecutionStatus(ctx context.Context, w v1alpha1.Ex
 		return nil, err
 	}
 
-	nodeStatus := w.GetNodeExecutionStatus(nodeID)
+	nodeStatus := w.GetNodeExecutionStatus(ctx, nodeID)
 	nodeStatus.SetDataDir(dataDir)
 	return nodeStatus, nil
 }
 
 func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error {
-	nodeStatus, err := c.getNodeExecutionStatus(ctx, w, currentNode.GetID())
-	if err != nil {
-		return err
-	}
+	nodeStatus := w.GetExecutionStatus().GetNodeExecutionStatus(ctx, currentNode.GetID())
 
 	switch nodeStatus.GetPhase() {
 	case v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseSucceeding, v1alpha1.NodePhaseRetryableFailure, v1alpha1.NodePhaseQueued:

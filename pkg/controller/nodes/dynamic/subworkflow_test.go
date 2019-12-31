@@ -43,9 +43,9 @@ func TestConstructNodeDataDir(t *testing.T) {
 
 	ds, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 	assert.NoError(t, err)
-	cWF := newContextualWorkflowStatus(wfStatus, nodeStatus)
+	cWF := newContextualWorkflowStatus(wfStatus, nodeStatus, ds)
 
-	dataDir, err := cWF.ConstructNodeDataDir(context.TODO(), ds, "my_node")
+	dataDir, err := cWF.ConstructNodeDataDir(context.TODO(), "my_node")
 	assert.NoError(t, err)
 	assert.NotNil(t, dataDir)
 	assert.Equal(t, "fk://right/my_node", dataDir.String())

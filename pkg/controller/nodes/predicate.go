@@ -44,7 +44,7 @@ func CanExecute(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha
 		return PredicatePhaseReady, nil
 	}
 
-	nodeStatus := w.GetNodeExecutionStatus(nodeID)
+	nodeStatus := w.GetNodeExecutionStatus(ctx, nodeID)
 	parentNodeID := nodeStatus.GetParentNodeID()
 	upstreamNodes, ok := w.GetConnections().UpstreamEdges[nodeID]
 	if !ok {
@@ -53,7 +53,7 @@ func CanExecute(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha
 
 	skipped := false
 	for _, upstreamNodeID := range upstreamNodes {
-		upstreamNodeStatus := w.GetNodeExecutionStatus(upstreamNodeID)
+		upstreamNodeStatus := w.GetNodeExecutionStatus(ctx, upstreamNodeID)
 
 		if upstreamNodeStatus.IsDirty() {
 			return PredicatePhaseNotReady, nil
@@ -96,7 +96,7 @@ func GetParentNodeMaxEndTime(ctx context.Context, w v1alpha1.ExecutableWorkflow,
 		return zeroTime, nil
 	}
 
-	nodeStatus := w.GetNodeExecutionStatus(node.GetID())
+	nodeStatus := w.GetNodeExecutionStatus(ctx, node.GetID())
 	parentNodeID := nodeStatus.GetParentNodeID()
 	upstreamNodes, ok := w.GetConnections().UpstreamEdges[nodeID]
 	if !ok {
@@ -105,7 +105,7 @@ func GetParentNodeMaxEndTime(ctx context.Context, w v1alpha1.ExecutableWorkflow,
 
 	var latest v1.Time
 	for _, upstreamNodeID := range upstreamNodes {
-		upstreamNodeStatus := w.GetNodeExecutionStatus(upstreamNodeID)
+		upstreamNodeStatus := w.GetNodeExecutionStatus(ctx, upstreamNodeID)
 		if parentNodeID != nil && *parentNodeID == upstreamNodeID {
 			upstreamNode, ok := w.GetNode(upstreamNodeID)
 			if !ok {

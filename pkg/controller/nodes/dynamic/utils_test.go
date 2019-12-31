@@ -23,7 +23,7 @@ func TestHierarchicalNodeID(t *testing.T) {
 	t.Run("long result", func(t *testing.T) {
 		actual, err := hierarchicalNodeID("abcdefghijklmnopqrstuvwxyz", "0", "abc")
 		assert.NoError(t, err)
-		assert.Equal(t, "fpa3kc3y", actual)
+		assert.Equal(t, "fkm1vhcq", actual)
 	})
 
 	t.Run("Real case", func(t *testing.T) {

@@ -39,7 +39,7 @@ type remoteFileOutputResolver struct {
 
 func (r remoteFileOutputResolver) ExtractOutput(ctx context.Context, w v1alpha1.BaseWorkflowWithStatus, n v1alpha1.ExecutableNode,
 	bindToVar VarName) (values *core.Literal, err error) {
-	nodeStatus := w.GetNodeExecutionStatus(n.GetID())
+	nodeStatus := w.GetNodeExecutionStatus(ctx, n.GetID())
 	outputsFileRef := v1alpha1.GetOutputsFile(nodeStatus.GetDataDir())
 
 	index, actualVar, err := ParseVarName(bindToVar)

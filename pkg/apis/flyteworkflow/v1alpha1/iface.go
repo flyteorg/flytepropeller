@@ -391,7 +391,7 @@ type ExecutableWorkflow interface {
 }
 
 type NodeStatusGetter interface {
-	GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus
+	GetNodeExecutionStatus(ctx context.Context, id NodeID) ExecutableNodeStatus
 }
 
 type NodeStatusMap = map[NodeID]ExecutableNodeStatus

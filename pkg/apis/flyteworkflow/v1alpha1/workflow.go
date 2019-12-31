@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/lyft/flytestdlib/storage"
@@ -90,8 +91,8 @@ func (in *FlyteWorkflow) FindSubWorkflow(subID WorkflowID) ExecutableSubWorkflow
 	return s
 }
 
-func (in *FlyteWorkflow) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
-	return in.GetExecutionStatus().GetNodeExecutionStatus(id)
+func (in *FlyteWorkflow) GetNodeExecutionStatus(ctx context.Context, id NodeID) ExecutableNodeStatus {
+	return in.GetExecutionStatus().GetNodeExecutionStatus(ctx, id)
 }
 
 func (in *FlyteWorkflow) GetServiceAccountName() string {

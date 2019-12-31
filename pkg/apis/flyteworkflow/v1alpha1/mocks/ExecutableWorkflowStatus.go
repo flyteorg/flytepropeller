@@ -163,8 +163,8 @@ func (_m ExecutableWorkflowStatus_GetNodeExecutionStatus) Return(_a0 v1alpha1.Ex
 	return &ExecutableWorkflowStatus_GetNodeExecutionStatus{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *ExecutableWorkflowStatus) OnGetNodeExecutionStatus(id string) *ExecutableWorkflowStatus_GetNodeExecutionStatus {
-	c := _m.On("GetNodeExecutionStatus", id)
+func (_m *ExecutableWorkflowStatus) OnGetNodeExecutionStatus(ctx context.Context, id string) *ExecutableWorkflowStatus_GetNodeExecutionStatus {
+	c := _m.On("GetNodeExecutionStatus", ctx, id)
 	return &ExecutableWorkflowStatus_GetNodeExecutionStatus{Call: c}
 }
 
@@ -173,13 +173,13 @@ func (_m *ExecutableWorkflowStatus) OnGetNodeExecutionStatusMatch(matchers ...in
 	return &ExecutableWorkflowStatus_GetNodeExecutionStatus{Call: c}
 }
 
-// GetNodeExecutionStatus provides a mock function with given fields: id
-func (_m *ExecutableWorkflowStatus) GetNodeExecutionStatus(id string) v1alpha1.ExecutableNodeStatus {
-	ret := _m.Called(id)
+// GetNodeExecutionStatus provides a mock function with given fields: ctx, id
+func (_m *ExecutableWorkflowStatus) GetNodeExecutionStatus(ctx context.Context, id string) v1alpha1.ExecutableNodeStatus {
+	ret := _m.Called(ctx, id)
 
 	var r0 v1alpha1.ExecutableNodeStatus
-	if rf, ok := ret.Get(0).(func(string) v1alpha1.ExecutableNodeStatus); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, string) v1alpha1.ExecutableNodeStatus); ok {
+		r0 = rf(ctx, id)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(v1alpha1.ExecutableNodeStatus)

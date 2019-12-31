@@ -89,14 +89,14 @@ func (in *WorkflowStatus) GetMessage() string {
 	return in.Message
 }
 
-func (in *WorkflowStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
+func (in *WorkflowStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) ExecutableNodeStatus {
 	n, ok := in.NodeStatus[id]
 	if ok {
 		n.DataReferenceConstructor = in.DataReferenceConstructor
 		if len(n.GetDataDir()) == 0 {
-			dataDir, err := in.ConstructNodeDataDir(context.TODO(), id)
+			dataDir, err := in.ConstructNodeDataDir(ctx, id)
 			if err != nil {
-				logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v]", id)
+				logger.Errorf(ctx, "Failed to construct data dir for node [%v]", id)
 				return n
 			}
 
@@ -114,9 +114,9 @@ func (in *WorkflowStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus
 		MutableStruct: MutableStruct{},
 	}
 
-	dataDir, err := in.ConstructNodeDataDir(context.TODO(), id)
+	dataDir, err := in.ConstructNodeDataDir(ctx, id)
 	if err != nil {
-		logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v], exec id [%v]", id)
+		logger.Errorf(ctx, "Failed to construct data dir for node [%v], exec id [%v]", id)
 		return n
 	}
 

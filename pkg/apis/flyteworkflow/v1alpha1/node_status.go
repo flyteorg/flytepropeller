@@ -432,15 +432,15 @@ func (in NodeStatus) GetTaskNodeStatus() ExecutableTaskNodeStatus {
 	return in.TaskNodeStatus
 }
 
-func (in *NodeStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
+func (in *NodeStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) ExecutableNodeStatus {
 	n, ok := in.SubNodeStatus[id]
 	if ok {
 		n.SetParentTaskID(in.GetParentTaskID())
 		n.DataReferenceConstructor = in.DataReferenceConstructor
 		if len(n.GetDataDir()) == 0 {
-			dataDir, err := in.DataReferenceConstructor.ConstructReference(context.TODO(), in.GetDataDir(), id)
+			dataDir, err := in.DataReferenceConstructor.ConstructReference(ctx, in.GetDataDir(), id)
 			if err != nil {
-				logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v]", id)
+				logger.Errorf(ctx, "Failed to construct data dir for node [%v]", id)
 				return n
 			}
 
@@ -459,9 +459,9 @@ func (in *NodeStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
 	}
 	newNodeStatus.SetParentTaskID(in.GetParentTaskID())
 	newNodeStatus.SetParentNodeID(in.GetParentNodeID())
-	dataDir, err := in.DataReferenceConstructor.ConstructReference(context.TODO(), in.GetDataDir(), id)
+	dataDir, err := in.DataReferenceConstructor.ConstructReference(ctx, in.GetDataDir(), id)
 	if err != nil {
-		logger.Errorf(context.TODO(), "Failed to construct data dir for node [%v]", id)
+		logger.Errorf(ctx, "Failed to construct data dir for node [%v]", id)
 		return n
 	}
 
