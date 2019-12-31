@@ -600,19 +600,6 @@ func (c *nodeExecutor) FinalizeHandler(ctx context.Context, w v1alpha1.Executabl
 	return nil
 }
 
-func (c *nodeExecutor) getNodeExecutionStatus(ctx context.Context, w v1alpha1.ExecutableWorkflow, nodeID v1alpha1.NodeID) (
-	v1alpha1.ExecutableNodeStatus, error) {
-
-	dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, nodeID)
-	if err != nil {
-		return nil, err
-	}
-
-	nodeStatus := w.GetNodeExecutionStatus(ctx, nodeID)
-	nodeStatus.SetDataDir(dataDir)
-	return nodeStatus, nil
-}
-
 func (c *nodeExecutor) AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error {
 	nodeStatus := w.GetExecutionStatus().GetNodeExecutionStatus(ctx, currentNode.GetID())
 
