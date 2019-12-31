@@ -226,6 +226,10 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 func (c *nodeExecutor) abort(ctx context.Context, h handler.Node, nCtx handler.NodeExecutionContext, reason string) error {
 	logger.Debugf(ctx, "Calling aborting & finalize")
 	if err := h.Abort(ctx, nCtx, reason); err != nil {
+		finalizeErr := h.Finalize(ctx, nCtx)
+		if finalizeErr != nil {
+			return errors.ErrorCollection{Errors: []error{err, finalizeErr}}
+		}
 		return err
 	}
 	return h.Finalize(ctx, nCtx)
