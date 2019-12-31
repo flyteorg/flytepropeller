@@ -232,8 +232,8 @@ func (c *nodeExecutor) abort(ctx context.Context, h handler.Node, nCtx handler.N
 		}
 		return err
 	}
-	return h.Finalize(ctx, nCtx)
 
+	return h.Finalize(ctx, nCtx)
 }
 
 func (c *nodeExecutor) finalize(ctx context.Context, h handler.Node, nCtx handler.NodeExecutionContext) error {
