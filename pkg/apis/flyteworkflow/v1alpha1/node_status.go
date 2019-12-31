@@ -18,12 +18,17 @@ type MutableStruct struct {
 	isDirty bool
 }
 
-func (m *MutableStruct) SetDirty() {
-	m.isDirty = true
+func (in *MutableStruct) SetDirty() {
+	in.isDirty = true
 }
 
-func (m MutableStruct) IsDirty() bool {
-	return m.isDirty
+// For testing only
+func (in *MutableStruct) ResetDirty() {
+	in.isDirty = false
+}
+
+func (in MutableStruct) IsDirty() bool {
+	return in.isDirty
 }
 
 type BranchNodeStatus struct {
@@ -189,6 +194,32 @@ func (in *NodeStatus) IsDirty() bool {
 	return false
 }
 
+// ResetDirty is for unit tests, shouldn't be used in actual logic.
+func (in *NodeStatus) ResetDirty() {
+	in.MutableStruct.ResetDirty()
+
+	if in.TaskNodeStatus != nil {
+		in.TaskNodeStatus.ResetDirty()
+	}
+
+	if in.DynamicNodeStatus != nil {
+		in.DynamicNodeStatus.ResetDirty()
+	}
+
+	if in.WorkflowNodeStatus != nil {
+		in.WorkflowNodeStatus.ResetDirty()
+	}
+
+	if in.BranchStatus != nil {
+		in.BranchStatus.ResetDirty()
+	}
+
+	// Reset SubNodeStatus Dirty
+	for _, subStatus := range in.SubNodeStatus {
+		subStatus.ResetDirty()
+	}
+}
+
 func (in *NodeStatus) GetBranchStatus() MutableBranchNodeStatus {
 	if in.BranchStatus == nil {
 		return nil
@@ -262,11 +293,6 @@ func (in *NodeStatus) SetCached() {
 
 func (in *NodeStatus) IsCached() bool {
 	return in.Cached
-}
-
-// ResetDirty is for unit tests, shouldn't be used in actual logic.
-func (in *NodeStatus) ResetDirty() {
-	in.MutableStruct.isDirty = false
 }
 
 func (in *NodeStatus) IncrementAttempts() uint32 {

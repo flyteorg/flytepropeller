@@ -434,6 +434,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	defaultNodeID := "n1"
 	taskID := taskID
 
+	store := createInmemoryDataStore(t, promutils.NewTestScope())
 	createSingleNodeWf := func(p v1alpha1.NodePhase, maxAttempts int) (v1alpha1.ExecutableWorkflow, v1alpha1.ExecutableNode, v1alpha1.ExecutableNodeStatus) {
 		n := &v1alpha1.NodeSpec{
 			ID:      defaultNodeID,
@@ -481,6 +482,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 					},
 				},
 			},
+			DataReferenceConstructor: store,
 		}, n, ns
 
 	}
@@ -543,8 +545,8 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockWf := &mocks.ExecutableWorkflow{}
 			mockWf.On("StartNode").Return(mockNodeN0)
 			mockWf.On("GetNode", nodeN2).Return(mockNode, true)
-			mockWf.OnGetNodeExecutionStatus(ctx, nodeN0).Return(mockN0Status)
-			mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
+			mockWf.OnGetNodeExecutionStatusMatch(mock.Anything, nodeN0).Return(mockN0Status)
+			mockWf.OnGetNodeExecutionStatusMatch(mock.Anything, nodeN2).Return(mockN2Status)
 			mockWf.On("GetConnections").Return(connections)
 			mockWf.On("GetID").Return("w1")
 			mockWf.On("FromNode", nodeN0).Return([]string{nodeN2}, nil)
@@ -918,6 +920,7 @@ func TestNodeExecutor_RecursiveNodeHandler_NoDownstream(t *testing.T) {
 					},
 				},
 			},
+			DataReferenceConstructor: store,
 		}, n, ns
 
 	}
@@ -1015,6 +1018,7 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 					},
 				},
 			},
+			DataReferenceConstructor: store,
 		}, n, ns
 
 	}

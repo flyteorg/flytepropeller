@@ -247,7 +247,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		ExecutionId: w.GetExecutionID().WorkflowExecutionIdentifier,
 	}
 
-	nodeStatus := w.GetExecutionStatus().GetNodeExecutionStatus(ctx, node.GetID())
+	nodeStatus := w.GetNodeExecutionStatus(ctx, node.GetID())
 
 	if nodeStatus.IsDirty() {
 		return executors.NodeStatusRunning, nil
