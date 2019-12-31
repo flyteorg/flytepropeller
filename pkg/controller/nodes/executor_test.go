@@ -1229,7 +1229,7 @@ func Test_nodeExecutor_abort(t *testing.T) {
 
 	t.Run("abort error calls finalize", func(t *testing.T) {
 		h := &nodeHandlerMocks.Node{}
-		h.On("Abort", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("test error"))
+		h.OnAbortMatch(mock.Anything, mock.Anything, mock.Anything).Return(errors.New("test error"))
 		h.On("FinalizeRequired").Return(true)
 		var called bool
 		h.On("Finalize", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
