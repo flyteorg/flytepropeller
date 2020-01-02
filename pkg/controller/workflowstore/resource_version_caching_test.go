@@ -5,12 +5,24 @@ import (
 	"fmt"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	testing2 "k8s.io/client-go/testing"
+
+	"github.com/lyft/flytestdlib/contextutils"
+	"github.com/lyft/flytestdlib/promutils/labeled"
+
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/client/clientset/versioned/fake"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 )
+
+func init() {
+	labeled.SetMetricKeys(contextutils.WorkflowIDKey)
+}
 
 func TestResourceVersionCaching_Get_NotInCache(t *testing.T) {
 	ctx := context.TODO()
@@ -59,34 +71,60 @@ func TestResourceVersionCaching_Get_NotInCache(t *testing.T) {
 	})
 }
 
+func createFakeClientSet() *fake.Clientset {
+	fakeClientSet := fake.NewSimpleClientset()
+	// Override Update action to modify the resource version to simulate real updates.
+	fakeClientSet.PrependReactor("update", "*",
+		func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+			switch action := action.(type) {
+			case testing2.UpdateAction:
+				newObj := action.GetObject().DeepCopyObject()
+				a, err := meta.Accessor(newObj)
+				if err != nil {
+					return false, nil, err
+				}
+
+				a.SetResourceVersion(a.GetResourceVersion() + ".new")
+				err = fakeClientSet.Tracker().Update(action.GetResource(), newObj, a.GetNamespace())
+				return true, newObj, err
+			}
+
+			return false, ret, nil
+		})
+
+	return fakeClientSet
+}
+
 func TestResourceVersionCaching_Get_UpdateAndRead(t *testing.T) {
 	ctx := context.TODO()
-
-	mockClient := fake.NewSimpleClientset().FlyteworkflowV1alpha1()
 
 	namespace := "ns"
 	name := "name"
 	resourceVersion := "r1"
 
-	wf := dummyWf(namespace, name)
-	wf.ResourceVersion = resourceVersion
+	mockClient := createFakeClientSet().FlyteworkflowV1alpha1()
 
 	t.Run("Stale", func(t *testing.T) {
+		staleName := name + ".stale"
+		wf := dummyWf(namespace, staleName)
+		wf.ResourceVersion = resourceVersion
 
 		scope := promutils.NewTestScope()
 		l := &mockWFNamespaceLister{}
-		wfStore := NewResourceVersionCachingStore(ctx, scope, NewPassthroughWorkflowStore(ctx, scope, mockClient, &mockWFLister{V: l}))
-		// Insert a new workflow with R1
-		err := wfStore.Update(ctx, wf, PriorityClassCritical)
-		assert.NoError(t, err)
-
 		// Return the same workflow
 		l.GetCb = func(name string) (*v1alpha1.FlyteWorkflow, error) {
-
 			return wf, nil
 		}
 
-		w, err := wfStore.Get(ctx, namespace, name)
+		_, err := mockClient.FlyteWorkflows(wf.GetNamespace()).Create(wf)
+		assert.NoError(t, err)
+
+		wfStore := NewResourceVersionCachingStore(ctx, scope, NewPassthroughWorkflowStore(ctx, scope, mockClient, &mockWFLister{V: l}))
+		// Insert a new workflow with R1
+		_, err = wfStore.Update(ctx, wf, PriorityClassCritical)
+		assert.NoError(t, err)
+
+		w, err := wfStore.Get(ctx, namespace, staleName)
 		assert.Error(t, err)
 		assert.False(t, IsNotFound(err))
 		assert.True(t, IsWorkflowStale(err))
@@ -94,11 +132,15 @@ func TestResourceVersionCaching_Get_UpdateAndRead(t *testing.T) {
 	})
 
 	t.Run("Updated", func(t *testing.T) {
+		updatedName := name + ".updated"
+		wf := dummyWf(namespace, updatedName)
+		wf.ResourceVersion = resourceVersion
+
 		scope := promutils.NewTestScope()
 		l := &mockWFNamespaceLister{}
 		wfStore := NewResourceVersionCachingStore(ctx, scope, NewPassthroughWorkflowStore(ctx, scope, mockClient, &mockWFLister{V: l}))
 		// Insert a new workflow with R1
-		err := wfStore.Update(ctx, wf, PriorityClassCritical)
+		_, err := wfStore.Update(ctx, wf, PriorityClassCritical)
 		assert.NoError(t, err)
 
 		// Update the workflow version
@@ -110,7 +152,7 @@ func TestResourceVersionCaching_Get_UpdateAndRead(t *testing.T) {
 			return wf2, nil
 		}
 
-		w, err := wfStore.Get(ctx, namespace, name)
+		w, err := wfStore.Get(ctx, namespace, updatedName)
 		assert.NoError(t, err)
 		assert.NotNil(t, w)
 		assert.Equal(t, "r2", w.ResourceVersion)
@@ -120,7 +162,7 @@ func TestResourceVersionCaching_Get_UpdateAndRead(t *testing.T) {
 func TestResourceVersionCaching_UpdateTerminated(t *testing.T) {
 	ctx := context.TODO()
 
-	mockClient := fake.NewSimpleClientset().FlyteworkflowV1alpha1()
+	mockClient := createFakeClientSet().FlyteworkflowV1alpha1()
 
 	namespace := "ns"
 	name := "name"
@@ -129,11 +171,14 @@ func TestResourceVersionCaching_UpdateTerminated(t *testing.T) {
 	wf := dummyWf(namespace, name)
 	wf.ResourceVersion = resourceVersion
 
+	_, err := mockClient.FlyteWorkflows(wf.GetNamespace()).Create(wf)
+	assert.NoError(t, err)
+
 	scope := promutils.NewTestScope()
 	l := &mockWFNamespaceLister{}
 	wfStore := NewResourceVersionCachingStore(ctx, scope, NewPassthroughWorkflowStore(ctx, scope, mockClient, &mockWFLister{V: l}))
 	// Insert a new workflow with R1
-	err := wfStore.Update(ctx, wf, PriorityClassCritical)
+	_, err = wfStore.Update(ctx, wf, PriorityClassCritical)
 	assert.NoError(t, err)
 
 	rvStore := wfStore.(*resourceVersionCaching)
@@ -143,7 +188,7 @@ func TestResourceVersionCaching_UpdateTerminated(t *testing.T) {
 
 	wf2 := wf.DeepCopy()
 	wf2.Status.Phase = v1alpha1.WorkflowPhaseAborted
-	err = wfStore.Update(ctx, wf2, PriorityClassCritical)
+	_, err = wfStore.Update(ctx, wf2, PriorityClassCritical)
 	assert.NoError(t, err)
 
 	v, ok = rvStore.lastUpdatedResourceVersionCache.Load(resourceVersionKey(namespace, name))
