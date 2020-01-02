@@ -118,10 +118,10 @@ type NodeStatus struct {
 	LastAttemptStartedAt *metav1.Time  `json:"laStartedAt,omitempty"`
 	Message              string        `json:"message,omitempty"`
 	DataDir              DataReference `json:"dataDir,omitempty"`
+	OutputDir            DataReference `json:"outputDir,omitempty"`
 	Attempts             uint32        `json:"attempts"`
 	Cached               bool          `json:"cached"`
-
-	dirty bool
+	dirty                bool
 	// This is useful only for branch nodes. If this is set, then it can be used to determine if execution can proceed
 	ParentNode    *NodeID                  `json:"parentNode,omitempty"`
 	ParentTask    *TaskExecutionIdentifier `json:"parentTask,omitempty"`
@@ -396,6 +396,15 @@ func (in *NodeStatus) SetDataDir(d DataReference) {
 	in.setDirty()
 }
 
+func (in *NodeStatus) GetOutputDir() DataReference {
+	return in.OutputDir
+}
+
+func (in *NodeStatus) SetOutputDir(d DataReference) {
+	in.OutputDir = d
+	in.setDirty()
+}
+
 func (in *NodeStatus) Equals(other *NodeStatus) bool {
 	// Assuming in is never nil
 	if other == nil {
@@ -421,6 +430,10 @@ func (in *NodeStatus) Equals(other *NodeStatus) bool {
 	}
 
 	if in.DataDir != other.DataDir {
+		return false
+	}
+
+	if in.OutputDir != other.OutputDir {
 		return false
 	}
 

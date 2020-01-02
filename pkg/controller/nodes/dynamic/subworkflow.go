@@ -2,7 +2,6 @@ package dynamic
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 
@@ -76,8 +75,8 @@ func (w ContextualWorkflowStatus) GetDataDir() v1alpha1.DataReference {
 // TODO: This is just a stop-gap until we transition the DynamicJobSpec to be a full-fledged workflow spec.
 // TODO: this will allow us to have proper data bindings between nodes then we can stop making assumptions about data refs.
 func (w ContextualWorkflowStatus) ConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor,
-	name v1alpha1.NodeID, attempt uint32) (storage.DataReference, error) {
-	return constructor.ConstructReference(ctx, w.GetDataDir(), name, strconv.FormatUint(uint64(attempt), 10))
+	name v1alpha1.NodeID) (storage.DataReference, error) {
+	return constructor.ConstructReference(ctx, w.GetDataDir(), name)
 }
 
 func newContextualWorkflowStatus(baseWfStatus v1alpha1.ExecutableWorkflowStatus,

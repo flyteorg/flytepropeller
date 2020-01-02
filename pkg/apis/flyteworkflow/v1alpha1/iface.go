@@ -205,6 +205,7 @@ type MutableWorkflowNodeStatus interface {
 type MutableNodeStatus interface {
 	// Mutation API's
 	SetDataDir(DataReference)
+	SetOutputDir(d DataReference)
 	SetParentNodeID(n *NodeID)
 	SetParentTaskID(t *core.TaskExecutionIdentifier)
 	UpdatePhase(phase NodePhase, occurredAt metav1.Time, reason string)
@@ -241,6 +242,7 @@ type ExecutableNodeStatus interface {
 	GetParentNodeID() *NodeID
 	GetParentTaskID() *core.TaskExecutionIdentifier
 	GetDataDir() DataReference
+	GetOutputDir() DataReference
 	GetMessage() string
 	GetAttempts() uint32
 	GetWorkflowNodeStatus() ExecutableWorkflowNodeStatus
@@ -320,7 +322,7 @@ type ExecutableWorkflowStatus interface {
 	SetOutputReference(reference DataReference)
 	IncFailedAttempts()
 	SetMessage(msg string)
-	ConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor, name NodeID, attempt uint32) (storage.DataReference, error)
+	ConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor, name NodeID) (storage.DataReference, error)
 }
 
 type BaseWorkflow interface {

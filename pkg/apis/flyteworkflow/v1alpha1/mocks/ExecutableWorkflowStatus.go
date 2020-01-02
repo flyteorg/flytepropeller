@@ -26,8 +26,8 @@ func (_m ExecutableWorkflowStatus_ConstructNodeDataDir) Return(_a0 storage.DataR
 	return &ExecutableWorkflowStatus_ConstructNodeDataDir{Call: _m.Call.Return(_a0, _a1)}
 }
 
-func (_m *ExecutableWorkflowStatus) OnConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor, name string, attempt uint32) *ExecutableWorkflowStatus_ConstructNodeDataDir {
-	c := _m.On("ConstructNodeDataDir", ctx, constructor, name, attempt)
+func (_m *ExecutableWorkflowStatus) OnConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor, name string) *ExecutableWorkflowStatus_ConstructNodeDataDir {
+	c := _m.On("ConstructNodeDataDir", ctx, constructor, name)
 	return &ExecutableWorkflowStatus_ConstructNodeDataDir{Call: c}
 }
 
@@ -36,20 +36,20 @@ func (_m *ExecutableWorkflowStatus) OnConstructNodeDataDirMatch(matchers ...inte
 	return &ExecutableWorkflowStatus_ConstructNodeDataDir{Call: c}
 }
 
-// ConstructNodeDataDir provides a mock function with given fields: ctx, constructor, name, attempt
-func (_m *ExecutableWorkflowStatus) ConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor, name string, attempt uint32) (storage.DataReference, error) {
-	ret := _m.Called(ctx, constructor, name, attempt)
+// ConstructNodeDataDir provides a mock function with given fields: ctx, constructor, name
+func (_m *ExecutableWorkflowStatus) ConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor, name string) (storage.DataReference, error) {
+	ret := _m.Called(ctx, constructor, name)
 
 	var r0 storage.DataReference
-	if rf, ok := ret.Get(0).(func(context.Context, storage.ReferenceConstructor, string, uint32) storage.DataReference); ok {
-		r0 = rf(ctx, constructor, name, attempt)
+	if rf, ok := ret.Get(0).(func(context.Context, storage.ReferenceConstructor, string) storage.DataReference); ok {
+		r0 = rf(ctx, constructor, name)
 	} else {
 		r0 = ret.Get(0).(storage.DataReference)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, storage.ReferenceConstructor, string, uint32) error); ok {
-		r1 = rf(ctx, constructor, name, attempt)
+	if rf, ok := ret.Get(1).(func(context.Context, storage.ReferenceConstructor, string) error); ok {
+		r1 = rf(ctx, constructor, name)
 	} else {
 		r1 = ret.Error(1)
 	}

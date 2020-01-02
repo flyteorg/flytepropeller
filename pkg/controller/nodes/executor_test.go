@@ -831,7 +831,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	})
 
 	// Remaining retries
-	t.Run("retries-exhausted", func(t *testing.T) {
+	t.Run("retries-remaining", func(t *testing.T) {
 		hf := &mocks2.HandlerFactory{}
 		store := createInmemoryDataStore(t, promutils.NewTestScope())
 		execIface, err := NewExecutor(ctx, config.GetConfig().DefaultDeadlines, store, enQWf, mockEventSink, launchplan.NewFailFastLaunchPlanExecutor(), 10, fakeKubeClient, catalogClient, promutils.NewTestScope())

@@ -2,7 +2,6 @@ package v1alpha1
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/lyft/flytestdlib/storage"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -98,8 +97,8 @@ func (in *WorkflowStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus
 	return newNodeStatus
 }
 
-func (in *WorkflowStatus) ConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor, name NodeID, attempt uint32) (storage.DataReference, error) {
-	return constructor.ConstructReference(ctx, in.GetDataDir(), name, "data", strconv.FormatUint(uint64(attempt), 10))
+func (in *WorkflowStatus) ConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor, name NodeID) (storage.DataReference, error) {
+	return constructor.ConstructReference(ctx, in.GetDataDir(), name, "data")
 }
 
 func (in *WorkflowStatus) GetDataDir() DataReference {

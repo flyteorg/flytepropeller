@@ -3,6 +3,7 @@ package nodes
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	errors2 "github.com/lyft/flytestdlib/errors"
@@ -252,11 +253,18 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusUndefined, err
 	}
 
-	dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, node.GetID(), nodeStatus.GetAttempts())
+	if nodeStatus.GetDataDir() == "" {
+		dataDir, err := w.GetExecutionStatus().ConstructNodeDataDir(ctx, c.store, node.GetID())
+		if err != nil {
+			return executors.NodeStatusUndefined, err
+		}
+		nodeStatus.SetDataDir(dataDir)
+	}
+	outputDir, err := c.store.ConstructReference(ctx, nodeStatus.GetDataDir(), strconv.FormatUint(uint64(nodeStatus.GetAttempts()), 10))
 	if err != nil {
 		return executors.NodeStatusUndefined, err
 	}
-	nodeStatus.SetDataDir(dataDir)
+	nodeStatus.SetOutputDir(outputDir)
 
 	nCtx, err := c.newNodeExecContextDefault(ctx, w, node, nodeStatus)
 	if err != nil {

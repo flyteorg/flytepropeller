@@ -234,8 +234,12 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 		if err != nil {
 			return nil, err
 		}
-
+		outputDir, err := nCtx.DataStore().ConstructReference(ctx, originalNodePath, "0")
+		if err != nil {
+			return nil, err
+		}
 		subNodeStatus.SetDataDir(originalNodePath)
+		subNodeStatus.SetOutputDir(outputDir)
 		subNodeStatus.ResetDirty()
 
 		n.Id = newID
@@ -297,6 +301,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	execID := task.GetTaskExecutionIdentifier(nCtx)
 	nStatus := nCtx.NodeStatus().GetNodeExecutionStatus(dynamicNodeID)
 	nStatus.SetDataDir(nCtx.NodeStatus().GetDataDir())
+	nStatus.SetOutputDir(nCtx.NodeStatus().GetOutputDir())
 	nStatus.SetParentTaskID(execID)
 
 	// cacheHitStopWatch := d.metrics.CacheHit.Start(ctx)
