@@ -13,6 +13,7 @@ import (
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
 
+	goObjectHash "github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/client/clientset/versioned/fake"
 	"github.com/lyft/flytestdlib/promutils"
@@ -71,6 +72,28 @@ func TestResourceVersionCaching_Get_NotInCache(t *testing.T) {
 	})
 }
 
+func fromHashToByteArray(input [32]byte) []byte {
+	output := make([]byte, 32)
+	for idx, val := range input {
+		output[idx] = val
+	}
+	return output
+}
+
+func objHash(obj interface{}) string {
+	jsonObj, err := goObjectHash.CommonJSONify(obj)
+	if err != nil {
+		panic(err)
+	}
+
+	raw, err := goObjectHash.ObjectHash(jsonObj)
+	if err != nil {
+		panic(err)
+	}
+
+	return string(fromHashToByteArray(raw))
+}
+
 func createFakeClientSet() *fake.Clientset {
 	fakeClientSet := fake.NewSimpleClientset()
 	// Override Update action to modify the resource version to simulate real updates.
@@ -84,7 +107,22 @@ func createFakeClientSet() *fake.Clientset {
 					return false, nil, err
 				}
 
-				a.SetResourceVersion(a.GetResourceVersion() + ".new")
+				origObj, err := fakeClientSet.Tracker().Get(action.GetResource(), a.GetNamespace(), a.GetName())
+				if err != nil {
+					return false, nil, err
+				}
+
+				if origObj == nil {
+					return false, newObj, nil
+				}
+
+				origHash := objHash(origObj)
+				newHash := objHash(newObj)
+
+				if origHash != newHash {
+					a.SetResourceVersion(a.GetResourceVersion() + ".new")
+				}
+
 				err = fakeClientSet.Tracker().Update(action.GetResource(), newObj, a.GetNamespace())
 				return true, newObj, err
 			}
@@ -119,9 +157,12 @@ func TestResourceVersionCaching_Get_UpdateAndRead(t *testing.T) {
 		_, err := mockClient.FlyteWorkflows(wf.GetNamespace()).Create(wf)
 		assert.NoError(t, err)
 
+		newWf := wf.DeepCopy()
+		newWf.Status.Phase = v1alpha1.WorkflowPhaseSucceeding
+
 		wfStore := NewResourceVersionCachingStore(ctx, scope, NewPassthroughWorkflowStore(ctx, scope, mockClient, &mockWFLister{V: l}))
 		// Insert a new workflow with R1
-		_, err = wfStore.Update(ctx, wf, PriorityClassCritical)
+		_, err = wfStore.Update(ctx, newWf, PriorityClassCritical)
 		assert.NoError(t, err)
 
 		w, err := wfStore.Get(ctx, namespace, staleName)
@@ -157,6 +198,34 @@ func TestResourceVersionCaching_Get_UpdateAndRead(t *testing.T) {
 		assert.NotNil(t, w)
 		assert.Equal(t, "r2", w.ResourceVersion)
 	})
+
+	// If we -mistakenly- attempted to update the store with the exact workflow object, etcd. will not bump the
+	// resource version. Next read operation should continue to retrieve the same instance of the object.
+	t.Run("NotUpdated", func(t *testing.T) {
+		notUpdatedName := name + ".not-updated"
+		wf := dummyWf(namespace, notUpdatedName)
+		wf.ResourceVersion = resourceVersion
+
+		_, err := mockClient.FlyteWorkflows(wf.GetNamespace()).Create(wf)
+		assert.NoError(t, err)
+
+		scope := promutils.NewTestScope()
+		l := &mockWFNamespaceLister{}
+		wfStore := NewResourceVersionCachingStore(ctx, scope, NewPassthroughWorkflowStore(ctx, scope, mockClient, &mockWFLister{V: l}))
+		// Insert a new workflow with R1
+		_, err = wfStore.Update(ctx, wf, PriorityClassCritical)
+		assert.NoError(t, err)
+
+		// Return updated workflow
+		l.GetCb = func(name string) (*v1alpha1.FlyteWorkflow, error) {
+			return wf, nil
+		}
+
+		w, err := wfStore.Get(ctx, namespace, notUpdatedName)
+		assert.NoError(t, err)
+		assert.NotNil(t, w)
+		assert.Equal(t, "r1", w.ResourceVersion)
+	})
 }
 
 func TestResourceVersionCaching_UpdateTerminated(t *testing.T) {
@@ -174,11 +243,14 @@ func TestResourceVersionCaching_UpdateTerminated(t *testing.T) {
 	_, err := mockClient.FlyteWorkflows(wf.GetNamespace()).Create(wf)
 	assert.NoError(t, err)
 
+	newWf := wf.DeepCopy()
+	newWf.Status.Phase = v1alpha1.WorkflowPhaseSucceeding
+
 	scope := promutils.NewTestScope()
 	l := &mockWFNamespaceLister{}
 	wfStore := NewResourceVersionCachingStore(ctx, scope, NewPassthroughWorkflowStore(ctx, scope, mockClient, &mockWFLister{V: l}))
 	// Insert a new workflow with R1
-	_, err = wfStore.Update(ctx, wf, PriorityClassCritical)
+	_, err = wfStore.Update(ctx, newWf, PriorityClassCritical)
 	assert.NoError(t, err)
 
 	rvStore := wfStore.(*resourceVersionCaching)
