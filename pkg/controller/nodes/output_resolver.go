@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/lyft/flytestdlib/logger"
@@ -40,6 +41,7 @@ type remoteFileOutputResolver struct {
 func (r remoteFileOutputResolver) ExtractOutput(ctx context.Context, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode,
 	bindToVar VarName) (values *core.Literal, err error) {
 	nodeStatus := w.GetNodeExecutionStatus(n.GetID())
+	fmt.Printf("nodeStatus.GetOutputDir() is %v\n", nodeStatus.GetOutputDir())
 	outputsFileRef := v1alpha1.GetOutputsFile(nodeStatus.GetOutputDir())
 
 	index, actualVar, err := ParseVarName(bindToVar)

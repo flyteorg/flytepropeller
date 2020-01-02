@@ -120,7 +120,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 
 		// TODO: Performance problem, we maybe in a retry loop and do not need to resolve the inputs again.
 		// For now we will do this.
-		dataDir := nodeStatus.GetDataDir()
+		dataDir := nodeStatus.GetOutputDir()
 		var nodeInputs *core.LiteralMap
 		if !node.IsStartNode() {
 			t := c.metrics.NodeInputGatherLatency.Start(ctx)
@@ -514,7 +514,7 @@ func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, w v1alpha1.Bas
 	if nodeStatus.GetDataDir() == "" {
 		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, startNode.GetID(), "no data-dir set, cannot store inputs")
 	}
-	outputFile := v1alpha1.GetOutputsFile(nodeStatus.GetDataDir())
+	outputFile := v1alpha1.GetOutputsFile(nodeStatus.GetOutputDir())
 	so := storage.Options{}
 	if err := c.store.WriteProtobuf(ctx, outputFile, so, inputs); err != nil {
 		logger.Errorf(ctx, "Failed to write protobuf (metadata). Error [%v]", err)

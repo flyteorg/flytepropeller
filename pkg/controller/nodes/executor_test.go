@@ -504,6 +504,8 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockN2Status.On("GetPhase").Return(n2Phase)
 			mockN2Status.On("SetDataDir", mock.AnythingOfType(reflect.TypeOf(storage.DataReference("x")).String()))
 			mockN2Status.On("GetDataDir").Return(storage.DataReference("blah"))
+			mockN2Status.On("SetOutputDir", mock.AnythingOfType(reflect.TypeOf(storage.DataReference("x")).String()))
+			mockN2Status.On("GetOutputDir").Return(storage.DataReference("blah"))
 			mockN2Status.On("GetWorkflowNodeStatus").Return(nil)
 
 			mockN2Status.On("GetStoppedAt").Return(nil)
@@ -556,7 +558,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockWf.On("GetTask", taskID).Return(tk, nil)
 			mockWf.On("GetLabels").Return(make(map[string]string))
 			mockWfStatus.On("GetDataDir").Return(storage.DataReference("x"))
-			mockWfStatus.On("ConstructNodeDataDir", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(storage.DataReference("x"), nil)
+			mockWfStatus.On("ConstructNodeDataDir", mock.Anything, mock.Anything, mock.Anything).Return(storage.DataReference("x"), nil)
 			return mockWf, mockN2Status
 		}
 
