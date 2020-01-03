@@ -49,7 +49,7 @@ required = [
 
 [[constraint]]
   name = "github.com/lyft/flyteidl"
-  version = "^0.14.x"
+  version = "^0.16.x"
 
 [[constraint]]
   name = "github.com/lyft/datacatalog"
@@ -57,7 +57,7 @@ required = [
 
 [[constraint]]
   name = "github.com/lyft/flyteplugins"
-  version = "^0.2.2"
+  version = "^0.2.5"
 
 [[override]]
   name = "github.com/lyft/flytestdlib"
