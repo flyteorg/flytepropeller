@@ -123,8 +123,6 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		return nil, err
 	}
 
-	logger.Infof(ctx, "TaskExecutionContext: output dir: %v", nCtx.NodeStatus().GetOutputDir())
-
 	ow := ioutils.NewBufferedOutputWriter(ctx, ioutils.NewRemoteFileOutputPaths(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetOutputDir()))
 	ts := nCtx.NodeStateReader().GetTaskNodeState()
 	var b *bytes.Buffer
