@@ -23,9 +23,7 @@ propeller:
   kube-config: "$HOME/.kube/config"
   publish-k8s-events: true
   workflowStore:
-    type: "ResourceVersionCache"
-    resourceVersion:
-      type: "PassThrough"
+    policy: "ResourceVersionCache"
 tasks:
   task-plugins:
     enabled-plugins:

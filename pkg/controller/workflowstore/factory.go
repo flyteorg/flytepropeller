@@ -12,22 +12,13 @@ import (
 func NewWorkflowStore(ctx context.Context, cfg *Config, lister v1alpha1.FlyteWorkflowLister,
 	workflows flyteworkflowv1alpha1.FlyteworkflowV1alpha1Interface, scope promutils.Scope) (FlyteWorkflow, error) {
 
-	switch cfg.Type {
-	case TypeInMemory:
+	switch cfg.Policy {
+	case PolicyInMemory:
 		return NewInMemoryWorkflowStore(), nil
-	case TypePassThrough:
+	case PolicyPassThrough:
 		return NewPassthroughWorkflowStore(ctx, scope, workflows, lister), nil
-	case TypeResourceVersionCache:
-		if cfg.ResourceVersionCache == nil {
-			return nil, fmt.Errorf("expects resource version config to be supplied when trying to instantiate resource version workflow store")
-		}
-
-		underlyingStore, err := NewWorkflowStore(ctx, cfg.ResourceVersionCache, lister, workflows, scope.NewSubScope("resourceversion"))
-		if err != nil {
-			return nil, err
-		}
-
-		return NewResourceVersionCachingStore(ctx, scope, underlyingStore), nil
+	case PolicyResourceVersionCache:
+		return NewResourceVersionCachingStore(ctx, scope, NewPassthroughWorkflowStore(ctx, scope, workflows, lister)), nil
 	}
 
 	return nil, fmt.Errorf("empty workflow store config")

@@ -1,30 +1,29 @@
 package workflowstore
 
 import (
-	config2 "github.com/lyft/flytepropeller/pkg/controller/config"
+	ctrlConfig "github.com/lyft/flytepropeller/pkg/controller/config"
 )
 
 //go:generate pflags Config --default-var=defaultConfig
 
-type Type string
+type Policy string
 
 const (
-	TypeInMemory             = "InMemory"
-	TypePassThrough          = "PassThrough"
-	TypeResourceVersionCache = "ResourceVersionCache"
+	PolicyInMemory             = "InMemory"
+	PolicyPassThrough          = "PassThrough"
+	PolicyResourceVersionCache = "ResourceVersionCache"
 )
 
 var (
 	defaultConfig = &Config{
-		Type: TypePassThrough,
+		Policy: PolicyPassThrough,
 	}
 
-	configSection = config2.MustRegisterSubSection("workflowStore", defaultConfig)
+	configSection = ctrlConfig.MustRegisterSubSection("workflowStore", defaultConfig)
 )
 
 type Config struct {
-	Type                 Type    `json:"type" pflag:",Workflow Store Type to initialize"`
-	ResourceVersionCache *Config `json:"resourceVersion" pflag:",Config for resource version cache store if used."`
+	Policy Policy `json:"policy" pflag:",Workflow Store Policy to initialize"`
 }
 
 func GetConfig() *Config {
