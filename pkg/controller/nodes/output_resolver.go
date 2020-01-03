@@ -2,7 +2,6 @@ package nodes
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/lyft/flytestdlib/logger"
@@ -21,7 +20,7 @@ type VarName = string
 
 type OutputResolver interface {
 	// Extracts a subset of node outputs to literals.
-	ExtractOutput(ctx context.Context, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode,
+	ExtractOutput(ctx context.Context, w v1alpha1.BaseWorkflowWithStatus, n v1alpha1.ExecutableNode,
 		bindToVar VarName) (values *core.Literal, err error)
 }
 
@@ -38,10 +37,9 @@ type remoteFileOutputResolver struct {
 	store *storage.DataStore
 }
 
-func (r remoteFileOutputResolver) ExtractOutput(ctx context.Context, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode,
+func (r remoteFileOutputResolver) ExtractOutput(ctx context.Context, w v1alpha1.BaseWorkflowWithStatus, n v1alpha1.ExecutableNode,
 	bindToVar VarName) (values *core.Literal, err error) {
-	nodeStatus := w.GetNodeExecutionStatus(n.GetID())
-	fmt.Printf("nodeStatus.GetOutputDir() is %v\n", nodeStatus.GetOutputDir())
+	nodeStatus := w.GetNodeExecutionStatus(ctx, n.GetID())
 	outputsFileRef := v1alpha1.GetOutputsFile(nodeStatus.GetOutputDir())
 
 	index, actualVar, err := ParseVarName(bindToVar)
@@ -67,7 +65,7 @@ func resolveSubtaskOutput(ctx context.Context, store storage.ProtobufStore, node
 	d := &core.LiteralMap{}
 	// TODO we should do a head before read and if head results in not found then fail
 	if err := store.ReadProtobuf(ctx, outputsFileRef, d); err != nil {
-		return nil, errors.Wrapf(errors.CausedByError, nodeID, err, "Failed to GetPrevious data from dataDir [%v]",
+		return nil, errors.Wrapf(errors.CausedByError, nodeID, err, "Failed to GetPrevious data from outputDir [%v]",
 			outputsFileRef)
 	}
 
@@ -101,7 +99,7 @@ func resolveSingleOutput(ctx context.Context, store storage.ProtobufStore, nodeI
 
 	d := &core.LiteralMap{}
 	if err := store.ReadProtobuf(ctx, outputsFileRef, d); err != nil {
-		return nil, errors.Wrapf(errors.CausedByError, nodeID, err, "Failed to GetPrevious data from dataDir [%v]",
+		return nil, errors.Wrapf(errors.CausedByError, nodeID, err, "Failed to GetPrevious data from outputDir [%v]",
 			outputsFileRef)
 	}
 
