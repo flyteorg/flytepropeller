@@ -118,7 +118,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 	if predicatePhase == PredicatePhaseReady {
 		// TODO: Performance problem, we maybe in a retry loop and do not need to resolve the inputs again.
 		// For now we will do this.
-		dataDir := nodeStatus.GetOutputDir()
+		dataDir := nodeStatus.GetDataDir()
 		var nodeInputs *core.LiteralMap
 		if !node.IsStartNode() {
 			t := c.metrics.NodeInputGatherLatency.Start(ctx)
