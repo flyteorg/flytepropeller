@@ -70,7 +70,7 @@ func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevSt
 	}
 
 	if trns.Info().GetPhase() == handler.EPhaseSuccess {
-		f, err := task.NewRemoteFutureFileReader(ctx, nCtx.NodeStatus().GetDataDir(), nCtx.DataStore())
+		f, err := task.NewRemoteFutureFileReader(ctx, nCtx.NodeStatus().GetOutputDir(), nCtx.DataStore())
 		if err != nil {
 			return handler.UnknownTransition, prevState, err
 		}
