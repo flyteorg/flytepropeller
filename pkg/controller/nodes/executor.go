@@ -135,7 +135,6 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 
 			if nodeInputs != nil {
 				inputsFile := v1alpha1.GetInputsFile(dataDir)
-				logger.Infof(ctx, "Writing protobuf to store: %v", inputsFile)
 				if err := c.store.WriteProtobuf(ctx, inputsFile, storage.Options{}, nodeInputs); err != nil {
 					c.metrics.InputsWriteFailure.Inc(ctx)
 					logger.Errorf(ctx, "Failed to store inputs for Node. Error [%v]. InputsFile [%s]", err, inputsFile)

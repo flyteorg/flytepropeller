@@ -48,7 +48,6 @@ func (f FutureFileReader) CacheExists(ctx context.Context) (bool, error) {
 }
 
 func (f FutureFileReader) Cache(ctx context.Context, wf *v1alpha1.FlyteWorkflow) error {
-	logger.Infof(ctx, "Adding flyte workflow at %v", f.cacheLoc)
 	return f.RemoteFileWorkflowStore.Put(ctx, wf, f.cacheLoc)
 }
 
