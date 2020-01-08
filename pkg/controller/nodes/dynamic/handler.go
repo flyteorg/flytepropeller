@@ -400,7 +400,7 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 					nil
 			}
 
-			sourcePath := v1alpha1.GetOutputsFile(endNodeStatus.GetDataDir())
+			sourcePath := v1alpha1.GetOutputsFile(endNodeStatus.GetOutputDir())
 			if metadata, err := nCtx.DataStore().Head(ctx, sourcePath); err == nil {
 				if !metadata.Exists() {
 					return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure("DynamicWorkflowOutputsNotFound", " is expected to produce outputs but no outputs file was written to %v.", nil)),
@@ -411,7 +411,7 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 				return handler.UnknownTransition, prevState, err
 			}
 
-			destinationPath := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetDataDir())
+			destinationPath := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
 			if err := nCtx.DataStore().CopyRaw(ctx, sourcePath, destinationPath, storage.Options{}); err != nil {
 				return handler.DoTransition(handler.TransitionTypeEphemeral,
 						handler.PhaseInfoFailure(errors.OutputsNotFoundError,
