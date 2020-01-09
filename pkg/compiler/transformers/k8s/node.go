@@ -1,6 +1,8 @@
 package k8s
 
 import (
+	"time"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/compiler/common"
@@ -50,7 +52,7 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 	// TODO: Active deadline accounts for the retries and queueing delays. using active deadline = execution deadline.
 	var activeDeadline *v1.Duration
 	if timeout != nil {
-		activeDeadline = &v1.Duration{Duration: 2 * timeout.Duration}
+		activeDeadline = &v1.Duration{Duration: time.Duration(n.Metadata.Retries.Retries) * timeout.Duration}
 	}
 	if err != nil {
 		errs.Collect(errors.NewSyntaxError(n.GetId(), "node:metadata:timeout", nil))
