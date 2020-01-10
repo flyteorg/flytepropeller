@@ -258,14 +258,6 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		return nil, regErrors.Wrapf(err, "Invalid transition for plugin [%s]", p.GetID())
 	}
 
-	// Emit the queue latency if the task has just transitioned from Queued to Running.
-	if ts.PluginPhase == pluginCore.PhaseQueued &&
-		(pluginTrns.pInfo.Phase() == pluginCore.PhaseInitializing || pluginTrns.pInfo.Phase() == pluginCore.PhaseRunning) {
-		if !ts.LastPhaseUpdatedAt.IsZero() {
-			t.metrics.pluginQueueLatency.Observe(ctx, ts.LastPhaseUpdatedAt, time.Now())
-		}
-	}
-
 	var b []byte
 	var v uint32
 	if tCtx.psm.newState != nil {
@@ -277,6 +269,14 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		v = ts.PluginPhaseVersion
 	}
 	pluginTrns.ObservedTransitionAndState(trns, v, b)
+
+	// Emit the queue latency if the task has just transitioned from Queued to Running.
+	if ts.PluginPhase == pluginCore.PhaseQueued &&
+		(pluginTrns.pInfo.Phase() == pluginCore.PhaseInitializing || pluginTrns.pInfo.Phase() == pluginCore.PhaseRunning) {
+		if !ts.LastPhaseUpdatedAt.IsZero() {
+			t.metrics.pluginQueueLatency.Observe(ctx, ts.LastPhaseUpdatedAt, time.Now())
+		}
+	}
 
 	if pluginTrns.pInfo.Phase() == ts.PluginPhase {
 		if pluginTrns.pInfo.Version() == ts.PluginPhaseVersion {
