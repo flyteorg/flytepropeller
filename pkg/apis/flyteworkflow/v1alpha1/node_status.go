@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/lyft/flytestdlib/storage"
@@ -156,6 +157,7 @@ type NodeStatus struct {
 	LastAttemptStartedAt *metav1.Time  `json:"laStartedAt,omitempty"`
 	Message              string        `json:"message,omitempty"`
 	DataDir              DataReference `json:"-"`
+	OutputDir            DataReference `json:"-"`
 	Attempts             uint32        `json:"attempts"`
 	Cached               bool          `json:"cached"`
 
@@ -474,6 +476,16 @@ func (in *NodeStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) Exe
 			n.SetDataDir(dataDir)
 		}
 
+		if len(n.GetOutputDir()) == 0 {
+			outputDir, err := in.DataReferenceConstructor.ConstructReference(ctx, n.GetDataDir(), strconv.FormatUint(uint64(in.Attempts), 10))
+			if err != nil {
+				logger.Errorf(ctx, "Failed to construct output dir for node [%v]", id)
+				return n
+			}
+
+			n.SetOutputDir(outputDir)
+		}
+
 		return n
 	}
 
@@ -492,7 +504,14 @@ func (in *NodeStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) Exe
 		return n
 	}
 
+	outputDir, err := in.DataReferenceConstructor.ConstructReference(ctx, dataDir, "0")
+	if err != nil {
+		logger.Errorf(ctx, "Failed to construct output dir for node [%v]", id)
+		return n
+	}
+
 	newNodeStatus.SetDataDir(dataDir)
+	newNodeStatus.SetOutputDir(outputDir)
 	newNodeStatus.DataReferenceConstructor = in.DataReferenceConstructor
 
 	in.SubNodeStatus[id] = newNodeStatus
@@ -510,9 +529,14 @@ func (in *NodeStatus) GetDataDir() DataReference {
 
 func (in *NodeStatus) SetDataDir(d DataReference) {
 	in.DataDir = d
+}
 
-	// We do not need to set Dirty here because this field is not persisted.
-	//in.SetDirty()
+func (in *NodeStatus) GetOutputDir() DataReference {
+	return in.OutputDir
+}
+
+func (in *NodeStatus) SetOutputDir(d DataReference) {
+	in.OutputDir = d
 }
 
 func (in *NodeStatus) Equals(other *NodeStatus) bool {
@@ -544,6 +568,10 @@ func (in *NodeStatus) Equals(other *NodeStatus) bool {
 	}
 
 	if in.DataDir != other.DataDir {
+		return false
+	}
+
+	if in.OutputDir != other.OutputDir {
 		return false
 	}
 
