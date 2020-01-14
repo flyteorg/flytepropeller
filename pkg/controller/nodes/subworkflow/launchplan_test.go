@@ -204,6 +204,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 	mockNodeStatus := &mocks2.ExecutableNodeStatus{}
 	mockNodeStatus.On("GetAttempts").Return(attempts)
 	mockNodeStatus.On("GetDataDir").Return(dataDir)
+	mockNodeStatus.On("GetOutputDir").Return(dataDir)
 
 	parentID := &core.WorkflowExecutionIdentifier{
 		Name:    "x",
@@ -597,6 +598,7 @@ func TestLaunchPlanHandler_HandleAbort(t *testing.T) {
 	mockNodeStatus := &mocks2.ExecutableNodeStatus{}
 	mockNodeStatus.On("GetAttempts").Return(attempts)
 	mockNodeStatus.On("GetDataDir").Return(dataDir)
+	mockNodeStatus.On("GetOutputDir").Return(dataDir)
 
 	parentID := &core.WorkflowExecutionIdentifier{
 		Name:    "x",
