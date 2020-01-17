@@ -57,7 +57,7 @@ required = [
 
 [[constraint]]
   name = "github.com/lyft/flyteplugins"
-  revision = "7e1d190aea6ff17a30c9b97bf0a0840eaf3e67ec"
+  version = "^0.2.8"
 
 [[override]]
   name = "github.com/lyft/flytestdlib"
