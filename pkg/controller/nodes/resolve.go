@@ -87,10 +87,10 @@ func ResolveBindingData(ctx context.Context, outputResolver OutputResolver, w v1
 }
 
 func Resolve(ctx context.Context, outputResolver OutputResolver, w v1alpha1.BaseWorkflowWithStatus, nodeID v1alpha1.NodeID, bindings []*v1alpha1.Binding) (*core.LiteralMap, error) {
-	logger.Infof(ctx, "bindings: [%v]", bindings)
+	logger.Debugf(ctx, "bindings: [%v]", bindings)
 	literalMap := make(map[string]*core.Literal, len(bindings))
 	for _, binding := range bindings {
-		logger.Infof(ctx, "Resolving binding: [%v]", binding)
+		logger.Debugf(ctx, "Resolving binding: [%v]", binding)
 		varName := binding.GetVar()
 		l, err := ResolveBindingData(ctx, outputResolver, w, binding.GetBinding())
 		if err != nil {
