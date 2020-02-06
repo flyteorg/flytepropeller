@@ -75,5 +75,10 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "leader-election.retry-period"), "2s", "Duration the LeaderElector clients should wait between tries of actions.")
 	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "publish-k8s-events"), *new(bool), "Enable events publishing to K8s events API.")
 	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "max-output-size-bytes"), *new(int64), "Maximum size of outputs per task")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "kube-client-config.burst"), 10, "Max burst rate for throttle. 0 defaults to 10")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "kube-client-config.timeout"), 0, "Max duration allowed for every request to KubeAPI before giving up. 0 implies no timeout.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "default-deadlines.node-execution-deadline"), "48h0m0s", "Default value of node execution timeout")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "default-deadlines.node-active-deadline"), "48h0m0s", "Default value of node timeout")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "default-deadlines.workflow-active-deadline"), "72h0m0s", "Default value of workflow timeout")
 	return cmdFlags
 }

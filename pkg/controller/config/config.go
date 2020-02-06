@@ -41,12 +41,12 @@ type Config struct {
 type KubeClientConfig struct {
 	// QPS indicates the maximum QPS to the master from this client.
 	// If it's zero, the created RESTClient will use DefaultQPS: 5
-	QPS float32 `json:"qps" pflag:",Max QPS to the master for requests to KubeAPI. 0 defaults to 5."`
+	QPS float32 `json:"qps" pflag:"-,Max QPS to the master for requests to KubeAPI. 0 defaults to 5."`
 	// Maximum burst for throttle.
 	// If it's zero, the created RESTClient will use DefaultBurst: 10.
-	Burst int `json:"burst" pflag:",Max burst rate for throttle. 0 defaults to 10"`
+	Burst int `json:"burst" pflag:"10,Max burst rate for throttle. 0 defaults to 10"`
 	// The maximum length of time to wait before giving up on a server request. A value of zero means no timeout.
-	Timeout config.Duration `json:"timeout" pflag:",Max duration allowed for every request to KubeAPI before giving up. 0 implies no timeout."`
+	Timeout config.Duration `json:"timeout" pflag:"0,Max duration allowed for every request to KubeAPI before giving up. 0 implies no timeout."`
 }
 
 type CompositeQueueType = string

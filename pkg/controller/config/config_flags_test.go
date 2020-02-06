@@ -847,4 +847,114 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_kube-client-config.burst", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("kube-client-config.burst"); err == nil {
+				assert.Equal(t, int(10), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("kube-client-config.burst", testValue)
+			if vInt, err := cmdFlags.GetInt("kube-client-config.burst"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.KubeConfig.Burst)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_kube-client-config.timeout", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("kube-client-config.timeout"); err == nil {
+				assert.Equal(t, string(0), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := 0
+
+			cmdFlags.Set("kube-client-config.timeout", testValue)
+			if vString, err := cmdFlags.GetString("kube-client-config.timeout"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.KubeConfig.Timeout)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_default-deadlines.node-execution-deadline", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("default-deadlines.node-execution-deadline"); err == nil {
+				assert.Equal(t, string("48h0m0s"), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "48h0m0s"
+
+			cmdFlags.Set("default-deadlines.node-execution-deadline", testValue)
+			if vString, err := cmdFlags.GetString("default-deadlines.node-execution-deadline"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DefaultDeadlines.DefaultNodeExecutionDeadline)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_default-deadlines.node-active-deadline", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("default-deadlines.node-active-deadline"); err == nil {
+				assert.Equal(t, string("48h0m0s"), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "48h0m0s"
+
+			cmdFlags.Set("default-deadlines.node-active-deadline", testValue)
+			if vString, err := cmdFlags.GetString("default-deadlines.node-active-deadline"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DefaultDeadlines.DefaultNodeActiveDeadline)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_default-deadlines.workflow-active-deadline", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("default-deadlines.workflow-active-deadline"); err == nil {
+				assert.Equal(t, string("72h0m0s"), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "72h0m0s"
+
+			cmdFlags.Set("default-deadlines.workflow-active-deadline", testValue)
+			if vString, err := cmdFlags.GetString("default-deadlines.workflow-active-deadline"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DefaultDeadlines.DefaultWorkflowActiveDeadline)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }
