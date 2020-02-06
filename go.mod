@@ -48,6 +48,7 @@ require (
 replace (
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.3
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
+	github.com/lyft/datacatalog => github.com/lyft/datacatalog v0.1.1
 	gopkg.in/fsnotify.v1 => github.com/fsnotify/fsnotify v1.4.7
 	k8s.io/api => github.com/lyft/api v0.0.0-20191031200350-b49a72c274e0
 	k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
