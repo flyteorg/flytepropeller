@@ -92,7 +92,7 @@ type CompositeQueueConfig struct {
 	Type             CompositeQueueType `json:"type" pflag:",Type of composite queue to use for the WorkQueue"`
 	Queue            WorkqueueConfig    `json:"queue,omitempty" pflag:",Workflow workqueue configuration, affects the way the work is consumed from the queue."`
 	Sub              WorkqueueConfig    `json:"sub-queue,omitempty" pflag:",SubQueue configuration, affects the way the nodes cause the top-level Work to be re-evaluated."`
-	BatchingInterval config.Duration    `json:"batching-interval" pflag:"\"1s\",Duration for which downstream updates are buffered"`
+	BatchingInterval config.Duration    `json:"batching-interval" pflag:",Duration for which downstream updates are buffered"`
 	BatchSize        int                `json:"batch-size" pflag:"-1,Number of downstream triggered top-level objects to re-enqueue every duration. -1 indicates all available."`
 }
 
