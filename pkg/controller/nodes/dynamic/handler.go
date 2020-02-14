@@ -191,8 +191,9 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 
 // This is a weird method. We should always finalize before we set the dynamic parent node phase as complete?
 func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
-	// We should always finalize the parent node success of failure.
-	// If we use the state to decide the finalize then we will never invoke the finalizer for the parent.
+	// We should always finalize the parent node success or failure.
+	// If we use the phase to decide when to finalize in the case where Dynamic node is in phase Executiing
+	// (i.e. child nodes are now being executed) and Finalize is invoked, we will never invoke the finalizer for the parent.
 	logger.Infof(ctx, "Finalizing Parent node")
 	if err := d.TaskNodeHandler.Finalize(ctx, nCtx); err != nil {
 		logger.Errorf(ctx, "Failed to finalize Dynamic Nodes Parent.")
