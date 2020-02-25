@@ -16,8 +16,8 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/lyft/datacatalog v0.2.1
-	github.com/lyft/flyteidl v0.17.2
-	github.com/lyft/flyteplugins v0.3.2
+	github.com/lyft/flyteidl v0.17.4
+	github.com/lyft/flyteplugins v0.3.5-0.20200221005303-7a2b23469885
 	github.com/lyft/flytestdlib v0.3.2
 	github.com/magiconair/properties v1.8.1
 	github.com/mitchellh/mapstructure v1.1.2
@@ -35,6 +35,7 @@ require (
 	k8s.io/api v0.17.2
 	k8s.io/apimachinery v0.17.2
 	k8s.io/client-go v11.0.0+incompatible
+	k8s.io/code-generator v0.17.3 // indirect
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe // indirect
 	sigs.k8s.io/controller-runtime v0.4.0
