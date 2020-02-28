@@ -895,14 +895,14 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("default-deadlines.node-execution-deadline"); err == nil {
-				assert.Equal(t, string(defaultConfig.DefaultDeadlines.DefaultNodeExecutionDeadline.String()), vString)
+				assert.Equal(t, string(defaultConfig.NodeConfig.DefaultDeadlines.DefaultNodeExecutionDeadline.String()), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := defaultConfig.DefaultDeadlines.DefaultNodeExecutionDeadline.String()
+			testValue := defaultConfig.NodeConfig.DefaultDeadlines.DefaultNodeExecutionDeadline.String()
 
 			cmdFlags.Set("default-deadlines.node-execution-deadline", testValue)
 			if vString, err := cmdFlags.GetString("default-deadlines.node-execution-deadline"); err == nil {
@@ -917,14 +917,14 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("default-deadlines.node-active-deadline"); err == nil {
-				assert.Equal(t, string(defaultConfig.DefaultDeadlines.DefaultNodeActiveDeadline.String()), vString)
+				assert.Equal(t, string(defaultConfig.NodeConfig.DefaultDeadlines.DefaultNodeActiveDeadline.String()), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := defaultConfig.DefaultDeadlines.DefaultNodeActiveDeadline.String()
+			testValue := defaultConfig.NodeConfig.DefaultDeadlines.DefaultNodeActiveDeadline.String()
 
 			cmdFlags.Set("default-deadlines.node-active-deadline", testValue)
 			if vString, err := cmdFlags.GetString("default-deadlines.node-active-deadline"); err == nil {
@@ -939,14 +939,14 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("default-deadlines.workflow-active-deadline"); err == nil {
-				assert.Equal(t, string(defaultConfig.DefaultDeadlines.DefaultWorkflowActiveDeadline.String()), vString)
+				assert.Equal(t, string(defaultConfig.NodeConfig.DefaultDeadlines.DefaultWorkflowActiveDeadline.String()), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := defaultConfig.DefaultDeadlines.DefaultWorkflowActiveDeadline.String()
+			testValue := defaultConfig.NodeConfig.DefaultDeadlines.DefaultWorkflowActiveDeadline.String()
 
 			cmdFlags.Set("default-deadlines.workflow-active-deadline", testValue)
 			if vString, err := cmdFlags.GetString("default-deadlines.workflow-active-deadline"); err == nil {
