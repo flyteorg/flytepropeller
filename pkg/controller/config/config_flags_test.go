@@ -906,7 +906,7 @@ func TestConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("default-deadlines.node-execution-deadline", testValue)
 			if vString, err := cmdFlags.GetString("default-deadlines.node-execution-deadline"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DefaultDeadlines.DefaultNodeExecutionDeadline)
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.NodeConfig.DefaultDeadlines.DefaultNodeExecutionDeadline)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -928,7 +928,7 @@ func TestConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("default-deadlines.node-active-deadline", testValue)
 			if vString, err := cmdFlags.GetString("default-deadlines.node-active-deadline"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DefaultDeadlines.DefaultNodeActiveDeadline)
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.NodeConfig.DefaultDeadlines.DefaultNodeActiveDeadline)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -950,7 +950,7 @@ func TestConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("default-deadlines.workflow-active-deadline", testValue)
 			if vString, err := cmdFlags.GetString("default-deadlines.workflow-active-deadline"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DefaultDeadlines.DefaultWorkflowActiveDeadline)
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.NodeConfig.DefaultDeadlines.DefaultWorkflowActiveDeadline)
 
 			} else {
 				assert.FailNow(t, err.Error())
