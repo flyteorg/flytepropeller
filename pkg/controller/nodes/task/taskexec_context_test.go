@@ -117,7 +117,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	assert.NotNil(t, got.SecretManager())
 
 	assert.NotNil(t, got.OutputWriter())
-	assert.Equal(t, got.OutputWriter().GetOutputPrefixPath(), outputDir + "/")
+	assert.Equal(t, got.OutputWriter().GetOutputPrefixPath(), outputDir+"/")
 	assert.Equal(t, got.TaskExecutionMetadata().GetOverrides().GetResources(), res)
 
 	assert.Equal(t, got.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), "name-n1-1")
