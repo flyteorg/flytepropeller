@@ -49,16 +49,17 @@ type nodeMetrics struct {
 }
 
 type nodeExecutor struct {
-	nodeHandlerFactory       HandlerFactory
-	enqueueWorkflow          v1alpha1.EnqueueWorkflow
-	store                    *storage.DataStore
-	nodeRecorder             events.NodeEventRecorder
-	taskRecorder             events.TaskEventRecorder
-	metrics                  *nodeMetrics
-	maxDatasetSizeBytes      int64
-	outputResolver           OutputResolver
-	defaultExecutionDeadline time.Duration
-	defaultActiveDeadline    time.Duration
+	nodeHandlerFactory              HandlerFactory
+	enqueueWorkflow                 v1alpha1.EnqueueWorkflow
+	store                           *storage.DataStore
+	nodeRecorder                    events.NodeEventRecorder
+	taskRecorder                    events.TaskEventRecorder
+	metrics                         *nodeMetrics
+	maxDatasetSizeBytes             int64
+	outputResolver                  OutputResolver
+	defaultExecutionDeadline        time.Duration
+	defaultActiveDeadline           time.Duration
+	maxNodeRetriesForSystemFailures uint32
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -206,11 +207,17 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 
 	if phase.GetPhase() == handler.EPhaseRetryableFailure {
 		maxAttempts := uint32(0)
-		if nCtx.Node().GetRetryStrategy() != nil && nCtx.Node().GetRetryStrategy().MinAttempts != nil {
-			maxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
+		attempts := uint32(0)
+		if phase.GetErr().Kind == core.ExecutionError_SYSTEM {
+			maxAttempts = c.maxNodeRetriesForSystemFailures
+			attempts = nodeStatus.GetSystemFailures() + 1
+		} else {
+			attempts = nodeStatus.GetAttempts() + 1
+			if nCtx.Node().GetRetryStrategy() != nil && nCtx.Node().GetRetryStrategy().MinAttempts != nil {
+				maxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
+			}
 		}
 
-		attempts := nodeStatus.GetAttempts() + 1
 		if attempts >= maxAttempts {
 			return handler.PhaseInfoFailure(
 				fmt.Sprintf("RetriesExhausted|%s", phase.GetErr().Code),
@@ -690,7 +697,7 @@ func (c *nodeExecutor) Initialize(ctx context.Context) error {
 	return c.nodeHandlerFactory.Setup(ctx, s)
 }
 
-func NewExecutor(ctx context.Context, defaultDeadlines config.DefaultDeadlines, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink, workflowLauncher launchplan.Executor, maxDatasetSize int64, kubeClient executors.Client, catalogClient catalog.Client, scope promutils.Scope) (executors.Node, error) {
+func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink, workflowLauncher launchplan.Executor, maxDatasetSize int64, kubeClient executors.Client, catalogClient catalog.Client, scope promutils.Scope) (executors.Node, error) {
 
 	nodeScope := scope.NewSubScope("node")
 	exec := &nodeExecutor{
@@ -711,9 +718,10 @@ func NewExecutor(ctx context.Context, defaultDeadlines config.DefaultDeadlines, 
 			NodeExecutionTime:      labeled.NewStopWatch("node_exec_latency", "Measures the time taken to execute one node, a node can be complex so it may encompass sub-node latency.", time.Microsecond, nodeScope, labeled.EmitUnlabeledMetric),
 			NodeInputGatherLatency: labeled.NewStopWatch("node_input_latency", "Measures the latency to aggregate inputs and check readiness of a node", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 		},
-		outputResolver:           NewRemoteFileOutputResolver(store),
-		defaultExecutionDeadline: defaultDeadlines.DefaultNodeExecutionDeadline.Duration,
-		defaultActiveDeadline:    defaultDeadlines.DefaultNodeActiveDeadline.Duration,
+		outputResolver:                  NewRemoteFileOutputResolver(store),
+		defaultExecutionDeadline:        nodeConfig.DefaultDeadlines.DefaultNodeExecutionDeadline.Duration,
+		defaultActiveDeadline:           nodeConfig.DefaultDeadlines.DefaultNodeActiveDeadline.Duration,
+		maxNodeRetriesForSystemFailures: nodeConfig.MaxNodeRetriesForSystemFailures,
 	}
 	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, kubeClient, catalogClient, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory
