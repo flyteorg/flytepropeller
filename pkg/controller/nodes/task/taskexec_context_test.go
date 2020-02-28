@@ -50,7 +50,8 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 
 	ns := &flyteMocks.ExecutableNodeStatus{}
 	ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
-	ns.On("GetOutputDir").Return(storage.DataReference("output-dir"))
+	const outputDir = storage.DataReference("output-dir")
+	ns.On("GetOutputDir").Return(outputDir)
 
 	res := &v12.ResourceRequirements{}
 	n := &flyteMocks.ExecutableNode{}
@@ -116,6 +117,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	assert.NotNil(t, got.SecretManager())
 
 	assert.NotNil(t, got.OutputWriter())
+	assert.Equal(t, got.OutputWriter().GetOutputPrefixPath(), outputDir + "/")
 	assert.Equal(t, got.TaskExecutionMetadata().GetOverrides().GetResources(), res)
 
 	assert.Equal(t, got.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), "name-n1-1")
