@@ -340,10 +340,10 @@ github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f/go.mod h1:llRdnz
 github.com/lyft/datacatalog v0.2.1 h1:W7LsAjaS297iLCtSH9ZaAAG3YPofwkbbgIaqkfdeM0o=
 github.com/lyft/datacatalog v0.2.1/go.mod h1:ktrPvzTDUwHO5Lv0hLH38zLHnOJ++rGoAO0iQ/sIPJ4=
 github.com/lyft/flyteidl v0.17.0/go.mod h1:/zQXxuHO11u/saxTTZc8oYExIGEShXB+xCB1/F1Cu20=
-github.com/lyft/flyteidl v0.17.5 h1:nuUixm2glaJ4orKw3t/G0y1iG3ikYUR6FLxQy6NPmNM=
-github.com/lyft/flyteidl v0.17.5/go.mod h1:/zQXxuHO11u/saxTTZc8oYExIGEShXB+xCB1/F1Cu20=
-github.com/lyft/flyteplugins v0.3.7 h1:JH/5BeoitsSmDDvQYX1PpTropTXhN39LKXwobCJbcGw=
-github.com/lyft/flyteplugins v0.3.7/go.mod h1:rWMveHFpRs4gftU/fEACQ+RSadJbryxzy8JBjlPzOJ8=
+github.com/lyft/flyteidl v0.17.6 h1:O0qpT6ya45e/92+E84uGOYa0ZsaFoE5ZfPoyJ6e1bEQ=
+github.com/lyft/flyteidl v0.17.6/go.mod h1:/zQXxuHO11u/saxTTZc8oYExIGEShXB+xCB1/F1Cu20=
+github.com/lyft/flyteplugins v0.3.8 h1:djq2HI+HRAf7SmB9YFQZGM/vSD6Mg3EUlDgr2Ka0UM8=
+github.com/lyft/flyteplugins v0.3.8/go.mod h1:FOSo04q4EheU6lm0oZFvfYAWgjrum/BDUK+mUT7qDFA=
 github.com/lyft/flytestdlib v0.3.0 h1:nIkX4MlyYdcLLzaF35RI2P5BhARt+qMgHoFto8eVNzU=
 github.com/lyft/flytestdlib v0.3.0/go.mod h1:LJPPJlkFj+wwVWMrQT3K5JZgNhZi2mULsCG4ZYhinhU=
 github.com/lyft/flytestdlib v0.3.2 h1:bY6Y+Fg6Jdc7zY4GAYuR7t2hjWwynIdmRvtLcRNaGnw=
