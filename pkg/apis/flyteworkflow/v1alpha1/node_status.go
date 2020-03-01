@@ -159,7 +159,7 @@ type NodeStatus struct {
 	DataDir              DataReference `json:"-"`
 	OutputDir            DataReference `json:"-"`
 	Attempts             uint32        `json:"attempts"`
-	SystemFailures       uint32        `json:"sf"`
+	SystemFailures       uint32        `json:"sf,omitempty"`
 	Cached               bool          `json:"cached"`
 
 	// This is useful only for branch nodes. If this is set, then it can be used to determine if execution can proceed
