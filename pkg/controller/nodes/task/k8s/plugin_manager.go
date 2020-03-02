@@ -227,7 +227,7 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 			// Pod does not exist error. This should be retried using the retry policy
 			logger.Warningf(ctx, "Failed to find the Resource with name: %v. Error: %v", nsName, err)
 			failureReason := fmt.Sprintf("resource not found, name [%s]. reason: %s", nsName.String(), err.Error())
-			return pluginsCore.DoTransition(pluginsCore.PhaseInfoSystemRetryableFailure("Tachycardia", failureReason, nil)), nil
+			return pluginsCore.DoTransition(pluginsCore.PhaseInfoSystemRetryableFailure("ResourceDeletedExternally", failureReason, nil)), nil
 		}
 
 		logger.Warningf(ctx, "Failed to retrieve Resource Details with name: %v. Error: %v", nsName, err)
