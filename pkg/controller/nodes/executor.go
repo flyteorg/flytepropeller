@@ -397,9 +397,11 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusUndefined, err
 	}
 
-	nodeStatus.IncrementAttempts()
-	if p.GetPhase() == handler.EPhaseRetryableFailure && p.GetErr().GetKind() == core.ExecutionError_SYSTEM {
-		nodeStatus.IncrementSystemFailures()
+	if p.GetPhase() == handler.EPhaseRetryableFailure {
+		nodeStatus.IncrementAttempts()
+		if p.GetErr().GetKind() == core.ExecutionError_SYSTEM {
+			nodeStatus.IncrementSystemFailures()
+		}
 	}
 
 	if p.GetPhase() == handler.EPhaseUndefined {
