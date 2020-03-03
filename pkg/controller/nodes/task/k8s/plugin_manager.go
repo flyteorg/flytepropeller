@@ -267,7 +267,7 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 		// the node are marked with a deletionTimestamp, but our finalizers prevent the pod from being deleted.
 		// This can also happen when a user deletes a Pod directly.
 		failureReason := fmt.Sprintf("object [%s] terminated in the background, manually", nsName.String())
-		return pluginsCore.DoTransition(pluginsCore.PhaseInfoRetryableFailure("tachycardia", failureReason, nil)), nil
+		return pluginsCore.DoTransition(pluginsCore.PhaseInfoSystemRetryableFailure("UnexpectedObjectDeletion", failureReason, nil)), nil
 	}
 
 	return pluginsCore.DoTransition(p), nil

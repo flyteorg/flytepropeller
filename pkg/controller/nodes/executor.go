@@ -221,7 +221,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 		if attempts >= maxAttempts {
 			return handler.PhaseInfoFailure(
 				fmt.Sprintf("RetriesExhausted|%s", phase.GetErr().Code),
-				fmt.Sprintf("[%d/%d] attempts done. Last Error: %s", attempts, maxAttempts, phase.GetErr().Message),
+				fmt.Sprintf("[%d/%d] attempts done. Last Error: %s::%s", attempts, maxAttempts, phase.GetErr().Kind.String(), phase.GetErr().Message),
 				phase.GetInfo(),
 			), nil
 		}
