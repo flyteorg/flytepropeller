@@ -173,6 +173,21 @@ func (c *nodeExecutor) isTimeoutExpired(queuedAt *metav1.Time, timeout time.Dura
 	return false
 }
 
+func (c *nodeExecutor) isEligibleForRetry(nCtx *execContext, nodeStatus v1alpha1.ExecutableNodeStatus, err *core.ExecutionError) (uint32, uint32, bool) {
+
+	if err.Kind == core.ExecutionError_SYSTEM {
+		systemFailures := nodeStatus.GetSystemFailures()
+		return systemFailures, c.maxNodeRetriesForSystemFailures, systemFailures < c.maxNodeRetriesForSystemFailures
+	}
+
+	nonSystemFailuresMaxAttempts := uint32(0)
+	nonSystemFailureAttempts := nodeStatus.GetAttempts() - nodeStatus.GetSystemFailures()
+	if nCtx.Node().GetRetryStrategy() != nil && nCtx.Node().GetRetryStrategy().MinAttempts != nil {
+		nonSystemFailuresMaxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
+	}
+	return nonSystemFailureAttempts, nonSystemFailuresMaxAttempts, nonSystemFailureAttempts < nonSystemFailuresMaxAttempts
+}
+
 func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execContext, nodeStatus v1alpha1.ExecutableNodeStatus) (handler.PhaseInfo, error) {
 	logger.Debugf(ctx, "Executing node")
 	defer logger.Debugf(ctx, "Node execution round complete")
@@ -206,19 +221,8 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 	}
 
 	if phase.GetPhase() == handler.EPhaseRetryableFailure {
-		maxAttempts := uint32(0)
-		attempts := uint32(0)
-		if phase.GetErr().Kind == core.ExecutionError_SYSTEM {
-			maxAttempts = c.maxNodeRetriesForSystemFailures
-			attempts = nodeStatus.GetSystemFailures() + 1
-		} else {
-			attempts = nodeStatus.GetAttempts() + 1
-			if nCtx.Node().GetRetryStrategy() != nil && nCtx.Node().GetRetryStrategy().MinAttempts != nil {
-				maxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
-			}
-		}
-
-		if attempts >= maxAttempts {
+		attempts, maxAttempts, eligible := c.isEligibleForRetry(nCtx, nodeStatus, phase.GetErr())
+		if !eligible {
 			return handler.PhaseInfoFailure(
 				fmt.Sprintf("RetriesExhausted|%s", phase.GetErr().Code),
 				fmt.Sprintf("[%d/%d] attempts done. Last Error: %s::%s", attempts, maxAttempts, phase.GetErr().Kind.String(), phase.GetErr().Message),
@@ -369,7 +373,6 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			return executors.NodeStatusUndefined, err
 		}
 
-		nodeStatus.IncrementAttempts()
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying")
 		// We are going to retry in the next round, so we should clear all current state
 		nodeStatus.ClearSubNodeStatus()
@@ -392,6 +395,11 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	if err != nil {
 		logger.Errorf(ctx, "failed Execute for node. Error: %s", err.Error())
 		return executors.NodeStatusUndefined, err
+	}
+
+	nodeStatus.IncrementAttempts()
+	if p.GetPhase() == handler.EPhaseRetryableFailure && p.GetErr().GetKind() == core.ExecutionError_SYSTEM {
+		nodeStatus.IncrementSystemFailures()
 	}
 
 	if p.GetPhase() == handler.EPhaseUndefined {
