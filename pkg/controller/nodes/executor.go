@@ -173,7 +173,7 @@ func (c *nodeExecutor) isTimeoutExpired(queuedAt *metav1.Time, timeout time.Dura
 	return false
 }
 
-func (c *nodeExecutor) isEligibleForRetry(nCtx *execContext, nodeStatus v1alpha1.ExecutableNodeStatus, err *core.ExecutionError) (uint32, uint32, bool) {
+func (c *nodeExecutor) isEligibleForRetry(nCtx *execContext, nodeStatus v1alpha1.ExecutableNodeStatus, err *core.ExecutionError) (currentFailureCount uint32, maxFailureCount uint32, isEligible bool) {
 
 	if err.Kind == core.ExecutionError_SYSTEM {
 		systemFailures := nodeStatus.GetSystemFailures()
