@@ -138,8 +138,6 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 	if np != s.GetPhase() {
 		s.UpdatePhase(np, ToK8sTime(p.GetOccurredAt()), ToError(p.GetErr(), p.GetReason()))
 	}
-
-	//p.GetErr().Kind
 	// Update TaskStatus
 	if n.t != nil {
 		t := s.GetOrCreateTaskStatus()

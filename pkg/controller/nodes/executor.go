@@ -399,7 +399,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 
 	if p.GetPhase() == handler.EPhaseRetryableFailure {
 		nodeStatus.IncrementAttempts()
-		if p.GetErr().GetKind() == core.ExecutionError_SYSTEM {
+		if p.GetErr() != nil && p.GetErr().GetKind() == core.ExecutionError_SYSTEM {
 			nodeStatus.IncrementSystemFailures()
 		}
 	}
