@@ -1268,7 +1268,8 @@ func Test_nodeExecutor_system_error(t *testing.T) {
 
 	c := &nodeExecutor{}
 	handlerReturn := func() (handler.Transition, error) {
-		return handler.DoTransition(handler.TransitionTypeEphemeral, phaseInfo), nil
+		var err error
+		return handler.DoTransition(handler.TransitionTypeEphemeral, phaseInfo), err
 	}
 	h := &nodeHandlerMocks.Node{}
 	h.On("Handle",
