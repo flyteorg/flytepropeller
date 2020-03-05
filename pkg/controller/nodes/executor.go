@@ -173,19 +173,20 @@ func (c *nodeExecutor) isTimeoutExpired(queuedAt *metav1.Time, timeout time.Dura
 	return false
 }
 
-func (c *nodeExecutor) isEligibleForRetry(nCtx *execContext, nodeStatus v1alpha1.ExecutableNodeStatus, err *core.ExecutionError) (currentFailureCount uint32, maxFailureCount uint32, isEligible bool) {
-
+func (c *nodeExecutor) isEligibleForRetry(nCtx *execContext, nodeStatus v1alpha1.ExecutableNodeStatus, err *core.ExecutionError) (currentAttempt, maxAttempts uint32, isEligible bool) {
 	if err.Kind == core.ExecutionError_SYSTEM {
-		systemFailures := nodeStatus.GetSystemFailures()
-		return systemFailures, c.maxNodeRetriesForSystemFailures, systemFailures < c.maxNodeRetriesForSystemFailures
+		currentAttempt = nodeStatus.GetSystemFailures()
+		maxAttempts = c.maxNodeRetriesForSystemFailures
+		isEligible = currentAttempt < c.maxNodeRetriesForSystemFailures
+		return
 	}
 
-	nonSystemFailuresMaxAttempts := uint32(0)
-	nonSystemFailureAttempts := nodeStatus.GetAttempts() - nodeStatus.GetSystemFailures()
+	currentAttempt = nodeStatus.GetAttempts() - nodeStatus.GetSystemFailures()
 	if nCtx.Node().GetRetryStrategy() != nil && nCtx.Node().GetRetryStrategy().MinAttempts != nil {
-		nonSystemFailuresMaxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
+		maxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
 	}
-	return nonSystemFailureAttempts, nonSystemFailuresMaxAttempts, nonSystemFailureAttempts < nonSystemFailuresMaxAttempts
+	isEligible = currentAttempt < maxAttempts
+	return
 }
 
 func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execContext, nodeStatus v1alpha1.ExecutableNodeStatus) (handler.PhaseInfo, error) {
@@ -221,11 +222,11 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 	}
 
 	if phase.GetPhase() == handler.EPhaseRetryableFailure {
-		attempts, maxAttempts, eligible := c.isEligibleForRetry(nCtx, nodeStatus, phase.GetErr())
-		if !eligible {
+		currentAttempt, maxAttempts, isEligible := c.isEligibleForRetry(nCtx, nodeStatus, phase.GetErr())
+		if !isEligible {
 			return handler.PhaseInfoFailure(
 				fmt.Sprintf("RetriesExhausted|%s", phase.GetErr().Code),
-				fmt.Sprintf("[%d/%d] attempts done. Last Error: %s::%s", attempts, maxAttempts, phase.GetErr().Kind.String(), phase.GetErr().Message),
+				fmt.Sprintf("[%d/%d] currentAttempt done. Last Error: %s::%s", currentAttempt, maxAttempts, phase.GetErr().Kind.String(), phase.GetErr().Message),
 				phase.GetInfo(),
 			), nil
 		}

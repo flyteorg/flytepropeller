@@ -1254,6 +1254,50 @@ func Test_nodeExecutor_timeout(t *testing.T) {
 	}
 }
 
+func Test_nodeExecutor_system_error(t *testing.T) {
+	phaseInfo := handler.PhaseInfoRetryableFailureErr(&core.ExecutionError{Code: "Interrupted", Message: "test", Kind: core.ExecutionError_SYSTEM}, nil)
+
+	// mocking status
+	ns := &mocks.ExecutableNodeStatus{}
+	ns.OnGetAttempts().Return(0)
+	ns.OnGetSystemFailures().Return(0)
+	ns.On("GetQueuedAt").Return(&v1.Time{Time: time.Now()})
+	ns.On("GetLastAttemptStartedAt").Return(&v1.Time{Time: time.Now()})
+
+	ns.On("ClearLastAttemptStartedAt").Return()
+
+	c := &nodeExecutor{}
+	handlerReturn := func() (handler.Transition, error) {
+		return handler.DoTransition(handler.TransitionTypeEphemeral, phaseInfo), nil
+	}
+	h := &nodeHandlerMocks.Node{}
+	h.On("Handle",
+		mock.MatchedBy(func(ctx context.Context) bool { return true }),
+		mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
+	).Return(handlerReturn())
+
+	h.On("FinalizeRequired").Return(true)
+	h.On("Finalize", mock.Anything, mock.Anything).Return(nil)
+
+	hf := &mocks2.HandlerFactory{}
+	hf.On("GetHandler", v1alpha1.NodeKindStart).Return(h, nil)
+	c.nodeHandlerFactory = hf
+	c.maxNodeRetriesForSystemFailures = 2
+
+	mockNode := &mocks.ExecutableNode{}
+	mockNode.On("GetID").Return("node")
+	mockNode.On("GetActiveDeadline").Return(nil)
+	mockNode.On("GetExecutionDeadline").Return(nil)
+	retries := 2
+	mockNode.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &retries})
+
+	nCtx := &execContext{node: mockNode, nsm: &nodeStateManager{nodeStatus: ns}}
+	phaseInfo, err := c.execute(context.TODO(), h, nCtx, ns)
+	assert.Equal(t, handler.EPhaseRetryableFailure, phaseInfo.GetPhase())
+	assert.NoError(t, err)
+	assert.Equal(t, core.ExecutionError_SYSTEM, phaseInfo.GetErr().GetKind())
+}
+
 func Test_nodeExecutor_abort(t *testing.T) {
 	ctx := context.Background()
 	exec := nodeExecutor{}
