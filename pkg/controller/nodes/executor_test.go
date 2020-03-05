@@ -1267,15 +1267,11 @@ func Test_nodeExecutor_system_error(t *testing.T) {
 	ns.On("ClearLastAttemptStartedAt").Return()
 
 	c := &nodeExecutor{}
-	handlerReturn := func() (handler.Transition, error) {
-		var err error
-		return handler.DoTransition(handler.TransitionTypeEphemeral, phaseInfo), err
-	}
 	h := &nodeHandlerMocks.Node{}
 	h.On("Handle",
 		mock.MatchedBy(func(ctx context.Context) bool { return true }),
 		mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
-	).Return(handlerReturn())
+	).Return(handler.DoTransition(handler.TransitionTypeEphemeral, phaseInfo), nil)
 
 	h.On("FinalizeRequired").Return(true)
 	h.On("Finalize", mock.Anything, mock.Anything).Return(nil)
