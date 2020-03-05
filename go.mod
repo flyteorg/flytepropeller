@@ -31,12 +31,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
-<<<<<<< HEAD
-	golang.org/x/crypto v0.0.0-20200206161412-a0c6ece9d31a // indirect
-	golang.org/x/net v0.0.0-20200222125558-5a598a2470a0 // indirect
-=======
 	golang.org/x/crypto v0.0.0-20200210222208-86ce3cb69678 // indirect
->>>>>>> master
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	google.golang.org/grpc v1.27.1
 	gopkg.in/ini.v1 v1.52.0 // indirect
