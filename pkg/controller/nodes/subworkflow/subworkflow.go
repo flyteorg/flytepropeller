@@ -29,7 +29,7 @@ func (s *subworkflowHandler) DoInlineSubWorkflow(ctx context.Context, nCtx handl
 
 	if state.HasFailed() {
 		if w.GetOnFailureNode() != nil {
-			// TODO ssignh: this is supposed to be failing
+			// TODO ssingh: this is supposed to be failing
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(errors.SubWorkflowExecutionFailed, state.Err.Error(), nil)), err
 		}
 
@@ -46,7 +46,7 @@ func (s *subworkflowHandler) DoInlineSubWorkflow(ctx context.Context, nCtx handl
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(errors.SubWorkflowExecutionFailed, "No end node found in subworkflow.", nil)), err
 			}
 
-			sourcePath := v1alpha1.GetOutputsFile(endNodeStatus.GetDataDir())
+			sourcePath := v1alpha1.GetOutputsFile(endNodeStatus.GetOutputDir())
 			if metadata, err := store.Head(ctx, sourcePath); err == nil {
 				if !metadata.Exists() {
 					errMsg := fmt.Sprintf("Subworkflow is expected to produce outputs but no outputs file was written to %v.", sourcePath)
