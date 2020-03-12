@@ -615,7 +615,6 @@ func TestLaunchPlanHandler_HandleAbort(t *testing.T) {
 
 	t.Run("abort-success", func(t *testing.T) {
 		mockLPExec := &mocks.Executor{}
-		// mockStore := storage.NewCompositeDataStore(storage.URLPathConstructor{}, storage.NewDefaultProtobufStore(utils.FailingRawStore{}, promutils.NewTestScope()))
 		mockLPExec.On("Kill",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
