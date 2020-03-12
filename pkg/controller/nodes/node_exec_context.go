@@ -48,7 +48,6 @@ type execContext struct {
 	enqueueOwner        func() error
 	w                   v1alpha1.ExecutableWorkflow
 	nodeLabels          map[string]string
-	//interruptible       bool
 }
 
 func (e execContext) EnqueueOwnerFunc() func() error {
@@ -109,10 +108,6 @@ func (e execContext) MaxDatasetSizeBytes() int64 {
 
 func (e execContext) GetLabels() map[string]string {
 	return e.nodeLabels
-}
-
-func (e execContext) IsInterruptible() bool {
-	return false
 }
 
 func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error) *execContext {
