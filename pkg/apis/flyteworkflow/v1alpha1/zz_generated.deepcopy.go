@@ -190,6 +190,9 @@ func (in *FlyteWorkflow) DeepCopyInto(out *FlyteWorkflow) {
 		*out = (*in).DeepCopy()
 	}
 	in.Status.DeepCopyInto(&out.Status)
+	if in.DataReferenceConstructor != nil {
+		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
+	}
 	return
 }
 
@@ -394,9 +397,9 @@ func (in *NodeSpec) DeepCopyInto(out *NodeSpec) {
 		*out = new(metav1.Duration)
 		**out = **in
 	}
-	if in.ActiveDeadlineSeconds != nil {
-		in, out := &in.ActiveDeadlineSeconds, &out.ActiveDeadlineSeconds
-		*out = new(int64)
+	if in.Interruptibe != nil {
+		in, out := &in.Interruptibe, &out.Interruptibe
+		*out = new(bool)
 		**out = **in
 	}
 	return
@@ -478,6 +481,9 @@ func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 		in, out := &in.DynamicNodeStatus, &out.DynamicNodeStatus
 		*out = new(DynamicNodeStatus)
 		**out = **in
+	}
+	if in.DataReferenceConstructor != nil {
+		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
 	}
 	return
 }
@@ -675,6 +681,9 @@ func (in *WorkflowStatus) DeepCopyInto(out *WorkflowStatus) {
 			}
 			(*out)[key] = outVal
 		}
+	}
+	if in.DataReferenceConstructor != nil {
+		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
 	}
 	return
 }

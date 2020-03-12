@@ -20,6 +20,7 @@ const TaskNameLabel = "task-name"
 
 type execMetadata struct {
 	v1alpha1.WorkflowMeta
+	interrutptible bool
 }
 
 func (e execMetadata) GetK8sServiceAccount() string {
@@ -28,6 +29,10 @@ func (e execMetadata) GetK8sServiceAccount() string {
 
 func (e execMetadata) GetOwnerID() types.NamespacedName {
 	return types.NamespacedName{Name: e.GetName(), Namespace: e.GetNamespace()}
+}
+
+func (e execMetadata) IsInterruptible() bool {
+	return e.interrutptible
 }
 
 type execContext struct {
@@ -43,6 +48,7 @@ type execContext struct {
 	enqueueOwner        func() error
 	w                   v1alpha1.ExecutableWorkflow
 	nodeLabels          map[string]string
+	//interruptible       bool
 }
 
 func (e execContext) EnqueueOwnerFunc() func() error {
@@ -105,8 +111,12 @@ func (e execContext) GetLabels() map[string]string {
 	return e.nodeLabels
 }
 
-func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error) *execContext {
-	md := execMetadata{WorkflowMeta: w}
+func (e execContext) IsInterruptible() bool {
+	return false
+}
+
+func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error) *execContext {
+	md := execMetadata{WorkflowMeta: w, interrutptible: interruptible}
 
 	// Copying the labels before updating it for this node
 	nodeLabels := make(map[string]string)
@@ -152,6 +162,11 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1
 		return nil
 	}
 
+	interrutible := w.IsInterruptible()
+	if n.IsInterruptible() != nil {
+		interrutible = *n.IsInterruptible()
+	}
+
 	return newNodeExecContext(ctx, c.store, w, n, s,
 		ioutils.NewCachedInputReader(
 			ctx,
@@ -165,6 +180,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1
 				),
 			),
 		),
+		interrutible,
 		c.maxDatasetSizeBytes,
 		&taskEventRecorder{TaskEventRecorder: c.taskRecorder},
 		tr,
