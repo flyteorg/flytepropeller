@@ -190,9 +190,6 @@ func (in *FlyteWorkflow) DeepCopyInto(out *FlyteWorkflow) {
 		*out = (*in).DeepCopy()
 	}
 	in.Status.DeepCopyInto(&out.Status)
-	if in.DataReferenceConstructor != nil {
-		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
-	}
 	return
 }
 
@@ -482,9 +479,6 @@ func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 		*out = new(DynamicNodeStatus)
 		**out = **in
 	}
-	if in.DataReferenceConstructor != nil {
-		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
-	}
 	return
 }
 
@@ -681,9 +675,6 @@ func (in *WorkflowStatus) DeepCopyInto(out *WorkflowStatus) {
 			}
 			(*out)[key] = outVal
 		}
-	}
-	if in.DataReferenceConstructor != nil {
-		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
 	}
 	return
 }
