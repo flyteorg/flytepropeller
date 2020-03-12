@@ -374,6 +374,8 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			return executors.NodeStatusUndefined, err
 		}
 
+		// NOTE: It is important to increment attempts only after abort has been called. Increment attempt mutates the state
+		// Attempt is used throughout the system to determine the idempotent resource version.
 		nodeStatus.IncrementAttempts()
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying")
 		// We are going to retry in the next round, so we should clear all current state
