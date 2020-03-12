@@ -374,6 +374,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			return executors.NodeStatusUndefined, err
 		}
 
+		nodeStatus.IncrementAttempts()
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying")
 		// We are going to retry in the next round, so we should clear all current state
 		nodeStatus.ClearSubNodeStatus()
@@ -399,7 +400,6 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	}
 
 	if p.GetPhase() == handler.EPhaseRetryableFailure {
-		nodeStatus.IncrementAttempts()
 		if p.GetErr() != nil && p.GetErr().GetKind() == core.ExecutionError_SYSTEM {
 			nodeStatus.IncrementSystemFailures()
 		}
