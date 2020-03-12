@@ -192,23 +192,6 @@ func (s *subworkflowHandler) HandleAbort(ctx context.Context, nCtx handler.NodeE
 	return s.nodeExecutor.AbortHandler(ctx, contextualSubWorkflow, startNode, reason)
 }
 
-func (s *subworkflowHandler) HandleFinalize(ctx context.Context, nCtx handler.NodeExecutionContext, w v1alpha1.ExecutableWorkflow, workflowID v1alpha1.WorkflowID) error {
-	subWorkflow := w.FindSubWorkflow(workflowID)
-	if subWorkflow == nil {
-		return fmt.Errorf("no sub workflow [%s] found in node [%s]", workflowID, nCtx.NodeID())
-	}
-
-	nodeStatus := w.GetNodeExecutionStatus(ctx, nCtx.NodeID())
-	contextualSubWorkflow := executors.NewSubContextualWorkflow(w, subWorkflow, nodeStatus)
-
-	startNode := w.StartNode()
-	if startNode == nil {
-		return fmt.Errorf("no sub workflow [%s] found in node [%s]", workflowID, nCtx.NodeID())
-	}
-
-	return s.nodeExecutor.FinalizeHandler(ctx, contextualSubWorkflow, startNode)
-}
-
 func newSubworkflowHandler(nodeExecutor executors.Node) subworkflowHandler {
 	return subworkflowHandler{
 		nodeExecutor: nodeExecutor,
