@@ -32,10 +32,10 @@ func newMetrics(scope promutils.Scope) metrics {
 }
 
 func (w *workflowNodeHandler) FinalizeRequired() bool {
-	return false
+	return true
 }
 
-func (w *workflowNodeHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
+func (w *workflowNodeHandler) Setup(_ context.Context, _ handler.SetupContext) error {
 	return nil
 }
 
@@ -94,18 +94,24 @@ func (w *workflowNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecut
 	wf := nCtx.Workflow()
 	wfNode := nCtx.Node().GetWorkflowNode()
 	if wfNode.GetSubWorkflowRef() != nil {
-		return w.subWfHandler.HandleAbort(ctx, nCtx, wf, *wfNode.GetSubWorkflowRef())
+		return w.subWfHandler.HandleAbort(ctx, nCtx, wf, *wfNode.GetSubWorkflowRef(), reason)
 	}
 
 	if wfNode.GetLaunchPlanRefID() != nil {
-		return w.lpHandler.HandleAbort(ctx, wf, nCtx.Node())
+		return w.lpHandler.HandleAbort(ctx, wf, nCtx.Node(), reason)
 	}
 	return nil
 }
 
-func (w *workflowNodeHandler) Finalize(ctx context.Context, executionContext handler.NodeExecutionContext) error {
-	logger.Debugf(ctx, "WorkflowNode::Finalizer: nothing to do")
-	return nil
+func (w *workflowNodeHandler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
+	if nCtx.Node().GetWorkflowNode().GetSubWorkflowRef() == nil {
+		logger.Infof(ctx, "finalize for workflowNode:LaunchPlanRef is a noop (no finalize required)")
+		return nil
+	}
+	logger.Info(ctx, "Finalizing Subworkflow")
+	wf := nCtx.Workflow()
+	wfNode := nCtx.Node().GetWorkflowNode()
+	return w.subWfHandler.HandleFinalize(ctx, nCtx, wf, *wfNode.GetSubWorkflowRef())
 }
 
 func New(executor executors.Node, workflowLauncher launchplan.Executor, scope promutils.Scope) handler.Node {
