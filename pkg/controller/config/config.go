@@ -71,6 +71,7 @@ type Config struct {
 	MaxDatasetSizeBytes int64                `json:"max-output-size-bytes" pflag:",Maximum size of outputs per task"`
 	KubeConfig          KubeClientConfig     `json:"kube-client-config" pflag:",Configuration to control the Kubernetes client"`
 	NodeConfig          NodeConfig           `json:"node-config,omitempty" pflag:",config for a workflow node"`
+	InterruptibleConfig InterruptibleConfig  `json:"interruptible-config,omitempty" pflag:",Config for interruptible"`
 }
 
 type KubeClientConfig struct {
@@ -148,6 +149,11 @@ type LeaderElectionConfig struct {
 
 	// RetryPeriod is the duration the LeaderElector clients should wait between tries of actions.
 	RetryPeriod config.Duration `json:"retry-period" pflag:",Duration the LeaderElector clients should wait between tries of actions."`
+}
+
+// Contains values to use for interruptible
+type InterruptibleConfig struct {
+	InterruptibleSelector string `json:"interruptible-selector" pflag:", Label to be used for interruptible nodes"`
 }
 
 // Extracts the Configuration from the global config module in flytestdlib and returns the corresponding type-casted object.

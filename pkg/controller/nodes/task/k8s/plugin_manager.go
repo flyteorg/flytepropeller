@@ -82,6 +82,13 @@ func AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o k8s.Resource
 	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
 	o.SetOwnerReferences([]metav1.OwnerReference{taskCtx.GetOwnerReference()})
 	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
+
+	if taskCtx.IsInterruptible() {
+		// Set NodeLabel
+	} else {
+		// Set toleration
+	}
+
 	if cfg.InjectFinalizer {
 		f := append(o.GetFinalizers(), finalizer)
 		o.SetFinalizers(f)
