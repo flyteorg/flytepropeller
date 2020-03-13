@@ -14,9 +14,9 @@ import (
 
 type TaskReader struct{}
 
-func (i TaskReader) Read(ctx context.Context) (*core.TaskTemplate, error) { return nil, nil }
-func (i TaskReader) GetTaskType() v1alpha1.TaskType                       { return "" }
-func (i TaskReader) GetTaskID() *core.Identifier {
+func (t TaskReader) Read(ctx context.Context) (*core.TaskTemplate, error) { return nil, nil }
+func (t TaskReader) GetTaskType() v1alpha1.TaskType                       { return "" }
+func (t TaskReader) GetTaskID() *core.Identifier {
 	return &core.Identifier{Project: "p", Domain: "d", Name: "task-name"}
 }
 
