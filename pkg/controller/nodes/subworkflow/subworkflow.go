@@ -184,7 +184,7 @@ func (s *subworkflowHandler) HandleAbort(ctx context.Context, nCtx handler.NodeE
 	nodeStatus := w.GetNodeExecutionStatus(ctx, nCtx.NodeID())
 	contextualSubWorkflow := executors.NewSubContextualWorkflow(w, subWorkflow, nodeStatus)
 
-	startNode := w.StartNode()
+	startNode := contextualSubWorkflow.StartNode()
 	if startNode == nil {
 		return fmt.Errorf("no sub workflow [%s] found in node [%s]", workflowID, nCtx.NodeID())
 	}
