@@ -17,10 +17,12 @@ import (
 
 const NodeIDLabel = "node-id"
 const TaskNameLabel = "task-name"
+const NodeInterruptibleLabel = "interruptible"
 
 type execMetadata struct {
 	v1alpha1.WorkflowMeta
 	interrutptible bool
+	nodeLabels     map[string]string
 }
 
 func (e execMetadata) GetK8sServiceAccount() string {
@@ -35,6 +37,10 @@ func (e execMetadata) IsInterruptible() bool {
 	return e.interrutptible
 }
 
+func (e execMetadata) GetLabels() map[string]string {
+	return e.nodeLabels
+}
+
 type execContext struct {
 	store               *storage.DataStore
 	tr                  handler.TaskReader
@@ -47,7 +53,6 @@ type execContext struct {
 	nsm                 *nodeStateManager
 	enqueueOwner        func() error
 	w                   v1alpha1.ExecutableWorkflow
-	nodeLabels          map[string]string
 }
 
 func (e execContext) EnqueueOwnerFunc() func() error {
@@ -106,22 +111,20 @@ func (e execContext) MaxDatasetSizeBytes() int64 {
 	return e.maxDatasetSizeBytes
 }
 
-func (e execContext) GetLabels() map[string]string {
-	return e.nodeLabels
-}
-
 func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error) *execContext {
 	md := execMetadata{WorkflowMeta: w, interrutptible: interruptible}
 
 	// Copying the labels before updating it for this node
 	nodeLabels := make(map[string]string)
-	for k, v := range md.GetLabels() {
+	for k, v := range w.GetLabels() {
 		nodeLabels[k] = v
 	}
 	nodeLabels[NodeIDLabel] = utils.SanitizeLabelValue(node.GetID())
 	if tr != nil && tr.GetTaskID() != nil {
 		nodeLabels[TaskNameLabel] = utils.SanitizeLabelValue(tr.GetTaskID().Name)
 	}
+	nodeLabels[NodeInterruptibleLabel] = interruptible
+	md.nodeLabels = nodeLabels
 
 	return &execContext{
 		md:                  md,
@@ -135,7 +138,6 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.
 		nsm:                 nsm,
 		enqueueOwner:        enqueueOwner,
 		w:                   w,
-		nodeLabels:          nodeLabels,
 	}
 }
 
