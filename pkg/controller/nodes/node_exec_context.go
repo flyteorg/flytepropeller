@@ -3,6 +3,7 @@ package nodes
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
@@ -114,7 +115,7 @@ func (e execContext) MaxDatasetSizeBytes() int64 {
 func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error) *execContext {
 	md := execMetadata{WorkflowMeta: w, interrutptible: interruptible}
 
-	// Copying the labels before updating it for this node
+	// Copy the wf labels before adding node specific labels.
 	nodeLabels := make(map[string]string)
 	for k, v := range w.GetLabels() {
 		nodeLabels[k] = v
@@ -123,7 +124,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.
 	if tr != nil && tr.GetTaskID() != nil {
 		nodeLabels[TaskNameLabel] = utils.SanitizeLabelValue(tr.GetTaskID().Name)
 	}
-	nodeLabels[NodeInterruptibleLabel] = interruptible
+	nodeLabels[NodeInterruptibleLabel] = strconv.FormatBool(interruptible)
 	md.nodeLabels = nodeLabels
 
 	return &execContext{
@@ -162,6 +163,12 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1
 	interrutible := w.IsInterruptible()
 	if n.IsInterruptible() != nil {
 		interrutible = *n.IsInterruptible()
+	}
+
+	// a node is not considered interruptible when the system failures exceed the configured threshold
+	if s.GetSystemFailures() > c.interruptibleFailureThreshold {
+		interrutible = false
+		c.metrics.InterruptibleFailureThresholdHit.Inc(ctx)
 	}
 
 	return newNodeExecContext(ctx, c.store, w, n, s,

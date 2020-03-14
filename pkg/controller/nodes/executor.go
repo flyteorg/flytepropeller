@@ -32,12 +32,13 @@ import (
 )
 
 type nodeMetrics struct {
-	Scope              promutils.Scope
-	FailureDuration    labeled.StopWatch
-	SuccessDuration    labeled.StopWatch
-	ResolutionFailure  labeled.Counter
-	InputsWriteFailure labeled.Counter
-	TimedOutFailure    labeled.Counter
+	Scope                            promutils.Scope
+	FailureDuration                  labeled.StopWatch
+	SuccessDuration                  labeled.StopWatch
+	ResolutionFailure                labeled.Counter
+	InputsWriteFailure               labeled.Counter
+	TimedOutFailure                  labeled.Counter
+	InterruptibleFailureThresholdHit labeled.Counter
 
 	// Measures the latency between the last parent node stoppedAt time and current node's queued time.
 	TransitionLatency labeled.StopWatch
@@ -60,6 +61,7 @@ type nodeExecutor struct {
 	defaultExecutionDeadline        time.Duration
 	defaultActiveDeadline           time.Duration
 	maxNodeRetriesForSystemFailures uint32
+	interruptibleFailureThreshold   uint32
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -720,21 +722,23 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		taskRecorder:        events.NewTaskEventRecorder(eventSink, scope.NewSubScope("task")),
 		maxDatasetSizeBytes: maxDatasetSize,
 		metrics: &nodeMetrics{
-			Scope:                  nodeScope,
-			FailureDuration:        labeled.NewStopWatch("failure_duration", "Indicates the total execution time of a failed workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			SuccessDuration:        labeled.NewStopWatch("success_duration", "Indicates the total execution time of a successful workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			InputsWriteFailure:     labeled.NewCounter("inputs_write_fail", "Indicates failure in writing node inputs to metastore", nodeScope),
-			TimedOutFailure:        labeled.NewCounter("timeout_fail", "Indicates failure due to timeout", nodeScope),
-			ResolutionFailure:      labeled.NewCounter("input_resolve_fail", "Indicates failure in resolving node inputs", nodeScope),
-			TransitionLatency:      labeled.NewStopWatch("transition_latency", "Measures the latency between the last parent node stoppedAt time and current node's queued time.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			QueuingLatency:         labeled.NewStopWatch("queueing_latency", "Measures the latency between the time a node's been queued to the time the handler reported the executable moved to running state", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			NodeExecutionTime:      labeled.NewStopWatch("node_exec_latency", "Measures the time taken to execute one node, a node can be complex so it may encompass sub-node latency.", time.Microsecond, nodeScope, labeled.EmitUnlabeledMetric),
-			NodeInputGatherLatency: labeled.NewStopWatch("node_input_latency", "Measures the latency to aggregate inputs and check readiness of a node", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			Scope:                            nodeScope,
+			FailureDuration:                  labeled.NewStopWatch("failure_duration", "Indicates the total execution time of a failed workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			SuccessDuration:                  labeled.NewStopWatch("success_duration", "Indicates the total execution time of a successful workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			InputsWriteFailure:               labeled.NewCounter("inputs_write_fail", "Indicates failure in writing node inputs to metastore", nodeScope),
+			TimedOutFailure:                  labeled.NewCounter("timeout_fail", "Indicates failure due to timeout", nodeScope),
+			InterruptibleFailureThresholdHit: labeled.NewCounter("interrupt_threshold", "Indicates the node interruptible disabled because it hit max failure count", nodeScope),
+			ResolutionFailure:                labeled.NewCounter("input_resolve_fail", "Indicates failure in resolving node inputs", nodeScope),
+			TransitionLatency:                labeled.NewStopWatch("transition_latency", "Measures the latency between the last parent node stoppedAt time and current node's queued time.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			QueuingLatency:                   labeled.NewStopWatch("queueing_latency", "Measures the latency between the time a node's been queued to the time the handler reported the executable moved to running state", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			NodeExecutionTime:                labeled.NewStopWatch("node_exec_latency", "Measures the time taken to execute one node, a node can be complex so it may encompass sub-node latency.", time.Microsecond, nodeScope, labeled.EmitUnlabeledMetric),
+			NodeInputGatherLatency:           labeled.NewStopWatch("node_input_latency", "Measures the latency to aggregate inputs and check readiness of a node", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 		},
 		outputResolver:                  NewRemoteFileOutputResolver(store),
 		defaultExecutionDeadline:        nodeConfig.DefaultDeadlines.DefaultNodeExecutionDeadline.Duration,
 		defaultActiveDeadline:           nodeConfig.DefaultDeadlines.DefaultNodeActiveDeadline.Duration,
-		maxNodeRetriesForSystemFailures: nodeConfig.MaxNodeRetriesForSystemFailures,
+		maxNodeRetriesForSystemFailures: nodeConfig.MaxNodeRetriesOnSystemFailures,
+		interruptibleFailureThreshold:   nodeConfig.InterruptibleFailureThreshold,
 	}
 	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, kubeClient, catalogClient, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory
