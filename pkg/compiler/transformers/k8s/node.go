@@ -58,8 +58,9 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 	}
 
 	var interruptible *bool
-	if n.Metadata != nil && n.Metadata.GetInterruptibleValue() != nil {
-		*interruptible = n.Metadata.GetInterruptible()
+	if n.GetMetadata() != nil && n.GetMetadata().GetInterruptibleValue() != nil {
+		interruptVal := n.GetMetadata().GetInterruptible()
+		interruptible = &interruptVal
 	}
 
 	nodeSpec := &v1alpha1.NodeSpec{

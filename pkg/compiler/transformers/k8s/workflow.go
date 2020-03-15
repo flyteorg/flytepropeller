@@ -168,10 +168,11 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 			Namespace: namespace,
 			Labels:    map[string]string{},
 		},
-		Inputs:       &v1alpha1.Inputs{LiteralMap: inputs},
-		WorkflowSpec: primarySpec,
-		SubWorkflows: subwfs,
-		Tasks:        buildTasks(tasks, errs.NewScope()),
+		Inputs:        &v1alpha1.Inputs{LiteralMap: inputs},
+		WorkflowSpec:  primarySpec,
+		SubWorkflows:  subwfs,
+		Tasks:         buildTasks(tasks, errs.NewScope()),
+		Interruptible: wf.GetMetadataDefaults().GetInterruptible(),
 	}
 
 	var err error

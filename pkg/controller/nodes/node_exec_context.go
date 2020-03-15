@@ -165,8 +165,8 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1
 		interrutible = *n.IsInterruptible()
 	}
 
-	// a node is not considered interruptible when the system failures exceed the configured threshold
-	if s.GetSystemFailures() > c.interruptibleFailureThreshold {
+	// a node is not considered interruptible if the system failures have exceeded the configured threshold
+	if interrutible && s.GetSystemFailures() >= c.interruptibleFailureThreshold {
 		interrutible = false
 		c.metrics.InterruptibleFailureThresholdHit.Inc(ctx)
 	}
