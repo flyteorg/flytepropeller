@@ -29,14 +29,14 @@ type gcMetrics struct {
 // Garbage collector is an active background cleanup service, that deletes all workflows that are completed and older
 // than the configured TTL
 type GarbageCollector struct {
-	wfClient         v1alpha1.FlyteworkflowV1alpha1Interface
-	namespaceClient  corev1.NamespaceInterface
-	ttlHours         int
-	interval         time.Duration
-	clk              clock.Clock
-	metrics          *gcMetrics
-	namespace        string
-	namespaceFilterR *regexp.Regexp
+	wfClient              v1alpha1.FlyteworkflowV1alpha1Interface
+	namespaceClient       corev1.NamespaceInterface
+	ttlHours              int
+	interval              time.Duration
+	clk                   clock.Clock
+	metrics               *gcMetrics
+	namespace             string
+	namespaceFilterRegexp *regexp.Regexp
 }
 
 // Issues a background deletion command with label selector for all completed workflows outside of the retention period
@@ -53,8 +53,8 @@ func (g *GarbageCollector) deleteWorkflows(ctx context.Context) error {
 		for _, n := range namespaceList.Items {
 			namespaceCtx := contextutils.WithNamespace(ctx, n.GetName())
 
-			if g.namespaceFilterR != nil && !g.namespaceFilterR.MatchString(n.GetName()) {
-				logger.Infof(namespaceCtx, "Skip namespace: [%s], filtered out by regexp: [%s]", n.GetName(), g.namespaceFilterR)
+			if g.namespaceFilterRegexp != nil && !g.namespaceFilterRegexp.MatchString(n.GetName()) {
+				logger.Infof(namespaceCtx, "Skip namespace: [%s], filtered out by regexp: [%s]", n.GetName(), g.namespaceFilterRegexp)
 				continue
 			}
 
@@ -148,8 +148,8 @@ func NewGarbageCollector(cfg *config.Config, scope promutils.Scope, clk clock.Cl
 			gcRoundSuccess: labeled.NewCounter("gc_success", "successful executions of delete request", scope),
 			gcRoundFailure: labeled.NewCounter("gc_failure", "failure to delete workflows", scope),
 		},
-		clk:              clk,
-		namespace:        cfg.LimitNamespace,
-		namespaceFilterR: namespaceFilterR,
+		clk:                   clk,
+		namespace:             cfg.LimitNamespace,
+		namespaceFilterRegexp: namespaceFilterR,
 	}, nil
 }

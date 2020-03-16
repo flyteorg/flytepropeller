@@ -54,10 +54,10 @@ type Controller struct {
 	workflowStore       workflowstore.FlyteWorkflow
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
-	recorder         record.EventRecorder
-	metrics          *metrics
-	leaderElector    *leaderelection.LeaderElector
-	namespaceFilterR *regexp.Regexp
+	recorder              record.EventRecorder
+	metrics               *metrics
+	leaderElector         *leaderelection.LeaderElector
+	namespaceFilterRegexp *regexp.Regexp
 }
 
 // Runs either as a leader -if configured- or as a standalone process.
@@ -109,8 +109,8 @@ func (c *Controller) onStartedLeading(ctx context.Context) {
 
 // Skip the workflow if its namespace does not match namespace filter when defined
 func (c *Controller) skipWorkflow(ctx context.Context, namespace, name string) bool {
-	if c.namespaceFilterR != nil && !c.namespaceFilterR.MatchString(namespace) {
-		logger.Infof(ctx, "Skip workflow [%s] in namespace [%s], filtered out by namespace filter regexp [%s]", name, namespace, c.namespaceFilterR)
+	if c.namespaceFilterRegexp != nil && !c.namespaceFilterRegexp.MatchString(namespace) {
+		logger.Infof(ctx, "Skip workflow [%s] in namespace [%s], filtered out by namespace filter regexp [%s]", name, namespace, c.namespaceFilterRegexp)
 		return true
 	}
 	return false
@@ -267,11 +267,11 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, errors.Wrapf(err, "failed to initialize resource lock.")
 	}
 	controller := &Controller{
-		metrics:          newControllerMetrics(scope),
-		recorder:         eventRecorder,
-		gc:               gc,
-		numWorkers:       cfg.Workers,
-		namespaceFilterR: namespaceFilterR,
+		metrics:               newControllerMetrics(scope),
+		recorder:              eventRecorder,
+		gc:                    gc,
+		numWorkers:            cfg.Workers,
+		namespaceFilterRegexp: namespaceFilterR,
 	}
 
 	lock, err := newResourceLock(kubeclientset.CoreV1(), kubeclientset.CoordinationV1(), eventRecorder, cfg.LeaderElection)
