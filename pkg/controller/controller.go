@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"regexp"
 
 	errors3 "github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	stdErrs "github.com/lyft/flytestdlib/errors"
@@ -53,9 +54,10 @@ type Controller struct {
 	workflowStore       workflowstore.FlyteWorkflow
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
-	recorder      record.EventRecorder
-	metrics       *metrics
-	leaderElector *leaderelection.LeaderElector
+	recorder         record.EventRecorder
+	metrics          *metrics
+	leaderElector    *leaderelection.LeaderElector
+	namespaceFilterR *regexp.Regexp
 }
 
 // Runs either as a leader -if configured- or as a standalone process.
@@ -105,6 +107,15 @@ func (c *Controller) onStartedLeading(ctx context.Context) {
 	cancelNow()
 }
 
+// Skip the workflow if its namespace does not match namespace filter when defined
+func (c *Controller) skipWorkflow(ctx context.Context, namespace, name string) bool {
+	if c.namespaceFilterR != nil && !c.namespaceFilterR.MatchString(namespace) {
+		logger.Infof(ctx, "Skip workflow [%s] in namespace [%s], filtered out by namespace filter regexp [%s]", name, namespace, c.namespaceFilterR)
+		return true
+	}
+	return false
+}
+
 // enqueueFlyteWorkflow takes a FlyteWorkflow resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
 // passed resources of any type other than FlyteWorkflow.
@@ -116,6 +127,9 @@ func (c *Controller) enqueueFlyteWorkflow(obj interface{}) {
 		return
 	}
 	key := wf.GetK8sWorkflowID()
+	if c.skipWorkflow(ctx, key.Namespace, key.Name) {
+		return
+	}
 	logger.Infof(ctx, "==> Enqueueing workflow [%v]", key)
 	c.workQueue.Add(key.String())
 }
@@ -157,9 +171,13 @@ func (c *Controller) getWorkflowUpdatesHandler() cache.ResourceEventHandler {
 				return
 			}
 
-			_, name, err := cache.SplitMetaNamespaceKey(key)
+			namespace, name, err := cache.SplitMetaNamespaceKey(key)
 			if err != nil {
 				logger.Errorf(context.TODO(), "Unable to split enqueued key into namespace/execId. Error[%v]", err)
+				return
+			}
+
+			if c.skipWorkflow(context.TODO(), namespace, name) {
 				return
 			}
 
@@ -220,12 +238,24 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		wfLauncher = launchplan.NewFailFastLaunchPlanExecutor()
 	}
 
+	namespaceFilterR := func() *regexp.Regexp {
+		if cfg.NamespaceFilter != "" {
+			r, err := regexp.Compile(cfg.NamespaceFilter)
+			if err != nil {
+				logger.Warningf(ctx, "[%s] is not a valid regular expression, skipping namespace filtering. Error : [%v]", cfg.NamespaceFilter, err)
+				return nil
+			}
+			return r
+		}
+		return nil
+	}()
+
 	logger.Info(ctx, "Setting up event sink and recorder")
 	eventSink, err := events.ConstructEventSink(ctx, events.GetConfig(ctx))
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create EventSink [%v], error %v", events.GetConfig(ctx).Type, err)
 	}
-	gc, err := NewGarbageCollector(cfg, scope, clock.RealClock{}, kubeclientset.CoreV1().Namespaces(), flytepropellerClientset.FlyteworkflowV1alpha1(), cfg.LimitNamespace)
+	gc, err := NewGarbageCollector(cfg, scope, clock.RealClock{}, kubeclientset.CoreV1().Namespaces(), flytepropellerClientset.FlyteworkflowV1alpha1(), namespaceFilterR)
 	if err != nil {
 		logger.Errorf(ctx, "failed to initialize GC for workflows")
 		return nil, errors.Wrapf(err, "failed to initialize WF GC")
@@ -237,10 +267,11 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, errors.Wrapf(err, "failed to initialize resource lock.")
 	}
 	controller := &Controller{
-		metrics:    newControllerMetrics(scope),
-		recorder:   eventRecorder,
-		gc:         gc,
-		numWorkers: cfg.Workers,
+		metrics:          newControllerMetrics(scope),
+		recorder:         eventRecorder,
+		gc:               gc,
+		numWorkers:       cfg.Workers,
+		namespaceFilterR: namespaceFilterR,
 	}
 
 	lock, err := newResourceLock(kubeclientset.CoreV1(), kubeclientset.CoordinationV1(), eventRecorder, cfg.LeaderElection)

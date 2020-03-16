@@ -47,6 +47,7 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "workflow-reeval-duration"), defaultConfig.WorkflowReEval.String(), "Frequency of re-evaluating workflows")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "downstream-eval-duration"), defaultConfig.DownstreamEval.String(), "Frequency of re-evaluating downstream tasks")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "limit-namespace"), defaultConfig.LimitNamespace, "Namespaces to watch for this propeller")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "namespace-filter"), defaultConfig.NamespaceFilter, "Regular expression to apply fine grain filter when watching all namespaces")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "prof-port"), defaultConfig.ProfilerPort.String(), "Profiler port")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "metadata-prefix"), defaultConfig.MetadataPrefix, "MetadataPrefix should be used if all the metadata for Flyte executions should be stored under a specific prefix in CloudStorage. If not specified,  the data will be stored in the base container directly.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "queue.type"), defaultConfig.Queue.Type, "Type of composite queue to use for the WorkQueue")

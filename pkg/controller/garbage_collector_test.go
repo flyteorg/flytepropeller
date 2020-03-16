@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"regexp"
 	"sync"
 	"testing"
 	"time"
@@ -21,30 +22,33 @@ import (
 func TestNewGarbageCollector(t *testing.T) {
 	t.Run("enabled", func(t *testing.T) {
 		cfg := &config2.Config{
-			GCInterval:    config.Duration{Duration: time.Minute * 30},
-			MaxTTLInHours: 2,
+			GCInterval:     config.Duration{Duration: time.Minute * 30},
+			MaxTTLInHours:  2,
+			LimitNamespace: "flyte",
 		}
-		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), clock.NewFakeClock(time.Now()), nil, nil, "flyte")
+		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), clock.NewFakeClock(time.Now()), nil, nil, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, gc.ttlHours)
 	})
 
 	t.Run("enabledBeyond23Hours", func(t *testing.T) {
 		cfg := &config2.Config{
-			GCInterval:    config.Duration{Duration: time.Minute * 30},
-			MaxTTLInHours: 24,
+			GCInterval:     config.Duration{Duration: time.Minute * 30},
+			MaxTTLInHours:  24,
+			LimitNamespace: "flyte",
 		}
-		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), clock.NewFakeClock(time.Now()), nil, nil, "flyte")
+		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), clock.NewFakeClock(time.Now()), nil, nil, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, 23, gc.ttlHours)
 	})
 
 	t.Run("ttl0", func(t *testing.T) {
 		cfg := &config2.Config{
-			GCInterval:    config.Duration{Duration: time.Minute * 30},
-			MaxTTLInHours: 0,
+			GCInterval:     config.Duration{Duration: time.Minute * 30},
+			MaxTTLInHours:  0,
+			LimitNamespace: "flyte",
 		}
-		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), nil, nil, nil, "flyte")
+		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), nil, nil, nil, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, gc.ttlHours)
 		assert.NoError(t, gc.StartGC(context.TODO()))
@@ -53,10 +57,11 @@ func TestNewGarbageCollector(t *testing.T) {
 
 	t.Run("ttl-1", func(t *testing.T) {
 		cfg := &config2.Config{
-			GCInterval:    config.Duration{Duration: time.Minute * 30},
-			MaxTTLInHours: -1,
+			GCInterval:     config.Duration{Duration: time.Minute * 30},
+			MaxTTLInHours:  -1,
+			LimitNamespace: "flyte",
 		}
-		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), nil, nil, nil, "flyte")
+		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), nil, nil, nil, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, -1, gc.ttlHours)
 		assert.NoError(t, gc.StartGC(context.TODO()))
@@ -129,15 +134,17 @@ func TestGarbageCollector_StartGC(t *testing.T) {
 			}, nil
 		},
 	}
-	cfg := &config2.Config{
-		GCInterval:    config.Duration{Duration: time.Minute * 30},
-		MaxTTLInHours: 2,
-	}
 
 	t.Run("one-namespace", func(t *testing.T) {
+		cfg := &config2.Config{
+			GCInterval:     config.Duration{Duration: time.Minute * 30},
+			MaxTTLInHours:  2,
+			LimitNamespace: "flyte",
+		}
+
 		fakeClock := clock.NewFakeClock(b)
 		mockNamespaceInvoked = false
-		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), fakeClock, mockNamespaceClient, mockClient, "flyte")
+		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), fakeClock, mockNamespaceClient, mockClient, nil)
 		assert.NoError(t, err)
 		wg.Add(1)
 		ctx := context.TODO()
@@ -150,9 +157,14 @@ func TestGarbageCollector_StartGC(t *testing.T) {
 	})
 
 	t.Run("all-namespace", func(t *testing.T) {
+		cfg := &config2.Config{
+			GCInterval:    config.Duration{Duration: time.Minute * 30},
+			MaxTTLInHours: 2,
+		}
+
 		fakeClock := clock.NewFakeClock(b)
 		mockNamespaceInvoked = false
-		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), fakeClock, mockNamespaceClient, mockClient, "all")
+		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), fakeClock, mockNamespaceClient, mockClient, nil)
 		assert.NoError(t, err)
 		wg.Add(2)
 		ctx := context.TODO()
@@ -163,4 +175,26 @@ func TestGarbageCollector_StartGC(t *testing.T) {
 		cancel()
 		assert.True(t, mockNamespaceInvoked)
 	})
+
+	t.Run("all-namespace-with-filter", func(t *testing.T) {
+		cfg := &config2.Config{
+			GCInterval:    config.Duration{Duration: time.Minute * 30},
+			MaxTTLInHours: 2,
+		}
+
+		fakeClock := clock.NewFakeClock(b)
+		mockNamespaceInvoked = false
+		r, _ := regexp.Compile("^ns1$")
+		gc, err := NewGarbageCollector(cfg, promutils.NewTestScope(), fakeClock, mockNamespaceClient, mockClient, r)
+		assert.NoError(t, err)
+		wg.Add(1)
+		ctx := context.TODO()
+		ctx, cancel := context.WithCancel(ctx)
+		assert.NoError(t, gc.StartGC(ctx))
+		fakeClock.Step(time.Minute * 30)
+		wg.Wait()
+		cancel()
+		assert.True(t, mockNamespaceInvoked)
+	})
+
 }
