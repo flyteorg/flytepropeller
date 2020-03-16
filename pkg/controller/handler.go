@@ -3,13 +3,16 @@ package controller
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"runtime/debug"
 	"time"
+
+	"github.com/lyft/flytestdlib/contextutils"
+	"github.com/lyft/flytestdlib/promutils/labeled"
 
 	"github.com/lyft/flytepropeller/pkg/controller/config"
 	"github.com/lyft/flytepropeller/pkg/controller/workflowstore"
 
-	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
@@ -22,10 +25,10 @@ import (
 type propellerMetrics struct {
 	Scope                    promutils.Scope
 	DeepCopyTime             promutils.StopWatch
-	RawWorkflowTraversalTime promutils.StopWatch
-	SystemError              prometheus.Counter
-	AbortError               prometheus.Counter
-	PanicObserved            prometheus.Counter
+	RawWorkflowTraversalTime labeled.StopWatch
+	SystemError              labeled.Counter
+	AbortError               labeled.Counter
+	PanicObserved            labeled.Counter
 	RoundSkipped             prometheus.Counter
 	WorkflowNotFound         prometheus.Counter
 }
@@ -35,10 +38,10 @@ func newPropellerMetrics(scope promutils.Scope) *propellerMetrics {
 	return &propellerMetrics{
 		Scope:                    scope,
 		DeepCopyTime:             roundScope.MustNewStopWatch("deepcopy", "Total time to deep copy wf object", time.Millisecond),
-		RawWorkflowTraversalTime: roundScope.MustNewStopWatch("raw", "Total time to traverse the workflow", time.Millisecond),
-		SystemError:              roundScope.MustNewCounter("system_error", "Failure to reconcile a workflow, system error"),
-		AbortError:               roundScope.MustNewCounter("abort_error", "Failure to abort a workflow, system error"),
-		PanicObserved:            roundScope.MustNewCounter("panic", "Panic during handling or aborting workflow"),
+		RawWorkflowTraversalTime: labeled.NewStopWatch("raw", "Total time to traverse the workflow", time.Millisecond, roundScope, labeled.EmitUnlabeledMetric),
+		SystemError:              labeled.NewCounter("system_error", "Failure to reconcile a workflow, system error", roundScope, labeled.EmitUnlabeledMetric),
+		AbortError:               labeled.NewCounter("abort_error", "Failure to abort a workflow, system error", roundScope, labeled.EmitUnlabeledMetric),
+		PanicObserved:            labeled.NewCounter("panic", "Panic during handling or aborting workflow", roundScope, labeled.EmitUnlabeledMetric),
 		RoundSkipped:             roundScope.MustNewCounter("skipped", "Round Skipped because of stale workflow"),
 		WorkflowNotFound:         roundScope.MustNewCounter("not_found", "workflow not found in the cache"),
 	}
@@ -102,6 +105,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	wfDeepCopy := w.DeepCopy()
 	t.Stop()
 	ctx = contextutils.WithWorkflowID(ctx, wfDeepCopy.GetID())
+	ctx = contextutils.WithResourceVersion(ctx, wfDeepCopy.GetResourceVersion())
 
 	maxRetries := uint32(p.cfg.MaxWorkflowRetries)
 	if IsDeleted(wfDeepCopy) || (wfDeepCopy.Status.FailedAttempts > maxRetries) {
@@ -111,13 +115,13 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 				if r := recover(); r != nil {
 					stack := debug.Stack()
 					err = fmt.Errorf("panic when aborting workflow, Stack: [%s]", string(stack))
-					p.metrics.PanicObserved.Inc()
+					p.metrics.PanicObserved.Inc(ctx)
 				}
 			}()
 			err = p.workflowExecutor.HandleAbortedWorkflow(ctx, wfDeepCopy, maxRetries)
 		}()
 		if err != nil {
-			p.metrics.AbortError.Inc()
+			p.metrics.AbortError.Inc(ctx)
 			return err
 		}
 	} else {
@@ -133,26 +137,28 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			SetFinalizerIfEmpty(wfDeepCopy, FinalizerKey)
 
 			func() {
-				t := p.metrics.RawWorkflowTraversalTime.Start()
+				t := p.metrics.RawWorkflowTraversalTime.Start(ctx)
 				defer func() {
 					t.Stop()
 					if r := recover(); r != nil {
 						stack := debug.Stack()
-						err = fmt.Errorf("panic when aborting workflow, Stack: [%s]", string(stack))
-						p.metrics.PanicObserved.Inc()
+						err = fmt.Errorf("panic when reconciling workflow, Stack: [%s]", string(stack))
+						p.metrics.PanicObserved.Inc(ctx)
 					}
 				}()
 				err = p.workflowExecutor.HandleFlyteWorkflow(ctx, wfDeepCopy)
 			}()
 
 			if err != nil {
-				logger.Errorf(ctx, "Error when trying to reconcile workflow. Error [%v]", err)
+				logger.Errorf(ctx, "Error when trying to reconcile workflow. Error [%v]. Error Type[%v]. Is nill [%v]",
+					err, reflect.TypeOf(err))
+
 				// Let's mark these as system errors.
 				// We only want to increase failed attempts and discard any other partial changes to the CRD.
 				wfDeepCopy = w.DeepCopy()
 				wfDeepCopy.GetExecutionStatus().IncFailedAttempts()
 				wfDeepCopy.GetExecutionStatus().SetMessage(err.Error())
-				p.metrics.SystemError.Inc()
+				p.metrics.SystemError.Inc(ctx)
 			} else {
 				// No updates in the status we detected, we will skip writing to KubeAPI
 				if wfDeepCopy.Status.Equals(&w.Status) {
@@ -173,7 +179,8 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	// update the GetExecutionStatus block of the FlyteWorkflow resource. UpdateStatus will not
 	// allow changes to the Spec of the resource, which is ideal for ensuring
 	// nothing other than resource status has been updated.
-	return p.wfStore.Update(ctx, wfDeepCopy, workflowstore.PriorityClassCritical)
+	_, err = p.wfStore.Update(ctx, wfDeepCopy, workflowstore.PriorityClassCritical)
+	return err
 }
 
 func NewPropellerHandler(_ context.Context, cfg *config.Config, wfStore workflowstore.FlyteWorkflow, executor executors.Workflow, scope promutils.Scope) *Propeller {

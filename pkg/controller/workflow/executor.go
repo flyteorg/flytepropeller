@@ -90,14 +90,19 @@ func (c *workflowExecutor) handleReadyWorkflow(ctx context.Context, w *v1alpha1.
 	}
 	// Before starting the subworkflow, lets set the inputs for the Workflow. The inputs for a SubWorkflow are essentially
 	// Copy of the inputs to the Node
-	nodeStatus := w.GetNodeExecutionStatus(startNode.GetID())
+	nodeStatus := w.GetNodeExecutionStatus(ctx, startNode.GetID())
 	dataDir, err := c.store.ConstructReference(ctx, ref, startNode.GetID(), "data")
+	if err != nil {
+		return StatusFailing(errors.Wrapf(errors.CausedByError, w.GetID(), err, "failed to create metadata prefix for start node.")), nil
+	}
+	outputDir, err := c.store.ConstructReference(ctx, dataDir, "0")
 	if err != nil {
 		return StatusFailing(errors.Wrapf(errors.CausedByError, w.GetID(), err, "failed to create metadata prefix for start node.")), nil
 	}
 
 	logger.Infof(ctx, "Setting the MetadataDir for StartNode [%v]", dataDir)
 	nodeStatus.SetDataDir(dataDir)
+	nodeStatus.SetOutputDir(outputDir)
 	s, err := c.nodeExecutor.SetInputsForStartNode(ctx, w, inputs)
 	if err != nil {
 		return StatusReady, err
@@ -123,6 +128,10 @@ func (c *workflowExecutor) handleRunningWorkflow(ctx context.Context, w *v1alpha
 		logger.Infof(ctx, "Workflow has failed. Error [%s]", state.Err.Error())
 		return StatusFailing(state.Err), nil
 	}
+	if state.HasTimedOut() {
+		err := errors.Errorf(errors.RuntimeExecutionError, w.GetID(), "Workflow Node timed out")
+		return StatusFailing(err), nil
+	}
 	if state.IsComplete() {
 		return StatusSucceeding, nil
 	}
@@ -135,7 +144,7 @@ func (c *workflowExecutor) handleRunningWorkflow(ctx context.Context, w *v1alpha
 func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) (Status, error) {
 	contextualWf := executors.NewBaseContextualWorkflow(w)
 	// Best effort clean-up.
-	if err := c.cleanupRunningNodes(ctx, contextualWf); err != nil {
+	if err := c.cleanupRunningNodes(ctx, contextualWf, "Some node execution failed, auto-abort."); err != nil {
 		logger.Errorf(ctx, "Failed to propagate Abort for workflow:%v. Error: %v", w.ExecutionID.WorkflowExecutionIdentifier, err)
 	}
 
@@ -147,6 +156,10 @@ func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha
 		}
 		if state.HasFailed() {
 			return StatusFailed(state.Err), nil
+		}
+		if state.HasTimedOut() {
+			err := errors.Errorf(errors.RuntimeExecutionError, w.GetID(), "Workflow Node timed out")
+			return StatusFailed(err), nil
 		}
 		if state.PartiallyComplete() {
 			// Re-enqueue the workflow
@@ -160,10 +173,10 @@ func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha
 
 func (c *workflowExecutor) handleSucceedingWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) Status {
 	logger.Infof(ctx, "Workflow completed successfully")
-	endNodeStatus := w.GetNodeExecutionStatus(v1alpha1.EndNodeID)
+	endNodeStatus := w.GetNodeExecutionStatus(ctx, v1alpha1.EndNodeID)
 	if endNodeStatus.GetPhase() == v1alpha1.NodePhaseSucceeded {
-		if endNodeStatus.GetDataDir() != "" {
-			w.Status.SetOutputReference(v1alpha1.GetOutputsFile(endNodeStatus.GetDataDir()))
+		if endNodeStatus.GetOutputDir() != "" {
+			w.Status.SetOutputReference(v1alpha1.GetOutputsFile(endNodeStatus.GetOutputDir()))
 		}
 	}
 	return StatusSuccess
@@ -232,7 +245,7 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 			c.metrics.FailureDuration.Observe(ctx, wStatus.GetStartedAt().Time, wStatus.GetStoppedAt().Time)
 		case v1alpha1.WorkflowPhaseSucceeding:
 			wfEvent.Phase = core.WorkflowExecution_SUCCEEDING
-			endNodeStatus := wStatus.GetNodeExecutionStatus(v1alpha1.EndNodeID)
+			endNodeStatus := wStatus.GetNodeExecutionStatus(ctx, v1alpha1.EndNodeID)
 			// Workflow completion latency is recorded as the time it takes for the workflow to transition from end
 			// node started time to workflow success being sent to the control plane.
 			if endNodeStatus != nil && endNodeStatus.GetStartedAt() != nil {
@@ -284,8 +297,10 @@ func (c *workflowExecutor) Initialize(ctx context.Context) error {
 }
 
 func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) error {
-	logger.Infof(ctx, "Handling Workflow [%s], id: [%s], Phase [%s]", w.GetName(), w.GetExecutionID(), w.GetExecutionStatus().GetPhase().String())
+	logger.Infof(ctx, "Handling Workflow [%s], id: [%s], p [%s]", w.GetName(), w.GetExecutionID(), w.GetExecutionStatus().GetPhase().String())
 	defer logger.Infof(ctx, "Handling Workflow [%s] Done", w.GetName())
+
+	w.DataReferenceConstructor = c.store
 
 	wStatus := w.GetExecutionStatus()
 	// Initialize the Status if not already initialized
@@ -344,16 +359,20 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 }
 
 func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow, maxRetries uint32) error {
+	w.DataReferenceConstructor = c.store
+
 	if !w.Status.IsTerminated() {
+		reason := "User initiated workflow abort."
 		c.metrics.IncompleteWorkflowAborted.Inc(ctx)
 		var err error
 		if w.Status.FailedAttempts > maxRetries {
+			reason = fmt.Sprintf("max number of system retry attempts [%d/%d] exhausted - system failure.", w.Status.FailedAttempts, maxRetries)
 			err = errors.Errorf(errors.RuntimeExecutionError, w.GetID(), "max number of system retry attempts [%d/%d] exhausted. Last known status message: %v", w.Status.FailedAttempts, maxRetries, w.Status.Message)
 		}
 
 		// Best effort clean-up.
 		contextualWf := executors.NewBaseContextualWorkflow(w)
-		if err2 := c.cleanupRunningNodes(ctx, contextualWf); err2 != nil {
+		if err2 := c.cleanupRunningNodes(ctx, contextualWf, reason); err2 != nil {
 			logger.Errorf(ctx, "Failed to propagate Abort for workflow:%v. Error: %v", w.ExecutionID.WorkflowExecutionIdentifier, err2)
 		}
 
@@ -375,13 +394,13 @@ func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha
 	return nil
 }
 
-func (c *workflowExecutor) cleanupRunningNodes(ctx context.Context, w v1alpha1.ExecutableWorkflow) error {
+func (c *workflowExecutor) cleanupRunningNodes(ctx context.Context, w v1alpha1.ExecutableWorkflow, reason string) error {
 	startNode := w.StartNode()
 	if startNode == nil {
 		return errors.Errorf(errors.IllegalStateError, w.GetID(), "StartNode not found in running workflow?")
 	}
 
-	if err := c.nodeExecutor.AbortHandler(ctx, w, startNode); err != nil {
+	if err := c.nodeExecutor.AbortHandler(ctx, w, startNode, reason); err != nil {
 		return errors.Errorf(errors.CausedByError, w.GetID(), "Failed to propagate Abort for workflow. Error: %v", err)
 	}
 

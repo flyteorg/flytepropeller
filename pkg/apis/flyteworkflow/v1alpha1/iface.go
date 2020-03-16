@@ -3,12 +3,13 @@ package v1alpha1
 import (
 	"context"
 
+	"time"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	types2 "github.com/lyft/flyteplugins/go/tasks/v1/types"
 	"github.com/lyft/flytestdlib/storage"
 )
 
@@ -55,6 +56,8 @@ const (
 	NodePhaseFailed
 	NodePhaseSkipped
 	NodePhaseRetryableFailure
+	NodePhaseTimingOut
+	NodePhaseTimedOut
 )
 
 func (p NodePhase) String() string {
@@ -65,17 +68,24 @@ func (p NodePhase) String() string {
 		return "Queued"
 	case NodePhaseRunning:
 		return "Running"
+	case NodePhaseTimingOut:
+		return "NodePhaseTimingOut"
+	case NodePhaseTimedOut:
+		return "NodePhaseTimedOut"
 	case NodePhaseSucceeding:
 		return "Succeeding"
 	case NodePhaseSucceeded:
 		return "Succeeded"
 	case NodePhaseFailed:
 		return "Failed"
+	case NodePhaseFailing:
+		return "Failing"
 	case NodePhaseSkipped:
 		return "Skipped"
 	case NodePhaseRetryableFailure:
 		return "RetryableFailure"
 	}
+
 	return "Unknown"
 }
 
@@ -155,6 +165,7 @@ type ExecutableBranchNodeStatus interface {
 }
 
 type MutableBranchNodeStatus interface {
+	Mutable
 	ExecutableBranchNodeStatus
 
 	SetBranchNodeError()
@@ -164,16 +175,19 @@ type MutableBranchNodeStatus interface {
 // Interface for dynamic node status.
 type ExecutableDynamicNodeStatus interface {
 	GetDynamicNodePhase() DynamicNodePhase
+	GetDynamicNodeReason() string
 }
 
 type MutableDynamicNodeStatus interface {
+	Mutable
 	ExecutableDynamicNodeStatus
 
 	SetDynamicNodePhase(phase DynamicNodePhase)
+	SetDynamicNodeReason(reason string)
 }
 
 // Interface for Branch node. All the methods are purely read only except for the GetExecutionStatus.
-// Phase returns ExecutableBranchNodeStatus, which permits some mutations
+// p returns ExecutableBranchNodeStatus, which permits some mutations
 type ExecutableBranchNode interface {
 	GetIf() ExecutableIfBlock
 	GetElse() *NodeID
@@ -182,41 +196,49 @@ type ExecutableBranchNode interface {
 }
 
 type ExecutableWorkflowNodeStatus interface {
-	// Name of the child execution. We only store name since the project and domain will be
-	// the same as the parent workflow execution.
-	GetWorkflowExecutionName() string
+	GetWorkflowNodePhase() WorkflowNodePhase
 }
 
 type MutableWorkflowNodeStatus interface {
+	Mutable
 	ExecutableWorkflowNodeStatus
+	SetWorkflowNodePhase(phase WorkflowNodePhase)
+}
 
-	// Sets the name of the child execution. We only store name since the project and domain
-	// will be the same as the parent workflow execution.
-	SetWorkflowExecutionName(name string)
+type Mutable interface {
+	IsDirty() bool
 }
 
 type MutableNodeStatus interface {
+	Mutable
 	// Mutation API's
 	SetDataDir(DataReference)
+	SetOutputDir(d DataReference)
 	SetParentNodeID(n *NodeID)
 	SetParentTaskID(t *core.TaskExecutionIdentifier)
 	UpdatePhase(phase NodePhase, occurredAt metav1.Time, reason string)
 	IncrementAttempts() uint32
+	IncrementSystemFailures() uint32
 	SetCached()
 	ResetDirty()
 
+	GetBranchStatus() MutableBranchNodeStatus
 	GetOrCreateBranchStatus() MutableBranchNodeStatus
+	GetWorkflowStatus() MutableWorkflowNodeStatus
 	GetOrCreateWorkflowStatus() MutableWorkflowNodeStatus
+
 	ClearWorkflowStatus()
 	GetOrCreateTaskStatus() MutableTaskNodeStatus
+	GetTaskStatus() MutableTaskNodeStatus
 	ClearTaskStatus()
-	GetOrCreateSubWorkflowStatus() MutableSubWorkflowNodeStatus
-	ClearSubWorkflowStatus()
 	GetOrCreateDynamicNodeStatus() MutableDynamicNodeStatus
+	GetDynamicNodeStatus() MutableDynamicNodeStatus
 	ClearDynamicNodeStatus()
+	ClearLastAttemptStartedAt()
+	ClearSubNodeStatus()
 }
 
-// Interface for a Node Phase. This provides a mutable API.
+// Interface for a Node p. This provides a mutable API.
 type ExecutableNodeStatus interface {
 	NodeStatusGetter
 	MutableNodeStatus
@@ -226,17 +248,18 @@ type ExecutableNodeStatus interface {
 	GetStoppedAt() *metav1.Time
 	GetStartedAt() *metav1.Time
 	GetLastUpdatedAt() *metav1.Time
+	GetLastAttemptStartedAt() *metav1.Time
 	GetParentNodeID() *NodeID
 	GetParentTaskID() *core.TaskExecutionIdentifier
 	GetDataDir() DataReference
+	GetOutputDir() DataReference
 	GetMessage() string
 	GetAttempts() uint32
+	GetSystemFailures() uint32
 	GetWorkflowNodeStatus() ExecutableWorkflowNodeStatus
 	GetTaskNodeStatus() ExecutableTaskNodeStatus
-	GetSubWorkflowNodeStatus() ExecutableSubWorkflowNodeStatus
 
 	IsCached() bool
-	IsDirty() bool
 }
 
 type ExecutableSubWorkflowNodeStatus interface {
@@ -244,21 +267,29 @@ type ExecutableSubWorkflowNodeStatus interface {
 }
 
 type MutableSubWorkflowNodeStatus interface {
+	Mutable
 	ExecutableSubWorkflowNodeStatus
 	SetPhase(phase WorkflowPhase)
 }
 
 type ExecutableTaskNodeStatus interface {
-	GetPhase() types2.TaskPhase
+	GetPhase() int
 	GetPhaseVersion() uint32
-	GetCustomState() types2.CustomState
+	GetPluginState() []byte
+	GetPluginStateVersion() uint32
+	GetBarrierClockTick() uint32
+	GetLastPhaseUpdatedAt() time.Time
 }
 
 type MutableTaskNodeStatus interface {
+	Mutable
 	ExecutableTaskNodeStatus
-	SetPhase(phase types2.TaskPhase)
+	SetPhase(phase int)
+	SetLastPhaseUpdatedAt(updatedAt time.Time)
 	SetPhaseVersion(version uint32)
-	SetCustomState(state types2.CustomState)
+	SetPluginState([]byte)
+	SetPluginStateVersion(uint32)
+	SetBarrierClockTick(tick uint32)
 }
 
 // Interface for a Child Workflow Node
@@ -285,9 +316,11 @@ type ExecutableNode interface {
 	GetResources() *v1.ResourceRequirements
 	GetConfig() *v1.ConfigMap
 	GetRetryStrategy() *RetryStrategy
+	GetExecutionDeadline() *time.Duration
+	GetActiveDeadline() *time.Duration
 }
 
-// Interface for the Workflow Phase. This is the mutable portion for a Workflow
+// Interface for the Workflow p. This is the mutable portion for a Workflow
 type ExecutableWorkflowStatus interface {
 	NodeStatusGetter
 	UpdatePhase(p WorkflowPhase, msg string)
@@ -303,7 +336,7 @@ type ExecutableWorkflowStatus interface {
 	SetOutputReference(reference DataReference)
 	IncFailedAttempts()
 	SetMessage(msg string)
-	ConstructNodeDataDir(ctx context.Context, constructor storage.ReferenceConstructor, name NodeID) (storage.DataReference, error)
+	ConstructNodeDataDir(ctx context.Context, name NodeID) (storage.DataReference, error)
 }
 
 type BaseWorkflow interface {
@@ -336,7 +369,7 @@ type ExecutableSubWorkflow interface {
 type WorkflowMeta interface {
 	GetExecutionID() ExecutionID
 	GetK8sWorkflowID() types.NamespacedName
-	NewControllerRef() metav1.OwnerReference
+	GetOwnerReference() metav1.OwnerReference
 	GetNamespace() string
 	GetCreationTimestamp() metav1.Time
 	GetAnnotations() map[string]string
@@ -345,9 +378,13 @@ type WorkflowMeta interface {
 	GetServiceAccountName() string
 }
 
+type TaskDetailsGetter interface {
+	GetTask(id TaskID) (ExecutableTask, error)
+}
+
 type WorkflowMetaExtended interface {
 	WorkflowMeta
-	GetTask(id TaskID) (ExecutableTask, error)
+	TaskDetailsGetter
 	FindSubWorkflow(subID WorkflowID) ExecutableSubWorkflow
 	GetExecutionStatus() ExecutableWorkflowStatus
 }
@@ -360,7 +397,7 @@ type ExecutableWorkflow interface {
 }
 
 type NodeStatusGetter interface {
-	GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus
+	GetNodeExecutionStatus(ctx context.Context, id NodeID) ExecutableNodeStatus
 }
 
 type NodeStatusMap = map[NodeID]ExecutableNodeStatus
@@ -388,4 +425,8 @@ func GetOutputErrorFile(inputDir DataReference) DataReference {
 
 func GetFutureFile() string {
 	return "futures.pb"
+}
+
+func GetCompiledFutureFile() string {
+	return "futures_compiled.pb"
 }

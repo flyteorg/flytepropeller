@@ -4,16 +4,19 @@ import (
 	"context"
 	"testing"
 
+	"github.com/lyft/flytestdlib/promutils"
+	"github.com/lyft/flytestdlib/storage"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/utils"
-	"github.com/stretchr/testify/assert"
 )
 
 // Creates a ComparisonExpression, comparing 2 literals
-func getComparisonExpression(lV interface{}, op core.ComparisonExpression_Operator, rV interface{}) (*core.ComparisonExpression, *handler.Data) {
+func getComparisonExpression(lV interface{}, op core.ComparisonExpression_Operator, rV interface{}) (*core.ComparisonExpression, *core.LiteralMap) {
 	exp := &core.ComparisonExpression{
 		LeftValue: &core.Operand{
 			Val: &core.Operand_Var{
@@ -27,7 +30,7 @@ func getComparisonExpression(lV interface{}, op core.ComparisonExpression_Operat
 			},
 		},
 	}
-	inputs := &handler.Data{
+	inputs := &core.LiteralMap{
 		Literals: map[string]*core.Literal{
 			"x": utils.MustMakePrimitiveLiteral(lV),
 			"y": utils.MustMakePrimitiveLiteral(rV),
@@ -87,7 +90,7 @@ func TestEvaluateComparison(t *testing.T) {
 				},
 			},
 		}
-		inputs := &handler.Data{
+		inputs := &core.LiteralMap{
 			Literals: map[string]*core.Literal{
 				"y": utils.MustMakePrimitiveLiteral(2),
 			},
@@ -112,7 +115,7 @@ func TestEvaluateComparison(t *testing.T) {
 				},
 			},
 		}
-		inputs := &handler.Data{
+		inputs := &core.LiteralMap{
 			Literals: map[string]*core.Literal{
 				"x": utils.MustMakePrimitiveLiteral(1),
 				"y": utils.MustMakePrimitiveLiteral(3),
@@ -153,7 +156,7 @@ func TestEvaluateComparison(t *testing.T) {
 				},
 			},
 		}
-		inputs := &handler.Data{
+		inputs := &core.LiteralMap{
 			Literals: map[string]*core.Literal{},
 		}
 		_, err := EvaluateComparison(exp, inputs)
@@ -178,7 +181,7 @@ func TestEvaluateComparison(t *testing.T) {
 				},
 			},
 		}
-		inputs := &handler.Data{
+		inputs := &core.LiteralMap{
 			Literals: map[string]*core.Literal{},
 		}
 		_, err := EvaluateComparison(exp, inputs)
@@ -255,7 +258,7 @@ func TestEvaluateBooleanExpression(t *testing.T) {
 				},
 			},
 		}
-		outerInputs := &handler.Data{
+		outerInputs := &core.LiteralMap{
 			Literals: map[string]*core.Literal{
 				"a": utils.MustMakePrimitiveLiteral(5),
 				"b": utils.MustMakePrimitiveLiteral(4),
@@ -340,12 +343,16 @@ func TestEvaluateIfBlock(t *testing.T) {
 func TestDecideBranch(t *testing.T) {
 	ctx := context.Background()
 
+	dataStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+	assert.NoError(t, err)
+
 	t.Run("EmptyIfBlock", func(t *testing.T) {
 		w := &v1alpha1.FlyteWorkflow{
 			WorkflowSpec: &v1alpha1.WorkflowSpec{
 				ID:    "w1",
 				Nodes: map[v1alpha1.NodeID]*v1alpha1.NodeSpec{},
 			},
+			DataReferenceConstructor: dataStore,
 		}
 		branchNode := &v1alpha1.BranchNodeSpec{}
 		b, err := DecideBranch(ctx, w, "n1", branchNode, nil)
@@ -359,6 +366,7 @@ func TestDecideBranch(t *testing.T) {
 				ID:    "w1",
 				Nodes: map[v1alpha1.NodeID]*v1alpha1.NodeSpec{},
 			},
+			DataReferenceConstructor: dataStore,
 		}
 		exp, inputs := getComparisonExpression(1.0, core.ComparisonExpression_EQ, 1.0)
 		branchNode := &v1alpha1.BranchNodeSpec{
@@ -376,7 +384,7 @@ func TestDecideBranch(t *testing.T) {
 		b, err := DecideBranch(ctx, w, "n1", branchNode, inputs)
 		assert.Error(t, err)
 		assert.Nil(t, b)
-		assert.Equal(t, errors.NoBranchTakenError, err.(*errors.NodeError).Code)
+		assert.Equal(t, errors.NoBranchTakenError, err.(*errors.NodeError).ErrCode)
 	})
 
 	t.Run("WithThenNode", func(t *testing.T) {
@@ -390,6 +398,7 @@ func TestDecideBranch(t *testing.T) {
 					},
 				},
 			},
+			DataReferenceConstructor: dataStore,
 		}
 		exp, inputs := getComparisonExpression(1.0, core.ComparisonExpression_EQ, 1.0)
 		branchNode := &v1alpha1.BranchNodeSpec{
@@ -413,6 +422,7 @@ func TestDecideBranch(t *testing.T) {
 	t.Run("RepeatedCondition", func(t *testing.T) {
 		n1 := "n1"
 		n2 := "n2"
+
 		w := &v1alpha1.FlyteWorkflow{
 			WorkflowSpec: &v1alpha1.WorkflowSpec{
 				ID: "w1",
@@ -425,7 +435,9 @@ func TestDecideBranch(t *testing.T) {
 					},
 				},
 			},
+			DataReferenceConstructor: dataStore,
 		}
+
 		exp, inputs := getComparisonExpression(1.0, core.ComparisonExpression_EQ, 1.0)
 		branchNode := &v1alpha1.BranchNodeSpec{
 			If: v1alpha1.IfBlock{
@@ -474,6 +486,7 @@ func TestDecideBranch(t *testing.T) {
 					},
 				},
 			},
+			DataReferenceConstructor: dataStore,
 		}
 		exp1, inputs := getComparisonExpression(1, core.ComparisonExpression_NEQ, 1)
 		exp2, _ := getComparisonExpression(1, core.ComparisonExpression_EQ, 1)
@@ -525,6 +538,7 @@ func TestDecideBranch(t *testing.T) {
 					},
 				},
 			},
+			DataReferenceConstructor: dataStore,
 		}
 		exp1, inputs := getComparisonExpression(1, core.ComparisonExpression_NEQ, 1)
 		exp2, _ := getComparisonExpression(1, core.ComparisonExpression_NEQ, 1)
@@ -574,6 +588,7 @@ func TestDecideBranch(t *testing.T) {
 					},
 				},
 			},
+			DataReferenceConstructor: dataStore,
 		}
 		exp1, inputs := getComparisonExpression(1, core.ComparisonExpression_NEQ, 1)
 		exp2, _ := getComparisonExpression(1, core.ComparisonExpression_NEQ, 1)
@@ -605,7 +620,7 @@ func TestDecideBranch(t *testing.T) {
 		b, err := DecideBranch(ctx, w, "n", branchNode, inputs)
 		assert.Error(t, err)
 		assert.Nil(t, b)
-		assert.Equal(t, errors.DownstreamNodeNotFoundError, err.(*errors.NodeError).Code)
+		assert.Equal(t, errors.DownstreamNodeNotFoundError, err.(*errors.NodeError).ErrCode)
 	})
 
 	t.Run("ElseFailCase", func(t *testing.T) {
@@ -624,7 +639,9 @@ func TestDecideBranch(t *testing.T) {
 					},
 				},
 			},
+			DataReferenceConstructor: dataStore,
 		}
+
 		exp1, inputs := getComparisonExpression(1, core.ComparisonExpression_NEQ, 1)
 		exp2, _ := getComparisonExpression(1, core.ComparisonExpression_NEQ, 1)
 		branchNode := &v1alpha1.BranchNodeSpec{
@@ -656,10 +673,11 @@ func TestDecideBranch(t *testing.T) {
 				},
 			},
 		}
+
 		b, err := DecideBranch(ctx, w, "n", branchNode, inputs)
 		assert.Error(t, err)
 		assert.Nil(t, b)
-		assert.Equal(t, errors.UserProvidedError, err.(*errors.NodeError).Code)
+		assert.Equal(t, errors.UserProvidedError, err.(*errors.NodeError).ErrCode)
 		assert.Equal(t, userError, err.(*errors.NodeError).Message)
 		assert.Equal(t, v1alpha1.NodePhaseSkipped, w.Status.NodeStatus[n1].GetPhase())
 		assert.Equal(t, v1alpha1.NodePhaseSkipped, w.Status.NodeStatus[n2].GetPhase())

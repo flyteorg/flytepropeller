@@ -1,15 +1,40 @@
 package v1alpha1
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"reflect"
+	"strconv"
+	"time"
+
+	"github.com/lyft/flytestdlib/storage"
+
+	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type MutableStruct struct {
+	isDirty bool
+}
+
+func (in *MutableStruct) SetDirty() {
+	in.isDirty = true
+}
+
+// For testing only
+func (in *MutableStruct) ResetDirty() {
+	in.isDirty = false
+}
+
+func (in MutableStruct) IsDirty() bool {
+	return in.isDirty
+}
+
 type BranchNodeStatus struct {
+	MutableStruct
 	Phase           BranchNodePhase `json:"phase"`
 	FinalizedNodeID *NodeID         `json:"finalNodeId"`
 }
@@ -19,10 +44,12 @@ func (in *BranchNodeStatus) GetPhase() BranchNodePhase {
 }
 
 func (in *BranchNodeStatus) SetBranchNodeError() {
+	in.SetDirty()
 	in.Phase = BranchNodeError
 }
 
 func (in *BranchNodeStatus) SetBranchNodeSuccess(id NodeID) {
+	in.SetDirty()
 	in.Phase = BranchNodeSuccess
 	in.FinalizedNodeID = &id
 }
@@ -56,76 +83,166 @@ type DynamicNodePhase int
 const (
 	DynamicNodePhaseNone DynamicNodePhase = iota
 	DynamicNodePhaseExecuting
+	DynamicNodePhaseFailing
 )
 
 type DynamicNodeStatus struct {
-	Phase DynamicNodePhase `json:"phase"`
+	MutableStruct
+	Phase  DynamicNodePhase `json:"phase"`
+	Reason string           `json:"reason"`
 }
 
-func (s *DynamicNodeStatus) GetDynamicNodePhase() DynamicNodePhase {
-	return s.Phase
+func (in *DynamicNodeStatus) GetDynamicNodePhase() DynamicNodePhase {
+	return in.Phase
 }
 
-func (s *DynamicNodeStatus) SetDynamicNodePhase(phase DynamicNodePhase) {
-	s.Phase = phase
+func (in *DynamicNodeStatus) GetDynamicNodeReason() string {
+	return in.Reason
 }
 
-func (s *DynamicNodeStatus) Equals(o *DynamicNodeStatus) bool {
-	if s == nil && o == nil {
+func (in *DynamicNodeStatus) SetDynamicNodeReason(reason string) {
+	if in.Reason != reason {
+		in.SetDirty()
+		in.Reason = reason
+	}
+}
+
+func (in *DynamicNodeStatus) SetDynamicNodePhase(phase DynamicNodePhase) {
+	if in.Phase != phase {
+		in.SetDirty()
+		in.Phase = phase
+	}
+}
+
+func (in *DynamicNodeStatus) Equals(o *DynamicNodeStatus) bool {
+	if in == nil && o == nil {
 		return true
 	}
-	if s != nil && o != nil {
-		return s.Phase == o.Phase
+	if in == nil || o == nil {
+		return false
 	}
-	return false
+	return in.Phase == o.Phase && in.Reason == o.Reason
 }
 
-type SubWorkflowNodeStatus struct {
-	Phase WorkflowPhase `json:"phase"`
-}
+type WorkflowNodePhase int
 
-func (s SubWorkflowNodeStatus) GetPhase() WorkflowPhase {
-	return s.Phase
-}
-
-func (s *SubWorkflowNodeStatus) SetPhase(phase WorkflowPhase) {
-	s.Phase = phase
-}
+const (
+	WorkflowNodePhaseUndefined WorkflowNodePhase = iota
+	WorkflowNodePhaseExecuting
+)
 
 type WorkflowNodeStatus struct {
-	WorkflowName string `json:"name"`
+	MutableStruct
+	Phase WorkflowNodePhase `json:"phase"`
 }
 
-func (in *WorkflowNodeStatus) SetWorkflowExecutionName(name string) {
-	in.WorkflowName = name
+func (in *WorkflowNodeStatus) GetWorkflowNodePhase() WorkflowNodePhase {
+	return in.Phase
 }
 
-func (in *WorkflowNodeStatus) GetWorkflowExecutionName() string {
-	return in.WorkflowName
+func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
+	if in.Phase != phase {
+		in.SetDirty()
+		in.Phase = phase
+	}
 }
 
 type NodeStatus struct {
-	Phase         NodePhase     `json:"phase"`
-	QueuedAt      *metav1.Time  `json:"queuedAt,omitempty"`
-	StartedAt     *metav1.Time  `json:"startedAt,omitempty"`
-	StoppedAt     *metav1.Time  `json:"stoppedAt,omitempty"`
-	LastUpdatedAt *metav1.Time  `json:"lastUpdatedAt,omitempty"`
-	Message       string        `json:"message,omitempty"`
-	DataDir       DataReference `json:"dataDir,omitempty"`
-	Attempts      uint32        `json:"attempts"`
-	Cached        bool          `json:"cached"`
-	dirty         bool
+	MutableStruct
+	Phase                NodePhase     `json:"phase"`
+	QueuedAt             *metav1.Time  `json:"queuedAt,omitempty"`
+	StartedAt            *metav1.Time  `json:"startedAt,omitempty"`
+	StoppedAt            *metav1.Time  `json:"stoppedAt,omitempty"`
+	LastUpdatedAt        *metav1.Time  `json:"lastUpdatedAt,omitempty"`
+	LastAttemptStartedAt *metav1.Time  `json:"laStartedAt,omitempty"`
+	Message              string        `json:"message,omitempty"`
+	DataDir              DataReference `json:"-"`
+	OutputDir            DataReference `json:"-"`
+	Attempts             uint32        `json:"attempts"`
+	SystemFailures       uint32        `json:"systemFailures,omitempty"`
+	Cached               bool          `json:"cached"`
+
 	// This is useful only for branch nodes. If this is set, then it can be used to determine if execution can proceed
 	ParentNode    *NodeID                  `json:"parentNode,omitempty"`
-	ParentTask    *TaskExecutionIdentifier `json:"parentTask,omitempty"`
+	ParentTask    *TaskExecutionIdentifier `json:"-"`
 	BranchStatus  *BranchNodeStatus        `json:"branchStatus,omitempty"`
 	SubNodeStatus map[NodeID]*NodeStatus   `json:"subNodeStatus,omitempty"`
 	// We can store the outputs at this layer
 
-	WorkflowNodeStatus    *WorkflowNodeStatus    `json:"workflowNodeStatus,omitempty"`
-	TaskNodeStatus        *TaskNodeStatus        `json:",omitempty"`
-	SubWorkflowNodeStatus *SubWorkflowNodeStatus `json:"subWorkflowStatus,omitempty"`
-	DynamicNodeStatus     *DynamicNodeStatus     `json:"dynamicNodeStatus,omitempty"`
+	// TODO not used delete
+	WorkflowNodeStatus *WorkflowNodeStatus `json:"workflowNodeStatus,omitempty"`
+
+	TaskNodeStatus    *TaskNodeStatus    `json:",omitempty"`
+	DynamicNodeStatus *DynamicNodeStatus `json:"dynamicNodeStatus,omitempty"`
+
+	// Not Persisted
+	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
+}
+
+func (in *NodeStatus) IsDirty() bool {
+	isDirty := in.MutableStruct.IsDirty() ||
+		(in.TaskNodeStatus != nil && in.TaskNodeStatus.IsDirty()) ||
+		(in.DynamicNodeStatus != nil && in.DynamicNodeStatus.IsDirty()) ||
+		(in.WorkflowNodeStatus != nil && in.WorkflowNodeStatus.IsDirty()) ||
+		(in.BranchStatus != nil && in.BranchStatus.IsDirty())
+	if isDirty {
+		return true
+	}
+
+	for _, sub := range in.SubNodeStatus {
+		if sub.IsDirty() {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ResetDirty is for unit tests, shouldn't be used in actual logic.
+func (in *NodeStatus) ResetDirty() {
+	in.MutableStruct.ResetDirty()
+
+	if in.TaskNodeStatus != nil {
+		in.TaskNodeStatus.ResetDirty()
+	}
+
+	if in.DynamicNodeStatus != nil {
+		in.DynamicNodeStatus.ResetDirty()
+	}
+
+	if in.WorkflowNodeStatus != nil {
+		in.WorkflowNodeStatus.ResetDirty()
+	}
+
+	if in.BranchStatus != nil {
+		in.BranchStatus.ResetDirty()
+	}
+
+	// Reset SubNodeStatus Dirty
+	for _, subStatus := range in.SubNodeStatus {
+		subStatus.ResetDirty()
+	}
+}
+
+func (in *NodeStatus) GetBranchStatus() MutableBranchNodeStatus {
+	if in.BranchStatus == nil {
+		return nil
+	}
+	return in.BranchStatus
+}
+
+func (in *NodeStatus) GetWorkflowStatus() MutableWorkflowNodeStatus {
+	if in.WorkflowNodeStatus == nil {
+		return nil
+	}
+	return in.WorkflowNodeStatus
+}
+
+func (in *NodeStatus) GetTaskStatus() MutableTaskNodeStatus {
+	if in.TaskNodeStatus == nil {
+		return nil
+	}
+	return in.TaskNodeStatus
 }
 
 func (in NodeStatus) VisitNodeStatuses(visitor NodeStatusVisitFn) {
@@ -134,53 +251,76 @@ func (in NodeStatus) VisitNodeStatuses(visitor NodeStatusVisitFn) {
 	}
 }
 
+func (in NodeStatus) GetDynamicNodeStatus() MutableDynamicNodeStatus {
+	if in.DynamicNodeStatus == nil {
+		return nil
+	}
+	return in.DynamicNodeStatus
+}
+
 func (in *NodeStatus) ClearWorkflowStatus() {
 	in.WorkflowNodeStatus = nil
+	in.SetDirty()
 }
 
 func (in *NodeStatus) ClearTaskStatus() {
 	in.TaskNodeStatus = nil
+	in.SetDirty()
+}
+
+func (in *NodeStatus) ClearLastAttemptStartedAt() {
+	in.LastAttemptStartedAt = nil
+	in.SetDirty()
+}
+
+func (in *NodeStatus) ClearSubNodeStatus() {
+	in.SubNodeStatus = nil
+	in.SetDirty()
 }
 
 func (in *NodeStatus) GetLastUpdatedAt() *metav1.Time {
 	return in.LastUpdatedAt
 }
 
+func (in *NodeStatus) GetLastAttemptStartedAt() *metav1.Time {
+	return in.LastAttemptStartedAt
+}
+
 func (in *NodeStatus) GetAttempts() uint32 {
 	return in.Attempts
 }
 
-func (in *NodeStatus) SetCached() {
-	in.Cached = true
-	in.setDirty()
+func (in *NodeStatus) GetSystemFailures() uint32 {
+	return in.SystemFailures
 }
 
-func (in *NodeStatus) setDirty() {
-	in.dirty = true
+func (in *NodeStatus) SetCached() {
+	in.Cached = true
+	in.SetDirty()
 }
+
 func (in *NodeStatus) IsCached() bool {
 	return in.Cached
 }
 
-func (in *NodeStatus) IsDirty() bool {
-	return in.dirty
-}
-
-// ResetDirty is for unit tests, shouldn't be used in actual logic.
-func (in *NodeStatus) ResetDirty() {
-	in.dirty = false
-}
-
 func (in *NodeStatus) IncrementAttempts() uint32 {
 	in.Attempts++
-	in.setDirty()
+	in.SetDirty()
 	return in.Attempts
+}
+
+func (in *NodeStatus) IncrementSystemFailures() uint32 {
+	in.SystemFailures++
+	in.SetDirty()
+	return in.SystemFailures
 }
 
 func (in *NodeStatus) GetOrCreateDynamicNodeStatus() MutableDynamicNodeStatus {
 	if in.DynamicNodeStatus == nil {
-		in.setDirty()
-		in.DynamicNodeStatus = &DynamicNodeStatus{}
+		in.SetDirty()
+		in.DynamicNodeStatus = &DynamicNodeStatus{
+			MutableStruct: MutableStruct{},
+		}
 	}
 
 	return in.DynamicNodeStatus
@@ -188,14 +328,17 @@ func (in *NodeStatus) GetOrCreateDynamicNodeStatus() MutableDynamicNodeStatus {
 
 func (in *NodeStatus) ClearDynamicNodeStatus() {
 	in.DynamicNodeStatus = nil
+	in.SetDirty()
 }
 
 func (in *NodeStatus) GetOrCreateBranchStatus() MutableBranchNodeStatus {
 	if in.BranchStatus == nil {
-		in.BranchStatus = &BranchNodeStatus{}
+		in.SetDirty()
+		in.BranchStatus = &BranchNodeStatus{
+			MutableStruct: MutableStruct{},
+		}
 	}
 
-	in.setDirty()
 	return in.BranchStatus
 }
 
@@ -204,7 +347,6 @@ func (in *NodeStatus) GetWorkflowNodeStatus() ExecutableWorkflowNodeStatus {
 		return nil
 	}
 
-	in.setDirty()
 	return in.WorkflowNodeStatus
 }
 
@@ -217,15 +359,17 @@ func (in *NodeStatus) GetMessage() string {
 }
 
 func IsPhaseTerminal(phase NodePhase) bool {
-	return phase == NodePhaseSucceeded || phase == NodePhaseFailed || phase == NodePhaseSkipped
+	return phase == NodePhaseSucceeded || phase == NodePhaseFailed || phase == NodePhaseSkipped || phase == NodePhaseTimedOut
 }
 
 func (in *NodeStatus) GetOrCreateTaskStatus() MutableTaskNodeStatus {
 	if in.TaskNodeStatus == nil {
-		in.TaskNodeStatus = &TaskNodeStatus{}
+		in.SetDirty()
+		in.TaskNodeStatus = &TaskNodeStatus{
+			MutableStruct: MutableStruct{},
+		}
 	}
 
-	in.setDirty()
 	return in.TaskNodeStatus
 }
 
@@ -248,8 +392,13 @@ func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason st
 
 	if p == NodePhaseQueued && in.QueuedAt == nil {
 		in.QueuedAt = &n
-	} else if p == NodePhaseRunning && in.StartedAt == nil {
-		in.StartedAt = &n
+	} else if p == NodePhaseRunning {
+		if in.StartedAt == nil {
+			in.StartedAt = &n
+		}
+		if in.LastAttemptStartedAt == nil {
+			in.LastAttemptStartedAt = &n
+		}
 	} else if IsPhaseTerminal(p) && in.StoppedAt == nil {
 		if in.StartedAt == nil {
 			in.StartedAt = &n
@@ -258,11 +407,8 @@ func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason st
 		in.StoppedAt = &n
 	}
 
-	if in.Phase != p {
-		in.LastUpdatedAt = &n
-	}
-
-	in.setDirty()
+	in.LastUpdatedAt = &n
+	in.SetDirty()
 }
 
 func (in *NodeStatus) GetStartedAt() *metav1.Time {
@@ -289,23 +435,31 @@ func (in *NodeStatus) GetParentTaskID() *core.TaskExecutionIdentifier {
 }
 
 func (in *NodeStatus) SetParentNodeID(n *NodeID) {
-	in.ParentNode = n
-	in.setDirty()
+	if in.ParentNode == nil || in.ParentNode != n {
+		in.ParentNode = n
+		in.SetDirty()
+	}
 }
 
 func (in *NodeStatus) SetParentTaskID(t *core.TaskExecutionIdentifier) {
-	in.ParentTask = &TaskExecutionIdentifier{
-		TaskExecutionIdentifier: t,
+	if in.ParentTask == nil || in.ParentTask.TaskExecutionIdentifier != t {
+		in.ParentTask = &TaskExecutionIdentifier{
+			TaskExecutionIdentifier: t,
+		}
+
+		// We do not need to set Dirty here because this field is not persisted.
+		//in.SetDirty()
 	}
-	in.setDirty()
 }
 
 func (in *NodeStatus) GetOrCreateWorkflowStatus() MutableWorkflowNodeStatus {
 	if in.WorkflowNodeStatus == nil {
-		in.WorkflowNodeStatus = &WorkflowNodeStatus{}
+		in.SetDirty()
+		in.WorkflowNodeStatus = &WorkflowNodeStatus{
+			MutableStruct: MutableStruct{},
+		}
 	}
 
-	in.setDirty()
 	return in.WorkflowNodeStatus
 }
 
@@ -318,39 +472,61 @@ func (in NodeStatus) GetTaskNodeStatus() ExecutableTaskNodeStatus {
 	return in.TaskNodeStatus
 }
 
-func (in NodeStatus) GetSubWorkflowNodeStatus() ExecutableSubWorkflowNodeStatus {
-	if in.SubWorkflowNodeStatus == nil {
-		return nil
-	}
-
-	return in.SubWorkflowNodeStatus
-}
-
-func (in NodeStatus) GetOrCreateSubWorkflowStatus() MutableSubWorkflowNodeStatus {
-	if in.SubWorkflowNodeStatus == nil {
-		in.SubWorkflowNodeStatus = &SubWorkflowNodeStatus{}
-	}
-
-	return in.SubWorkflowNodeStatus
-}
-
-func (in *NodeStatus) ClearSubWorkflowStatus() {
-	in.SubWorkflowNodeStatus = nil
-}
-
-func (in *NodeStatus) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
+func (in *NodeStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) ExecutableNodeStatus {
 	n, ok := in.SubNodeStatus[id]
 	if ok {
+		n.SetParentTaskID(in.GetParentTaskID())
+		n.DataReferenceConstructor = in.DataReferenceConstructor
+		if len(n.GetDataDir()) == 0 {
+			dataDir, err := in.DataReferenceConstructor.ConstructReference(ctx, in.GetDataDir(), id)
+			if err != nil {
+				logger.Errorf(ctx, "Failed to construct data dir for node [%v]", id)
+				return n
+			}
+
+			n.SetDataDir(dataDir)
+		}
+
+		if len(n.GetOutputDir()) == 0 {
+			outputDir, err := in.DataReferenceConstructor.ConstructReference(ctx, n.GetDataDir(), strconv.FormatUint(uint64(in.Attempts), 10))
+			if err != nil {
+				logger.Errorf(ctx, "Failed to construct output dir for node [%v]", id)
+				return n
+			}
+
+			n.SetOutputDir(outputDir)
+		}
+
 		return n
 	}
+
 	if in.SubNodeStatus == nil {
 		in.SubNodeStatus = make(map[NodeID]*NodeStatus)
 	}
-	newNodeStatus := &NodeStatus{}
+
+	newNodeStatus := &NodeStatus{
+		MutableStruct: MutableStruct{},
+	}
 	newNodeStatus.SetParentTaskID(in.GetParentTaskID())
 	newNodeStatus.SetParentNodeID(in.GetParentNodeID())
+	dataDir, err := in.DataReferenceConstructor.ConstructReference(ctx, in.GetDataDir(), id)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to construct data dir for node [%v]", id)
+		return n
+	}
+
+	outputDir, err := in.DataReferenceConstructor.ConstructReference(ctx, dataDir, "0")
+	if err != nil {
+		logger.Errorf(ctx, "Failed to construct output dir for node [%v]", id)
+		return n
+	}
+
+	newNodeStatus.SetDataDir(dataDir)
+	newNodeStatus.SetOutputDir(outputDir)
+	newNodeStatus.DataReferenceConstructor = in.DataReferenceConstructor
 
 	in.SubNodeStatus[id] = newNodeStatus
+	in.SetDirty()
 	return newNodeStatus
 }
 
@@ -364,7 +540,14 @@ func (in *NodeStatus) GetDataDir() DataReference {
 
 func (in *NodeStatus) SetDataDir(d DataReference) {
 	in.DataDir = d
-	in.setDirty()
+}
+
+func (in *NodeStatus) GetOutputDir() DataReference {
+	return in.OutputDir
+}
+
+func (in *NodeStatus) SetOutputDir(d DataReference) {
+	in.OutputDir = d
 }
 
 func (in *NodeStatus) Equals(other *NodeStatus) bool {
@@ -373,7 +556,21 @@ func (in *NodeStatus) Equals(other *NodeStatus) bool {
 		return false
 	}
 
+	if in.IsDirty() != other.IsDirty() {
+		return false
+	}
+
+	if in.Phase == other.Phase {
+		if in.Phase == NodePhaseSucceeded || in.Phase == NodePhaseFailed {
+			return true
+		}
+	}
+
 	if in.Attempts != other.Attempts {
+		return false
+	}
+
+	if in.SystemFailures != other.SystemFailures {
 		return false
 	}
 
@@ -381,11 +578,15 @@ func (in *NodeStatus) Equals(other *NodeStatus) bool {
 		return false
 	}
 
-	if !reflect.DeepEqual(in.TaskNodeStatus, other.TaskNodeStatus) {
+	if !in.TaskNodeStatus.Equals(other.TaskNodeStatus) {
 		return false
 	}
 
 	if in.DataDir != other.DataDir {
+		return false
+	}
+
+	if in.OutputDir != other.OutputDir {
 		return false
 	}
 
@@ -416,7 +617,7 @@ func (in *NodeStatus) Equals(other *NodeStatus) bool {
 		}
 	}
 
-	return in.BranchStatus.Equals(other.BranchStatus) // && in.DynamicNodeStatus.Equals(other.DynamicNodeStatus)
+	return in.BranchStatus.Equals(other.BranchStatus) && in.DynamicNodeStatus.Equals(other.DynamicNodeStatus)
 }
 
 // THIS IS NOT AUTO GENERATED
@@ -447,42 +648,75 @@ func (in *CustomState) DeepCopy() *CustomState {
 }
 
 type TaskNodeStatus struct {
-	Phase        types.TaskPhase   `json:"phase,omitempty"`
-	PhaseVersion uint32            `json:"phaseVersion,omitempty"`
-	CustomState  types.CustomState `json:"custom,omitempty"`
+	MutableStruct
+	Phase              int       `json:"phase,omitempty"`
+	PhaseVersion       uint32    `json:"phaseVersion,omitempty"`
+	PluginState        []byte    `json:"pState,omitempty"`
+	PluginStateVersion uint32    `json:"psv,omitempty"`
+	BarrierClockTick   uint32    `json:"tick,omitempty"`
+	LastPhaseUpdatedAt time.Time `json:"updAt,omitempty"`
 }
 
-func (in *TaskNodeStatus) SetPhase(phase types.TaskPhase) {
+func (in *TaskNodeStatus) GetBarrierClockTick() uint32 {
+	return in.BarrierClockTick
+}
+
+func (in *TaskNodeStatus) SetBarrierClockTick(tick uint32) {
+	in.BarrierClockTick = tick
+	in.SetDirty()
+}
+
+func (in *TaskNodeStatus) SetPluginState(s []byte) {
+	in.PluginState = s
+	in.SetDirty()
+}
+
+func (in TaskNodeStatus) SetLastPhaseUpdatedAt(updatedAt time.Time) {
+	in.LastPhaseUpdatedAt = updatedAt
+}
+
+func (in *TaskNodeStatus) SetPluginStateVersion(v uint32) {
+	in.PluginStateVersion = v
+	in.SetDirty()
+}
+
+func (in *TaskNodeStatus) GetPluginState() []byte {
+	return in.PluginState
+}
+
+func (in *TaskNodeStatus) GetPluginStateVersion() uint32 {
+	return in.PluginStateVersion
+}
+
+func (in *TaskNodeStatus) SetPhase(phase int) {
 	in.Phase = phase
+	in.SetDirty()
 }
 
 func (in *TaskNodeStatus) SetPhaseVersion(version uint32) {
 	in.PhaseVersion = version
+	in.SetDirty()
 }
 
-func (in *TaskNodeStatus) SetCustomState(state types.CustomState) {
-	in.CustomState = state
-}
-
-func (in TaskNodeStatus) GetPhase() types.TaskPhase {
+func (in TaskNodeStatus) GetPhase() int {
 	return in.Phase
+}
+
+func (in TaskNodeStatus) GetLastPhaseUpdatedAt() time.Time {
+	return in.LastPhaseUpdatedAt
 }
 
 func (in TaskNodeStatus) GetPhaseVersion() uint32 {
 	return in.PhaseVersion
 }
 
-func (in TaskNodeStatus) GetCustomState() types.CustomState {
-	return in.CustomState
-}
+func (in *TaskNodeStatus) UpdatePhase(phase int, phaseVersion uint32) {
+	if in.Phase != phase || in.PhaseVersion != phaseVersion {
+		in.SetDirty()
+	}
 
-func (in *TaskNodeStatus) UpdatePhase(phase types.TaskPhase, phaseVersion uint32) {
 	in.Phase = phase
 	in.PhaseVersion = phaseVersion
-}
-
-func (in *TaskNodeStatus) UpdateCustomState(state types.CustomState) {
-	in.CustomState = state
 }
 
 func (in *TaskNodeStatus) DeepCopyInto(out *TaskNodeStatus) {
@@ -509,4 +743,14 @@ func (in *TaskNodeStatus) DeepCopy() *TaskNodeStatus {
 	out := &TaskNodeStatus{}
 	in.DeepCopyInto(out)
 	return out
+}
+
+func (in *TaskNodeStatus) Equals(other *TaskNodeStatus) bool {
+	if in == nil && other == nil {
+		return true
+	}
+	if in == nil || other == nil {
+		return false
+	}
+	return in.Phase == other.Phase && in.PhaseVersion == other.PhaseVersion && in.PluginStateVersion == other.PluginStateVersion && bytes.Equal(in.PluginState, other.PluginState) && in.BarrierClockTick == other.BarrierClockTick
 }

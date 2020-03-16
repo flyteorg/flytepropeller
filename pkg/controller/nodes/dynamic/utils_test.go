@@ -1,13 +1,13 @@
 package dynamic
 
 import (
+	"context"
 	"testing"
 
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	mocks2 "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -15,15 +15,21 @@ import (
 
 func TestHierarchicalNodeID(t *testing.T) {
 	t.Run("empty parent", func(t *testing.T) {
-		actual, err := hierarchicalNodeID("", "abc")
+		actual, err := hierarchicalNodeID("", "0", "abc")
 		assert.NoError(t, err)
-		assert.Equal(t, "-abc", actual)
+		assert.Equal(t, "0-abc", actual)
 	})
 
 	t.Run("long result", func(t *testing.T) {
-		actual, err := hierarchicalNodeID("abcdefghijklmnopqrstuvwxyz", "abc")
+		actual, err := hierarchicalNodeID("abcdefghijklmnopqrstuvwxyz", "0", "abc")
 		assert.NoError(t, err)
-		assert.Equal(t, "fpa3kc3y", actual)
+		assert.Equal(t, "fkm1vhcq", actual)
+	})
+
+	t.Run("Real case", func(t *testing.T) {
+		actual, err := hierarchicalNodeID("ensure-tables-task", "0", "2499f2af-7c23-42fd-8e62-01bf93cea82d")
+		assert.NoError(t, err)
+		assert.Equal(t, "fyvhfkda", actual)
 	})
 }
 
@@ -41,37 +47,22 @@ func TestUnderlyingInterface(t *testing.T) {
 			},
 		},
 	}
-	wf := &mocks.ExecutableWorkflow{}
 
-	subWF := &mocks.ExecutableSubWorkflow{}
-	wf.On("FindSubWorkflow", mock.Anything).Return(subWF)
-	subWF.On("GetOutputs").Return(&v1alpha1.OutputVarMap{VariableMap: expectedIface.Outputs})
-
-	task := &mocks.ExecutableTask{}
-	wf.On("GetTask", mock.Anything).Return(task, nil)
-	task.On("CoreTask").Return(&core.TaskTemplate{
+	tk := &core.TaskTemplate{
 		Interface: expectedIface,
-	})
+	}
 
-	n := &mocks.ExecutableNode{}
-	wf.On("GetNode", mock.Anything).Return(n)
-	emptyStr := ""
-	n.On("GetTaskID").Return(&emptyStr)
+	tr := &mocks2.TaskReader{}
+	tr.On("Read", mock.Anything).Return(tk, nil)
 
-	iface, err := underlyingInterface(wf, n)
+	iface, err := underlyingInterface(context.TODO(), tr)
 	assert.NoError(t, err)
 	assert.NotNil(t, iface)
 	assert.Equal(t, expectedIface, iface)
 
-	n = &mocks.ExecutableNode{}
-	n.On("GetTaskID").Return(nil)
-
-	wfNode := &mocks.ExecutableWorkflowNode{}
-	n.On("GetWorkflowNode").Return(wfNode)
-	wfNode.On("GetSubWorkflowRef").Return(&emptyStr)
-
-	iface, err = underlyingInterface(wf, n)
+	tk.Interface = nil
+	iface, err = underlyingInterface(context.TODO(), tr)
 	assert.NoError(t, err)
 	assert.NotNil(t, iface)
-	assert.Equal(t, expectedIface, iface)
+	assert.Nil(t, iface.Outputs)
 }

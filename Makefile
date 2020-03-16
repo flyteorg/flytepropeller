@@ -15,7 +15,7 @@ linux_compile:
 .PHONY: compile
 compile:
 	mkdir -p ./bin
-	go build -o bin/flytepropeller ./cmd/controller/main.go 
+	go build -o bin/flytepropeller ./cmd/controller/main.go
 	go build -o bin/kubectl-flyte ./cmd/kubectl-flyte/main.go && cp bin/kubectl-flyte ${GOPATH}/bin
 	go build -o bin/build-tool ./cmd/build-tool/main.go && cp bin/build-tool ${GOPATH}/bin
 
@@ -31,13 +31,13 @@ op_code_generate:
 	@openapi-gen -i github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1 -p github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1
 
 benchmark:
-	mkdir -p ./bin/benchmark 
+	mkdir -p ./bin/benchmark
 	@go test -run=^$ -bench=. -cpuprofile=cpu.out -memprofile=mem.out ./pkg/controller/nodes/. && mv *.out ./bin/benchmark/ && mv *.test ./bin/benchmark/
 
 # server starts the service in development mode
 .PHONY: server
 server:
-	@go run ./cmd/controller/main.go -logtostderr --kubeconfig=$(HOME)/.kube/config
+	@go run ./cmd/controller/main.go --alsologtostderr --propeller.kube-config=$(HOME)/.kube/config
 
 clean:
 	rm -rf bin
@@ -47,3 +47,12 @@ golden:
 	go test ./cmd/kubectl-flyte/cmd -update
 	go test ./cmd/build-tool/cmd -update
 	go test ./pkg/compiler/test -update
+
+.PHONY: test_unit_codecov
+test_unit_codecov:
+	go test ./... -race -coverprofile=coverage.txt -covermode=atomic
+	curl -s https://codecov.io/bash > codecov_bash.sh && bash codecov_bash.sh
+
+.PHONY: generate
+generate: download_tooling
+	@go generate ./...

@@ -1,6 +1,7 @@
 package printers
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -26,6 +27,8 @@ func ColorizeNodePhase(p v1alpha1.NodePhase) string {
 		return color.YellowString("%s", p.String())
 	case v1alpha1.NodePhaseSucceeded:
 		return color.HiGreenString("%s", p.String())
+	case v1alpha1.NodePhaseTimedOut:
+		return color.HiRedString("%s", p.String())
 	case v1alpha1.NodePhaseFailed:
 		return color.HiRedString("%s", p.String())
 	}
@@ -68,7 +71,7 @@ func (p NodeStatusPrinter) NodeInfo(wName string, node v1alpha1.BaseNode, nodeSt
 
 func (p NodePrinter) BranchNodeInfo(node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) []string {
 	info := p.BaseNodeInfo(node, nodeStatus)
-	branchStatus := nodeStatus.GetOrCreateBranchStatus()
+	branchStatus := nodeStatus.GetBranchStatus()
 	info = append(info, branchStatus.GetPhase().String())
 	if branchStatus.GetFinalizedNode() != nil {
 		info = append(info, *branchStatus.GetFinalizedNode())
@@ -77,7 +80,7 @@ func (p NodePrinter) BranchNodeInfo(node v1alpha1.ExecutableNode, nodeStatus v1a
 
 }
 
-func (p NodePrinter) traverseNode(tree gotree.Tree, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) error {
+func (p NodePrinter) traverseNode(ctx context.Context, tree gotree.Tree, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) error {
 	switch node.GetKind() {
 	case v1alpha1.NodeKindBranch:
 		subTree := tree.Add(strings.Join(p.BranchNodeInfo(node, nodeStatus), " | "))
@@ -87,7 +90,7 @@ func (p NodePrinter) traverseNode(tree gotree.Tree, w v1alpha1.ExecutableWorkflo
 				if !ok {
 					return fmt.Errorf("failed to find branch node %s", *nodeID)
 				}
-				if err := p.traverseNode(subTree, w, ifNode, nodeStatus.GetNodeExecutionStatus(*nodeID)); err != nil {
+				if err := p.traverseNode(ctx, subTree, w, ifNode, nodeStatus.GetNodeExecutionStatus(ctx, *nodeID)); err != nil {
 					return err
 				}
 			}
@@ -111,7 +114,7 @@ func (p NodePrinter) traverseNode(tree gotree.Tree, w v1alpha1.ExecutableWorkflo
 			s := w.FindSubWorkflow(*node.GetWorkflowNode().GetSubWorkflowRef())
 			wp := WorkflowPrinter{}
 			cw := executors.NewSubContextualWorkflow(w, s, nodeStatus)
-			return wp.Print(tree, cw)
+			return wp.Print(ctx, tree, cw)
 		}
 	case v1alpha1.NodeKindTask:
 		sub := tree.Add(strings.Join(p.NodeInfo(w.GetName(), node, nodeStatus), " | "))
@@ -124,10 +127,10 @@ func (p NodePrinter) traverseNode(tree gotree.Tree, w v1alpha1.ExecutableWorkflo
 	return nil
 }
 
-func (p NodePrinter) PrintList(tree gotree.Tree, w v1alpha1.ExecutableWorkflow, nodes []v1alpha1.ExecutableNode) error {
+func (p NodePrinter) PrintList(ctx context.Context, tree gotree.Tree, w v1alpha1.ExecutableWorkflow, nodes []v1alpha1.ExecutableNode) error {
 	for _, n := range nodes {
-		s := w.GetNodeExecutionStatus(n.GetID())
-		if err := p.traverseNode(tree, w, n, s); err != nil {
+		s := w.GetNodeExecutionStatus(ctx, n.GetID())
+		if err := p.traverseNode(ctx, tree, w, n, s); err != nil {
 			return err
 		}
 	}

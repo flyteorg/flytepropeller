@@ -2,7 +2,10 @@ package v1alpha1
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+
+	"github.com/lyft/flytestdlib/storage"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -33,18 +36,21 @@ type FlyteWorkflow struct {
 	// +optional
 	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
 	// Specifies the time when the workflow has been accepted into the system.
-	AcceptedAt *metav1.Time `json:"acceptedAt,omitEmpty"`
+	AcceptedAt *metav1.Time `json:"acceptedAt,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run this pod.
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty" protobuf:"bytes,8,opt,name=serviceAccountName"`
 	// Status is the only mutable section in the workflow. It holds all the execution information
 	Status WorkflowStatus `json:"status,omitempty"`
+
+	// non-Serialized fields
+	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
 }
 
 var FlyteWorkflowGVK = SchemeGroupVersion.WithKind(FlyteWorkflowKind)
 
-func (in *FlyteWorkflow) NewControllerRef() metav1.OwnerReference {
+func (in *FlyteWorkflow) GetOwnerReference() metav1.OwnerReference {
 	// TODO Open Issue - https://github.com/kubernetes/client-go/issues/308
 	// For some reason the CRD does not have the GVK correctly populated. So we will fake it.
 	if len(in.GroupVersionKind().Group) == 0 || len(in.GroupVersionKind().Kind) == 0 || len(in.GroupVersionKind().Version) == 0 {
@@ -62,7 +68,9 @@ func (in *FlyteWorkflow) GetTask(id TaskID) (ExecutableTask, error) {
 }
 
 func (in *FlyteWorkflow) GetExecutionStatus() ExecutableWorkflowStatus {
-	return &in.Status
+	s := &in.Status
+	s.DataReferenceConstructor = in.DataReferenceConstructor
+	return s
 }
 
 func (in *FlyteWorkflow) GetK8sWorkflowID() types.NamespacedName {
@@ -84,8 +92,8 @@ func (in *FlyteWorkflow) FindSubWorkflow(subID WorkflowID) ExecutableSubWorkflow
 	return s
 }
 
-func (in *FlyteWorkflow) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
-	return in.Status.GetNodeExecutionStatus(id)
+func (in *FlyteWorkflow) GetNodeExecutionStatus(ctx context.Context, id NodeID) ExecutableNodeStatus {
+	return in.GetExecutionStatus().GetNodeExecutionStatus(ctx, id)
 }
 
 func (in *FlyteWorkflow) GetServiceAccountName() string {
@@ -102,6 +110,9 @@ func (in *Inputs) UnmarshalJSON(b []byte) error {
 }
 
 func (in *Inputs) MarshalJSON() ([]byte, error) {
+	if in == nil {
+		return []byte{}, nil
+	}
 	var buf bytes.Buffer
 	if err := marshaler.Marshal(&buf, in.LiteralMap); err != nil {
 		return nil, err
@@ -189,6 +200,7 @@ func (in *WorkflowSpec) FromNode(name NodeID) ([]NodeID, error) {
 	if _, ok := in.Nodes[name]; !ok {
 		return nil, errors.Errorf("Bad Node [%v], is not defined in the Workflow [%v]", name, in.ID)
 	}
+
 	downstreamNodes := in.Connections.DownstreamEdges[name]
 	return downstreamNodes, nil
 }

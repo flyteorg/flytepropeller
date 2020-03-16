@@ -8,7 +8,9 @@ import (
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
-// Phase of the node
+//go:generate mockery -all -case=underscore
+
+// p of the node
 type NodePhase int
 
 const (
@@ -28,6 +30,10 @@ const (
 	NodePhaseFailed
 	// Internal error observed. This state should always be accompanied with an `error`. if not the behavior is undefined
 	NodePhaseUndefined
+	// Finalize node failing due to timeout
+	NodePhaseTimingOut
+	// Node failed because execution timed out
+	NodePhaseTimedOut
 )
 
 func (p NodePhase) String() string {
@@ -46,6 +52,8 @@ func (p NodePhase) String() string {
 		return "Complete"
 	case NodePhaseUndefined:
 		return "Undefined"
+	case NodePhaseTimedOut:
+		return "NodePhaseTimedOut"
 	}
 	return fmt.Sprintf("Unknown - %d", p)
 }
@@ -54,7 +62,7 @@ func (p NodePhase) String() string {
 type Node interface {
 	// This method is used specifically to set inputs for start node. This is because start node does not retrieve inputs
 	// from predecessors, but the inputs are inputs to the workflow or inputs to the parent container (workflow) node.
-	SetInputsForStartNode(ctx context.Context, w v1alpha1.BaseWorkflowWithStatus, inputs *core.LiteralMap) (NodeStatus, error)
+	SetInputsForStartNode(ctx context.Context, w v1alpha1.ExecutableWorkflow, inputs *core.LiteralMap) (NodeStatus, error)
 
 	// This is the main entrypoint to execute a node. It recursively depth-first goes through all ready nodes and starts their execution
 	// This returns either
@@ -64,7 +72,9 @@ type Node interface {
 	RecursiveNodeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (NodeStatus, error)
 
 	// This aborts the given node. If the given node is complete then it recursively finds the running nodes and aborts them
-	AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error
+	AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error
+
+	FinalizeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error
 
 	// This method should be used to initialize Node executor
 	Initialize(ctx context.Context) error
@@ -84,6 +94,10 @@ func (n *NodeStatus) HasFailed() bool {
 	return n.NodePhase == NodePhaseFailed
 }
 
+func (n *NodeStatus) HasTimedOut() bool {
+	return n.NodePhase == NodePhaseTimedOut
+}
+
 func (n *NodeStatus) PartiallyComplete() bool {
 	return n.NodePhase == NodePhaseSuccess
 }
@@ -94,6 +108,7 @@ var NodeStatusRunning = NodeStatus{NodePhase: NodePhaseRunning}
 var NodeStatusSuccess = NodeStatus{NodePhase: NodePhaseSuccess}
 var NodeStatusComplete = NodeStatus{NodePhase: NodePhaseComplete}
 var NodeStatusUndefined = NodeStatus{NodePhase: NodePhaseUndefined}
+var NodeStatusTimedOut = NodeStatus{NodePhase: NodePhaseTimedOut}
 
 func NodeStatusFailed(err error) NodeStatus {
 	return NodeStatus{NodePhase: NodePhaseFailed, Err: err}

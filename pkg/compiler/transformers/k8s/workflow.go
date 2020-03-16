@@ -9,11 +9,12 @@ import (
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/compiler/common"
 	"github.com/lyft/flytepropeller/pkg/compiler/errors"
+	"github.com/lyft/flytepropeller/pkg/utils"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const ExecutionIDLabel = "execution-id"
-const WorkflowIDLabel = "workflow-id"
+const WorkflowNameLabel = "workflow-name"
 
 func requiresInputs(w *core.WorkflowTemplate) bool {
 	if w == nil || w.GetInterface() == nil || w.GetInterface().GetInputs() == nil ||
@@ -25,6 +26,7 @@ func requiresInputs(w *core.WorkflowTemplate) bool {
 	return len(w.GetInterface().GetInputs().Variables) > 0
 }
 
+// Note: Update WorkflowNameFromID for any change made to WorkflowIDAsString
 func WorkflowIDAsString(id *core.Identifier) string {
 	b := strings.Builder{}
 	_, err := b.WriteString(id.Project)
@@ -55,8 +57,16 @@ func WorkflowIDAsString(id *core.Identifier) string {
 	return b.String()
 }
 
+func WorkflowNameFromID(id string) string {
+	tokens := strings.Split(id, ":")
+	if len(tokens) != 3 {
+		return ""
+	}
+	return tokens[2]
+}
+
 func buildFlyteWorkflowSpec(wf *core.CompiledWorkflow, tasks []*core.CompiledTask, errs errors.CompileErrors) (
-	spec *v1alpha1.WorkflowSpec, ok bool) {
+	spec *v1alpha1.WorkflowSpec) {
 	var failureN *v1alpha1.NodeSpec
 	if n := wf.Template.GetFailureNode(); n != nil {
 		failureN, _ = buildNodeSpec(n, tasks, errs.NewScope())
@@ -65,7 +75,7 @@ func buildFlyteWorkflowSpec(wf *core.CompiledWorkflow, tasks []*core.CompiledTas
 	nodes, _ := buildNodes(wf.Template.GetNodes(), tasks, errs.NewScope())
 
 	if errs.HasErrors() {
-		return nil, !errs.HasErrors()
+		return nil
 	}
 
 	outputBindings := make([]*v1alpha1.Binding, 0, len(wf.Template.Outputs))
@@ -89,7 +99,7 @@ func buildFlyteWorkflowSpec(wf *core.CompiledWorkflow, tasks []*core.CompiledTas
 		Connections:    buildConnections(wf),
 		Outputs:        outputs,
 		OutputBindings: outputBindings,
-	}, !errs.HasErrors()
+	}
 }
 
 func withSeparatorIfNotEmpty(value string) string {
@@ -130,10 +140,10 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		return nil, errs
 	}
 
-	primarySpec, _ := buildFlyteWorkflowSpec(wfClosure.Primary, wfClosure.Tasks, errs.NewScope())
+	primarySpec := buildFlyteWorkflowSpec(wfClosure.Primary, wfClosure.Tasks, errs.NewScope())
 	subwfs := make(map[v1alpha1.WorkflowID]*v1alpha1.WorkflowSpec, len(wfClosure.SubWorkflows))
 	for _, subWf := range wfClosure.SubWorkflows {
-		spec, _ := buildFlyteWorkflowSpec(wfClosure.Primary, wfClosure.Tasks, errs.NewScope())
+		spec := buildFlyteWorkflowSpec(subWf, wfClosure.Tasks, errs.NewScope())
 		subwfs[subWf.Template.Id.String()] = spec
 	}
 
@@ -171,6 +181,7 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 	if err != nil {
 		errs.Collect(errors.NewWorkflowBuildError(err))
 	}
+	obj.ObjectMeta.Labels[WorkflowNameLabel] = utils.SanitizeLabelValue(WorkflowNameFromID(primarySpec.ID))
 
 	if obj.Nodes == nil || obj.Connections.DownstreamEdges == nil {
 		// If we come here, we'd better have an error generated earlier. Otherwise, add one to make sure build fails.

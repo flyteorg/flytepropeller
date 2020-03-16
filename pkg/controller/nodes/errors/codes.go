@@ -1,8 +1,12 @@
 package errors
 
-type ErrorCode string
+import "github.com/lyft/flytestdlib/errors"
+
+type ErrorCode = errors.ErrorCode
 
 const (
+	UnknownError                       ErrorCode = "UnknownError"
+	InitializationError                ErrorCode = "InitializationError"
 	NotYetImplementedError             ErrorCode = "NotYetImplementedError"
 	DownstreamNodeNotFoundError        ErrorCode = "DownstreamNodeNotFound"
 	UserProvidedError                  ErrorCode = "UserProvidedError"
@@ -20,7 +24,3 @@ const (
 	EventRecordingFailed               ErrorCode = "EventRecordingFailed"
 	CatalogCallFailed                  ErrorCode = "CatalogCallFailed"
 )
-
-func (e ErrorCode) String() string {
-	return string(e)
-}
