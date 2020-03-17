@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	"github.com/lyft/flyteidl/clients/go/events"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/lyft/flytestdlib/storage"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
@@ -47,6 +48,11 @@ type execContext struct {
 	nsm                 *nodeStateManager
 	enqueueOwner        func() error
 	w                   v1alpha1.ExecutableWorkflow
+	outputDataSandbox   storage.DataReference
+}
+
+func (e execContext) OutputDataSandboxBasePath() storage.DataReference {
+	return e.outputDataSandbox
 }
 
 func (e execContext) EnqueueOwnerFunc() func() error {
@@ -105,7 +111,7 @@ func (e execContext) MaxDatasetSizeBytes() int64 {
 	return e.maxDatasetSizeBytes
 }
 
-func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error) *execContext {
+func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, outputSandbox storage.DataReference) *execContext {
 	md := execMetadata{WorkflowMeta: w}
 
 	// Copying the labels before updating it for this node
@@ -131,6 +137,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.
 		nsm:                 nsm,
 		enqueueOwner:        enqueueOwner,
 		w:                   w,
+		outputDataSandbox:   outputSandbox,
 	}
 }
 
@@ -170,5 +177,8 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1
 		tr,
 		newNodeStateManager(ctx, s),
 		workflowEnqueuer,
+		// Eventually we want to replace this with per workflow sandboxes
+		// https://github.com/lyft/flyte/issues/211
+		c.defaultDataSandbox,
 	), nil
 }

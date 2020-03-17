@@ -421,6 +421,38 @@ func (_m *NodeExecutionContext) NodeStatus() v1alpha1.ExecutableNodeStatus {
 	return r0
 }
 
+type NodeExecutionContext_OutputDataSandboxBasePath struct {
+	*mock.Call
+}
+
+func (_m NodeExecutionContext_OutputDataSandboxBasePath) Return(_a0 storage.DataReference) *NodeExecutionContext_OutputDataSandboxBasePath {
+	return &NodeExecutionContext_OutputDataSandboxBasePath{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *NodeExecutionContext) OnOutputDataSandboxBasePath() *NodeExecutionContext_OutputDataSandboxBasePath {
+	c := _m.On("OutputDataSandboxBasePath")
+	return &NodeExecutionContext_OutputDataSandboxBasePath{Call: c}
+}
+
+func (_m *NodeExecutionContext) OnOutputDataSandboxBasePathMatch(matchers ...interface{}) *NodeExecutionContext_OutputDataSandboxBasePath {
+	c := _m.On("OutputDataSandboxBasePath", matchers...)
+	return &NodeExecutionContext_OutputDataSandboxBasePath{Call: c}
+}
+
+// OutputDataSandboxBasePath provides a mock function with given fields:
+func (_m *NodeExecutionContext) OutputDataSandboxBasePath() storage.DataReference {
+	ret := _m.Called()
+
+	var r0 storage.DataReference
+	if rf, ok := ret.Get(0).(func() storage.DataReference); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(storage.DataReference)
+	}
+
+	return r0
+}
+
 type NodeExecutionContext_TaskReader struct {
 	*mock.Call
 }

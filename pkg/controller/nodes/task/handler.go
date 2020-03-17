@@ -140,6 +140,7 @@ type Handler struct {
 	secretManager   pluginCore.SecretManager
 	resourceManager resourcemanager.BaseResourceManager
 	barrierCache    *barrier
+	sharder         ioutils.ShardSelector
 	cfg             *config.Config
 }
 
