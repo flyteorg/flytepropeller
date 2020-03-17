@@ -54,10 +54,10 @@ type Controller struct {
 	workflowStore       workflowstore.FlyteWorkflow
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
-	recorder              record.EventRecorder
-	metrics               *metrics
-	leaderElector         *leaderelection.LeaderElector
-	namespaceFilterRegexp *regexp.Regexp
+	recorder        record.EventRecorder
+	metrics         *metrics
+	leaderElector   *leaderelection.LeaderElector
+	namespaceFilter *regexp.Regexp
 }
 
 // Runs either as a leader -if configured- or as a standalone process.
@@ -109,8 +109,8 @@ func (c *Controller) onStartedLeading(ctx context.Context) {
 
 // Skip the workflow if its namespace does not match namespace filter when defined
 func (c *Controller) skipWorkflow(ctx context.Context, namespace, name string) bool {
-	if c.namespaceFilterRegexp != nil && !c.namespaceFilterRegexp.MatchString(namespace) {
-		logger.Infof(ctx, "Skip workflow [%s] in namespace [%s], filtered out by namespace filter regexp [%s]", name, namespace, c.namespaceFilterRegexp)
+	if c.namespaceFilter.String() != "" && !c.namespaceFilter.MatchString(namespace) {
+		logger.Infof(ctx, "Skip workflow [%s] in namespace [%s], filtered out by namespace filter regexp [%s]", name, namespace, c.namespaceFilter)
 		return true
 	}
 	return false
@@ -238,24 +238,12 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		wfLauncher = launchplan.NewFailFastLaunchPlanExecutor()
 	}
 
-	namespaceFilterR := func() *regexp.Regexp {
-		if cfg.NamespaceFilter != "" {
-			r, err := regexp.Compile(cfg.NamespaceFilter)
-			if err != nil {
-				logger.Warningf(ctx, "[%s] is not a valid regular expression, skipping namespace filtering. Error : [%v]", cfg.NamespaceFilter, err)
-				return nil
-			}
-			return r
-		}
-		return nil
-	}()
-
 	logger.Info(ctx, "Setting up event sink and recorder")
 	eventSink, err := events.ConstructEventSink(ctx, events.GetConfig(ctx))
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create EventSink [%v], error %v", events.GetConfig(ctx).Type, err)
 	}
-	gc, err := NewGarbageCollector(cfg, scope, clock.RealClock{}, kubeclientset.CoreV1().Namespaces(), flytepropellerClientset.FlyteworkflowV1alpha1(), namespaceFilterR)
+	gc, err := NewGarbageCollector(cfg, scope, clock.RealClock{}, kubeclientset.CoreV1().Namespaces(), flytepropellerClientset.FlyteworkflowV1alpha1())
 	if err != nil {
 		logger.Errorf(ctx, "failed to initialize GC for workflows")
 		return nil, errors.Wrapf(err, "failed to initialize WF GC")
@@ -267,11 +255,11 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, errors.Wrapf(err, "failed to initialize resource lock.")
 	}
 	controller := &Controller{
-		metrics:               newControllerMetrics(scope),
-		recorder:              eventRecorder,
-		gc:                    gc,
-		numWorkers:            cfg.Workers,
-		namespaceFilterRegexp: namespaceFilterR,
+		metrics:         newControllerMetrics(scope),
+		recorder:        eventRecorder,
+		gc:              gc,
+		numWorkers:      cfg.Workers,
+		namespaceFilter: &cfg.NamespaceFilter.Regexp,
 	}
 
 	lock, err := newResourceLock(kubeclientset.CoreV1(), kubeclientset.CoordinationV1(), eventRecorder, cfg.LeaderElection)

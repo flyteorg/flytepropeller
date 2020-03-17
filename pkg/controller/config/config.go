@@ -59,7 +59,7 @@ type Config struct {
 	WorkflowReEval      config.Duration      `json:"workflow-reeval-duration" pflag:"\"30s\",Frequency of re-evaluating workflows"`
 	DownstreamEval      config.Duration      `json:"downstream-eval-duration" pflag:"\"60s\",Frequency of re-evaluating downstream tasks"`
 	LimitNamespace      string               `json:"limit-namespace" pflag:"\"all\",Namespaces to watch for this propeller"`
-	NamespaceFilter     string               `json:"namespace-filter" pflag:",Regular expression to apply fine grain filter when watching all namespaces"`
+	NamespaceFilter     config.Regexp        `json:"namespace-filter" pflag:",Regular expression to apply fine grain filter when watching all namespaces"`
 	ProfilerPort        config.Port          `json:"prof-port" pflag:"\"10254\",Profiler port"`
 	MetadataPrefix      string               `json:"metadata-prefix,omitempty" pflag:",MetadataPrefix should be used if all the metadata for Flyte executions should be stored under a specific prefix in CloudStorage. If not specified, the data will be stored in the base container directly."`
 	Queue               CompositeQueueConfig `json:"queue,omitempty" pflag:",Workflow workqueue configuration, affects the way the work is consumed from the queue."`

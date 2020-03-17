@@ -235,14 +235,14 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("namespace-filter"); err == nil {
-				assert.Equal(t, string(defaultConfig.NamespaceFilter), vString)
+				assert.Equal(t, string(defaultConfig.NamespaceFilter.String()), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
+			testValue := defaultConfig.NamespaceFilter.String()
 
 			cmdFlags.Set("namespace-filter", testValue)
 			if vString, err := cmdFlags.GetString("namespace-filter"); err == nil {
