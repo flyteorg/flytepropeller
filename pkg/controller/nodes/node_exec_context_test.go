@@ -45,7 +45,7 @@ func Test_NodeContext(t *testing.T) {
 		Kind:    v1alpha1.NodeKindTask,
 	}
 	s, _ := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
-	nCtx := newNodeExecContext(context.TODO(), s, w1, n, nil, nil, 0, nil, TaskReader{}, nil, nil)
+	nCtx := newNodeExecContext(context.TODO(), s, w1, n, nil, nil, false, 0, nil, TaskReader{}, nil, nil)
 	assert.Equal(t, nCtx.NodeExecutionMetadata().GetLabels()["node-id"], "id")
 	assert.Equal(t, nCtx.NodeExecutionMetadata().GetLabels()["task-name"], "task-name")
 }

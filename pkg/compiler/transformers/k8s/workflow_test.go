@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -50,6 +51,9 @@ func createSampleMockWorkflow() *mockWorkflow {
 					{
 						Id: common.StartNodeID,
 					},
+				},
+				MetadataDefaults: &core.WorkflowMetadataDefaults{
+					Interruptible: true,
 				},
 			},
 			Connections: &core.ConnectionSet{
@@ -106,6 +110,9 @@ func TestBuildFlyteWorkflow(t *testing.T) {
 			},
 		},
 		nil, nil, "")
+	assert.Equal(t, true, wf.NodeDefaults.Interruptible)
+	fmt.Printf("node id are %v\n", wf.WorkflowSpec.Nodes)
+	assert.Nil(t, wf.WorkflowSpec.Nodes["n_1"].Interruptibe)
 	assert.Equal(t, "wf-1", wf.Labels[WorkflowNameLabel])
 	assert.NoError(t, err)
 	assert.NotNil(t, wf)

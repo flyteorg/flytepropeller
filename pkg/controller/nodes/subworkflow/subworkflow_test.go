@@ -54,6 +54,8 @@ func Test_subworkflowHandler_HandleAbort(t *testing.T) {
 		n := &coreMocks.ExecutableNode{}
 		swf.OnStartNode().Return(n)
 		nodeExec.OnAbortHandler(ctx, wf, n, "reason").Return(fmt.Errorf("err"))
+
+		fmt.Printf("error in %v\n", s.HandleAbort(ctx, nCtx, wf, "x", "reason"))
 		assert.Error(t, s.HandleAbort(ctx, nCtx, wf, "x", "reason"))
 	})
 
