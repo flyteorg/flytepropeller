@@ -53,9 +53,10 @@ func Test_subworkflowHandler_HandleAbort(t *testing.T) {
 		nCtx.OnNodeID().Return("n1")
 		n := &coreMocks.ExecutableNode{}
 		swf.OnStartNode().Return(n)
-		nodeExec.OnAbortHandler(ctx, wf, n, "reason").Return(fmt.Errorf("err"))
-
-		fmt.Printf("error in %v\n", s.HandleAbort(ctx, nCtx, wf, "x", "reason"))
+		swf.OnGetID().Return("swf")
+		nodeExec.OnAbortHandlerMatch(mock.Anything, mock.MatchedBy(func(wf v1alpha1.ExecutableWorkflow) bool {
+			return wf.GetID() == swf.GetID()
+		}), n, mock.Anything).Return(fmt.Errorf("err"))
 		assert.Error(t, s.HandleAbort(ctx, nCtx, wf, "x", "reason"))
 	})
 

@@ -737,8 +737,8 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		outputResolver:                  NewRemoteFileOutputResolver(store),
 		defaultExecutionDeadline:        nodeConfig.DefaultDeadlines.DefaultNodeExecutionDeadline.Duration,
 		defaultActiveDeadline:           nodeConfig.DefaultDeadlines.DefaultNodeActiveDeadline.Duration,
-		maxNodeRetriesForSystemFailures: nodeConfig.MaxNodeRetriesOnSystemFailures,
-		interruptibleFailureThreshold:   nodeConfig.InterruptibleFailureThreshold,
+		maxNodeRetriesForSystemFailures: uint32(nodeConfig.MaxNodeRetriesOnSystemFailures),
+		interruptibleFailureThreshold:   uint32(nodeConfig.InterruptibleFailureThreshold),
 	}
 	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, kubeClient, catalogClient, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory

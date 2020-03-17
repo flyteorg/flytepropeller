@@ -121,11 +121,9 @@ type WorkqueueConfig struct {
 
 // configuration for a node
 type NodeConfig struct {
-	DefaultDeadlines DefaultDeadlines `json:"default-deadlines,omitempty" pflag:",Default value for timeouts"`
-	// max number of times a node is retried on system failures
-	MaxNodeRetriesOnSystemFailures uint32 `json:"max-node-retries-system-failures" pflag:"2,Maximum number of retries per node for node failure due to infra issues"`
-	// failure threshold for a node to be considered interruptible
-	InterruptibleFailureThreshold uint32 `json:"interruptible-failure-threshold" pflag:"1, number of failures for a node to be still considered interruptible'"`
+	DefaultDeadlines               DefaultDeadlines `json:"default-deadlines,omitempty" pflag:",Default value for timeouts"`
+	MaxNodeRetriesOnSystemFailures int64            `json:"max-node-retries-system-failures" pflag:"2,Maximum number of retries per node for node failure due to infra issues"`
+	InterruptibleFailureThreshold  int64            `json:"interruptible-failure-threshold" pflag:"1, number of failures for a node to be still considered interruptible'"`
 }
 
 // Contains default values for timeouts
