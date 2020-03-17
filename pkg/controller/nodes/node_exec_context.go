@@ -49,6 +49,11 @@ type execContext struct {
 	enqueueOwner        func() error
 	w                   v1alpha1.ExecutableWorkflow
 	outputDataSandbox   storage.DataReference
+	shardSelector       ioutils.ShardSelector
+}
+
+func (e execContext) OutputShardSelector() ioutils.ShardSelector {
+	return e.shardSelector
 }
 
 func (e execContext) OutputDataSandboxBasePath() storage.DataReference {
@@ -111,7 +116,7 @@ func (e execContext) MaxDatasetSizeBytes() int64 {
 	return e.maxDatasetSizeBytes
 }
 
-func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, outputSandbox storage.DataReference) *execContext {
+func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, outputSandbox storage.DataReference, outputShardSelector ioutils.ShardSelector) *execContext {
 	md := execMetadata{WorkflowMeta: w}
 
 	// Copying the labels before updating it for this node
@@ -138,6 +143,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.
 		enqueueOwner:        enqueueOwner,
 		w:                   w,
 		outputDataSandbox:   outputSandbox,
+		shardSelector:       outputShardSelector,
 	}
 }
 
@@ -180,5 +186,6 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1
 		// Eventually we want to replace this with per workflow sandboxes
 		// https://github.com/lyft/flyte/issues/211
 		c.defaultDataSandbox,
+		c.shardSelector,
 	), nil
 }

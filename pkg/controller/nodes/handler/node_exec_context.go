@@ -5,6 +5,7 @@ import (
 
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/storage"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,6 +45,10 @@ type NodeExecutionContext interface {
 	// available to the task at High Bandwidth (for example the base path of a sharded s3 bucket.
 	// This with a prefix based sharded strategy, could improve the throughput from S3 manifold)
 	OutputDataSandboxBasePath() storage.DataReference
+
+	// Sharding strategy for the output data for this node execution.
+	OutputShardSelector() ioutils.ShardSelector
+
 	DataStore() *storage.DataStore
 	InputReader() io.InputReader
 	EventsRecorder() events.TaskEventRecorder

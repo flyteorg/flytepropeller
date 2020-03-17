@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	errors2 "github.com/lyft/flytestdlib/errors"
 
 	"github.com/golang/protobuf/ptypes"
@@ -62,6 +63,7 @@ type nodeExecutor struct {
 	defaultActiveDeadline           time.Duration
 	maxNodeRetriesForSystemFailures uint32
 	defaultDataSandbox              storage.DataReference
+	shardSelector                   ioutils.ShardSelector
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -715,6 +717,12 @@ func (c *nodeExecutor) Initialize(ctx context.Context) error {
 func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink,
 	workflowLauncher launchplan.Executor, maxDatasetSize int64, defaultDataSandboxPath storage.DataReference, kubeClient executors.Client, catalogClient catalog.Client, scope promutils.Scope) (executors.Node, error) {
 
+	// TODO we may want to make this configurable.
+	shardSelector, err := ioutils.NewBase36PrefixShardSelector(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	nodeScope := scope.NewSubScope("node")
 	exec := &nodeExecutor{
 		store:               store,
@@ -739,6 +747,7 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		defaultActiveDeadline:           nodeConfig.DefaultDeadlines.DefaultNodeActiveDeadline.Duration,
 		maxNodeRetriesForSystemFailures: uint32(nodeConfig.MaxNodeRetriesForSystemFailures),
 		defaultDataSandbox:              defaultDataSandboxPath,
+		shardSelector:                   shardSelector,
 	}
 	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, kubeClient, catalogClient, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory

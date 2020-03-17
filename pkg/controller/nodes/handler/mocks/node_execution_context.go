@@ -7,6 +7,8 @@ import (
 	io "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	handler "github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 
+	ioutils "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
+
 	mock "github.com/stretchr/testify/mock"
 
 	storage "github.com/lyft/flytestdlib/storage"
@@ -448,6 +450,40 @@ func (_m *NodeExecutionContext) OutputDataSandboxBasePath() storage.DataReferenc
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(storage.DataReference)
+	}
+
+	return r0
+}
+
+type NodeExecutionContext_OutputShardSelector struct {
+	*mock.Call
+}
+
+func (_m NodeExecutionContext_OutputShardSelector) Return(_a0 ioutils.ShardSelector) *NodeExecutionContext_OutputShardSelector {
+	return &NodeExecutionContext_OutputShardSelector{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *NodeExecutionContext) OnOutputShardSelector() *NodeExecutionContext_OutputShardSelector {
+	c := _m.On("OutputShardSelector")
+	return &NodeExecutionContext_OutputShardSelector{Call: c}
+}
+
+func (_m *NodeExecutionContext) OnOutputShardSelectorMatch(matchers ...interface{}) *NodeExecutionContext_OutputShardSelector {
+	c := _m.On("OutputShardSelector", matchers...)
+	return &NodeExecutionContext_OutputShardSelector{Call: c}
+}
+
+// OutputShardSelector provides a mock function with given fields:
+func (_m *NodeExecutionContext) OutputShardSelector() ioutils.ShardSelector {
+	ret := _m.Called()
+
+	var r0 ioutils.ShardSelector
+	if rf, ok := ret.Get(0).(func() ioutils.ShardSelector); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ioutils.ShardSelector)
+		}
 	}
 
 	return r0
