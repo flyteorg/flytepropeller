@@ -83,7 +83,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 		PluginState: st.Bytes(),
 	})
 	nCtx.On("NodeStateReader").Return(nr)
-	nCtx.OnOutputDataSandboxBasePath().Return("s3://sandbox/")
+	nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
 	nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
 
 	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())

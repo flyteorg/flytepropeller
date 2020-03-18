@@ -124,7 +124,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		return nil, err
 	}
 
-	outputSandbox, err := ioutils.NewShardedOutputSandbox(ctx, nCtx.OutputShardSelector(), nCtx.OutputDataSandboxBasePath(), uniqueID, nCtx.DataStore())
+	outputSandbox, err := ioutils.NewShardedRawOutputPath(ctx, nCtx.OutputShardSelector(), nCtx.RawOutputPrefix(), uniqueID, nCtx.DataStore())
 	if err != nil {
 		return nil, errors.Wrapf(errors.StorageError, nCtx.NodeID(), err, "failed to create output sandbox for node execution")
 	}

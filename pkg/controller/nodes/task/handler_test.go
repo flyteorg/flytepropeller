@@ -383,7 +383,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 		nCtx.On("EventsRecorder").Return(recorder)
 		nCtx.On("EnqueueOwner").Return(nil)
 
-		nCtx.OnOutputDataSandboxBasePath().Return("s3://sandbox/")
+		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
 		nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
 
 		st := bytes.NewBuffer([]byte{})
@@ -687,7 +687,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 		nCtx.On("EventsRecorder").Return(recorder)
 		nCtx.On("EnqueueOwner").Return(nil)
 
-		nCtx.OnOutputDataSandboxBasePath().Return("s3://sandbox/")
+		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
 		nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
 
 		st := bytes.NewBuffer([]byte{})
@@ -892,7 +892,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 		nCtx.On("EventsRecorder").Return(recorder)
 		nCtx.On("EnqueueOwner").Return(nil)
 
-		nCtx.OnOutputDataSandboxBasePath().Return("s3://sandbox/")
+		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
 		nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
 
 		st := bytes.NewBuffer([]byte{})
@@ -1148,7 +1148,7 @@ func Test_task_Abort(t *testing.T) {
 		nCtx.On("EnqueueOwner").Return(nil)
 		nCtx.On("EventsRecorder").Return(ev)
 
-		nCtx.OnOutputDataSandboxBasePath().Return("s3://sandbox/")
+		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
 		nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
 
 		st := bytes.NewBuffer([]byte{})
@@ -1272,7 +1272,7 @@ func Test_task_Finalize(t *testing.T) {
 	nCtx.On("EventsRecorder").Return(nil)
 	nCtx.On("EnqueueOwner").Return(nil)
 
-	nCtx.OnOutputDataSandboxBasePath().Return("s3://sandbox/")
+	nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
 	nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
 
 	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())

@@ -275,11 +275,11 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_default-datasandbox", func(t *testing.T) {
+	t.Run("Test_rawoutput-prefix", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("default-datasandbox"); err == nil {
-				assert.Equal(t, string(defaultConfig.DefaultDataSandboxPrefix), vString)
+			if vString, err := cmdFlags.GetString("rawoutput-prefix"); err == nil {
+				assert.Equal(t, string(defaultConfig.DefaultRawOutputPrefix), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -288,9 +288,9 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("default-datasandbox", testValue)
-			if vString, err := cmdFlags.GetString("default-datasandbox"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DefaultDataSandboxPrefix)
+			cmdFlags.Set("rawoutput-prefix", testValue)
+			if vString, err := cmdFlags.GetString("rawoutput-prefix"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DefaultRawOutputPrefix)
 
 			} else {
 				assert.FailNow(t, err.Error())

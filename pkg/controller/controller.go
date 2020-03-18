@@ -299,7 +299,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	}
 
 	nodeExecutor, err := nodes.NewExecutor(ctx, cfg.NodeConfig, store, controller.enqueueWorkflowForNodeUpdates, eventSink, wfLauncher, cfg.MaxDatasetSizeBytes,
-		storage.DataReference(cfg.DefaultDataSandboxPrefix), kubeClient, catalogClient, scope)
+		storage.DataReference(cfg.DefaultRawOutputPrefix), kubeClient, catalogClient, scope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create Controller.")
 	}

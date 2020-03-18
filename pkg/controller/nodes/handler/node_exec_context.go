@@ -44,7 +44,7 @@ type NodeExecutionContext interface {
 	// Sandboxes provide exactly once execution semantics and only the successful sandbox wins. Ideally a sandbox should be a path that is
 	// available to the task at High Bandwidth (for example the base path of a sharded s3 bucket.
 	// This with a prefix based sharded strategy, could improve the throughput from S3 manifold)
-	OutputDataSandboxBasePath() storage.DataReference
+	RawOutputPrefix() storage.DataReference
 
 	// Sharding strategy for the output data for this node execution.
 	OutputShardSelector() ioutils.ShardSelector

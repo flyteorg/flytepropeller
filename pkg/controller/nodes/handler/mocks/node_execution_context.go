@@ -423,38 +423,6 @@ func (_m *NodeExecutionContext) NodeStatus() v1alpha1.ExecutableNodeStatus {
 	return r0
 }
 
-type NodeExecutionContext_OutputDataSandboxBasePath struct {
-	*mock.Call
-}
-
-func (_m NodeExecutionContext_OutputDataSandboxBasePath) Return(_a0 storage.DataReference) *NodeExecutionContext_OutputDataSandboxBasePath {
-	return &NodeExecutionContext_OutputDataSandboxBasePath{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *NodeExecutionContext) OnOutputDataSandboxBasePath() *NodeExecutionContext_OutputDataSandboxBasePath {
-	c := _m.On("OutputDataSandboxBasePath")
-	return &NodeExecutionContext_OutputDataSandboxBasePath{Call: c}
-}
-
-func (_m *NodeExecutionContext) OnOutputDataSandboxBasePathMatch(matchers ...interface{}) *NodeExecutionContext_OutputDataSandboxBasePath {
-	c := _m.On("OutputDataSandboxBasePath", matchers...)
-	return &NodeExecutionContext_OutputDataSandboxBasePath{Call: c}
-}
-
-// OutputDataSandboxBasePath provides a mock function with given fields:
-func (_m *NodeExecutionContext) OutputDataSandboxBasePath() storage.DataReference {
-	ret := _m.Called()
-
-	var r0 storage.DataReference
-	if rf, ok := ret.Get(0).(func() storage.DataReference); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(storage.DataReference)
-	}
-
-	return r0
-}
-
 type NodeExecutionContext_OutputShardSelector struct {
 	*mock.Call
 }
@@ -484,6 +452,38 @@ func (_m *NodeExecutionContext) OutputShardSelector() ioutils.ShardSelector {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ioutils.ShardSelector)
 		}
+	}
+
+	return r0
+}
+
+type NodeExecutionContext_RawOutputPrefix struct {
+	*mock.Call
+}
+
+func (_m NodeExecutionContext_RawOutputPrefix) Return(_a0 storage.DataReference) *NodeExecutionContext_RawOutputPrefix {
+	return &NodeExecutionContext_RawOutputPrefix{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *NodeExecutionContext) OnRawOutputPrefix() *NodeExecutionContext_RawOutputPrefix {
+	c := _m.On("RawOutputPrefix")
+	return &NodeExecutionContext_RawOutputPrefix{Call: c}
+}
+
+func (_m *NodeExecutionContext) OnRawOutputPrefixMatch(matchers ...interface{}) *NodeExecutionContext_RawOutputPrefix {
+	c := _m.On("RawOutputPrefix", matchers...)
+	return &NodeExecutionContext_RawOutputPrefix{Call: c}
+}
+
+// RawOutputPrefix provides a mock function with given fields:
+func (_m *NodeExecutionContext) RawOutputPrefix() storage.DataReference {
+	ret := _m.Called()
+
+	var r0 storage.DataReference
+	if rf, ok := ret.Get(0).(func() storage.DataReference); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(storage.DataReference)
 	}
 
 	return r0
