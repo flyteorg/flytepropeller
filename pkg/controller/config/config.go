@@ -45,6 +45,7 @@ var (
 				DefaultWorkflowActiveDeadline: config.Duration{Duration: time.Hour * 72},
 			},
 			MaxNodeRetriesOnSystemFailures: 3,
+			InterruptibleFailureThreshold:  1,
 		},
 	}
 )

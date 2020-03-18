@@ -22,6 +22,7 @@ func createNodeWithTask() *core.Node {
 				},
 			},
 		},
+		Metadata: &core.NodeMetadata{InterruptibleValue: &core.NodeMetadata_Interruptible{Interruptible: true}},
 	}
 }
 
