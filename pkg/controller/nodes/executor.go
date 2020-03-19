@@ -38,7 +38,6 @@ type nodeMetrics struct {
 	ResolutionFailure  labeled.Counter
 	InputsWriteFailure labeled.Counter
 	TimedOutFailure    labeled.Counter
-	SystemFailure      labeled.Counter
 
 	InterruptedThresholdHit labeled.Counter
 
@@ -408,7 +407,6 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	if p.GetPhase() == handler.EPhaseRetryableFailure {
 		if p.GetErr() != nil && p.GetErr().GetKind() == core.ExecutionError_SYSTEM {
 			nodeStatus.IncrementSystemFailures()
-			c.metrics.SystemFailure.Inc(ctx)
 		}
 	}
 
@@ -730,7 +728,6 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 			SuccessDuration:         labeled.NewStopWatch("success_duration", "Indicates the total execution time of a successful workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			InputsWriteFailure:      labeled.NewCounter("inputs_write_fail", "Indicates failure in writing node inputs to metastore", nodeScope),
 			TimedOutFailure:         labeled.NewCounter("timeout_fail", "Indicates failure due to timeout", nodeScope),
-			SystemFailure:           labeled.NewCounter("system_fail", "Indicates failure due to system error", nodeScope),
 			InterruptedThresholdHit: labeled.NewCounter("interrupted_threshold", "Indicates the node interruptible disabled because it hit max failure count", nodeScope),
 			ResolutionFailure:       labeled.NewCounter("input_resolve_fail", "Indicates failure in resolving node inputs", nodeScope),
 			TransitionLatency:       labeled.NewStopWatch("transition_latency", "Measures the latency between the last parent node stoppedAt time and current node's queued time.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
