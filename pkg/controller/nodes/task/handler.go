@@ -36,15 +36,18 @@ import (
 const pluginContextKey = contextutils.Key("plugin")
 
 type metrics struct {
-	pluginPanics           labeled.Counter
-	unsupportedTaskType    labeled.Counter
-	catalogPutFailureCount labeled.Counter
-	catalogGetFailureCount labeled.Counter
-	catalogPutSuccessCount labeled.Counter
-	catalogMissCount       labeled.Counter
-	catalogHitCount        labeled.Counter
-	pluginExecutionLatency labeled.StopWatch
-	pluginQueueLatency     labeled.StopWatch
+	pluginPanics                   labeled.Counter
+	unsupportedTaskType            labeled.Counter
+	catalogPutFailureCount         labeled.Counter
+	catalogGetFailureCount         labeled.Counter
+	catalogPutSuccessCount         labeled.Counter
+	catalogMissCount               labeled.Counter
+	catalogHitCount                labeled.Counter
+	taskExecutionUserErrorCount    labeled.Counter
+	taskExecutionSystemErrorCount  labeled.Counter
+	taskExecutionUnknownErrorCount labeled.Counter
+	pluginExecutionLatency         labeled.StopWatch
+	pluginQueueLatency             labeled.StopWatch
 
 	// TODO We should have a metric to capture custom state size
 	scope promutils.Scope
@@ -409,6 +412,16 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			if err != nil {
 				return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
 			}
+			execErr := pluginTrns.pInfo.Err()
+			if execErr != nil {
+				if execErr.Kind == core.ExecutionError_SYSTEM {
+					t.metrics.taskExecutionSystemErrorCount.Inc(ctx)
+				} else if execErr.Kind == core.ExecutionError_USER {
+					t.metrics.taskExecutionUserErrorCount.Inc(ctx)
+				} else {
+					t.metrics.taskExecutionUnknownErrorCount.Inc(ctx)
+				}
+			}
 			if pluginTrns.IsPreviouslyObserved() {
 				logger.Debugf(ctx, "No state change for Task, previously observed same transition. Short circuiting.")
 				return pluginTrns.FinalTransition(ctx)
@@ -599,16 +612,19 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		pluginRegistry: pluginMachinery.PluginRegistry(),
 		plugins:        make(map[pluginCore.TaskType]pluginCore.Plugin),
 		metrics: &metrics{
-			pluginPanics:           labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),
-			unsupportedTaskType:    labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),
-			catalogHitCount:        labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", scope),
-			catalogMissCount:       labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
-			catalogPutSuccessCount: labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", scope),
-			catalogPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
-			catalogGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
-			pluginExecutionLatency: labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
-			pluginQueueLatency:     labeled.NewStopWatch("plugin_queue_latecny", "Time spent by plugin in queued phase", time.Microsecond, scope),
-			scope:                  scope,
+			pluginPanics:                   labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),
+			unsupportedTaskType:            labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),
+			catalogHitCount:                labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", scope),
+			catalogMissCount:               labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
+			catalogPutSuccessCount:         labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", scope),
+			catalogPutFailureCount:         labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
+			catalogGetFailureCount:         labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
+			taskExecutionUserErrorCount:    labeled.NewCounter("task_execution_user_error_count", "Task execution user error count", scope),
+			taskExecutionSystemErrorCount:  labeled.NewCounter("task_execution_system_error_count", "Task execution system error count", scope),
+			taskExecutionUnknownErrorCount: labeled.NewCounter("task_execution_unknown_error_count", "Task execution unknown error count", scope),
+			pluginExecutionLatency:         labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
+			pluginQueueLatency:             labeled.NewStopWatch("plugin_queue_latecny", "Time spent by plugin in queued phase", time.Microsecond, scope),
+			scope:                          scope,
 		},
 		kubeClient:      kubeClient,
 		catalog:         client,
