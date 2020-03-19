@@ -176,7 +176,7 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 		podRequestedResources := e.getPodEffectiveResourceLimits(ctx, pod)
 
 		cfg := nodeTaskConfig.GetConfig()
-		backOffHandler := e.backOffController.GetOrCreateHandler(ctx, key, cfg.BackOffConfig.BaseSecond, cfg.BackOffConfig.MaxDuration)
+		backOffHandler := e.backOffController.GetOrCreateHandler(ctx, key, cfg.BackOffConfig.BaseSecond, cfg.BackOffConfig.MaxDuration.Duration)
 
 		err = backOffHandler.Handle(ctx, func() error {
 			return e.kubeClient.GetClient().Create(ctx, o)
@@ -227,7 +227,7 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 			// Pod does not exist error. This should be retried using the retry policy
 			logger.Warningf(ctx, "Failed to find the Resource with name: %v. Error: %v", nsName, err)
 			failureReason := fmt.Sprintf("resource not found, name [%s]. reason: %s", nsName.String(), err.Error())
-			return pluginsCore.DoTransition(pluginsCore.PhaseInfoRetryableFailure("Tachycardia", failureReason, nil)), nil
+			return pluginsCore.DoTransition(pluginsCore.PhaseInfoSystemRetryableFailure("ResourceDeletedExternally", failureReason, nil)), nil
 		}
 
 		logger.Warningf(ctx, "Failed to retrieve Resource Details with name: %v. Error: %v", nsName, err)
@@ -267,7 +267,7 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 		// the node are marked with a deletionTimestamp, but our finalizers prevent the pod from being deleted.
 		// This can also happen when a user deletes a Pod directly.
 		failureReason := fmt.Sprintf("object [%s] terminated in the background, manually", nsName.String())
-		return pluginsCore.DoTransition(pluginsCore.PhaseInfoRetryableFailure("tachycardia", failureReason, nil)), nil
+		return pluginsCore.DoTransition(pluginsCore.PhaseInfoSystemRetryableFailure("UnexpectedObjectDeletion", failureReason, nil)), nil
 	}
 
 	return pluginsCore.DoTransition(p), nil

@@ -218,6 +218,7 @@ type MutableNodeStatus interface {
 	SetParentTaskID(t *core.TaskExecutionIdentifier)
 	UpdatePhase(phase NodePhase, occurredAt metav1.Time, reason string)
 	IncrementAttempts() uint32
+	IncrementSystemFailures() uint32
 	SetCached()
 	ResetDirty()
 
@@ -254,6 +255,7 @@ type ExecutableNodeStatus interface {
 	GetOutputDir() DataReference
 	GetMessage() string
 	GetAttempts() uint32
+	GetSystemFailures() uint32
 	GetWorkflowNodeStatus() ExecutableWorkflowNodeStatus
 	GetTaskNodeStatus() ExecutableTaskNodeStatus
 
@@ -316,6 +318,7 @@ type ExecutableNode interface {
 	GetRetryStrategy() *RetryStrategy
 	GetExecutionDeadline() *time.Duration
 	GetActiveDeadline() *time.Duration
+	IsInterruptible() *bool
 }
 
 // Interface for the Workflow p. This is the mutable portion for a Workflow
@@ -374,6 +377,7 @@ type WorkflowMeta interface {
 	GetLabels() map[string]string
 	GetName() string
 	GetServiceAccountName() string
+	IsInterruptible() bool
 }
 
 type TaskDetailsGetter interface {

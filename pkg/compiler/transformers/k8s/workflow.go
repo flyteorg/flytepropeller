@@ -143,7 +143,7 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 	primarySpec := buildFlyteWorkflowSpec(wfClosure.Primary, wfClosure.Tasks, errs.NewScope())
 	subwfs := make(map[v1alpha1.WorkflowID]*v1alpha1.WorkflowSpec, len(wfClosure.SubWorkflows))
 	for _, subWf := range wfClosure.SubWorkflows {
-		spec := buildFlyteWorkflowSpec(wfClosure.Primary, wfClosure.Tasks, errs.NewScope())
+		spec := buildFlyteWorkflowSpec(subWf, wfClosure.Tasks, errs.NewScope())
 		subwfs[subWf.Template.Id.String()] = spec
 	}
 
@@ -159,6 +159,11 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		return nil, errs
 	}
 
+	interruptible := false
+	if wf.GetMetadataDefaults() != nil {
+		interruptible = wf.GetMetadataDefaults().GetInterruptible()
+	}
+
 	obj := &v1alpha1.FlyteWorkflow{
 		TypeMeta: v1.TypeMeta{
 			Kind:       v1alpha1.FlyteWorkflowKind,
@@ -172,6 +177,7 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		WorkflowSpec: primarySpec,
 		SubWorkflows: subwfs,
 		Tasks:        buildTasks(tasks, errs.NewScope()),
+		NodeDefaults: v1alpha1.NodeDefaults{Interruptible: interruptible},
 	}
 
 	var err error

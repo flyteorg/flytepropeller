@@ -171,7 +171,7 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 	case v1alpha1.DynamicNodePhaseFailing:
 		fallthrough
 	case v1alpha1.DynamicNodePhaseExecuting:
-		logger.Infof(ctx, "Aborting dynamic workflow.")
+		logger.Infof(ctx, "Aborting dynamic workflow at RetryAttempt [%d]", nCtx.CurrentAttempt())
 		dynamicWF, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 		if err != nil {
 			return err
@@ -183,7 +183,7 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 
 		return d.nodeExecutor.AbortHandler(ctx, dynamicWF, dynamicWF.StartNode(), reason)
 	default:
-		logger.Infof(ctx, "Aborting regular node.")
+		logger.Infof(ctx, "Aborting regular node RetryAttempt [%d]", nCtx.CurrentAttempt())
 		// The parent node has not yet completed, so we will abort the parent node
 		return d.TaskNodeHandler.Abort(ctx, nCtx, reason)
 	}
@@ -191,26 +191,38 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 
 // This is a weird method. We should always finalize before we set the dynamic parent node phase as complete?
 func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
+	errs := make([]error, 0, 2)
+
 	ds := nCtx.NodeStateReader().GetDynamicNodeState()
-	switch ds.Phase {
-	case v1alpha1.DynamicNodePhaseFailing:
-		fallthrough
-	case v1alpha1.DynamicNodePhaseExecuting:
-		logger.Infof(ctx, "Finalizing dynamic workflow")
+	if ds.Phase == v1alpha1.DynamicNodePhaseFailing || ds.Phase == v1alpha1.DynamicNodePhaseExecuting {
+		logger.Infof(ctx, "Finalizing dynamic workflow RetryAttempt [%d]", nCtx.CurrentAttempt())
 		dynamicWF, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 		if err != nil {
-			return err
+			errs = append(errs, err)
+		} else {
+			if isDynamic {
+				if err := d.nodeExecutor.FinalizeHandler(ctx, dynamicWF, dynamicWF.StartNode()); err != nil {
+					logger.Errorf(ctx, "failed to finalize dynamic workflow, err: %s", err)
+					errs = append(errs, err)
+				}
+			}
 		}
-
-		if !isDynamic {
-			return nil
-		}
-
-		return d.nodeExecutor.FinalizeHandler(ctx, dynamicWF, dynamicWF.StartNode())
-	default:
-		logger.Infof(ctx, "Finalizing regular node")
-		return d.TaskNodeHandler.Finalize(ctx, nCtx)
 	}
+
+	// We should always finalize the parent node success or failure.
+	// If we use the phase to decide when to finalize in the case where Dynamic node is in phase Executiing
+	// (i.e. child nodes are now being executed) and Finalize is invoked, we will never invoke the finalizer for the parent.
+	logger.Infof(ctx, "Finalizing Parent node RetryAttempt [%d]", nCtx.CurrentAttempt())
+	if err := d.TaskNodeHandler.Finalize(ctx, nCtx); err != nil {
+		logger.Errorf(ctx, "Failed to finalize Dynamic Nodes Parent.")
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return errors.ErrorCollection{Errors: errs}
+	}
+
+	return nil
 }
 
 func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Context, djSpec *core.DynamicJobSpec,

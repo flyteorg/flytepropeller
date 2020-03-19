@@ -13,7 +13,6 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
-	"github.com/lyft/flytepropeller/pkg/controller/config"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
@@ -21,12 +20,15 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/lyft/flytepropeller/pkg/controller/config"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type nodeMetrics struct {
@@ -36,6 +38,8 @@ type nodeMetrics struct {
 	ResolutionFailure  labeled.Counter
 	InputsWriteFailure labeled.Counter
 	TimedOutFailure    labeled.Counter
+
+	InterruptedThresholdHit labeled.Counter
 
 	// Measures the latency between the last parent node stoppedAt time and current node's queued time.
 	TransitionLatency labeled.StopWatch
@@ -47,16 +51,18 @@ type nodeMetrics struct {
 }
 
 type nodeExecutor struct {
-	nodeHandlerFactory       HandlerFactory
-	enqueueWorkflow          v1alpha1.EnqueueWorkflow
-	store                    *storage.DataStore
-	nodeRecorder             events.NodeEventRecorder
-	taskRecorder             events.TaskEventRecorder
-	metrics                  *nodeMetrics
-	maxDatasetSizeBytes      int64
-	outputResolver           OutputResolver
-	defaultExecutionDeadline time.Duration
-	defaultActiveDeadline    time.Duration
+	nodeHandlerFactory              HandlerFactory
+	enqueueWorkflow                 v1alpha1.EnqueueWorkflow
+	store                           *storage.DataStore
+	nodeRecorder                    events.NodeEventRecorder
+	taskRecorder                    events.TaskEventRecorder
+	metrics                         *nodeMetrics
+	maxDatasetSizeBytes             int64
+	outputResolver                  OutputResolver
+	defaultExecutionDeadline        time.Duration
+	defaultActiveDeadline           time.Duration
+	maxNodeRetriesForSystemFailures uint32
+	interruptibleFailureThreshold   uint32
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -170,6 +176,22 @@ func (c *nodeExecutor) isTimeoutExpired(queuedAt *metav1.Time, timeout time.Dura
 	return false
 }
 
+func (c *nodeExecutor) isEligibleForRetry(nCtx *execContext, nodeStatus v1alpha1.ExecutableNodeStatus, err *core.ExecutionError) (currentAttempt, maxAttempts uint32, isEligible bool) {
+	if err.Kind == core.ExecutionError_SYSTEM {
+		currentAttempt = nodeStatus.GetSystemFailures()
+		maxAttempts = c.maxNodeRetriesForSystemFailures
+		isEligible = currentAttempt < c.maxNodeRetriesForSystemFailures
+		return
+	}
+
+	currentAttempt = (nodeStatus.GetAttempts() + 1) - nodeStatus.GetSystemFailures()
+	if nCtx.Node().GetRetryStrategy() != nil && nCtx.Node().GetRetryStrategy().MinAttempts != nil {
+		maxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
+	}
+	isEligible = currentAttempt < maxAttempts
+	return
+}
+
 func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execContext, nodeStatus v1alpha1.ExecutableNodeStatus) (handler.PhaseInfo, error) {
 	logger.Debugf(ctx, "Executing node")
 	defer logger.Debugf(ctx, "Node execution round complete")
@@ -179,9 +201,9 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 		return handler.PhaseInfoUndefined, err
 	}
 
-	phase := t.Info().GetPhase()
+	phase := t.Info()
 	// check for timeout for non-terminal phases
-	if !phase.IsTerminal() {
+	if !phase.GetPhase().IsTerminal() {
 		activeDeadline := c.defaultActiveDeadline
 		if nCtx.Node().GetActiveDeadline() != nil {
 			activeDeadline = *nCtx.Node().GetActiveDeadline()
@@ -198,22 +220,17 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 		}
 		if c.isTimeoutExpired(nodeStatus.GetLastAttemptStartedAt(), executionDeadline) {
 			logger.Errorf(ctx, "Current execution for the node timed out; timeout configured: %v", executionDeadline)
-			return handler.PhaseInfoRetryableFailure("TimeOut", "node execution timed out", nil), nil
+			phase = handler.PhaseInfoRetryableFailure("TimeoutExpired", fmt.Sprintf("task execution timeout [%s] expired", executionDeadline.String()), nil)
 		}
 	}
 
-	if t.Info().GetPhase() == handler.EPhaseRetryableFailure {
-		maxAttempts := uint32(0)
-		if nCtx.Node().GetRetryStrategy() != nil && nCtx.Node().GetRetryStrategy().MinAttempts != nil {
-			maxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
-		}
-
-		attempts := nodeStatus.GetAttempts() + 1
-		if attempts >= maxAttempts {
+	if phase.GetPhase() == handler.EPhaseRetryableFailure {
+		currentAttempt, maxAttempts, isEligible := c.isEligibleForRetry(nCtx, nodeStatus, phase.GetErr())
+		if !isEligible {
 			return handler.PhaseInfoFailure(
-				fmt.Sprintf("RetriesExhausted|%s", t.Info().GetErr().Code),
-				fmt.Sprintf("[%d/%d] attempts done. Last Error: %s", attempts, maxAttempts, t.Info().GetErr().Message),
-				t.Info().GetInfo(),
+				fmt.Sprintf("RetriesExhausted|%s", phase.GetErr().Code),
+				fmt.Sprintf("[%d/%d] currentAttempt done. Last Error: %s::%s", currentAttempt, maxAttempts, phase.GetErr().Kind.String(), phase.GetErr().Message),
+				phase.GetInfo(),
 			), nil
 		}
 
@@ -221,7 +238,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 		nCtx.nsm.clearNodeStatus()
 	}
 
-	return t.Info(), nil
+	return phase, nil
 }
 
 func (c *nodeExecutor) abort(ctx context.Context, h handler.Node, nCtx handler.NodeExecutionContext, reason string) error {
@@ -355,10 +372,13 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	}
 
 	if currentPhase == v1alpha1.NodePhaseRetryableFailure {
-		logger.Debugf(ctx, "node failed with retryable failure, finalizing")
-		if err := c.finalize(ctx, h, nCtx); err != nil {
+		logger.Debugf(ctx, "node failed with retryable failure, aborting and finalizing, message: %s", nodeStatus.GetMessage())
+		if err := c.abort(ctx, h, nCtx, nodeStatus.GetMessage()); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
+
+		// NOTE: It is important to increment attempts only after abort has been called. Increment attempt mutates the state
+		// Attempt is used throughout the system to determine the idempotent resource version.
 		nodeStatus.IncrementAttempts()
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying")
 		// We are going to retry in the next round, so we should clear all current state
@@ -382,6 +402,12 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	if err != nil {
 		logger.Errorf(ctx, "failed Execute for node. Error: %s", err.Error())
 		return executors.NodeStatusUndefined, err
+	}
+
+	if p.GetPhase() == handler.EPhaseRetryableFailure {
+		if p.GetErr() != nil && p.GetErr().GetKind() == core.ExecutionError_SYSTEM {
+			nodeStatus.IncrementSystemFailures()
+		}
 	}
 
 	if p.GetPhase() == handler.EPhaseUndefined {
@@ -687,7 +713,7 @@ func (c *nodeExecutor) Initialize(ctx context.Context) error {
 	return c.nodeHandlerFactory.Setup(ctx, s)
 }
 
-func NewExecutor(ctx context.Context, defaultDeadlines config.DefaultDeadlines, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink, workflowLauncher launchplan.Executor, maxDatasetSize int64, kubeClient executors.Client, catalogClient catalog.Client, scope promutils.Scope) (executors.Node, error) {
+func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink, workflowLauncher launchplan.Executor, maxDatasetSize int64, kubeClient executors.Client, catalogClient catalog.Client, scope promutils.Scope) (executors.Node, error) {
 
 	nodeScope := scope.NewSubScope("node")
 	exec := &nodeExecutor{
@@ -697,20 +723,23 @@ func NewExecutor(ctx context.Context, defaultDeadlines config.DefaultDeadlines, 
 		taskRecorder:        events.NewTaskEventRecorder(eventSink, scope.NewSubScope("task")),
 		maxDatasetSizeBytes: maxDatasetSize,
 		metrics: &nodeMetrics{
-			Scope:                  nodeScope,
-			FailureDuration:        labeled.NewStopWatch("failure_duration", "Indicates the total execution time of a failed workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			SuccessDuration:        labeled.NewStopWatch("success_duration", "Indicates the total execution time of a successful workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			InputsWriteFailure:     labeled.NewCounter("inputs_write_fail", "Indicates failure in writing node inputs to metastore", nodeScope),
-			TimedOutFailure:        labeled.NewCounter("timeout_fail", "Indicates failure due to timeout", nodeScope),
-			ResolutionFailure:      labeled.NewCounter("input_resolve_fail", "Indicates failure in resolving node inputs", nodeScope),
-			TransitionLatency:      labeled.NewStopWatch("transition_latency", "Measures the latency between the last parent node stoppedAt time and current node's queued time.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			QueuingLatency:         labeled.NewStopWatch("queueing_latency", "Measures the latency between the time a node's been queued to the time the handler reported the executable moved to running state", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			NodeExecutionTime:      labeled.NewStopWatch("node_exec_latency", "Measures the time taken to execute one node, a node can be complex so it may encompass sub-node latency.", time.Microsecond, nodeScope, labeled.EmitUnlabeledMetric),
-			NodeInputGatherLatency: labeled.NewStopWatch("node_input_latency", "Measures the latency to aggregate inputs and check readiness of a node", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			Scope:                   nodeScope,
+			FailureDuration:         labeled.NewStopWatch("failure_duration", "Indicates the total execution time of a failed workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			SuccessDuration:         labeled.NewStopWatch("success_duration", "Indicates the total execution time of a successful workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			InputsWriteFailure:      labeled.NewCounter("inputs_write_fail", "Indicates failure in writing node inputs to metastore", nodeScope),
+			TimedOutFailure:         labeled.NewCounter("timeout_fail", "Indicates failure due to timeout", nodeScope),
+			InterruptedThresholdHit: labeled.NewCounter("interrupted_threshold", "Indicates the node interruptible disabled because it hit max failure count", nodeScope),
+			ResolutionFailure:       labeled.NewCounter("input_resolve_fail", "Indicates failure in resolving node inputs", nodeScope),
+			TransitionLatency:       labeled.NewStopWatch("transition_latency", "Measures the latency between the last parent node stoppedAt time and current node's queued time.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			QueuingLatency:          labeled.NewStopWatch("queueing_latency", "Measures the latency between the time a node's been queued to the time the handler reported the executable moved to running state", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			NodeExecutionTime:       labeled.NewStopWatch("node_exec_latency", "Measures the time taken to execute one node, a node can be complex so it may encompass sub-node latency.", time.Microsecond, nodeScope, labeled.EmitUnlabeledMetric),
+			NodeInputGatherLatency:  labeled.NewStopWatch("node_input_latency", "Measures the latency to aggregate inputs and check readiness of a node", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 		},
-		outputResolver:           NewRemoteFileOutputResolver(store),
-		defaultExecutionDeadline: defaultDeadlines.DefaultNodeExecutionDeadline.Duration,
-		defaultActiveDeadline:    defaultDeadlines.DefaultNodeActiveDeadline.Duration,
+		outputResolver:                  NewRemoteFileOutputResolver(store),
+		defaultExecutionDeadline:        nodeConfig.DefaultDeadlines.DefaultNodeExecutionDeadline.Duration,
+		defaultActiveDeadline:           nodeConfig.DefaultDeadlines.DefaultNodeActiveDeadline.Duration,
+		maxNodeRetriesForSystemFailures: uint32(nodeConfig.MaxNodeRetriesOnSystemFailures),
+		interruptibleFailureThreshold:   uint32(nodeConfig.InterruptibleFailureThreshold),
 	}
 	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, kubeClient, catalogClient, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory
