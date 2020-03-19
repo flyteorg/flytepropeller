@@ -130,7 +130,10 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 }
 
 // The State machine for a dynamic node is as follows
-//
+// DynamicNodePhaseNone: The parent node is being handled
+// DynamicNodePhaseParentFinalizing: The parent node has completes successfully and sub-nodes exist (futures file found). Parent node is being finalized.
+// DynamicNodePhaseExecuting: The parent node has completed and finalized successfully, the sub-nodes are being handled
+// DynamicNodePhaseFailing: one or more of sub-nodes have failed and the failure is being handled
 func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
 	ds := nCtx.NodeStateReader().GetDynamicNodeState()
 	var err error
