@@ -335,6 +335,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 			}
 			ns := &v1alpha1.NodeStatus{
 				Phase: endNodePhase,
+				LastAttemptStartedAt: &v1.Time{},
 			}
 
 			return &v1alpha1.FlyteWorkflow{
@@ -447,6 +448,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		}
 		ns := &v1alpha1.NodeStatus{
 			Phase: p,
+			LastAttemptStartedAt: &v1.Time{},
 		}
 
 		startNode := &v1alpha1.NodeSpec{

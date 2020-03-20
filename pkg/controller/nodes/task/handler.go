@@ -43,9 +43,6 @@ type metrics struct {
 	catalogPutSuccessCount         labeled.Counter
 	catalogMissCount               labeled.Counter
 	catalogHitCount                labeled.Counter
-	taskExecutionUserErrorCount    labeled.Counter
-	taskExecutionSystemErrorCount  labeled.Counter
-	taskExecutionUnknownErrorCount labeled.Counter
 	pluginExecutionLatency         labeled.StopWatch
 	pluginQueueLatency             labeled.StopWatch
 
@@ -412,16 +409,6 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			if err != nil {
 				return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
 			}
-			execErr := pluginTrns.pInfo.Err()
-			if execErr != nil {
-				if execErr.Kind == core.ExecutionError_SYSTEM {
-					t.metrics.taskExecutionSystemErrorCount.Inc(ctx)
-				} else if execErr.Kind == core.ExecutionError_USER {
-					t.metrics.taskExecutionUserErrorCount.Inc(ctx)
-				} else {
-					t.metrics.taskExecutionUnknownErrorCount.Inc(ctx)
-				}
-			}
 			if pluginTrns.IsPreviouslyObserved() {
 				logger.Debugf(ctx, "No state change for Task, previously observed same transition. Short circuiting.")
 				return pluginTrns.FinalTransition(ctx)
@@ -619,11 +606,8 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 			catalogPutSuccessCount:         labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", scope),
 			catalogPutFailureCount:         labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			catalogGetFailureCount:         labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
-			taskExecutionUserErrorCount:    labeled.NewCounter("task_execution_user_error_count", "Task execution user error count", scope),
-			taskExecutionSystemErrorCount:  labeled.NewCounter("task_execution_system_error_count", "Task execution system error count", scope),
-			taskExecutionUnknownErrorCount: labeled.NewCounter("task_execution_unknown_error_count", "Task execution unknown error count", scope),
-			pluginExecutionLatency:         labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
-			pluginQueueLatency:             labeled.NewStopWatch("plugin_queue_latecny", "Time spent by plugin in queued phase", time.Microsecond, scope),
+			pluginExecutionLatency:         labeled.NewStopWatch("plugin_exec_latency", "Time taken to invoke plugin for one round", time.Microsecond, scope),
+			pluginQueueLatency:             labeled.NewStopWatch("plugin_queue_latency", "Time spent by plugin in queued phase", time.Microsecond, scope),
 			scope:                          scope,
 		},
 		kubeClient:      kubeClient,
