@@ -408,14 +408,12 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	}
 	execErr := p.GetErr()
 	if execErr != nil {
-		if execErr != nil {
-			if execErr.Kind == core.ExecutionError_SYSTEM {
-				c.metrics.SystemErrorDuration.Observe(ctx, nodeStatus.GetLastAttemptStartedAt().Time, time.Now())
-			} else if execErr.Kind == core.ExecutionError_USER {
-				c.metrics.UserErrorDuration.Observe(ctx, nodeStatus.GetLastAttemptStartedAt().Time, time.Now())
-			} else {
-				c.metrics.UnknownErrorDuration.Observe(ctx, nodeStatus.GetLastAttemptStartedAt().Time, time.Now())
-			}
+		if execErr.Kind == core.ExecutionError_SYSTEM {
+			c.metrics.SystemErrorDuration.Observe(ctx, nodeStatus.GetLastAttemptStartedAt().Time, time.Now())
+		} else if execErr.Kind == core.ExecutionError_USER {
+			c.metrics.UserErrorDuration.Observe(ctx, nodeStatus.GetLastAttemptStartedAt().Time, time.Now())
+		} else {
+			c.metrics.UnknownErrorDuration.Observe(ctx, nodeStatus.GetLastAttemptStartedAt().Time, time.Now())
 		}
 	}
 	if p.GetPhase() == handler.EPhaseRetryableFailure {
