@@ -48,6 +48,7 @@ func Test_NodeContext(t *testing.T) {
 	}
 	s, _ := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 	nCtx := newNodeExecContext(context.TODO(), s, w1, n, nil, nil, 0, nil, TaskReader{}, nil, nil, "s3://bucket", ioutils.NewConstantShardSelector([]string{"x"}))
-	assert.Equal(t, nCtx.NodeExecutionMetadata().GetLabels()["node-id"], "id")
-	assert.Equal(t, nCtx.NodeExecutionMetadata().GetLabels()["task-name"], "task-name")
+	assert.Equal(t, "id", nCtx.NodeExecutionMetadata().GetLabels()["node-id"])
+	assert.Equal(t, "false", nCtx.NodeExecutionMetadata().GetLabels()["interruptible"])
+	assert.Equal(t, "task-name", nCtx.NodeExecutionMetadata().GetLabels()["task-name"])
 }
