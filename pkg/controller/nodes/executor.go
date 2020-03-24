@@ -398,7 +398,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusFailed(fmt.Errorf(nodeStatus.GetMessage())), nil
 	}
 
-	// case v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseRetryableFailure:
+	// case v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning:
 	logger.Debugf(ctx, "node executing, current phase [%s]", currentPhase)
 	defer logger.Debugf(ctx, "node execution completed")
 	p, err := c.execute(ctx, h, nCtx, nodeStatus)
@@ -408,6 +408,8 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 	}
 
 	execErr := p.GetErr()
+	// execErr(in phase-inf) from execute() is only available during task failures(both retryable and permanent failure) and the current phase
+	// at the time can only be v1alpha1.NodePhaseQueued or v1alpha1.NodePhaseRunning
 	if execErr != nil && nodeStatus.GetLastAttemptStartedAt() != nil {
 		if execErr.GetKind() == core.ExecutionError_SYSTEM {
 			nodeStatus.IncrementSystemFailures()
