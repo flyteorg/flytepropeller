@@ -474,6 +474,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, node.GetID(), err, "failed to record node event")
 		}
 
+		// We reach here only when transitioning from Queued to Running. In this case, the startedAt is not set.
 		if np == v1alpha1.NodePhaseRunning {
 			if nodeStatus.GetQueuedAt() != nil {
 				c.metrics.QueuingLatency.Observe(ctx, nodeStatus.GetQueuedAt().Time, time.Now())
