@@ -410,7 +410,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusUndefined, err
 	}
 
-	// execErr(in phase-inf) from execute() is only available during task failures(both retryable and permanent failure) and the current phase
+	// execErr(in phase-info) from execute() is only available during task failures(both retryable and permanent failure) and the current phase
 	// at the time can only be v1alpha1.NodePhaseRunning
 	execErr := p.GetErr()
 	if execErr != nil && currentPhase == v1alpha1.NodePhaseRunning {
