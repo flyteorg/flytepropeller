@@ -1001,13 +1001,26 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-
 	t.Run("Test_node-config.interruptible-failure-threshold", func(t *testing.T) {
-		// Test that default value is set properly
-		if vInt64, err := cmdFlags.GetInt64("node-config.interruptible-failure-threshold"); err == nil {
-			assert.Equal(t, int64(defaultConfig.NodeConfig.InterruptibleFailureThreshold), vInt64)
-		} else {
-			assert.FailNow(t, err.Error())
-		}
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt64, err := cmdFlags.GetInt64("node-config.interruptible-failure-threshold"); err == nil {
+				assert.Equal(t, int64(defaultConfig.NodeConfig.InterruptibleFailureThreshold), vInt64)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("node-config.interruptible-failure-threshold", testValue)
+			if vInt64, err := cmdFlags.GetInt64("node-config.interruptible-failure-threshold"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt64), &actual.NodeConfig.InterruptibleFailureThreshold)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
 	})
 }
