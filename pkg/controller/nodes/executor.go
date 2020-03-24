@@ -383,13 +383,13 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		// NOTE: It is important to increment attempts only after abort has been called. Increment attempt mutates the state
 		// Attempt is used throughout the system to determine the idempotent resource version.
 		nodeStatus.IncrementAttempts()
+		nodeStatus.ClearLastAttemptStartedAt()
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying")
 		// We are going to retry in the next round, so we should clear all current state
 		nodeStatus.ClearSubNodeStatus()
 		nodeStatus.ClearTaskStatus()
 		nodeStatus.ClearWorkflowStatus()
 		nodeStatus.ClearDynamicNodeStatus()
-		nodeStatus.ClearLastAttemptStartedAt()
 		return executors.NodeStatusPending, nil
 	}
 
@@ -406,8 +406,9 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		logger.Errorf(ctx, "failed Execute for node. Error: %s", err.Error())
 		return executors.NodeStatusUndefined, err
 	}
+
 	execErr := p.GetErr()
-	if execErr != nil && p.GetPhase() == handler.EPhaseRetryableFailure && nodeStatus.GetLastAttemptStartedAt() != nil {
+	if execErr != nil && nodeStatus.GetLastAttemptStartedAt() != nil {
 		if execErr.GetKind() == core.ExecutionError_SYSTEM {
 			nodeStatus.IncrementSystemFailures()
 			c.metrics.SystemErrorDuration.Observe(ctx, nodeStatus.GetLastAttemptStartedAt().Time, time.Now())
