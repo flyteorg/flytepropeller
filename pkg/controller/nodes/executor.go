@@ -397,7 +397,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusFailed(fmt.Errorf(nodeStatus.GetMessage())), nil
 	}
 
-	// we reset node status inside execute for retryable failure, we use lastAttemptStartTime to carry that information
+	// Since we reset node status inside execute for retryable failure, we use lastAttemptStartTime to carry that information
 	// across execute which is used to emit metrics
 	lastAttemptStartTime := nodeStatus.GetLastAttemptStartedAt()
 
@@ -410,8 +410,8 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusUndefined, err
 	}
 
-	// execErr(in phase-info) from execute() is only available during task failures(both retryable and permanent failure) and the current phase
-	// at the time can only be v1alpha1.NodePhaseRunning
+	// execErr in phase-info 'p' is only available if node has failed to execute, and the current phase at that time
+	// will be v1alpha1.NodePhaseRunning
 	execErr := p.GetErr()
 	if execErr != nil && currentPhase == v1alpha1.NodePhaseRunning {
 
