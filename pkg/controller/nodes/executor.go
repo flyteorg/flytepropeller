@@ -409,15 +409,22 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 
 	execErr := p.GetErr()
 	// execErr(in phase-inf) from execute() is only available during task failures(both retryable and permanent failure) and the current phase
-	// at the time can only be v1alpha1.NodePhaseQueued or v1alpha1.NodePhaseRunning
-	if execErr != nil && nodeStatus.GetLastAttemptStartedAt() != nil {
+	// at the time can only be v1alpha1.NodePhaseRunning
+	if execErr != nil && currentPhase == v1alpha1.NodePhaseRunning {
+
+		endTime := time.Now()
+		startTime := endTime
+		if nodeStatus.GetLastAttemptStartedAt() != nil {
+			startTime = nodeStatus.GetLastAttemptStartedAt().Time
+		}
+
 		if execErr.GetKind() == core.ExecutionError_SYSTEM {
 			nodeStatus.IncrementSystemFailures()
-			c.metrics.SystemErrorDuration.Observe(ctx, nodeStatus.GetLastAttemptStartedAt().Time, time.Now())
+			c.metrics.SystemErrorDuration.Observe(ctx, startTime, endTime)
 		} else if execErr.GetKind() == core.ExecutionError_USER {
-			c.metrics.UserErrorDuration.Observe(ctx, nodeStatus.GetLastAttemptStartedAt().Time, time.Now())
+			c.metrics.UserErrorDuration.Observe(ctx, startTime, endTime)
 		} else {
-			c.metrics.UnknownErrorDuration.Observe(ctx, nodeStatus.GetLastAttemptStartedAt().Time, time.Now())
+			c.metrics.UnknownErrorDuration.Observe(ctx, startTime, endTime)
 		}
 	}
 
