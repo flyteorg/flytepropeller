@@ -383,7 +383,6 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		// NOTE: It is important to increment attempts only after abort has been called. Increment attempt mutates the state
 		// Attempt is used throughout the system to determine the idempotent resource version.
 		nodeStatus.IncrementAttempts()
-		nodeStatus.ClearLastAttemptStartedAt()
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying")
 		// We are going to retry in the next round, so we should clear all current state
 		nodeStatus.ClearSubNodeStatus()
@@ -398,6 +397,10 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusFailed(fmt.Errorf(nodeStatus.GetMessage())), nil
 	}
 
+	// we reset node status inside execute for retryable failure, we use lastAttemptStartTime to carry that information
+	// across execute which is used to emit metrics
+	lastAttemptStartTime := nodeStatus.GetLastAttemptStartedAt()
+
 	// case v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning:
 	logger.Debugf(ctx, "node executing, current phase [%s]", currentPhase)
 	defer logger.Debugf(ctx, "node execution completed")
@@ -407,15 +410,15 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		return executors.NodeStatusUndefined, err
 	}
 
-	execErr := p.GetErr()
 	// execErr(in phase-inf) from execute() is only available during task failures(both retryable and permanent failure) and the current phase
 	// at the time can only be v1alpha1.NodePhaseRunning
+	execErr := p.GetErr()
 	if execErr != nil && currentPhase == v1alpha1.NodePhaseRunning {
 
 		endTime := time.Now()
 		startTime := endTime
-		if nodeStatus.GetLastAttemptStartedAt() != nil {
-			startTime = nodeStatus.GetLastAttemptStartedAt().Time
+		if lastAttemptStartTime != nil {
+			startTime = lastAttemptStartTime.Time
 		}
 
 		if execErr.GetKind() == core.ExecutionError_SYSTEM {
@@ -472,8 +475,8 @@ func (c *nodeExecutor) handleNode(ctx context.Context, w v1alpha1.ExecutableWork
 		}
 
 		if np == v1alpha1.NodePhaseRunning {
-			if nodeStatus.GetQueuedAt() != nil && nodeStatus.GetStartedAt() != nil {
-				c.metrics.QueuingLatency.Observe(ctx, nodeStatus.GetQueuedAt().Time, nodeStatus.GetStartedAt().Time)
+			if nodeStatus.GetQueuedAt() != nil {
+				c.metrics.QueuingLatency.Observe(ctx, nodeStatus.GetQueuedAt().Time, time.Now())
 			}
 		}
 	}
