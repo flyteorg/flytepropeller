@@ -421,14 +421,3 @@ func GetInputsFile(inputDir DataReference) DataReference {
 	return inputDir + "/inputs.pb"
 }
 
-func GetOutputErrorFile(inputDir DataReference) DataReference {
-	return inputDir + "/error.pb"
-}
-
-func GetFutureFile() string {
-	return "futures.pb"
-}
-
-func GetCompiledFutureFile() string {
-	return "futures_compiled.pb"
-}
