@@ -67,7 +67,7 @@ type nodeExecutor struct {
 	defaultExecutionDeadline        time.Duration
 	defaultActiveDeadline           time.Duration
 	maxNodeRetriesForSystemFailures uint32
-        interruptibleFailureThreshold   uint32
+	interruptibleFailureThreshold   uint32
 	defaultDataSandbox              storage.DataReference
 	shardSelector                   ioutils.ShardSelector
 }
@@ -777,7 +777,7 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		maxNodeRetriesForSystemFailures: uint32(nodeConfig.MaxNodeRetriesOnSystemFailures),
 		interruptibleFailureThreshold:   uint32(nodeConfig.InterruptibleFailureThreshold),
 		defaultDataSandbox:              defaultRawOutputPrefix,
-		shardSelector:                   shardSelector, 
+		shardSelector:                   shardSelector,
 	}
 	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, kubeClient, catalogClient, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory
