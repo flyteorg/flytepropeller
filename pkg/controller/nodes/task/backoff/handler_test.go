@@ -3,10 +3,11 @@ package backoff
 import (
 	"context"
 	"errors"
-	"github.com/magiconair/properties/assert"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/magiconair/properties/assert"
 
 	taskErrors "github.com/lyft/flyteplugins/go/tasks/errors"
 	stdlibErrors "github.com/lyft/flytestdlib/errors"
