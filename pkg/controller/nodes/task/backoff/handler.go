@@ -46,7 +46,10 @@ func (b *SimpleBackOffBlocker) reset() {
 	b.NextEligibleTime.Store(b.Clock.Now())
 }
 
-func (b *SimpleBackOffBlocker) backOff() time.Duration {
+func (b *SimpleBackOffBlocker) backOff(ctx context.Context) time.Duration {
+	logger.Debug(ctx, "BackOff params [BackOffBaseSecond: %v] [BackOffExponent: %v] [MaxBackOffDuration: %v]",
+		b.BackOffBaseSecond, b.BackOffExponent, b.MaxBackOffDuration)
+
 	backOffDuration := time.Duration(time.Second.Nanoseconds() * int64(math.Pow(float64(b.BackOffBaseSecond),
 		float64(b.BackOffExponent.Load()))))
 
@@ -148,7 +151,7 @@ func (h *ComputeResourceAwareBackOffHandler) Handle(ctx context.Context, operati
 				// if the backOffBlocker is not blocking and we are still encountering insufficient resource issue,
 				// we should increase the exponent in the backoff and update the NextEligibleTime
 
-				backOffDuration := h.SimpleBackOffBlocker.backOff()
+				backOffDuration := h.SimpleBackOffBlocker.backOff(ctx)
 				logger.Infof(ctx, "The operation was attempted because the back-off handler is not blocking, but failed due to "+
 					"insufficient resource (backing off for a duration of [%v] to timestamp [%v])\n", backOffDuration, h.SimpleBackOffBlocker.NextEligibleTime)
 			} else {

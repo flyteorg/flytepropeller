@@ -475,7 +475,7 @@ func TestSimpleBackOffBlocker_backOff(t *testing.T) {
 				MaxBackOffDuration: tt.fields.MaxBackOffDuration,
 			}
 
-			if got := b.backOff(); !reflect.DeepEqual(got, tt.wantDuration) {
+			if got := b.backOff(context.Background()); !reflect.DeepEqual(got, tt.wantDuration) {
 				t.Errorf("backOff() = %v, want %v", got, tt.wantDuration)
 			}
 			if gotExp := b.BackOffExponent; !reflect.DeepEqual(gotExp.Load(), tt.wantExponent) {
@@ -494,7 +494,7 @@ func TestSimpleBackOffBlocker_backOff(t *testing.T) {
 		}
 
 		for i := 0; i < 10; i++ {
-			backOffDuration := b.backOff()
+			backOffDuration := b.backOff(context.Background())
 			assert.Equal(t, maxBackOffDuration, backOffDuration)
 			assert.Equal(t, uint32(10), b.BackOffExponent.Load())
 		}
