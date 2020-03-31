@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	stdAtomic "github.com/lyft/flytestdlib/atomic"
 
 	"github.com/magiconair/properties/assert"
 
@@ -17,6 +20,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/clock"
 )
+
+func newNextEligibleTime(t time.Time) atomic.Value {
+	v := atomic.Value{}
+	v.Store(t)
+	return v
+}
 
 func TestComputeResourceAwareBackOffHandler_Handle(t *testing.T) {
 	var callCount = 0
@@ -50,7 +59,7 @@ func TestComputeResourceAwareBackOffHandler_Handle(t *testing.T) {
 		args                 args
 		wantErr              bool
 		wantErrCode          stdlibErrors.ErrorCode
-		wantExp              int
+		wantExp              uint32
 		wantNextEligibleTime time.Time
 		wantCeilings         v1.ResourceList
 		wantCallCount        int
@@ -61,8 +70,8 @@ func TestComputeResourceAwareBackOffHandler_Handle(t *testing.T) {
 				SimpleBackOffBlocker: &SimpleBackOffBlocker{
 					Clock:              tc,
 					BackOffBaseSecond:  2,
-					BackOffExponent:    1,
-					NextEligibleTime:   tc.Now().Add(time.Second * 7),
+					BackOffExponent:    stdAtomic.NewUint32(1),
+					NextEligibleTime:   newNextEligibleTime(tc.Now().Add(time.Second * 7)),
 					MaxBackOffDuration: 10 * time.Second,
 				},
 				ComputeResourceCeilings: &ComputeResourceCeilings{
@@ -86,8 +95,8 @@ func TestComputeResourceAwareBackOffHandler_Handle(t *testing.T) {
 				SimpleBackOffBlocker: &SimpleBackOffBlocker{
 					Clock:              tc,
 					BackOffBaseSecond:  2,
-					BackOffExponent:    1,
-					NextEligibleTime:   tc.Now().Add(time.Second * 7),
+					BackOffExponent:    stdAtomic.NewUint32(1),
+					NextEligibleTime:   newNextEligibleTime(tc.Now().Add(time.Second * 7)),
 					MaxBackOffDuration: 10 * time.Second,
 				},
 				ComputeResourceCeilings: &ComputeResourceCeilings{
@@ -113,8 +122,8 @@ func TestComputeResourceAwareBackOffHandler_Handle(t *testing.T) {
 				SimpleBackOffBlocker: &SimpleBackOffBlocker{
 					Clock:              tc,
 					BackOffBaseSecond:  2,
-					BackOffExponent:    1,
-					NextEligibleTime:   tc.Now().Add(time.Second * -2),
+					BackOffExponent:    stdAtomic.NewUint32(1),
+					NextEligibleTime:   newNextEligibleTime(tc.Now().Add(time.Second * -2)),
 					MaxBackOffDuration: 10 * time.Second,
 				},
 				ComputeResourceCeilings: &ComputeResourceCeilings{
@@ -149,10 +158,10 @@ func TestComputeResourceAwareBackOffHandler_Handle(t *testing.T) {
 					t.Errorf("Handle() errorCode = %v, wantErrCode %v", ec, tt.wantErrCode)
 				}
 			}
-			if tt.wantExp != h.BackOffExponent {
+			if tt.wantExp != h.BackOffExponent.Load() {
 				t.Errorf("post-Handle() BackOffExponent = %v, wantBackOffExponent %v", h.BackOffExponent, tt.wantExp)
 			}
-			if tt.wantNextEligibleTime != h.NextEligibleTime {
+			if tt.wantNextEligibleTime != h.NextEligibleTime.Load().(time.Time) {
 				t.Errorf("post-Handle() NextEligibleTime = %v, wantNextEligibleTime %v", h.NextEligibleTime, tt.wantNextEligibleTime)
 			}
 			if !reflect.DeepEqual(h.computeResourceCeilings, tt.wantCeilings) {
@@ -430,14 +439,14 @@ func TestSimpleBackOffBlocker_backOff(t *testing.T) {
 	type fields struct {
 		Clock              clock.Clock
 		BackOffBaseSecond  int
-		BackOffExponent    int
+		BackOffExponent    uint32
 		NextEligibleTime   time.Time
 		MaxBackOffDuration time.Duration
 	}
 	tests := []struct {
 		name         string
 		fields       fields
-		wantExponent int
+		wantExponent uint32
 		wantDuration time.Duration
 	}{
 		{name: "backoff should increase exponent",
@@ -461,16 +470,16 @@ func TestSimpleBackOffBlocker_backOff(t *testing.T) {
 			b := &SimpleBackOffBlocker{
 				Clock:              tt.fields.Clock,
 				BackOffBaseSecond:  tt.fields.BackOffBaseSecond,
-				BackOffExponent:    tt.fields.BackOffExponent,
-				NextEligibleTime:   tt.fields.NextEligibleTime,
+				BackOffExponent:    stdAtomic.NewUint32(tt.fields.BackOffExponent),
+				NextEligibleTime:   newNextEligibleTime(tt.fields.NextEligibleTime),
 				MaxBackOffDuration: tt.fields.MaxBackOffDuration,
 			}
 
 			if got := b.backOff(); !reflect.DeepEqual(got, tt.wantDuration) {
 				t.Errorf("backOff() = %v, want %v", got, tt.wantDuration)
 			}
-			if gotExp := b.BackOffExponent; !reflect.DeepEqual(gotExp, tt.wantExponent) {
-				t.Errorf("backOffExponent = %v, want %v", gotExp, tt.wantExponent)
+			if gotExp := b.BackOffExponent; !reflect.DeepEqual(gotExp.Load(), tt.wantExponent) {
+				t.Errorf("backOffExponent = %v, want %v", gotExp.Load(), tt.wantExponent)
 			}
 		})
 	}
@@ -479,15 +488,15 @@ func TestSimpleBackOffBlocker_backOff(t *testing.T) {
 		b := &SimpleBackOffBlocker{
 			Clock:              tc,
 			BackOffBaseSecond:  2,
-			BackOffExponent:    10,
-			NextEligibleTime:   tc.Now(),
+			BackOffExponent:    stdAtomic.NewUint32(10),
+			NextEligibleTime:   newNextEligibleTime(tc.Now()),
 			MaxBackOffDuration: maxBackOffDuration,
 		}
 
 		for i := 0; i < 10; i++ {
 			backOffDuration := b.backOff()
 			assert.Equal(t, maxBackOffDuration, backOffDuration)
-			assert.Equal(t, 10, b.BackOffExponent)
+			assert.Equal(t, uint32(10), b.BackOffExponent.Load())
 		}
 	})
 }

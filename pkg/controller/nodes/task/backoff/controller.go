@@ -3,7 +3,10 @@ package backoff
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
+
+	stdAtomic "github.com/lyft/flytestdlib/atomic"
 
 	"github.com/lyft/flytestdlib/logger"
 
@@ -20,12 +23,14 @@ type Controller struct {
 }
 
 func (m *Controller) GetOrCreateHandler(ctx context.Context, key string, backOffBaseSecond int, maxBackOffDuration time.Duration) *ComputeResourceAwareBackOffHandler {
+	nextEligibleTime := atomic.Value{}
+	nextEligibleTime.Store(m.Clock.Now())
 	h, loaded := m.backOffHandlerMap.LoadOrStore(key, &ComputeResourceAwareBackOffHandler{
 		SimpleBackOffBlocker: &SimpleBackOffBlocker{
 			Clock:              m.Clock,
 			BackOffBaseSecond:  backOffBaseSecond,
-			BackOffExponent:    0,
-			NextEligibleTime:   m.Clock.Now(),
+			BackOffExponent:    stdAtomic.NewUint32(0),
+			NextEligibleTime:   nextEligibleTime,
 			MaxBackOffDuration: maxBackOffDuration,
 		}, ComputeResourceCeilings: &ComputeResourceCeilings{
 			computeResourceCeilings: v1.ResourceList{},
