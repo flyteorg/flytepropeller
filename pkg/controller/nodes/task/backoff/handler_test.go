@@ -3,6 +3,7 @@ package backoff
 import (
 	"context"
 	"errors"
+	"github.com/magiconair/properties/assert"
 	"reflect"
 	"testing"
 	"time"
@@ -450,7 +451,7 @@ func TestSimpleBackOffBlocker_backOff(t *testing.T) {
 		},
 		{name: "backoff should saturate",
 			fields:       fields{Clock: tc, BackOffBaseSecond: 2, BackOffExponent: 10, NextEligibleTime: tc.Now(), MaxBackOffDuration: maxBackOffDuration},
-			wantExponent: 11,
+			wantExponent: 10,
 			wantDuration: maxBackOffDuration,
 		},
 	}
@@ -472,4 +473,20 @@ func TestSimpleBackOffBlocker_backOff(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("backoff many times after maxBackOffDuration is hit", func(t *testing.T) {
+		b := &SimpleBackOffBlocker{
+			Clock:              tc,
+			BackOffBaseSecond:  2,
+			BackOffExponent:    10,
+			NextEligibleTime:   tc.Now(),
+			MaxBackOffDuration: maxBackOffDuration,
+		}
+
+		for i := 0; i < 10; i++ {
+			backOffDuration := b.backOff()
+			assert.Equal(t, maxBackOffDuration, backOffDuration)
+			assert.Equal(t, 10, b.BackOffExponent)
+		}
+	})
 }

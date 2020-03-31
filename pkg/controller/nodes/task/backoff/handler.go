@@ -5,6 +5,7 @@ import (
 	"math"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
@@ -24,33 +25,49 @@ var (
 type SimpleBackOffBlocker struct {
 	Clock              clock.Clock
 	BackOffBaseSecond  int
+	MaxBackOffDuration time.Duration
+
+	// Mutable fields
+	syncObj            sync.RWMutex
 	BackOffExponent    int
 	NextEligibleTime   time.Time
-	MaxBackOffDuration time.Duration
 }
 
-func (b *SimpleBackOffBlocker) isBlocking(t time.Time) bool {
+func (b SimpleBackOffBlocker) isBlocking(t time.Time) bool {
+	b.syncObj.RLock()
+	defer b.syncObj.RUnlock()
+
 	return !b.NextEligibleTime.Before(t)
 }
 
-func (b *SimpleBackOffBlocker) getBlockExpirationTime() time.Time {
+func (b SimpleBackOffBlocker) getBlockExpirationTime() time.Time {
+	b.syncObj.RLock()
+	defer b.syncObj.RUnlock()
+
 	return b.NextEligibleTime
 }
 
 func (b *SimpleBackOffBlocker) reset() {
+	b.syncObj.Lock()
+	defer b.syncObj.Unlock()
+
 	b.BackOffExponent = 0
 	b.NextEligibleTime = b.Clock.Now()
 }
 
 func (b *SimpleBackOffBlocker) backOff() time.Duration {
+	b.syncObj.Lock()
+	defer b.syncObj.Unlock()
+
 	backOffDuration := time.Duration(time.Second.Nanoseconds() * int64(math.Pow(float64(b.BackOffBaseSecond), float64(b.BackOffExponent))))
 
 	if backOffDuration > b.MaxBackOffDuration {
 		backOffDuration = b.MaxBackOffDuration
+	} else {
+		b.BackOffExponent++
 	}
 
 	b.NextEligibleTime = b.Clock.Now().Add(backOffDuration)
-	b.BackOffExponent++
 	return backOffDuration
 }
 
