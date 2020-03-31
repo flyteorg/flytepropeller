@@ -5,7 +5,6 @@ import (
 	"math"
 	"regexp"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
@@ -30,15 +29,15 @@ type SimpleBackOffBlocker struct {
 
 	// Mutable fields
 	BackOffExponent  stdAtomic.Uint32
-	NextEligibleTime atomic.Value
+	NextEligibleTime AtomicTime
 }
 
 func (b *SimpleBackOffBlocker) isBlocking(t time.Time) bool {
-	return !b.NextEligibleTime.Load().(time.Time).Before(t)
+	return !b.NextEligibleTime.Load().Before(t)
 }
 
 func (b *SimpleBackOffBlocker) getBlockExpirationTime() time.Time {
-	return b.NextEligibleTime.Load().(time.Time)
+	return b.NextEligibleTime.Load()
 }
 
 func (b *SimpleBackOffBlocker) reset() {

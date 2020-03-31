@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"reflect"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -20,12 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/clock"
 )
-
-func newNextEligibleTime(t time.Time) atomic.Value {
-	v := atomic.Value{}
-	v.Store(t)
-	return v
-}
 
 func TestComputeResourceAwareBackOffHandler_Handle(t *testing.T) {
 	var callCount = 0
@@ -71,7 +64,7 @@ func TestComputeResourceAwareBackOffHandler_Handle(t *testing.T) {
 					Clock:              tc,
 					BackOffBaseSecond:  2,
 					BackOffExponent:    stdAtomic.NewUint32(1),
-					NextEligibleTime:   newNextEligibleTime(tc.Now().Add(time.Second * 7)),
+					NextEligibleTime:   NewAtomicTime(tc.Now().Add(time.Second * 7)),
 					MaxBackOffDuration: 10 * time.Second,
 				},
 				ComputeResourceCeilings: &ComputeResourceCeilings{
@@ -96,7 +89,7 @@ func TestComputeResourceAwareBackOffHandler_Handle(t *testing.T) {
 					Clock:              tc,
 					BackOffBaseSecond:  2,
 					BackOffExponent:    stdAtomic.NewUint32(1),
-					NextEligibleTime:   newNextEligibleTime(tc.Now().Add(time.Second * 7)),
+					NextEligibleTime:   NewAtomicTime(tc.Now().Add(time.Second * 7)),
 					MaxBackOffDuration: 10 * time.Second,
 				},
 				ComputeResourceCeilings: &ComputeResourceCeilings{
@@ -123,7 +116,7 @@ func TestComputeResourceAwareBackOffHandler_Handle(t *testing.T) {
 					Clock:              tc,
 					BackOffBaseSecond:  2,
 					BackOffExponent:    stdAtomic.NewUint32(1),
-					NextEligibleTime:   newNextEligibleTime(tc.Now().Add(time.Second * -2)),
+					NextEligibleTime:   NewAtomicTime(tc.Now().Add(time.Second * -2)),
 					MaxBackOffDuration: 10 * time.Second,
 				},
 				ComputeResourceCeilings: &ComputeResourceCeilings{
@@ -161,7 +154,7 @@ func TestComputeResourceAwareBackOffHandler_Handle(t *testing.T) {
 			if tt.wantExp != h.BackOffExponent.Load() {
 				t.Errorf("post-Handle() BackOffExponent = %v, wantBackOffExponent %v", h.BackOffExponent, tt.wantExp)
 			}
-			if tt.wantNextEligibleTime != h.NextEligibleTime.Load().(time.Time) {
+			if tt.wantNextEligibleTime != h.NextEligibleTime.Load() {
 				t.Errorf("post-Handle() NextEligibleTime = %v, wantNextEligibleTime %v", h.NextEligibleTime, tt.wantNextEligibleTime)
 			}
 			if !reflect.DeepEqual(h.computeResourceCeilings, tt.wantCeilings) {
@@ -471,7 +464,7 @@ func TestSimpleBackOffBlocker_backOff(t *testing.T) {
 				Clock:              tt.fields.Clock,
 				BackOffBaseSecond:  tt.fields.BackOffBaseSecond,
 				BackOffExponent:    stdAtomic.NewUint32(tt.fields.BackOffExponent),
-				NextEligibleTime:   newNextEligibleTime(tt.fields.NextEligibleTime),
+				NextEligibleTime:   NewAtomicTime(tt.fields.NextEligibleTime),
 				MaxBackOffDuration: tt.fields.MaxBackOffDuration,
 			}
 
@@ -489,7 +482,7 @@ func TestSimpleBackOffBlocker_backOff(t *testing.T) {
 			Clock:              tc,
 			BackOffBaseSecond:  2,
 			BackOffExponent:    stdAtomic.NewUint32(10),
-			NextEligibleTime:   newNextEligibleTime(tc.Now()),
+			NextEligibleTime:   NewAtomicTime(tc.Now()),
 			MaxBackOffDuration: maxBackOffDuration,
 		}
 
