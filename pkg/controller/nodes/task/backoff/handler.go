@@ -5,10 +5,11 @@ import (
 	"math"
 	"regexp"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
+	stdAtomic "github.com/lyft/flytestdlib/atomic"
 	stdErrors "github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	v1 "k8s.io/api/core/v1"
@@ -28,46 +29,34 @@ type SimpleBackOffBlocker struct {
 	MaxBackOffDuration time.Duration
 
 	// Mutable fields
-	syncObj          sync.RWMutex
-	BackOffExponent  int
-	NextEligibleTime time.Time
+	BackOffExponent  stdAtomic.Uint32
+	NextEligibleTime atomic.Value
 }
 
 func (b *SimpleBackOffBlocker) isBlocking(t time.Time) bool {
-	b.syncObj.RLock()
-	defer b.syncObj.RUnlock()
-
-	return !b.NextEligibleTime.Before(t)
+	return !b.NextEligibleTime.Load().(time.Time).Before(t)
 }
 
 func (b *SimpleBackOffBlocker) getBlockExpirationTime() time.Time {
-	b.syncObj.RLock()
-	defer b.syncObj.RUnlock()
-
-	return b.NextEligibleTime
+	return b.NextEligibleTime.Load().(time.Time)
 }
 
 func (b *SimpleBackOffBlocker) reset() {
-	b.syncObj.Lock()
-	defer b.syncObj.Unlock()
-
-	b.BackOffExponent = 0
-	b.NextEligibleTime = b.Clock.Now()
+	b.BackOffExponent.Store(0)
+	b.NextEligibleTime.Store(b.Clock.Now())
 }
 
 func (b *SimpleBackOffBlocker) backOff() time.Duration {
-	b.syncObj.Lock()
-	defer b.syncObj.Unlock()
-
-	backOffDuration := time.Duration(time.Second.Nanoseconds() * int64(math.Pow(float64(b.BackOffBaseSecond), float64(b.BackOffExponent))))
+	backOffDuration := time.Duration(time.Second.Nanoseconds() * int64(math.Pow(float64(b.BackOffBaseSecond),
+		float64(b.BackOffExponent.Load()))))
 
 	if backOffDuration > b.MaxBackOffDuration {
 		backOffDuration = b.MaxBackOffDuration
 	} else {
-		b.BackOffExponent++
+		b.BackOffExponent.Inc()
 	}
 
-	b.NextEligibleTime = b.Clock.Now().Add(backOffDuration)
+	b.NextEligibleTime.Store(b.Clock.Now().Add(backOffDuration))
 	return backOffDuration
 }
 
