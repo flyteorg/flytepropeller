@@ -313,8 +313,8 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 
 	return &core.WorkflowTemplate{
 		Id: &core.Identifier{
-			Project:      nCtx.NodeExecutionMetadata().GetExecutionID().Project,
-			Domain:       nCtx.NodeExecutionMetadata().GetExecutionID().Domain,
+			Project:      nCtx.NodeExecutionMetadata().GetNodeExecutionID().GetExecutionId().Project,
+			Domain:       nCtx.NodeExecutionMetadata().GetNodeExecutionID().GetExecutionId().Domain,
 			Version:      rand.String(10),
 			Name:         rand.String(10),
 			ResourceType: core.ResourceType_WORKFLOW,

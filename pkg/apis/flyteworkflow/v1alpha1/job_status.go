@@ -5,8 +5,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const maxMessageSize = 1024
-
 type JobPhase int8
 
 type JobStatus struct {

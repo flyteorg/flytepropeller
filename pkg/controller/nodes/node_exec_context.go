@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/lyft/flyteidl/clients/go/events"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/storage"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/lyft/flytepropeller/pkg/utils"
 )
@@ -22,13 +24,18 @@ const TaskNameLabel = "task-name"
 const NodeInterruptibleLabel = "interruptible"
 
 type execMetadata struct {
-	v1alpha1.WorkflowMeta
+	v1alpha1.Meta
+	nodeExecID     *core.NodeExecutionIdentifier
 	interrutptible bool
 	nodeLabels     map[string]string
 }
 
+func (e execMetadata) GetNodeExecutionID() *core.NodeExecutionIdentifier {
+	return e.nodeExecID
+}
+
 func (e execMetadata) GetK8sServiceAccount() string {
-	return e.WorkflowMeta.GetServiceAccountName()
+	return e.Meta.GetServiceAccountName()
 }
 
 func (e execMetadata) GetOwnerID() types.NamespacedName {
@@ -54,9 +61,18 @@ type execContext struct {
 	maxDatasetSizeBytes int64
 	nsm                 *nodeStateManager
 	enqueueOwner        func() error
-	w                   v1alpha1.ExecutableWorkflow
 	rawOutputPrefix     storage.DataReference
 	shardSelector       ioutils.ShardSelector
+	nl                  executors.NodeLookup
+	ic                  executors.ExecutionContext
+}
+
+func (e execContext) ExecutionContext() executors.ExecutionContext {
+	return e.ic
+}
+
+func (e execContext) ContextualNodeLookup() executors.NodeLookup {
+	return e.nl
 }
 
 func (e execContext) OutputShardSelector() ioutils.ShardSelector {
@@ -69,10 +85,6 @@ func (e execContext) RawOutputPrefix() storage.DataReference {
 
 func (e execContext) EnqueueOwnerFunc() func() error {
 	return e.enqueueOwner
-}
-
-func (e execContext) Workflow() v1alpha1.ExecutableWorkflow {
-	return e.w
 }
 
 func (e execContext) TaskReader() handler.TaskReader {
@@ -123,12 +135,19 @@ func (e execContext) MaxDatasetSizeBytes() int64 {
 	return e.maxDatasetSizeBytes
 }
 
-func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.ExecutableWorkflow, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *execContext {
-	md := execMetadata{WorkflowMeta: w, interrutptible: interruptible}
+func newNodeExecContext(_ context.Context, store *storage.DataStore, ic executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *execContext {
+	md := execMetadata{
+		Meta: ic,
+		nodeExecID: &core.NodeExecutionIdentifier{
+			NodeId:      node.GetID(),
+			ExecutionId: ic.ExecutionID(),
+		},
+		interrutptible: interruptible,
+	}
 
 	// Copy the wf labels before adding node specific labels.
 	nodeLabels := make(map[string]string)
-	for k, v := range w.GetLabels() {
+	for k, v := range ic.GetLabels() {
 		nodeLabels[k] = v
 	}
 	nodeLabels[NodeIDLabel] = utils.SanitizeLabelValue(node.GetID())
@@ -149,34 +168,42 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, w v1alpha1.
 		tr:                  tr,
 		nsm:                 nsm,
 		enqueueOwner:        enqueueOwner,
-		w:                   w,
 		rawOutputPrefix:     rawOutputPrefix,
 		shardSelector:       outputShardSelector,
+		nl:                  nl,
+		ic:                  ic,
 	}
 }
 
-func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1.ExecutableWorkflow, n v1alpha1.ExecutableNode, s v1alpha1.ExecutableNodeStatus) (*execContext, error) {
+func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNodeID v1alpha1.NodeID, executionContext executors.ExecutionContext, nl executors.NodeLookup) (*execContext, error) {
+	n, ok := nl.GetNode(currentNodeID)
+	if !ok {
+		return nil, fmt.Errorf("failed to find node with ID [%s] in execution [%s]", currentNodeID, executionContext.ID())
+	}
+
 	var tr handler.TaskReader
 	if n.GetKind() == v1alpha1.NodeKindTask {
 		if n.GetTaskID() == nil {
 			return nil, fmt.Errorf("bad state, no task-id defined for node [%s]", n.GetID())
 		}
-		tk, err := w.GetTask(*n.GetTaskID())
+		tk, err := executionContext.GetTaskDetails(*n.GetTaskID())
 		if err != nil {
 			return nil, err
 		}
-		tr = &taskReader{TaskTemplate: tk.CoreTask()}
+		tr = tk
 	}
 
 	workflowEnqueuer := func() error {
-		c.enqueueWorkflow(w.GetID())
+		c.enqueueWorkflow(executionContext.ID())
 		return nil
 	}
 
-	interrutible := w.IsInterruptible()
+	interrutible := executionContext.IsInterruptible()
 	if n.IsInterruptible() != nil {
 		interrutible = *n.IsInterruptible()
 	}
+
+	s := nl.GetNodeExecutionStatus(ctx, currentNodeID)
 
 	// a node is not considered interruptible if the system failures have exceeded the configured threshold
 	if interrutible && s.GetSystemFailures() >= c.interruptibleFailureThreshold {
@@ -184,7 +211,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, w v1alpha1
 		c.metrics.InterruptedThresholdHit.Inc(ctx)
 	}
 
-	return newNodeExecContext(ctx, c.store, w, n, s,
+	return newNodeExecContext(ctx, c.store, executionContext, nl, n, s,
 		ioutils.NewCachedInputReader(
 			ctx,
 			ioutils.NewRemoteFileInputReader(
