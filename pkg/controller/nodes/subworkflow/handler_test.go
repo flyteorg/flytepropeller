@@ -9,12 +9,6 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	mocks4 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	mocks2 "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
-	mocks3 "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan/mocks"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
@@ -23,6 +17,14 @@ import (
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	mocks2 "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
+	execMocks "github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
+	mocks3 "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan/mocks"
 )
 
 type workflowNodeStateHolder struct {
@@ -46,22 +48,22 @@ func (t workflowNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState)
 	panic("not implemented")
 }
 
+var wfExecID = &core.WorkflowExecutionIdentifier{
+	Project: "project",
+	Domain:  "domain",
+	Name:    "name",
+}
+
 func createNodeContext(phase v1alpha1.WorkflowNodePhase, n v1alpha1.ExecutableNode, s v1alpha1.ExecutableNodeStatus) *mocks3.NodeExecutionContext {
 
 	wfNodeState := handler.WorkflowNodeState{}
 	state := &workflowNodeStateHolder{s: wfNodeState}
 
-	wfExecID := &core.WorkflowExecutionIdentifier{
-		Project: "project",
-		Domain:  "domain",
-		Name:    "name",
-	}
-
 	nm := &mocks3.NodeExecutionMetadata{}
 	nm.OnGetAnnotations().Return(map[string]string{})
 	nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
 		ExecutionId: wfExecID,
-		NodeId: n.GetID(),
+		NodeId:      n.GetID(),
 	})
 	nm.OnGetK8sServiceAccount().Return("service-account")
 	nm.OnGetLabels().Return(map[string]string{})
@@ -72,13 +74,9 @@ func createNodeContext(phase v1alpha1.WorkflowNodePhase, n v1alpha1.ExecutableNo
 		Name: "name",
 	})
 
-	ns := &mocks2.ExecutableNodeStatus{}
-	ns.OnGetDataDir().Return(storage.DataReference("data-dir"))
-	ns.OnGetPhase().Return(v1alpha1.NodePhaseNotYetStarted)
-
 	ir := &mocks4.InputReader{}
 	inputs := &core.LiteralMap{}
-	ir.OnGetMatch( mock.Anything).Return(inputs, nil)
+	ir.OnGetMatch(mock.Anything).Return(inputs, nil)
 
 	nCtx := &mocks3.NodeExecutionContext{}
 	nCtx.OnNode().Return(n)
@@ -86,7 +84,6 @@ func createNodeContext(phase v1alpha1.WorkflowNodePhase, n v1alpha1.ExecutableNo
 	nCtx.OnInputReader().Return(ir)
 	nCtx.OnCurrentAttempt().Return(uint32(1))
 	nCtx.OnMaxDatasetSizeBytes().Return(int64(1))
-	nCtx.OnNodeStatus().Return(ns)
 	nCtx.OnNodeID().Return(n.GetID())
 	nCtx.OnEnqueueOwnerFunc().Return(nil)
 	nCtx.OnNodeStatus().Return(s)
@@ -126,11 +123,6 @@ func TestWorkflowNodeHandler_StartNode_Launchplan(t *testing.T) {
 	mockNodeStatus.OnGetAttempts().Return(attempts)
 	wfStatus := &mocks2.MutableWorkflowNodeStatus{}
 	mockNodeStatus.OnGetOrCreateWorkflowStatus().Return(wfStatus)
-	parentID := &core.WorkflowExecutionIdentifier{
-		Name:    "x",
-		Domain:  "y",
-		Project: "z",
-	}
 
 	t.Run("happy", func(t *testing.T) {
 
@@ -140,10 +132,10 @@ func TestWorkflowNodeHandler_StartNode_Launchplan(t *testing.T) {
 			ctx,
 			mock.MatchedBy(func(o launchplan.LaunchContext) bool {
 				return o.ParentNodeExecution.NodeId == mockNode.GetID() &&
-					o.ParentNodeExecution.ExecutionId == parentID
+					o.ParentNodeExecution.ExecutionId == wfExecID
 			}),
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return o.Project == parentID.Project && o.Domain == parentID.Domain
+				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 			mock.MatchedBy(func(o *core.Identifier) bool { return lpID == o }),
 			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
@@ -183,12 +175,6 @@ func TestWorkflowNodeHandler_CheckNodeStatus(t *testing.T) {
 	mockNodeStatus.OnGetAttempts().Return(attempts)
 	mockNodeStatus.OnGetDataDir().Return(dataDir)
 
-	parentID := &core.WorkflowExecutionIdentifier{
-		Name:    "x",
-		Domain:  "y",
-		Project: "z",
-	}
-
 	t.Run("stillRunning", func(t *testing.T) {
 
 		mockLPExec := &mocks.Executor{}
@@ -197,7 +183,7 @@ func TestWorkflowNodeHandler_CheckNodeStatus(t *testing.T) {
 		mockLPExec.OnGetStatusMatch(
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return o.Project == parentID.Project && o.Domain == parentID.Domain
+				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_RUNNING,
@@ -237,12 +223,6 @@ func TestWorkflowNodeHandler_AbortNode(t *testing.T) {
 	mockNodeStatus.OnGetAttempts().Return(attempts)
 	mockNodeStatus.OnGetDataDir().Return(dataDir)
 
-	parentID := &core.WorkflowExecutionIdentifier{
-		Name:    "x",
-		Domain:  "y",
-		Project: "z",
-	}
-
 	t.Run("abort", func(t *testing.T) {
 
 		mockLPExec := &mocks.Executor{}
@@ -252,11 +232,14 @@ func TestWorkflowNodeHandler_AbortNode(t *testing.T) {
 		mockLPExec.OnKillMatch(
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return o.Project == parentID.Project && o.Domain == parentID.Domain
+				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 			mock.AnythingOfType(reflect.String.String()),
 		).Return(nil)
 
+		eCtx := &execMocks.ExecutionContext{}
+		nCtx.OnExecutionContext().Return(eCtx)
+		eCtx.OnGetName().Return("test")
 		err := h.Abort(ctx, nCtx, "test")
 		assert.NoError(t, err)
 	})
@@ -269,12 +252,16 @@ func TestWorkflowNodeHandler_AbortNode(t *testing.T) {
 		mockLPExec.OnKillMatch(
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return o.Project == parentID.Project && o.Domain == parentID.Domain
+				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 			mock.AnythingOfType(reflect.String.String()),
 		).Return(expectedErr)
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockNode, mockNodeStatus)
+		eCtx := &execMocks.ExecutionContext{}
+		nCtx.OnExecutionContext().Return(eCtx)
+		eCtx.OnGetName().Return("test")
+
 		err := h.Abort(ctx, nCtx, "test")
 		assert.Error(t, err)
 		assert.Equal(t, err, expectedErr)
