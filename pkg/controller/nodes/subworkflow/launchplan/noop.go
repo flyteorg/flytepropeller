@@ -28,6 +28,10 @@ func (failFastWorkflowLauncher) Kill(ctx context.Context, executionID *core.Work
 	return nil
 }
 
+func (failFastWorkflowLauncher) GetLaunchPlan(ctx context.Context, launchPlanRef *core.Identifier) (*admin.LaunchPlan, error) {
+	return nil, nil
+}
+
 // Initializes Executor.
 func (failFastWorkflowLauncher) Initialize(ctx context.Context) error {
 	return nil

@@ -60,7 +60,7 @@ func NewHandlerFactory(ctx context.Context, executor executors.Node, workflowLau
 	f := &handlerFactory{
 		handlers: map[v1alpha1.NodeKind]handler.Node{
 			v1alpha1.NodeKindBranch:   branch.New(executor, scope),
-			v1alpha1.NodeKindTask:     dynamic.New(t, executor, scope),
+			v1alpha1.NodeKindTask:     dynamic.New(t, executor, workflowLauncher, scope),
 			v1alpha1.NodeKindWorkflow: subworkflow.New(executor, workflowLauncher, scope),
 			v1alpha1.NodeKindStart:    start.New(),
 			v1alpha1.NodeKindEnd:      end.New(),
