@@ -194,7 +194,7 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 			return nil
 		}
 
-		return d.nodeExecutor.AbortHandler(ctx, dynamicWF, dynamicWF.StartNode(), reason)
+		return d.nodeExecutor.AbortHandler(ctx, nCtx.ExecutionContext(), dynamicWF, dynamicWF.StartNode(), reason)
 	default:
 		logger.Infof(ctx, "Aborting regular node RetryAttempt [%d]", nCtx.CurrentAttempt())
 		// The parent node has not yet completed, so we will abort the parent node
