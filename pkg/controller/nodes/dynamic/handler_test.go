@@ -659,7 +659,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		tr.On("Read", mock.Anything).Return(tk, nil)
 
 		n := &flyteMocks.ExecutableNode{}
-		tID := "task-1"
+		tID := "dyn-task-1"
 		n.On("GetTaskID").Return(&tID)
 
 		dataStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
