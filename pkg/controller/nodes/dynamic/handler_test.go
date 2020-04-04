@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	ioMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	lpMocks "github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan/mocks"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	flyteMocks "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
@@ -168,13 +169,14 @@ func Test_dynamicNodeHandler_Handle_Parent(t *testing.T) {
 				assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, dj))
 			}
 			h := &mocks.TaskNodeHandler{}
+			mockLPLauncher := &lpMocks.Executor{}
 			n := &executorMocks.Node{}
 			if tt.args.isErr {
 				h.OnHandleMatch(mock.Anything, mock.Anything).Return(handler.UnknownTransition, fmt.Errorf("error"))
 			} else {
 				h.OnHandleMatch(mock.Anything, mock.Anything).Return(tt.args.trns, nil)
 			}
-			d := New(h, n, promutils.NewTestScope())
+			d := New(h, n, mockLPLauncher, promutils.NewTestScope())
 			got, err := d.Handle(context.TODO(), nCtx)
 			if (err != nil) != tt.want.isErr {
 				t.Errorf("Handle() error = %v, wantErr %v", err, tt.want.isErr)
@@ -281,11 +283,12 @@ func Test_dynamicNodeHandler_Handle_ParentFinalize(t *testing.T) {
 		f, err := nCtx.DataStore().ConstructReference(context.TODO(), nCtx.NodeStatus().GetDataDir(), "futures.pb")
 		assert.NoError(t, err)
 		dj := &core.DynamicJobSpec{}
+		mockLPLauncher := &lpMocks.Executor{}
 		n := &executorMocks.Node{}
 		assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, dj))
 		h := &mocks.TaskNodeHandler{}
 		h.OnFinalizeMatch(mock.Anything, mock.Anything).Return(nil)
-		d := New(h, n, promutils.NewTestScope())
+		d := New(h, n, mockLPLauncher, promutils.NewTestScope())
 		got, err := d.Handle(context.TODO(), nCtx)
 		assert.NoError(t, err)
 		assert.Equal(t, handler.EPhaseRunning.String(), got.Info().GetPhase().String())
@@ -300,11 +303,12 @@ func Test_dynamicNodeHandler_Handle_ParentFinalize(t *testing.T) {
 		f, err := nCtx.DataStore().ConstructReference(context.TODO(), nCtx.NodeStatus().GetDataDir(), "futures.pb")
 		assert.NoError(t, err)
 		dj := &core.DynamicJobSpec{}
+		mockLPLauncher := &lpMocks.Executor{}
 		n := &executorMocks.Node{}
 		assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, dj))
 		h := &mocks.TaskNodeHandler{}
 		h.OnFinalizeMatch(mock.Anything, mock.Anything).Return(fmt.Errorf("err"))
-		d := New(h, n, promutils.NewTestScope())
+		d := New(h, n, mockLPLauncher, promutils.NewTestScope())
 		_, err = d.Handle(context.TODO(), nCtx)
 		assert.Error(t, err)
 	})
@@ -533,6 +537,7 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 			if tt.args.dj != nil {
 				assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, tt.args.dj))
 			}
+			mockLPLauncher := &lpMocks.Executor{}
 			h := &mocks.TaskNodeHandler{}
 			if tt.args.validErr != nil {
 				h.OnValidateOutputAndCacheAddMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tt.args.validErr, nil)
@@ -549,7 +554,7 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 				endF := v1alpha1.GetOutputsFile("end-node")
 				assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), endF, storage.Options{}, &core.LiteralMap{}))
 			}
-			d := New(h, n, promutils.NewTestScope())
+			d := New(h, n, mockLPLauncher, promutils.NewTestScope())
 			got, err := d.Handle(context.TODO(), nCtx)
 			if tt.want.isErr {
 				assert.Error(t, err)
@@ -578,10 +583,11 @@ func TestDynamicNodeTaskNodeHandler_Finalize(t *testing.T) {
 		nCtx.OnNodeStateReader().Return(sr)
 		nCtx.OnCurrentAttempt().Return(0)
 
+		mockLPLauncher := &lpMocks.Executor{}
 		h := &mocks.TaskNodeHandler{}
 		h.OnFinalize(ctx, nCtx).Return(nil)
 		n := &executorMocks.Node{}
-		d := New(h, n, promutils.NewTestScope())
+		d := New(h, n, mockLPLauncher, promutils.NewTestScope())
 		assert.NoError(t, d.Finalize(ctx, nCtx))
 		assert.NotZero(t, len(h.ExpectedCalls))
 		assert.Equal(t, "Finalize", h.ExpectedCalls[0].Method)
@@ -706,11 +712,12 @@ func TestDynamicNodeTaskNodeHandler_Finalize(t *testing.T) {
 		dj := createDynamicJobSpec()
 		assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, dj))
 
+		mockLPLauncher := &lpMocks.Executor{}
 		h := &mocks.TaskNodeHandler{}
 		h.OnFinalize(ctx, nCtx).Return(nil)
 		n := &executorMocks.Node{}
 		n.OnFinalizeHandlerMatch(ctx, mock.Anything, mock.Anything).Return(nil)
-		d := New(h, n, promutils.NewTestScope())
+		d := New(h, n, mockLPLauncher, promutils.NewTestScope())
 		assert.NoError(t, d.Finalize(ctx, nCtx))
 		assert.NotZero(t, len(h.ExpectedCalls))
 		assert.Equal(t, "Finalize", h.ExpectedCalls[0].Method)
@@ -726,11 +733,12 @@ func TestDynamicNodeTaskNodeHandler_Finalize(t *testing.T) {
 		dj := createDynamicJobSpec()
 		assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, dj))
 
+		mockLPLauncher := &lpMocks.Executor{}
 		h := &mocks.TaskNodeHandler{}
 		h.OnFinalize(ctx, nCtx).Return(fmt.Errorf("err"))
 		n := &executorMocks.Node{}
 		n.OnFinalizeHandlerMatch(ctx, mock.Anything, mock.Anything).Return(nil)
-		d := New(h, n, promutils.NewTestScope())
+		d := New(h, n, mockLPLauncher, promutils.NewTestScope())
 		assert.Error(t, d.Finalize(ctx, nCtx))
 		assert.NotZero(t, len(h.ExpectedCalls))
 		assert.Equal(t, "Finalize", h.ExpectedCalls[0].Method)
@@ -746,11 +754,12 @@ func TestDynamicNodeTaskNodeHandler_Finalize(t *testing.T) {
 		dj := createDynamicJobSpec()
 		assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, dj))
 
+		mockLPLauncher := &lpMocks.Executor{}
 		h := &mocks.TaskNodeHandler{}
 		h.OnFinalize(ctx, nCtx).Return(nil)
 		n := &executorMocks.Node{}
 		n.OnFinalizeHandlerMatch(ctx, mock.Anything, mock.Anything).Return(fmt.Errorf("err"))
-		d := New(h, n, promutils.NewTestScope())
+		d := New(h, n, mockLPLauncher, promutils.NewTestScope())
 		assert.Error(t, d.Finalize(ctx, nCtx))
 		assert.NotZero(t, len(h.ExpectedCalls))
 		assert.Equal(t, "Finalize", h.ExpectedCalls[0].Method)
