@@ -3,6 +3,7 @@ package dynamic
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"testing"
 
 	"github.com/lyft/flytestdlib/contextutils"
@@ -567,6 +568,264 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 			}
 		})
 	}
+}
+
+func createDynamicJobSpecWithLaunchPlans() *core.DynamicJobSpec {
+	return &core.DynamicJobSpec{
+		MinSuccesses: 1,
+		Tasks:        []*core.TaskTemplate{},
+		Nodes: []*core.Node{
+			{
+				Id: "Node_1",
+				Target: &core.Node_WorkflowNode{
+					WorkflowNode: &core.WorkflowNode{
+						Reference: &core.WorkflowNode_LaunchplanRef{
+							LaunchplanRef: &core.Identifier{
+								ResourceType: core.ResourceType_LAUNCH_PLAN,
+								Name:         "my_plan",
+								Project:      "p",
+								Domain:       "d",
+							},
+						},
+					},
+				},
+			},
+		},
+		Outputs: []*core.Binding{
+			{
+				Var: "x",
+				Binding: &core.BindingData{
+					Value: &core.BindingData_Promise{
+						Promise: &core.OutputReference{
+							Var:    "x",
+							NodeId: "Node_1",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *testing.T) {
+	createNodeContext := func(ttype string, finalOutput storage.DataReference) *nodeMocks.NodeExecutionContext {
+		ctx := context.TODO()
+
+		wfExecID := &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		}
+
+		nm := &nodeMocks.NodeExecutionMetadata{}
+		nm.On("GetAnnotations").Return(map[string]string{})
+		nm.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{
+			WorkflowExecutionIdentifier: wfExecID,
+		})
+		nm.On("GetK8sServiceAccount").Return("service-account")
+		nm.On("GetLabels").Return(map[string]string{})
+		nm.On("GetNamespace").Return("namespace")
+		nm.On("GetOwnerID").Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
+		nm.On("GetOwnerReference").Return(v1.OwnerReference{
+			Kind: "sample",
+			Name: "name",
+		})
+
+		taskID := &core.Identifier{}
+		tk := &core.TaskTemplate{
+			Id:   taskID,
+			Type: "test",
+			Metadata: &core.TaskMetadata{
+				Discoverable: true,
+			},
+			Interface: &core.TypedInterface{
+				Outputs: &core.VariableMap{
+					Variables: map[string]*core.Variable{
+						"x": {
+							Type: &core.LiteralType{
+								Type: &core.LiteralType_Simple{
+									Simple: core.SimpleType_INTEGER,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		tr := &nodeMocks.TaskReader{}
+		tr.On("GetTaskID").Return(taskID)
+		tr.On("GetTaskType").Return(ttype)
+		tr.On("Read", mock.Anything).Return(tk, nil)
+
+		n := &flyteMocks.ExecutableNode{}
+		tID := "task-1"
+		n.On("GetTaskID").Return(&tID)
+
+		dataStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+		assert.NoError(t, err)
+
+		ir := &ioMocks.InputReader{}
+		nCtx := &nodeMocks.NodeExecutionContext{}
+		nCtx.On("NodeExecutionMetadata").Return(nm)
+		nCtx.On("Node").Return(n)
+		nCtx.On("InputReader").Return(ir)
+		nCtx.On("DataReferenceConstructor").Return(storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope()))
+		nCtx.On("CurrentAttempt").Return(uint32(1))
+		nCtx.On("TaskReader").Return(tr)
+		nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
+		nCtx.On("NodeID").Return("n1")
+		nCtx.On("EnqueueOwnerFunc").Return(func() error { return nil })
+		nCtx.OnDataStore().Return(dataStore)
+
+		endNodeStatus := &flyteMocks.ExecutableNodeStatus{}
+		endNodeStatus.On("GetDataDir").Return(storage.DataReference("end-node"))
+		endNodeStatus.On("GetOutputDir").Return(storage.DataReference("end-node"))
+
+		subNs := &flyteMocks.ExecutableNodeStatus{}
+		subNs.On("SetDataDir", mock.Anything).Return()
+		subNs.On("SetOutputDir", mock.Anything).Return()
+		subNs.On("ResetDirty").Return()
+		subNs.On("GetOutputDir").Return(finalOutput)
+		subNs.On("SetParentTaskID", mock.Anything).Return()
+		subNs.OnGetAttempts().Return(0)
+
+		dynamicNS := &flyteMocks.ExecutableNodeStatus{}
+		dynamicNS.On("SetDataDir", mock.Anything).Return()
+		dynamicNS.On("SetOutputDir", mock.Anything).Return()
+		dynamicNS.On("SetParentTaskID", mock.Anything).Return()
+		dynamicNS.OnGetNodeExecutionStatus(ctx, "n1-1-Node_1").Return(subNs)
+		dynamicNS.OnGetNodeExecutionStatus(ctx, v1alpha1.EndNodeID).Return(endNodeStatus)
+
+		ns := &flyteMocks.ExecutableNodeStatus{}
+		ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
+		ns.On("GetOutputDir").Return(storage.DataReference("output-dir"))
+		ns.On("GetNodeExecutionStatus", dynamicNodeID).Return(dynamicNS)
+		ns.OnGetNodeExecutionStatus(ctx, dynamicNodeID).Return(dynamicNS)
+		nCtx.On("NodeStatus").Return(ns)
+
+		w := &flyteMocks.ExecutableWorkflow{}
+		ws := &flyteMocks.ExecutableWorkflowStatus{}
+		ws.OnGetNodeExecutionStatus(ctx, "n1").Return(ns)
+		w.On("GetExecutionStatus").Return(ws)
+		nCtx.On("Workflow").Return(w)
+
+		r := &nodeMocks.NodeStateReader{}
+		r.On("GetDynamicNodeState").Return(handler.DynamicNodeState{
+			Phase: v1alpha1.DynamicNodePhaseExecuting,
+		})
+		nCtx.On("NodeStateReader").Return(r)
+		return nCtx
+	}
+
+	t.Run("launch plan interfaces match parent task interface", func(t *testing.T) {
+		ctx := context.Background()
+		lpId := &core.Identifier{
+			ResourceType: core.ResourceType_LAUNCH_PLAN,
+			Name:         "my_plan",
+			Project:      "p",
+			Domain:       "d",
+		}
+		djSpec := createDynamicJobSpecWithLaunchPlans()
+		finalOutput := storage.DataReference("/subnode")
+		nCtx := createNodeContext("test", finalOutput)
+		s := &dynamicNodeStateHolder{}
+		nCtx.On("NodeStateWriter").Return(s)
+		f, err := nCtx.DataStore().ConstructReference(ctx, nCtx.NodeStatus().GetOutputDir(), "futures.pb")
+		assert.NoError(t, err)
+		assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, djSpec))
+
+		mockLPLauncher := &lpMocks.Executor{}
+		var callsAdmin = false
+		mockLPLauncher.OnGetLaunchPlanMatch(ctx, lpId).Run(func(args mock.Arguments) {
+			// When a launch plan node is detected, a call should be made to Admin to fetch the interface for the LP
+			callsAdmin = true
+		}).Return(&admin.LaunchPlan{
+			Id: lpId,
+			Closure: &admin.LaunchPlanClosure{
+				ExpectedInputs: &core.ParameterMap{},
+				ExpectedOutputs: &core.VariableMap{
+					Variables: map[string]*core.Variable{
+						"x": {
+							Type: &core.LiteralType{
+								Type: &core.LiteralType_Simple{
+									Simple: core.SimpleType_INTEGER,
+								},
+							},
+							Description: "output of the launch plan",
+						},
+					},
+				},
+			},
+		}, nil)
+		h := &mocks.TaskNodeHandler{}
+		n := &executorMocks.Node{}
+		d := dynamicNodeTaskNodeHandler{
+			TaskNodeHandler: h,
+			nodeExecutor:    n,
+			lpHandler:       mockLPLauncher,
+			metrics:         newMetrics(promutils.NewTestScope()),
+		}
+		executableWorkflow, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
+		assert.True(t, callsAdmin)
+		assert.True(t, isDynamic)
+		assert.NoError(t, err)
+		assert.NotNil(t, executableWorkflow)
+	})
+
+	t.Run("launch plan interfaces do not parent task interface", func(t *testing.T) {
+		ctx := context.Background()
+		lpId := &core.Identifier{
+			ResourceType: core.ResourceType_LAUNCH_PLAN,
+			Name:         "my_plan",
+			Project:      "p",
+			Domain:       "d",
+		}
+		djSpec := createDynamicJobSpecWithLaunchPlans()
+		finalOutput := storage.DataReference("/subnode")
+		nCtx := createNodeContext("test", finalOutput)
+		s := &dynamicNodeStateHolder{}
+		nCtx.On("NodeStateWriter").Return(s)
+		f, err := nCtx.DataStore().ConstructReference(ctx, nCtx.NodeStatus().GetOutputDir(), "futures.pb")
+		assert.NoError(t, err)
+		assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, djSpec))
+
+		mockLPLauncher := &lpMocks.Executor{}
+		var callsAdmin = false
+		mockLPLauncher.OnGetLaunchPlanMatch(ctx, lpId).Run(func(args mock.Arguments) {
+			// When a launch plan node is detected, a call should be made to Admin to fetch the interface for the LP
+			callsAdmin = true
+		}).Return(&admin.LaunchPlan{
+			Id: lpId,
+			Closure: &admin.LaunchPlanClosure{
+				ExpectedInputs: &core.ParameterMap{},
+				ExpectedOutputs: &core.VariableMap{
+					Variables: map[string]*core.Variable{
+						"d": {
+							Type: &core.LiteralType{
+								Type: &core.LiteralType_Simple{
+									Simple: core.SimpleType_STRING,
+								},
+							},
+							Description: "output of the launch plan",
+						},
+					},
+				},
+			},
+		}, nil)
+		h := &mocks.TaskNodeHandler{}
+		n := &executorMocks.Node{}
+		d := dynamicNodeTaskNodeHandler{
+			TaskNodeHandler: h,
+			nodeExecutor:    n,
+			lpHandler:       mockLPLauncher,
+			metrics:         newMetrics(promutils.NewTestScope()),
+		}
+		executableWorkflow, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
+		assert.True(t, callsAdmin)
+		assert.True(t, isDynamic)
+		assert.Error(t, err)
+		assert.Nil(t, executableWorkflow)
+	})
 }
 
 func TestDynamicNodeTaskNodeHandler_Finalize(t *testing.T) {
