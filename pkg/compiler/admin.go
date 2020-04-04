@@ -6,8 +6,8 @@ import (
 )
 
 // This object is meant to satisfy github.com/lyft/flytepropeller/pkg/compiler/common.InterfaceProvider
-// This file is pretty much copied from Admin,
-// https://github.com/lyft/flyteadmin/blob/1acce744b8c7839ab77a0eb1ed922905af15baa5/pkg/workflowengine/impl/interface_provider.go
+// This file is pretty much copied from Admin, (sorry for the link, a real link made go mod import admin)
+// github-dot-com/lyft/flyteadmin/blob/1acce744b8c7839ab77a0eb1ed922905af15baa5/pkg/workflowengine/impl/interface_provider.go
 // but that implementation relies on the internal Admin Gorm model. We should consider deprecating that one in favor
 // of this one as Admin already has a dependency on the Propeller compiler.
 type LaunchPlanInterfaceProvider struct {
