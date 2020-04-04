@@ -3,8 +3,9 @@ package dynamic
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"testing"
+
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
@@ -719,7 +720,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 
 	t.Run("launch plan interfaces match parent task interface", func(t *testing.T) {
 		ctx := context.Background()
-		lpId := &core.Identifier{
+		lpID := &core.Identifier{
 			ResourceType: core.ResourceType_LAUNCH_PLAN,
 			Name:         "my_plan",
 			Project:      "p",
@@ -736,11 +737,11 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 
 		mockLPLauncher := &lpMocks.Executor{}
 		var callsAdmin = false
-		mockLPLauncher.OnGetLaunchPlanMatch(ctx, lpId).Run(func(args mock.Arguments) {
+		mockLPLauncher.OnGetLaunchPlanMatch(ctx, lpID).Run(func(args mock.Arguments) {
 			// When a launch plan node is detected, a call should be made to Admin to fetch the interface for the LP
 			callsAdmin = true
 		}).Return(&admin.LaunchPlan{
-			Id: lpId,
+			Id: lpID,
 			Closure: &admin.LaunchPlanClosure{
 				ExpectedInputs: &core.ParameterMap{},
 				ExpectedOutputs: &core.VariableMap{
@@ -774,7 +775,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 
 	t.Run("launch plan interfaces do not parent task interface", func(t *testing.T) {
 		ctx := context.Background()
-		lpId := &core.Identifier{
+		lpID := &core.Identifier{
 			ResourceType: core.ResourceType_LAUNCH_PLAN,
 			Name:         "my_plan",
 			Project:      "p",
@@ -791,11 +792,11 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 
 		mockLPLauncher := &lpMocks.Executor{}
 		var callsAdmin = false
-		mockLPLauncher.OnGetLaunchPlanMatch(ctx, lpId).Run(func(args mock.Arguments) {
+		mockLPLauncher.OnGetLaunchPlanMatch(ctx, lpID).Run(func(args mock.Arguments) {
 			// When a launch plan node is detected, a call should be made to Admin to fetch the interface for the LP
 			callsAdmin = true
 		}).Return(&admin.LaunchPlan{
-			Id: lpId,
+			Id: lpID,
 			Closure: &admin.LaunchPlanClosure{
 				ExpectedInputs: &core.ParameterMap{},
 				ExpectedOutputs: &core.VariableMap{

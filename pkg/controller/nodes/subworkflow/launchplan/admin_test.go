@@ -280,10 +280,10 @@ func TestNewAdminLaunchPlanExecutor_GetLaunchPlan(t *testing.T) {
 	ctx := context.TODO()
 	id := &core.Identifier{
 		ResourceType: core.ResourceType_LAUNCH_PLAN,
-		Name:    "n",
-		Domain:  "d",
-		Project: "p",
-		Version: "v",
+		Name:         "n",
+		Domain:       "d",
+		Project:      "p",
+		Version:      "v",
 	}
 
 	t.Run("launch plan found", func(t *testing.T) {

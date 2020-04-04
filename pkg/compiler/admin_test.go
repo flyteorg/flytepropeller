@@ -55,7 +55,6 @@ func TestGetId(t *testing.T) {
 	assert.Equal(t, &core.Identifier{ResourceType: 3, Project: "project", Domain: "domain", Name: "name", Version: "version"}, provider.GetID())
 }
 
-
 func TestGetExpectedInputs(t *testing.T) {
 	launchPlan := getDummyLaunchPlan()
 	provider := NewLaunchPlanInterfaceProvider(launchPlan)
