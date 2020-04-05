@@ -21,13 +21,9 @@ type subworkflowHandler struct {
 func GetSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext) (v1alpha1.ExecutableSubWorkflow, error) {
 	node := nCtx.Node()
 	subID := *node.GetWorkflowNode().GetSubWorkflowRef()
-	swfReader, err := nCtx.ExecutionContext().GetSubworkflowDetails(subID)
-	if err != nil {
-		return nil, err
-	}
-	subWorkflow, err := swfReader.Read(ctx)
-	if err != nil {
-		return nil, err
+	subWorkflow := nCtx.ExecutionContext().FindSubWorkflow(subID)
+	if subWorkflow == nil {
+		return nil, fmt.Errorf("failed to find sub workflow with ID [%s]", subID)
 	}
 	return subWorkflow, nil
 }

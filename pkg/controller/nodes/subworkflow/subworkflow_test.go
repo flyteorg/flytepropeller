@@ -28,9 +28,7 @@ func TestGetSubWorkflow(t *testing.T) {
 		ectx := &execMocks.ExecutionContext{}
 
 		swf := &coreMocks.ExecutableSubWorkflow{}
-		swfReader := &execMocks.WorkflowReader{}
-		swfReader.OnRead(ctx).Return(swf, nil)
-		ectx.OnGetSubworkflowDetailsMatch("x").Return(swfReader, nil)
+		ectx.OnFindSubWorkflow("x").Return(swf)
 
 		nCtx := &mocks.NodeExecutionContext{}
 		nCtx.OnNode().Return(node)
@@ -52,30 +50,7 @@ func TestGetSubWorkflow(t *testing.T) {
 
 		ectx := &execMocks.ExecutionContext{}
 
-		ectx.OnGetSubworkflowDetailsMatch("x").Return(nil, fmt.Errorf("error"))
-
-		nCtx := &mocks.NodeExecutionContext{}
-		nCtx.OnNode().Return(node)
-		nCtx.OnExecutionContext().Return(ectx)
-
-		_, err := GetSubWorkflow(ctx, nCtx)
-		assert.Error(t, err)
-	})
-
-	t.Run("subworkflow-read-failure", func(t *testing.T) {
-
-		wfNode := &coreMocks.ExecutableWorkflowNode{}
-		x := "x"
-		wfNode.OnGetSubWorkflowRef().Return(&x)
-
-		node := &coreMocks.ExecutableNode{}
-		node.OnGetWorkflowNode().Return(wfNode)
-
-		ectx := &execMocks.ExecutionContext{}
-
-		swfReader := &execMocks.WorkflowReader{}
-		swfReader.OnRead(ctx).Return(nil, fmt.Errorf("failed"))
-		ectx.OnGetSubworkflowDetailsMatch("x").Return(swfReader, fmt.Errorf("error"))
+		ectx.OnFindSubWorkflow("x").Return(nil)
 
 		nCtx := &mocks.NodeExecutionContext{}
 		nCtx.OnNode().Return(node)
@@ -99,12 +74,8 @@ func Test_subworkflowHandler_HandleAbort(t *testing.T) {
 		node.OnGetWorkflowNode().Return(wfNode)
 
 		swf := &coreMocks.ExecutableSubWorkflow{}
-
-		swfReader := &execMocks.WorkflowReader{}
-		swfReader.OnRead(ctx).Return(swf, nil)
-
 		ectx := &execMocks.ExecutionContext{}
-		ectx.OnGetSubworkflowDetailsMatch("x").Return(swfReader, nil)
+		ectx.OnFindSubWorkflow("x").Return(swf)
 
 		ns := &coreMocks.ExecutableNodeStatus{}
 		nCtx := &mocks.NodeExecutionContext{}
@@ -134,11 +105,8 @@ func Test_subworkflowHandler_HandleAbort(t *testing.T) {
 		swf := &coreMocks.ExecutableSubWorkflow{}
 		swf.OnStartNode().Return(&coreMocks.ExecutableNode{})
 
-		swfReader := &execMocks.WorkflowReader{}
-		swfReader.OnRead(ctx).Return(swf, nil)
-
 		ectx := &execMocks.ExecutionContext{}
-		ectx.OnGetSubworkflowDetailsMatch("x").Return(swfReader, nil)
+		ectx.OnFindSubWorkflow("x").Return(swf)
 
 		ns := &coreMocks.ExecutableNodeStatus{}
 		nCtx := &mocks.NodeExecutionContext{}
@@ -167,11 +135,8 @@ func Test_subworkflowHandler_HandleAbort(t *testing.T) {
 		swf := &coreMocks.ExecutableSubWorkflow{}
 		swf.OnStartNode().Return(&coreMocks.ExecutableNode{})
 
-		swfReader := &execMocks.WorkflowReader{}
-		swfReader.OnRead(ctx).Return(swf, nil)
-
 		ectx := &execMocks.ExecutionContext{}
-		ectx.OnGetSubworkflowDetailsMatch("x").Return(swfReader, nil)
+		ectx.OnFindSubWorkflow("x").Return(swf)
 
 		ns := &coreMocks.ExecutableNodeStatus{}
 		nCtx := &mocks.NodeExecutionContext{}

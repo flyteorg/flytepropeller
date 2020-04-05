@@ -29,6 +29,7 @@ func newContextualWorkflow(baseWorkflow v1alpha1.ExecutableWorkflow,
 		ExecutableWorkflow: executors.NewSubContextualWorkflow(baseWorkflow, subwf, status),
 		extraTasks:         tasks,
 		extraWorkflows:     workflows,
+		// TODO @kumare, Ask haytham why does this matter? Where do we use
 		status:             newContextualWorkflowStatus(baseWorkflow.GetExecutionStatus(), status, refConstructor),
 	}
 }
@@ -89,3 +90,4 @@ func newContextualWorkflowStatus(baseWfStatus v1alpha1.ExecutableWorkflowStatus,
 		referenceConstructor:     constructor,
 	}
 }
+

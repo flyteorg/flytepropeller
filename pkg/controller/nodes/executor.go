@@ -544,11 +544,7 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, execContext executo
 }
 
 func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, inputs *core.LiteralMap) (executors.NodeStatus, error) {
-	startNode, ok := nl.GetNode(dag.StartNodeID())
-	if !ok {
-		return executors.NodeStatusFailed(fmt.Errorf("failed to find start node in Execution [%s]", execContext.ID())), nil
-	}
-
+	startNode := dag.StartNode()
 	ctx = contextutils.WithNodeID(ctx, startNode.GetID())
 	if inputs == nil {
 		logger.Infof(ctx, "No inputs for the workflow. Skipping storing inputs")
@@ -578,6 +574,13 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 
 	switch nodeStatus.GetPhase() {
 	case v1alpha1.NodePhaseNotYetStarted, v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseTimingOut, v1alpha1.NodePhaseRetryableFailure, v1alpha1.NodePhaseSucceeding:
+		// TODO Follow up Pull Request,
+		// 1. Rename this method to DAGTraversalHandleNode (accepts a DAGStructure along-with) the remaining arguments
+		// 2. Create a new method called HandleNode (part of the interface) (remaining all args as the previous method, but no DAGStructure
+		// 3. Additional both methods will receive inputs reader
+		// 4. The Downstream nodes handler will Resolve the Inputs
+		// 5. the method will delegate all other node handling to HandleNode.
+		// 6. Thus we can get rid of SetInputs for StartNode as well
 		logger.Debugf(currentNodeCtx, "Handling node Status [%v]", nodeStatus.GetPhase().String())
 
 		t := c.metrics.NodeExecutionTime.Start(ctx)

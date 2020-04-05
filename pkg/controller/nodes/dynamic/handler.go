@@ -194,6 +194,8 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 			return nil
 		}
 
+		eCtx := executors.
+			d.nodeExecutor.AbortHandler(ctx, )
 		return d.nodeExecutor.AbortHandler(ctx, nCtx.ExecutionContext(), dynamicWF, dynamicWF.StartNode(), reason)
 	default:
 		logger.Infof(ctx, "Aborting regular node RetryAttempt [%d]", nCtx.CurrentAttempt())
@@ -392,12 +394,16 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 		logger.Errorf(ctx, "Failed to cache Dynamic workflow [%s]", err.Error())
 	}
 
+	execContext := executors.NewExecutionContext(nCtx.ExecutionContext(), subwf, subwf)
+	dagStructure := subwf
+	nl := newContextualWorkflowStatus(baseWorkflow.GetExecutionStatus(), status, refConstructor),
 	return newContextualWorkflow(nCtx.Workflow(), subwf, nStatus, subwf.Tasks, subwf.SubWorkflows, nCtx.DataStore()), true, nil
 }
 
 func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context, dynamicWorkflow v1alpha1.ExecutableWorkflow,
 	nCtx handler.NodeExecutionContext, prevState handler.DynamicNodeState) (handler.Transition, handler.DynamicNodeState, error) {
 
+	state, err := d.nodeExecutor.RecursiveNodeHandler(ctx, dynamicWorkflow, dynamicWorkflow.StartNode())
 	state, err := d.nodeExecutor.RecursiveNodeHandler(ctx, dynamicWorkflow, dynamicWorkflow.StartNode())
 	if err != nil {
 		return handler.UnknownTransition, prevState, err

@@ -65,25 +65,6 @@ type DAGStructure interface {
 	FromNode(id v1alpha1.NodeID) ([]v1alpha1.NodeID, error)
 }
 
-type TaskReader interface {
-	Read(ctx context.Context) (*core.TaskTemplate, error)
-	GetTaskType() v1alpha1.TaskType
-	GetTaskID() *core.Identifier
-}
-
-type WorkflowReader interface {
-	Read(ctx context.Context) (v1alpha1.ExecutableSubWorkflow, error)
-}
-
-type ExecutionContext interface {
-	v1alpha1.Meta
-	ID() string
-	// TODO replace this with a common Identifier
-	ExecutionID() *core.WorkflowExecutionIdentifier
-	GetTaskDetails(id v1alpha1.TaskID) (TaskReader, error)
-	GetSubworkflowDetails(id v1alpha1.WorkflowID) (WorkflowReader, error)
-}
-
 // Core Node Executor that is used to execute a node. This is a recursive node executor and understands node dependencies
 type Node interface {
 	// This method is used specifically to set inputs for start node. This is because start node does not retrieve inputs

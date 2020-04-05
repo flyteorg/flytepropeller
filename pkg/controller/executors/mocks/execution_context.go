@@ -4,7 +4,6 @@ package mocks
 
 import (
 	core "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	executors "github.com/lyft/flytepropeller/pkg/controller/executors"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -48,6 +47,40 @@ func (_m *ExecutionContext) ExecutionID() *core.WorkflowExecutionIdentifier {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*core.WorkflowExecutionIdentifier)
+		}
+	}
+
+	return r0
+}
+
+type ExecutionContext_FindSubWorkflow struct {
+	*mock.Call
+}
+
+func (_m ExecutionContext_FindSubWorkflow) Return(_a0 v1alpha1.ExecutableSubWorkflow) *ExecutionContext_FindSubWorkflow {
+	return &ExecutionContext_FindSubWorkflow{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutionContext) OnFindSubWorkflow(subID string) *ExecutionContext_FindSubWorkflow {
+	c := _m.On("FindSubWorkflow", subID)
+	return &ExecutionContext_FindSubWorkflow{Call: c}
+}
+
+func (_m *ExecutionContext) OnFindSubWorkflowMatch(matchers ...interface{}) *ExecutionContext_FindSubWorkflow {
+	c := _m.On("FindSubWorkflow", matchers...)
+	return &ExecutionContext_FindSubWorkflow{Call: c}
+}
+
+// FindSubWorkflow provides a mock function with given fields: subID
+func (_m *ExecutionContext) FindSubWorkflow(subID string) v1alpha1.ExecutableSubWorkflow {
+	ret := _m.Called(subID)
+
+	var r0 v1alpha1.ExecutableSubWorkflow
+	if rf, ok := ret.Get(0).(func(string) v1alpha1.ExecutableSubWorkflow); ok {
+		r0 = rf(subID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha1.ExecutableSubWorkflow)
 		}
 	}
 
@@ -346,75 +379,34 @@ func (_m *ExecutionContext) GetServiceAccountName() string {
 	return r0
 }
 
-type ExecutionContext_GetSubworkflowDetails struct {
+type ExecutionContext_GetTask struct {
 	*mock.Call
 }
 
-func (_m ExecutionContext_GetSubworkflowDetails) Return(_a0 executors.WorkflowReader, _a1 error) *ExecutionContext_GetSubworkflowDetails {
-	return &ExecutionContext_GetSubworkflowDetails{Call: _m.Call.Return(_a0, _a1)}
+func (_m ExecutionContext_GetTask) Return(_a0 v1alpha1.ExecutableTask, _a1 error) *ExecutionContext_GetTask {
+	return &ExecutionContext_GetTask{Call: _m.Call.Return(_a0, _a1)}
 }
 
-func (_m *ExecutionContext) OnGetSubworkflowDetails(id string) *ExecutionContext_GetSubworkflowDetails {
-	c := _m.On("GetSubworkflowDetails", id)
-	return &ExecutionContext_GetSubworkflowDetails{Call: c}
+func (_m *ExecutionContext) OnGetTask(id string) *ExecutionContext_GetTask {
+	c := _m.On("GetTask", id)
+	return &ExecutionContext_GetTask{Call: c}
 }
 
-func (_m *ExecutionContext) OnGetSubworkflowDetailsMatch(matchers ...interface{}) *ExecutionContext_GetSubworkflowDetails {
-	c := _m.On("GetSubworkflowDetails", matchers...)
-	return &ExecutionContext_GetSubworkflowDetails{Call: c}
+func (_m *ExecutionContext) OnGetTaskMatch(matchers ...interface{}) *ExecutionContext_GetTask {
+	c := _m.On("GetTask", matchers...)
+	return &ExecutionContext_GetTask{Call: c}
 }
 
-// GetSubworkflowDetails provides a mock function with given fields: id
-func (_m *ExecutionContext) GetSubworkflowDetails(id string) (executors.WorkflowReader, error) {
+// GetTask provides a mock function with given fields: id
+func (_m *ExecutionContext) GetTask(id string) (v1alpha1.ExecutableTask, error) {
 	ret := _m.Called(id)
 
-	var r0 executors.WorkflowReader
-	if rf, ok := ret.Get(0).(func(string) executors.WorkflowReader); ok {
+	var r0 v1alpha1.ExecutableTask
+	if rf, ok := ret.Get(0).(func(string) v1alpha1.ExecutableTask); ok {
 		r0 = rf(id)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(executors.WorkflowReader)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(id)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-type ExecutionContext_GetTaskDetails struct {
-	*mock.Call
-}
-
-func (_m ExecutionContext_GetTaskDetails) Return(_a0 executors.TaskReader, _a1 error) *ExecutionContext_GetTaskDetails {
-	return &ExecutionContext_GetTaskDetails{Call: _m.Call.Return(_a0, _a1)}
-}
-
-func (_m *ExecutionContext) OnGetTaskDetails(id string) *ExecutionContext_GetTaskDetails {
-	c := _m.On("GetTaskDetails", id)
-	return &ExecutionContext_GetTaskDetails{Call: c}
-}
-
-func (_m *ExecutionContext) OnGetTaskDetailsMatch(matchers ...interface{}) *ExecutionContext_GetTaskDetails {
-	c := _m.On("GetTaskDetails", matchers...)
-	return &ExecutionContext_GetTaskDetails{Call: c}
-}
-
-// GetTaskDetails provides a mock function with given fields: id
-func (_m *ExecutionContext) GetTaskDetails(id string) (executors.TaskReader, error) {
-	ret := _m.Called(id)
-
-	var r0 executors.TaskReader
-	if rf, ok := ret.Get(0).(func(string) executors.TaskReader); ok {
-		r0 = rf(id)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(executors.TaskReader)
+			r0 = ret.Get(0).(v1alpha1.ExecutableTask)
 		}
 	}
 
