@@ -122,6 +122,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		}()
 		if err != nil {
 			p.metrics.AbortError.Inc(ctx)
+			logger.Errorf(ctx, "Error aborting workflow. Error [%v]", err)
 			return err
 		}
 	} else {
