@@ -23,34 +23,34 @@ const NodeIDLabel = "node-id"
 const TaskNameLabel = "task-name"
 const NodeInterruptibleLabel = "interruptible"
 
-type execMetadata struct {
+type nodeExecMetadata struct {
 	v1alpha1.Meta
 	nodeExecID     *core.NodeExecutionIdentifier
 	interrutptible bool
 	nodeLabels     map[string]string
 }
 
-func (e execMetadata) GetNodeExecutionID() *core.NodeExecutionIdentifier {
+func (e nodeExecMetadata) GetNodeExecutionID() *core.NodeExecutionIdentifier {
 	return e.nodeExecID
 }
 
-func (e execMetadata) GetK8sServiceAccount() string {
+func (e nodeExecMetadata) GetK8sServiceAccount() string {
 	return e.Meta.GetServiceAccountName()
 }
 
-func (e execMetadata) GetOwnerID() types.NamespacedName {
+func (e nodeExecMetadata) GetOwnerID() types.NamespacedName {
 	return types.NamespacedName{Name: e.GetName(), Namespace: e.GetNamespace()}
 }
 
-func (e execMetadata) IsInterruptible() bool {
+func (e nodeExecMetadata) IsInterruptible() bool {
 	return e.interrutptible
 }
 
-func (e execMetadata) GetLabels() map[string]string {
+func (e nodeExecMetadata) GetLabels() map[string]string {
 	return e.nodeLabels
 }
 
-type execContext struct {
+type nodeExecContext struct {
 	store               *storage.DataStore
 	tr                  handler.TaskReader
 	md                  handler.NodeExecutionMetadata
@@ -67,87 +67,87 @@ type execContext struct {
 	ic                  executors.ExecutionContext
 }
 
-func (e execContext) ExecutionContext() executors.ExecutionContext {
+func (e nodeExecContext) ExecutionContext() executors.ExecutionContext {
 	return e.ic
 }
 
-func (e execContext) ContextualNodeLookup() executors.NodeLookup {
+func (e nodeExecContext) ContextualNodeLookup() executors.NodeLookup {
 	return e.nl
 }
 
-func (e execContext) OutputShardSelector() ioutils.ShardSelector {
+func (e nodeExecContext) OutputShardSelector() ioutils.ShardSelector {
 	return e.shardSelector
 }
 
-func (e execContext) RawOutputPrefix() storage.DataReference {
+func (e nodeExecContext) RawOutputPrefix() storage.DataReference {
 	return e.rawOutputPrefix
 }
 
-func (e execContext) EnqueueOwnerFunc() func() error {
+func (e nodeExecContext) EnqueueOwnerFunc() func() error {
 	return e.enqueueOwner
 }
 
-func (e execContext) TaskReader() handler.TaskReader {
+func (e nodeExecContext) TaskReader() handler.TaskReader {
 	return e.tr
 }
 
-func (e execContext) NodeStateReader() handler.NodeStateReader {
+func (e nodeExecContext) NodeStateReader() handler.NodeStateReader {
 	return e.nsm
 }
 
-func (e execContext) NodeStateWriter() handler.NodeStateWriter {
+func (e nodeExecContext) NodeStateWriter() handler.NodeStateWriter {
 	return e.nsm
 }
 
-func (e execContext) DataStore() *storage.DataStore {
+func (e nodeExecContext) DataStore() *storage.DataStore {
 	return e.store
 }
 
-func (e execContext) InputReader() io.InputReader {
+func (e nodeExecContext) InputReader() io.InputReader {
 	return e.inputs
 }
 
-func (e execContext) EventsRecorder() events.TaskEventRecorder {
+func (e nodeExecContext) EventsRecorder() events.TaskEventRecorder {
 	return e.er
 }
 
-func (e execContext) NodeID() v1alpha1.NodeID {
+func (e nodeExecContext) NodeID() v1alpha1.NodeID {
 	return e.node.GetID()
 }
 
-func (e execContext) Node() v1alpha1.ExecutableNode {
+func (e nodeExecContext) Node() v1alpha1.ExecutableNode {
 	return e.node
 }
 
-func (e execContext) CurrentAttempt() uint32 {
+func (e nodeExecContext) CurrentAttempt() uint32 {
 	return e.nodeStatus.GetAttempts()
 }
 
-func (e execContext) NodeStatus() v1alpha1.ExecutableNodeStatus {
+func (e nodeExecContext) NodeStatus() v1alpha1.ExecutableNodeStatus {
 	return e.nodeStatus
 }
 
-func (e execContext) NodeExecutionMetadata() handler.NodeExecutionMetadata {
+func (e nodeExecContext) NodeExecutionMetadata() handler.NodeExecutionMetadata {
 	return e.md
 }
 
-func (e execContext) MaxDatasetSizeBytes() int64 {
+func (e nodeExecContext) MaxDatasetSizeBytes() int64 {
 	return e.maxDatasetSizeBytes
 }
 
-func newNodeExecContext(_ context.Context, store *storage.DataStore, ic executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *execContext {
-	md := execMetadata{
-		Meta: ic,
+func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
+	md := nodeExecMetadata{
+		Meta: execContext,
 		nodeExecID: &core.NodeExecutionIdentifier{
 			NodeId:      node.GetID(),
-			ExecutionId: ic.ExecutionID(),
+			ExecutionId: execContext.GetExecutionID().WorkflowExecutionIdentifier,
 		},
 		interrutptible: interruptible,
 	}
 
 	// Copy the wf labels before adding node specific labels.
 	nodeLabels := make(map[string]string)
-	for k, v := range ic.GetLabels() {
+	for k, v := range execContext.GetLabels() {
 		nodeLabels[k] = v
 	}
 	nodeLabels[NodeIDLabel] = utils.SanitizeLabelValue(node.GetID())
@@ -157,7 +157,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, ic executor
 	nodeLabels[NodeInterruptibleLabel] = strconv.FormatBool(interruptible)
 	md.nodeLabels = nodeLabels
 
-	return &execContext{
+	return &nodeExecContext{
 		md:                  md,
 		store:               store,
 		node:                node,
@@ -171,14 +171,14 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, ic executor
 		rawOutputPrefix:     rawOutputPrefix,
 		shardSelector:       outputShardSelector,
 		nl:                  nl,
-		ic:                  ic,
+		ic:                  execContext,
 	}
 }
 
-func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNodeID v1alpha1.NodeID, executionContext executors.ExecutionContext, nl executors.NodeLookup) (*execContext, error) {
+func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNodeID v1alpha1.NodeID, executionContext executors.ExecutionContext, nl executors.NodeLookup) (*nodeExecContext, error) {
 	n, ok := nl.GetNode(currentNodeID)
 	if !ok {
-		return nil, fmt.Errorf("failed to find node with ID [%s] in execution [%s]", currentNodeID, executionContext.ID())
+		return nil, fmt.Errorf("failed to find node with ID [%s] in execution [%s]", currentNodeID, executionContext.GetID())
 	}
 
 	var tr handler.TaskReader
@@ -186,15 +186,15 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		if n.GetTaskID() == nil {
 			return nil, fmt.Errorf("bad state, no task-id defined for node [%s]", n.GetID())
 		}
-		tk, err := executionContext.GetTaskDetails(*n.GetTaskID())
+		tk, err := executionContext.GetTask(*n.GetTaskID())
 		if err != nil {
 			return nil, err
 		}
-		tr = tk
+		tr = taskReader{TaskTemplate: tk.CoreTask()}
 	}
 
 	workflowEnqueuer := func() error {
-		c.enqueueWorkflow(executionContext.ID())
+		c.enqueueWorkflow(executionContext.GetID())
 		return nil
 	}
 

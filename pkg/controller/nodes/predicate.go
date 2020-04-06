@@ -47,8 +47,8 @@ func CanExecute(ctx context.Context, dag executors.DAGStructure, nl executors.No
 
 	nodeStatus := nl.GetNodeExecutionStatus(ctx, nodeID)
 	parentNodeID := nodeStatus.GetParentNodeID()
-	upstreamNodes, ok := dag.ToNode(nodeID)
-	if !ok {
+	upstreamNodes, err := dag.ToNode(nodeID)
+	if err != nil {
 		return PredicatePhaseUndefined, errors.Errorf(errors.BadSpecificationError, nodeID, "Unable to find upstream nodes for Node")
 	}
 
@@ -99,8 +99,8 @@ func GetParentNodeMaxEndTime(ctx context.Context, dag executors.DAGStructure, nl
 
 	nodeStatus := nl.GetNodeExecutionStatus(ctx, node.GetID())
 	parentNodeID := nodeStatus.GetParentNodeID()
-	upstreamNodes, ok := dag.ToNode(nodeID)
-	if !ok {
+	upstreamNodes, err := dag.ToNode(nodeID)
+	if err != nil {
 		return zeroTime, errors.Errorf(errors.BadSpecificationError, nodeID, "Unable to find upstream nodes for Node")
 	}
 

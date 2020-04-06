@@ -237,16 +237,20 @@ type MutableNodeStatus interface {
 	ClearSubNodeStatus()
 }
 
+type ExecutionTimeInfo interface {
+	GetStoppedAt() *metav1.Time
+	GetStartedAt() *metav1.Time
+	GetLastUpdatedAt() *metav1.Time
+}
+
 // Interface for a Node p. This provides a mutable API.
 type ExecutableNodeStatus interface {
 	NodeStatusGetter
 	MutableNodeStatus
 	NodeStatusVisitor
+	ExecutionTimeInfo
 	GetPhase() NodePhase
 	GetQueuedAt() *metav1.Time
-	GetStoppedAt() *metav1.Time
-	GetStartedAt() *metav1.Time
-	GetLastUpdatedAt() *metav1.Time
 	GetLastAttemptStartedAt() *metav1.Time
 	GetParentNodeID() *NodeID
 	GetParentTaskID() *core.TaskExecutionIdentifier
@@ -323,11 +327,9 @@ type ExecutableNode interface {
 // Interface for the Workflow p. This is the mutable portion for a Workflow
 type ExecutableWorkflowStatus interface {
 	NodeStatusGetter
+	ExecutionTimeInfo
 	UpdatePhase(p WorkflowPhase, msg string)
 	GetPhase() WorkflowPhase
-	GetStoppedAt() *metav1.Time
-	GetStartedAt() *metav1.Time
-	GetLastUpdatedAt() *metav1.Time
 	IsTerminated() bool
 	GetMessage() string
 	SetDataDir(DataReference)

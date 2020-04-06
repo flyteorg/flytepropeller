@@ -59,7 +59,7 @@ func TestSetInputsForStartNode(t *testing.T) {
 		w.DummyStartNode = &v1alpha1.NodeSpec{
 			ID: v1alpha1.StartNodeID,
 		}
-		s, err := exec.SetInputsForStartNode(ctx, w, nil)
+		s, err := exec.SetInputsForStartNode(ctx, w, w, w, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, executors.NodeStatusComplete, s)
 	})
@@ -71,7 +71,7 @@ func TestSetInputsForStartNode(t *testing.T) {
 		w.DummyStartNode = &v1alpha1.NodeSpec{
 			ID: v1alpha1.StartNodeID,
 		}
-		s, err := exec.SetInputsForStartNode(ctx, w, inputs)
+		s, err := exec.SetInputsForStartNode(ctx, w, w, w, inputs)
 		assert.NoError(t, err)
 		assert.Equal(t, executors.NodeStatusComplete, s)
 		actual := &core.LiteralMap{}
@@ -85,7 +85,7 @@ func TestSetInputsForStartNode(t *testing.T) {
 		w.DummyStartNode = &v1alpha1.NodeSpec{
 			ID: v1alpha1.StartNodeID,
 		}
-		s, err := exec.SetInputsForStartNode(ctx, w, inputs)
+		s, err := exec.SetInputsForStartNode(ctx, w, w, w, inputs)
 		assert.Error(t, err)
 		assert.Equal(t, executors.NodeStatusUndefined, s)
 	})
@@ -99,7 +99,7 @@ func TestSetInputsForStartNode(t *testing.T) {
 		w.DummyStartNode = &v1alpha1.NodeSpec{
 			ID: v1alpha1.StartNodeID,
 		}
-		s, err := execFail.SetInputsForStartNode(ctx, w, inputs)
+		s, err := execFail.SetInputsForStartNode(ctx, w, w, w, inputs)
 		assert.Error(t, err)
 		assert.Equal(t, executors.NodeStatusUndefined, s)
 	})
@@ -225,7 +225,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindStart).Return(h, nil)
 
 				mockWf, startNode, startNodeStatus := createStartNodeWf(test.currentNodePhase, 0)
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, startNode)
+				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -308,7 +308,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindEnd).Return(h, nil)
 
 				mockWf, mockNode, mockNodeStatus := createSingleNodeWf(test.parentNodePhase, 0)
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockNode)
+				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, mockNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -413,7 +413,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 				startNode := mockWf.StartNode()
 				startStatus := mockWf.GetNodeExecutionStatus(ctx, startNode.GetID())
 				assert.Equal(t, v1alpha1.NodePhaseSucceeded, startStatus.GetPhase())
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, startNode)
+				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -507,70 +507,71 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			// Setup
 			mockN2Status := &mocks.ExecutableNodeStatus{}
 			// No parent node
-			mockN2Status.On("GetParentNodeID").Return(nil)
-			mockN2Status.On("GetParentTaskID").Return(nil)
-			mockN2Status.On("GetPhase").Return(n2Phase)
+			mockN2Status.OnGetParentNodeID().Return(nil)
+			mockN2Status.OnGetParentTaskID().Return(nil)
+			mockN2Status.OnGetPhase().Return(n2Phase)
 			mockN2Status.On("SetDataDir", mock.AnythingOfType(reflect.TypeOf(storage.DataReference("x")).String()))
-			mockN2Status.On("GetDataDir").Return(storage.DataReference("blah"))
+			mockN2Status.OnGetDataDir().Return(storage.DataReference("blah"))
 			mockN2Status.On("SetOutputDir", mock.AnythingOfType(reflect.TypeOf(storage.DataReference("x")).String()))
-			mockN2Status.On("GetOutputDir").Return(storage.DataReference("blah"))
-			mockN2Status.On("GetWorkflowNodeStatus").Return(nil)
+			mockN2Status.OnGetOutputDir().Return(storage.DataReference("blah"))
+			mockN2Status.OnGetWorkflowNodeStatus().Return(nil)
 
-			mockN2Status.On("GetStoppedAt").Return(nil)
+			mockN2Status.OnGetStoppedAt().Return(nil)
 			mockN2Status.On("UpdatePhase", expectedN2Phase, mock.Anything, mock.AnythingOfType("string"))
-			mockN2Status.On("IsDirty").Return(false)
-			mockN2Status.On("GetTaskNodeStatus").Return(nil)
+			mockN2Status.OnIsDirty().Return(false)
+			mockN2Status.OnGetTaskNodeStatus().Return(nil)
 			mockN2Status.On("ClearDynamicNodeStatus").Return(nil)
-			mockN2Status.On("GetAttempts").Return(uint32(0))
+			mockN2Status.OnGetAttempts().Return(uint32(0))
 
 			mockNode := &mocks.ExecutableNode{}
-			mockNode.On("GetID").Return(nodeN2)
-			mockNode.On("GetBranchNode").Return(nil)
-			mockNode.On("GetKind").Return(v1alpha1.NodeKindTask)
-			mockNode.On("IsStartNode").Return(false)
-			mockNode.On("IsEndNode").Return(false)
-			mockNode.On("GetTaskID").Return(&taskID)
-			mockNode.On("GetInputBindings").Return([]*v1alpha1.Binding{})
-			mockNode.On("IsInterruptible").Return(nil)
+			mockNode.OnGetID().Return(nodeN2)
+			mockNode.OnGetBranchNode().Return(nil)
+			mockNode.OnGetKind().Return(v1alpha1.NodeKindTask)
+			mockNode.OnIsStartNode().Return(false)
+			mockNode.OnIsEndNode().Return(false)
+			mockNode.OnGetTaskID().Return(&taskID)
+			mockNode.OnGetInputBindings().Return([]*v1alpha1.Binding{})
+			mockNode.OnIsInterruptible().Return(nil)
 
 			mockNodeN0 := &mocks.ExecutableNode{}
-			mockNodeN0.On("GetID").Return(nodeN0)
-			mockNodeN0.On("GetBranchNode").Return(nil)
-			mockNodeN0.On("GetKind").Return(v1alpha1.NodeKindTask)
-			mockNodeN0.On("IsStartNode").Return(false)
-			mockNodeN0.On("IsEndNode").Return(false)
-			mockNodeN0.On("GetTaskID").Return(&taskID0)
-			mockNodeN0.On("IsInterruptible").Return(nil)
+			mockNodeN0.OnGetID().Return(nodeN0)
+			mockNodeN0.OnGetBranchNode().Return(nil)
+			mockNodeN0.OnGetKind().Return(v1alpha1.NodeKindTask)
+			mockNodeN0.OnIsStartNode().Return(false)
+			mockNodeN0.OnIsEndNode().Return(false)
+			mockNodeN0.OnGetTaskID().Return(&taskID0)
+			mockNodeN0.OnIsInterruptible().Return(nil)
 
 			mockN0Status := &mocks.ExecutableNodeStatus{}
-			mockN0Status.On("GetPhase").Return(n0Phase)
-			mockN0Status.On("GetAttempts").Return(uint32(0))
+			mockN0Status.OnGetPhase().Return(n0Phase)
+			mockN0Status.OnGetAttempts().Return(uint32(0))
 
-			mockN0Status.On("IsDirty").Return(false)
-			mockN0Status.On("GetParentTaskID").Return(nil)
+			mockN0Status.OnIsDirty().Return(false)
+			mockN0Status.OnGetParentTaskID().Return(nil)
 			n := v1.Now()
-			mockN0Status.On("GetStoppedAt").Return(&n)
+			mockN0Status.OnGetStoppedAt().Return(&n)
 
 			tk := &mocks.ExecutableTask{}
-			tk.On("CoreTask").Return(&core.TaskTemplate{})
+			tk.OnCoreTask().Return(&core.TaskTemplate{})
 			mockWfStatus := &mocks.ExecutableWorkflowStatus{}
 			mockWf := &mocks.ExecutableWorkflow{}
-			mockWf.On("StartNode").Return(mockNodeN0)
-			mockWf.On("GetNode", nodeN2).Return(mockNode, true)
+			mockWf.OnStartNode().Return(mockNodeN0)
+			mockWf.OnGetNode(nodeN2).Return(mockNode, true)
 			mockWf.OnGetNodeExecutionStatusMatch(mock.Anything, nodeN0).Return(mockN0Status)
 			mockWf.OnGetNodeExecutionStatusMatch(mock.Anything, nodeN2).Return(mockN2Status)
-			mockWf.On("GetConnections").Return(connections)
-			mockWf.On("GetID").Return("w1")
-			mockWf.On("FromNode", nodeN0).Return([]string{nodeN2}, nil)
-			mockWf.On("FromNode", nodeN2).Return([]string{}, fmt.Errorf("did not expect"))
-			mockWf.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{})
-			mockWf.On("GetExecutionStatus").Return(mockWfStatus)
-			mockWf.On("GetTask", taskID0).Return(tk, nil)
-			mockWf.On("GetTask", taskID).Return(tk, nil)
-			mockWf.On("GetLabels").Return(make(map[string]string))
-			mockWf.On("IsInterruptible").Return(false)
-			mockWfStatus.On("GetDataDir").Return(storage.DataReference("x"))
-			mockWfStatus.On("ConstructNodeDataDir", mock.Anything, mock.Anything, mock.Anything).Return(storage.DataReference("x"), nil)
+			mockWf.OnGetConnections().Return(connections)
+			mockWf.OnGetID().Return("w1")
+			mockWf.OnToNode(nodeN2).Return([]string{nodeN0}, nil)
+			mockWf.OnFromNode(nodeN0).Return([]string{nodeN2}, nil)
+			mockWf.OnFromNode(nodeN2).Return([]string{}, fmt.Errorf("did not expect"))
+			mockWf.OnGetExecutionID().Return(v1alpha1.WorkflowExecutionIdentifier{})
+			mockWf.OnGetExecutionStatus().Return(mockWfStatus)
+			mockWf.OnGetTask(taskID0).Return(tk, nil)
+			mockWf.OnGetTask(taskID).Return(tk, nil)
+			mockWf.OnGetLabels().Return(make(map[string]string))
+			mockWf.OnIsInterruptible().Return(false)
+			mockWfStatus.OnGetDataDir().Return(storage.DataReference("x"))
+			mockWfStatus.OnConstructNodeDataDirMatch(mock.Anything, mock.Anything, mock.Anything).Return("x", nil)
 			return mockWf, mockN2Status
 		}
 
@@ -608,7 +609,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				exec := execIface.(*nodeExecutor)
 				exec.nodeHandlerFactory = hf
 
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, startNode)
+				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -708,7 +709,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				startNode := mockWf.StartNode()
 				startStatus := mockWf.GetNodeExecutionStatus(ctx, startNode.GetID())
 				assert.Equal(t, v1alpha1.NodePhaseSucceeded, startStatus.GetPhase())
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, startNode)
+				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -805,7 +806,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 
 				mockWf, _, mockNodeStatus := createSingleNodeWf(test.currentNodePhase, 1)
 				startNode := mockWf.StartNode()
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, startNode)
+				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -839,7 +840,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 
 		mockWf, _, mockNodeStatus := createSingleNodeWf(v1alpha1.NodePhaseRunning, 0)
 		startNode := mockWf.StartNode()
-		s, err := exec.RecursiveNodeHandler(ctx, mockWf, startNode)
+		s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 		assert.NoError(t, err)
 		assert.Equal(t, executors.NodePhasePending.String(), s.NodePhase.String())
 		assert.Equal(t, uint32(0), mockNodeStatus.GetAttempts())
@@ -866,7 +867,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 
 		mockWf, _, mockNodeStatus := createSingleNodeWf(v1alpha1.NodePhaseRunning, 1)
 		startNode := mockWf.StartNode()
-		s, err := exec.RecursiveNodeHandler(ctx, mockWf, startNode)
+		s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 		assert.NoError(t, err)
 		assert.Equal(t, executors.NodePhasePending.String(), s.NodePhase.String())
 		assert.Equal(t, uint32(0), mockNodeStatus.GetAttempts())
@@ -969,7 +970,7 @@ func TestNodeExecutor_RecursiveNodeHandler_NoDownstream(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
 
 				mockWf, mockNode, mockNodeStatus := createSingleNodeWf(test.currentNodePhase, 1)
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockNode)
+				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, mockNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -1071,7 +1072,7 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
 
 				mockWf, mockNode, mockNodeStatus := createSingleNodeWf(test.parentNodePhase, 0)
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockNode)
+				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, mockNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -1139,7 +1140,7 @@ func Test_nodeExecutor_RecordTransitionLatency(t *testing.T) {
 				nodeRecorder:       tt.fields.nodeRecorder,
 				metrics:            tt.fields.metrics,
 			}
-			c.RecordTransitionLatency(context.TODO(), tt.args.w, tt.args.node, tt.args.nodeStatus)
+			c.RecordTransitionLatency(context.TODO(), tt.args.w, tt.args.w, tt.args.node, tt.args.nodeStatus)
 
 			ch := make(chan prometheus.Metric, 2)
 			tt.fields.metrics.TransitionLatency.Collect(ch)
@@ -1248,7 +1249,7 @@ func Test_nodeExecutor_timeout(t *testing.T) {
 			mockNode.On("GetExecutionDeadline").Return(&tt.executionDeadline)
 			mockNode.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &tt.retries})
 
-			nCtx := &execContext{node: mockNode, nsm: &nodeStateManager{nodeStatus: ns}}
+			nCtx := &nodeExecContext{node: mockNode, nsm: &nodeStateManager{nodeStatus: ns}}
 			phaseInfo, err := c.execute(context.TODO(), h, nCtx, ns)
 
 			if tt.err != nil {
@@ -1295,7 +1296,7 @@ func Test_nodeExecutor_system_error(t *testing.T) {
 	retries := 2
 	mockNode.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &retries})
 
-	nCtx := &execContext{node: mockNode, nsm: &nodeStateManager{nodeStatus: ns}}
+	nCtx := &nodeExecContext{node: mockNode, nsm: &nodeStateManager{nodeStatus: ns}}
 	phaseInfo, err := c.execute(context.TODO(), h, nCtx, ns)
 	assert.Equal(t, handler.EPhaseRetryableFailure, phaseInfo.GetPhase())
 	assert.NoError(t, err)
@@ -1305,7 +1306,7 @@ func Test_nodeExecutor_system_error(t *testing.T) {
 func Test_nodeExecutor_abort(t *testing.T) {
 	ctx := context.Background()
 	exec := nodeExecutor{}
-	nCtx := &execContext{}
+	nCtx := &nodeExecContext{}
 
 	t.Run("abort error calls finalize", func(t *testing.T) {
 		h := &nodeHandlerMocks.Node{}

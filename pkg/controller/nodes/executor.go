@@ -185,7 +185,7 @@ func (c *nodeExecutor) isTimeoutExpired(queuedAt *metav1.Time, timeout time.Dura
 	return false
 }
 
-func (c *nodeExecutor) isEligibleForRetry(nCtx *execContext, nodeStatus v1alpha1.ExecutableNodeStatus, err *core.ExecutionError) (currentAttempt, maxAttempts uint32, isEligible bool) {
+func (c *nodeExecutor) isEligibleForRetry(nCtx *nodeExecContext, nodeStatus v1alpha1.ExecutableNodeStatus, err *core.ExecutionError) (currentAttempt, maxAttempts uint32, isEligible bool) {
 	if err.Kind == core.ExecutionError_SYSTEM {
 		currentAttempt = nodeStatus.GetSystemFailures()
 		maxAttempts = c.maxNodeRetriesForSystemFailures
@@ -201,7 +201,7 @@ func (c *nodeExecutor) isEligibleForRetry(nCtx *execContext, nodeStatus v1alpha1
 	return
 }
 
-func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execContext, nodeStatus v1alpha1.ExecutableNodeStatus) (handler.PhaseInfo, error) {
+func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeExecContext, nodeStatus v1alpha1.ExecutableNodeStatus) (handler.PhaseInfo, error) {
 	logger.Debugf(ctx, "Executing node")
 	defer logger.Debugf(ctx, "Node execution round complete")
 
@@ -267,7 +267,7 @@ func (c *nodeExecutor) finalize(ctx context.Context, h handler.Node, nCtx handle
 	return h.Finalize(ctx, nCtx)
 }
 
-func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executors.DAGStructure, nCtx *execContext, _ handler.Node) (executors.NodeStatus, error) {
+func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executors.DAGStructure, nCtx *nodeExecContext, _ handler.Node) (executors.NodeStatus, error) {
 	logger.Debugf(ctx, "Node not yet started, running pre-execute")
 	defer logger.Debugf(ctx, "Node pre-execute completed")
 	p, err := c.preExecute(ctx, dag, nCtx)
@@ -315,7 +315,7 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 	return executors.NodeStatusPending, nil
 }
 
-func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *execContext, h handler.Node) (executors.NodeStatus, error) {
+func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *nodeExecContext, h handler.Node) (executors.NodeStatus, error) {
 	nodeStatus := nCtx.NodeStatus()
 	currentPhase := nodeStatus.GetPhase()
 
@@ -409,7 +409,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *exec
 	return finalStatus, nil
 }
 
-func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx *execContext, h handler.Node) (executors.NodeStatus, error) {
+func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx *nodeExecContext, h handler.Node) (executors.NodeStatus, error) {
 	nodeStatus := nCtx.NodeStatus()
 	logger.Debugf(ctx, "node failed with retryable failure, aborting and finalizing, message: %s", nodeStatus.GetMessage())
 	if err := c.abort(ctx, h, nCtx, nodeStatus.GetMessage()); err != nil {
@@ -428,7 +428,7 @@ func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx *execCon
 	return executors.NodeStatusPending, nil
 }
 
-func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructure, nCtx *execContext, h handler.Node) (executors.NodeStatus, error) {
+func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructure, nCtx *nodeExecContext, h handler.Node) (executors.NodeStatus, error) {
 	logger.Debugf(ctx, "Handling Node [%s]", nCtx.NodeID())
 	defer logger.Debugf(ctx, "Completed node [%s]", nCtx.NodeID())
 

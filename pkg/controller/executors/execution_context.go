@@ -3,8 +3,6 @@ package executors
 import (
 	"fmt"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
@@ -56,9 +54,7 @@ func NewStaticSubWorkflowsGetter(name string, subworkflows map[v1alpha1.Workflow
 
 type ImmutableExecutionContext interface {
 	v1alpha1.Meta
-	ID() string
-	// TODO replace this with a common Identifier
-	ExecutionID() *core.WorkflowExecutionIdentifier
+	GetID() v1alpha1.WorkflowID
 }
 
 type ExecutionContext interface {
