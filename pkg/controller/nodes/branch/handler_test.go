@@ -47,7 +47,7 @@ func (t branchNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) e
 	panic("not implemented")
 }
 
-func createNodeContext(phase v1alpha1.BranchNodePhase, childNodeID *v1alpha1.NodeID,  n v1alpha1.ExecutableNode, inputs *core.LiteralMap, nl executors.NodeLookup) (*mocks.NodeExecutionContext, *branchNodeStateHolder) {
+func createNodeContext(phase v1alpha1.BranchNodePhase, childNodeID *v1alpha1.NodeID, n v1alpha1.ExecutableNode, inputs *core.LiteralMap, nl executors.NodeLookup) (*mocks.NodeExecutionContext, *branchNodeStateHolder) {
 	branchNodeState := handler.BranchNodeState{
 		FinalizedNodeID: childNodeID,
 		Phase:           phase,
@@ -120,8 +120,6 @@ func TestBranchHandler_RecurseDownstream(t *testing.T) {
 	n.OnGetID().Return("n1")
 
 	expectedError := fmt.Errorf("error")
-
-
 
 	tests := []struct {
 		name            string
@@ -299,7 +297,7 @@ func TestBranchHandler_HandleNode(t *testing.T) {
 			n.OnGetResources().Return(res)
 			n.OnGetBranchNode().Return(nil)
 			n.OnGetID().Return("n1")
-			nCtx, _:= createNodeContext(v1alpha1.BranchNodeSuccess, &childNodeID, n, inputs, nil)
+			nCtx, _ := createNodeContext(v1alpha1.BranchNodeSuccess, &childNodeID, n, inputs, nil)
 
 			s, err := branch.Handle(ctx, nCtx)
 			if test.isErr {

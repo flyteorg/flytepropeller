@@ -47,7 +47,6 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 		Name: "name",
 	})
 
-
 	taskID := &core.Identifier{}
 	tr := &nodeMocks.TaskReader{}
 	tr.OnGetTaskID().Return(taskID)

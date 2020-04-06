@@ -29,7 +29,7 @@ func GetSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext) (v1a
 }
 
 // Performs an additional step of passing in and setting the inputs, before handling the execution of a SubWorkflow.
-func (s *subworkflowHandler) startAndHandleSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext, subWorkflow v1alpha1.ExecutableSubWorkflow, nl executors.NodeLookup, ) (handler.Transition, error) {
+func (s *subworkflowHandler) startAndHandleSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext, subWorkflow v1alpha1.ExecutableSubWorkflow, nl executors.NodeLookup) (handler.Transition, error) {
 	// Before starting the subworkflow, lets set the inputs for the Workflow. The inputs for a SubWorkflow are essentially
 	// Copy of the inputs to the Node
 	nodeInputs, err := nCtx.InputReader().Get(ctx)
@@ -112,7 +112,7 @@ func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler
 }
 
 // @kumare related to NOTE1, this is not used currently, but should be used. For this we will need to clean up the state machine in the main handle function
-func (s *subworkflowHandler) handleFailureNodeOfSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext, subworkflow v1alpha1.ExecutableSubWorkflow, nl executors.NodeLookup) (handler.Transition, error) {
+func (s *subworkflowHandler) HandleFailureNodeOfSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext, subworkflow v1alpha1.ExecutableSubWorkflow, nl executors.NodeLookup) (handler.Transition, error) {
 	if subworkflow.GetOnFailureNode() != nil {
 		state, err := s.nodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), subworkflow, nl, subworkflow.GetOnFailureNode())
 		if err != nil {

@@ -396,7 +396,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	subwf = dynamicWf
 	execContext = executors.NewExecutionContext(nCtx.ExecutionContext(), subwf, subwf)
 	nodeLookup = executors.NewNodeLookup(subwf, dynamicNodeStatus)
-	return
+	return execContext, subwf, nodeLookup, true, nil
 }
 
 func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context, execContext executors.ExecutionContext, dynamicWorkflow v1alpha1.ExecutableWorkflow, nl executors.NodeLookup,

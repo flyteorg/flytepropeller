@@ -397,7 +397,7 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 		nm.OnGetAnnotations().Return(map[string]string{})
 		nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
 			ExecutionId: wfExecID,
-			NodeId: nodeID,
+			NodeId:      nodeID,
 		})
 		nm.OnGetK8sServiceAccount().Return("service-account")
 		nm.OnGetLabels().Return(map[string]string{})
@@ -601,7 +601,7 @@ func TestDynamicNodeTaskNodeHandler_Finalize(t *testing.T) {
 		nm.OnGetAnnotations().Return(map[string]string{})
 		nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
 			ExecutionId: wfExecID,
-			NodeId: nodeID,
+			NodeId:      nodeID,
 		})
 		nm.OnGetK8sServiceAccount().Return("service-account")
 		nm.OnGetLabels().Return(map[string]string{})

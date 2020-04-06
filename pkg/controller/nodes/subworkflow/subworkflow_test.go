@@ -90,7 +90,7 @@ func Test_subworkflowHandler_HandleAbort(t *testing.T) {
 		swf.OnGetID().Return("swf")
 		nodeExec.OnAbortHandlerMatch(mock.Anything, ectx, swf, mock.Anything, n, "reason").Return(nil)
 		assert.Panics(t, func() {
-			_  = s.HandleAbort(ctx, nCtx, "reason")
+			_ = s.HandleAbort(ctx, nCtx, "reason")
 		})
 	})
 

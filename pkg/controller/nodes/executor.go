@@ -495,7 +495,7 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, execContext executo
 	downstreamNodes, err := dag.FromNode(currentNode.GetID())
 	if err != nil {
 		logger.Debugf(ctx, "Error when retrieving downstream nodes, [%s]", err)
-		return executors.NodeStatusFailed(errors.Wrapf(errors.BadSpecificationError, currentNode.GetID(), err, "failed to retreive downstream nodes")), nil
+		return executors.NodeStatusFailed(errors.Wrapf(errors.BadSpecificationError, currentNode.GetID(), err, "failed to retrieve downstream nodes")), nil
 	}
 	if len(downstreamNodes) == 0 {
 		logger.Debugf(ctx, "No downstream nodes found. Complete.")

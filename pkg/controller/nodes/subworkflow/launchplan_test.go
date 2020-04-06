@@ -102,7 +102,7 @@ func TestSubWorkflowHandler_StartLaunchPlan(t *testing.T) {
 					o.ParentNodeExecution.ExecutionId == wfExecID
 			}),
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 			mock.MatchedBy(func(o *core.Identifier) bool { return lpID == o }),
 			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
@@ -128,7 +128,7 @@ func TestSubWorkflowHandler_StartLaunchPlan(t *testing.T) {
 					o.ParentNodeExecution.ExecutionId == wfExecID
 			}),
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 			mock.MatchedBy(func(o *core.Identifier) bool { return lpID == o }),
 			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
@@ -154,7 +154,7 @@ func TestSubWorkflowHandler_StartLaunchPlan(t *testing.T) {
 					o.ParentNodeExecution.ExecutionId == wfExecID
 			}),
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 			mock.MatchedBy(func(o *core.Identifier) bool { return lpID == o }),
 			mock.MatchedBy(func(o *core.LiteralMap) bool { return o.Literals == nil }),
@@ -205,7 +205,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		mockLPExec.On("GetStatus",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_RUNNING,
@@ -228,7 +228,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		mockLPExec.On("GetStatus",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_SUCCEEDED,
@@ -262,7 +262,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		mockLPExec.On("GetStatus",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_SUCCEEDED,
@@ -303,7 +303,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		mockLPExec.On("GetStatus",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_SUCCEEDED,
@@ -339,7 +339,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		mockLPExec.On("GetStatus",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_FAILED,
@@ -368,7 +368,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		mockLPExec.On("GetStatus",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_FAILED,
@@ -391,7 +391,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		mockLPExec.On("GetStatus",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_ABORTED,
@@ -414,7 +414,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		mockLPExec.On("GetStatus",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(nil, errors.Wrapf(launchplan.RemoteErrorNotFound, fmt.Errorf("some error"), "not found"))
 
@@ -435,7 +435,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		mockLPExec.On("GetStatus",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(nil, errors.Wrapf(launchplan.RemoteErrorSystem, fmt.Errorf("some error"), "not found"))
 
@@ -462,7 +462,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		mockLPExec.On("GetStatus",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_SUCCEEDED,
@@ -495,7 +495,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		mockLPExec.On("GetStatus",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_SUCCEEDED,
@@ -528,7 +528,7 @@ func TestSubWorkflowHandler_CheckLaunchPlanStatus(t *testing.T) {
 		mockLPExec.On("GetStatus",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_SUCCEEDED,
@@ -582,7 +582,7 @@ func TestLaunchPlanHandler_HandleAbort(t *testing.T) {
 		mockLPExec.On("Kill",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 			mock.AnythingOfType(reflect.String.String()),
 		).Return(nil)
@@ -604,7 +604,7 @@ func TestLaunchPlanHandler_HandleAbort(t *testing.T) {
 		mockLPExec.On("Kill",
 			ctx,
 			mock.MatchedBy(func(o *core.WorkflowExecutionIdentifier) bool {
-				return assert.Equal(t, wfExecID.Project, o.Project ) && assert.Equal(t, wfExecID.Domain, o.Domain)
+				return assert.Equal(t, wfExecID.Project, o.Project) && assert.Equal(t, wfExecID.Domain, o.Domain)
 			}),
 			mock.AnythingOfType(reflect.String.String()),
 		).Return(expectedErr)
