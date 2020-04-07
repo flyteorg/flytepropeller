@@ -62,7 +62,7 @@ type dynamicNodeTaskNodeHandler struct {
 	TaskNodeHandler
 	metrics      metrics
 	nodeExecutor executors.Node
-	lpHandler    launchplan.Executor
+	lpReader     launchplan.Reader
 }
 
 func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevState handler.DynamicNodeState, nCtx handler.NodeExecutionContext) (handler.Transition, handler.DynamicNodeState, error) {
@@ -418,7 +418,7 @@ func (d dynamicNodeTaskNodeHandler) getLaunchPlanInterfaces(ctx context.Context,
 
 	var launchPlanInterfaces = make([]common2.InterfaceProvider, len(launchPlanIDs))
 	for idx, id := range launchPlanIDs {
-		lp, err := d.lpHandler.GetLaunchPlan(ctx, &id)
+		lp, err := d.lpReader.GetLaunchPlan(ctx, &id)
 		if err != nil {
 			logger.Debugf(ctx, "Error fetching launch plan definition from admin")
 			return nil, err
@@ -504,12 +504,12 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)), prevState, nil
 }
 
-func New(underlying TaskNodeHandler, nodeExecutor executors.Node, workflowLauncher launchplan.Executor, scope promutils.Scope) handler.Node {
+func New(underlying TaskNodeHandler, nodeExecutor executors.Node, launchPlanReader launchplan.Reader, scope promutils.Scope) handler.Node {
 
 	return &dynamicNodeTaskNodeHandler{
 		TaskNodeHandler: underlying,
 		metrics:         newMetrics(scope),
 		nodeExecutor:    nodeExecutor,
-		lpHandler:       workflowLauncher,
+		lpReader:        launchPlanReader,
 	}
 }

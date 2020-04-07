@@ -12,6 +12,8 @@ import (
 )
 
 type failFastWorkflowLauncher struct {
+	Executor
+	Reader
 }
 
 func (failFastWorkflowLauncher) Launch(ctx context.Context, launchCtx LaunchContext, executionID *core.WorkflowExecutionIdentifier, launchPlanRef *core.Identifier, inputs *core.LiteralMap) error {
@@ -37,7 +39,7 @@ func (failFastWorkflowLauncher) Initialize(ctx context.Context) error {
 	return nil
 }
 
-func NewFailFastLaunchPlanExecutor() Executor {
+func NewFailFastLaunchPlanExecutor() *failFastWorkflowLauncher {
 	logger.Infof(context.TODO(), "created failFast workflow launcher, will not launch subworkflows.")
 	return &failFastWorkflowLauncher{}
 }

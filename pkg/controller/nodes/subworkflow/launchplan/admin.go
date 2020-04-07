@@ -24,6 +24,8 @@ import (
 
 // Executor for Launchplans that executes on a remote FlyteAdmin service (if configured)
 type adminLaunchPlanExecutor struct {
+	Executor
+	Reader
 	adminClient service.AdminServiceClient
 	cache       cache.AutoRefresh
 }
@@ -181,7 +183,7 @@ func (a *adminLaunchPlanExecutor) syncItem(ctx context.Context, batch cache.Batc
 }
 
 func NewAdminLaunchPlanExecutor(_ context.Context, client service.AdminServiceClient,
-	syncPeriod time.Duration, cfg *AdminConfig, scope promutils.Scope) (Executor, error) {
+	syncPeriod time.Duration, cfg *AdminConfig, scope promutils.Scope) (*adminLaunchPlanExecutor, error) {
 	exec := &adminLaunchPlanExecutor{
 		adminClient: client,
 	}
