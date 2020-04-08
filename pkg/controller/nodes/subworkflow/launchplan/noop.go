@@ -39,7 +39,7 @@ func (failFastWorkflowLauncher) Initialize(ctx context.Context) error {
 	return nil
 }
 
-func NewFailFastLaunchPlanExecutor() *failFastWorkflowLauncher {
+func NewFailFastLaunchPlanExecutor() FlyteAdmin {
 	logger.Infof(context.TODO(), "created failFast workflow launcher, will not launch subworkflows.")
 	return &failFastWorkflowLauncher{}
 }
