@@ -199,7 +199,7 @@ func newK8sEventRecorder(ctx context.Context, kubeclientset kubernetes.Interface
 func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Interface, flytepropellerClientset clientset.Interface,
 	flyteworkflowInformerFactory informers.SharedInformerFactory, kubeClient executors.Client, scope promutils.Scope) (*Controller, error) {
 
-	var launchPlanActor launchplan.AdminAccess
+	var launchPlanActor launchplan.FlyteAdmin
 	if cfg.EnableAdminLauncher {
 		adminClient, err := admin.InitializeAdminClientFromConfig(ctx)
 		if err != nil {

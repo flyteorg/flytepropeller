@@ -40,7 +40,7 @@ type Reader interface {
 	GetLaunchPlan(ctx context.Context, launchPlanRef *core.Identifier) (*admin.LaunchPlan, error)
 }
 
-type AdminAccess interface {
+type FlyteAdmin interface {
 	Executor
 	Reader
 }

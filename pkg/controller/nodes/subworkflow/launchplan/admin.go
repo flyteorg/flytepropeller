@@ -24,8 +24,6 @@ import (
 
 // Executor for Launchplans that executes on a remote FlyteAdmin service (if configured)
 type adminLaunchPlanExecutor struct {
-	Executor
-	Reader
 	adminClient service.AdminServiceClient
 	cache       cache.AutoRefresh
 }
