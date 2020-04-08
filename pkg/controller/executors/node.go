@@ -59,12 +59,6 @@ func (p NodePhase) String() string {
 	return fmt.Sprintf("Unknown - %d", p)
 }
 
-type DAGStructure interface {
-	StartNode() v1alpha1.ExecutableNode
-	ToNode(id v1alpha1.NodeID) ([]v1alpha1.NodeID, error)
-	FromNode(id v1alpha1.NodeID) ([]v1alpha1.NodeID, error)
-}
-
 // Core Node Executor that is used to execute a node. This is a recursive node executor and understands node dependencies
 type Node interface {
 	// This method is used specifically to set inputs for start node. This is because start node does not retrieve inputs

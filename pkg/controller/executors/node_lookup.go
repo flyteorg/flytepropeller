@@ -6,11 +6,15 @@ import (
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
+// NodeLookup provides a structure that enables looking up all nodes within the current execution hierarchy/context.
+// NOTE: execution hierarchy may change the nodes available, this is because when a SubWorkflow is being executed, only
+// the nodes within the subworkflow are visible
 type NodeLookup interface {
 	GetNode(nodeID v1alpha1.NodeID) (v1alpha1.ExecutableNode, bool)
 	GetNodeExecutionStatus(ctx context.Context, id v1alpha1.NodeID) v1alpha1.ExecutableNodeStatus
 }
 
+// Implements a de-generate case of NodeLookup, where only one Node is always looked up
 type singleNodeLookup struct {
 	n v1alpha1.ExecutableNode
 	v1alpha1.NodeStatusGetter
@@ -23,15 +27,21 @@ func (s singleNodeLookup) GetNode(nodeID v1alpha1.NodeID) (v1alpha1.ExecutableNo
 	return s.n, true
 }
 
+// Returns a De-generate NodeLookup that always returns one node and the status of that node
 func NewSingleNodeLookup(n v1alpha1.ExecutableNode, s v1alpha1.NodeStatusGetter) NodeLookup {
 	return singleNodeLookup{NodeStatusGetter: s, n: n}
 }
 
+// Implements a contextual NodeLookup that can be composed of a disparate NodeGetter and a NodeStatusGetter
 type contextualNodeLookup struct {
 	v1alpha1.NodeGetter
 	v1alpha1.NodeStatusGetter
 }
 
+
+// Returns a Contextual NodeLookup using the given NodeGetter and a separate NodeStatusGetter.
+// Very useful in Subworkflows where the Subworkflow is the reservoir of the nodes, but the status for these nodes
+// maybe stored int he Top-level workflow node itself.
 func NewNodeLookup(n v1alpha1.NodeGetter, s v1alpha1.NodeStatusGetter) NodeLookup {
 	return contextualNodeLookup{
 		NodeGetter:       n,
