@@ -31,9 +31,16 @@ type Executor interface {
 	// Kill a remote execution
 	Kill(ctx context.Context, executionID *core.WorkflowExecutionIdentifier, reason string) error
 
-	// Get the definition of a launch plan. This is primarily used to ensure all the TypedInterfaces match up before actually executing.
-	GetLaunchPlan(ctx context.Context, launchPlanRef *core.Identifier) (*admin.LaunchPlan, error)
-
 	// Initializes Executor.
 	Initialize(ctx context.Context) error
+}
+
+type Reader interface {
+	// Get the definition of a launch plan. This is primarily used to ensure all the TypedInterfaces match up before actually executing.
+	GetLaunchPlan(ctx context.Context, launchPlanRef *core.Identifier) (*admin.LaunchPlan, error)
+}
+
+type FlyteAdmin interface {
+	Executor
+	Reader
 }

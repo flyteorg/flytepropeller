@@ -763,7 +763,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		d := dynamicNodeTaskNodeHandler{
 			TaskNodeHandler: h,
 			nodeExecutor:    n,
-			lpHandler:       mockLPLauncher,
+			lpReader:        mockLPLauncher,
 			metrics:         newMetrics(promutils.NewTestScope()),
 		}
 		executableWorkflow, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
@@ -818,7 +818,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		d := dynamicNodeTaskNodeHandler{
 			TaskNodeHandler: h,
 			nodeExecutor:    n,
-			lpHandler:       mockLPLauncher,
+			lpReader:        mockLPLauncher,
 			metrics:         newMetrics(promutils.NewTestScope()),
 		}
 		executableWorkflow, isDynamic, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
