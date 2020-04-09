@@ -38,7 +38,6 @@ type contextualNodeLookup struct {
 	v1alpha1.NodeStatusGetter
 }
 
-
 // Returns a Contextual NodeLookup using the given NodeGetter and a separate NodeStatusGetter.
 // Very useful in Subworkflows where the Subworkflow is the reservoir of the nodes, but the status for these nodes
 // maybe stored int he Top-level workflow node itself.

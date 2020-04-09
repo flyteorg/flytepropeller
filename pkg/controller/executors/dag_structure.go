@@ -12,4 +12,3 @@ type DAGStructure interface {
 	// Lookup for downstream edges, find all node ids that can be reached from the given node id.
 	FromNode(id v1alpha1.NodeID) ([]v1alpha1.NodeID, error)
 }
-
