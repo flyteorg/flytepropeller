@@ -1,6 +1,7 @@
 package main
 
 import (
+    - "github.com/kumare3/awsflyteplugins/go/sagemaker"
 	_ "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch"
 	_ "github.com/lyft/flyteplugins/go/tasks/plugins/array/k8s"
 	_ "github.com/lyft/flyteplugins/go/tasks/plugins/hive"
