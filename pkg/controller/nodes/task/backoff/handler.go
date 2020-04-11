@@ -145,7 +145,7 @@ func (h *ComputeResourceAwareBackOffHandler) Handle(ctx context.Context, operati
 			return nil
 		}
 
-		if IsResourceQuotaExceeded(err) || apiErrors.IsTooManyRequests(err) {
+		if IsResourceQuotaExceeded(err) || apiErrors.IsTooManyRequests(err) || apiErrors.IsServerTimeout(err) {
 			if !isBlocking {
 				// if the backOffBlocker is not blocking and we are still encountering insufficient resource issue,
 				// we should increase the exponent in the backoff and update the NextEligibleTime
