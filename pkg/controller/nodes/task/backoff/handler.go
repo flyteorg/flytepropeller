@@ -145,22 +145,24 @@ func (h *ComputeResourceAwareBackOffHandler) Handle(ctx context.Context, operati
 			return nil
 		}
 
-		if IsResourceQuotaExceeded(err) || apiErrors.IsTooManyRequests(err) || apiErrors.IsServerTimeout(err) {
+		if IsBackOffError(err) {
 			if !isBlocking {
 				// if the backOffBlocker is not blocking and we are still encountering insufficient resource issue,
 				// we should increase the exponent in the backoff and update the NextEligibleTime
 
 				backOffDuration := h.SimpleBackOffBlocker.backOff(ctx)
 				logger.Infof(ctx, "The operation was attempted because the back-off handler is not blocking, but failed due to "+
-					"insufficient resource (backing off for a duration of [%v] to timestamp [%v])\n", backOffDuration, h.SimpleBackOffBlocker.NextEligibleTime)
+					"insufficient resource, server timeout, or too many requests (backing off for a duration of [%v] to timestamp [%v])\n",
+					backOffDuration, h.SimpleBackOffBlocker.NextEligibleTime)
 			} else {
 				// When lowering the ceiling, we only want to lower the ceiling that actually needs to be lowered.
 				// For example, if the creation of a pod requiring X cpus and Y memory got rejected because of
 				// 	insufficient memory, we should only lower the ceiling of memory to Y, without touching the cpu ceiling
 
 				logger.Infof(ctx, "The operation was attempted because the resource requested is lower than the ceilings, "+
-					"but failed due to insufficient resource (the next eligible time remains unchanged [%v]). The requests are "+
-					"[%v]. The ceilings are [%v]\n", h.SimpleBackOffBlocker.NextEligibleTime, requestedResourceList, h.computeResourceCeilings)
+					"but failed due to insufficient resource, server timeout, or too many requests (the next eligible time "+
+					"remains unchanged [%v]). The requests are [%v]. The ceilings are [%v]\n",
+					h.SimpleBackOffBlocker.NextEligibleTime, requestedResourceList, h.computeResourceCeilings)
 			}
 			// It is necessary to parse the error message to get the actual constraints
 			// in this case, if the error message indicates constraints on memory only, then we shouldn't be used to lower the CPU ceiling
@@ -183,6 +185,10 @@ func (h *ComputeResourceAwareBackOffHandler) Handle(ctx context.Context, operati
 
 func IsResourceQuotaExceeded(err error) bool {
 	return apiErrors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota")
+}
+
+func IsBackOffError(err error) bool {
+	return IsResourceQuotaExceeded(err) || apiErrors.IsTooManyRequests(err) || apiErrors.IsServerTimeout(err)
 }
 
 func GetComputeResourceAndQuantityRequested(err error) v1.ResourceList {
