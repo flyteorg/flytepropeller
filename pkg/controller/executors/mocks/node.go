@@ -161,7 +161,7 @@ func (_m Node_SetInputsForStartNode) Return(_a0 executors.NodeStatus, _a1 error)
 	return &Node_SetInputsForStartNode{Call: _m.Call.Return(_a0, _a1)}
 }
 
-func (_m *Node) OnSetInputsForStartNode(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, inputs *core.LiteralMap) *Node_SetInputsForStartNode {
+func (_m *Node) OnSetInputsForStartNode(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructureWithStartNode, nl executors.NodeLookup, inputs *core.LiteralMap) *Node_SetInputsForStartNode {
 	c := _m.On("SetInputsForStartNode", ctx, execContext, dag, nl, inputs)
 	return &Node_SetInputsForStartNode{Call: c}
 }
@@ -172,18 +172,18 @@ func (_m *Node) OnSetInputsForStartNodeMatch(matchers ...interface{}) *Node_SetI
 }
 
 // SetInputsForStartNode provides a mock function with given fields: ctx, execContext, dag, nl, inputs
-func (_m *Node) SetInputsForStartNode(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, inputs *core.LiteralMap) (executors.NodeStatus, error) {
+func (_m *Node) SetInputsForStartNode(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructureWithStartNode, nl executors.NodeLookup, inputs *core.LiteralMap) (executors.NodeStatus, error) {
 	ret := _m.Called(ctx, execContext, dag, nl, inputs)
 
 	var r0 executors.NodeStatus
-	if rf, ok := ret.Get(0).(func(context.Context, executors.ExecutionContext, executors.DAGStructure, executors.NodeLookup, *core.LiteralMap) executors.NodeStatus); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, executors.ExecutionContext, executors.DAGStructureWithStartNode, executors.NodeLookup, *core.LiteralMap) executors.NodeStatus); ok {
 		r0 = rf(ctx, execContext, dag, nl, inputs)
 	} else {
 		r0 = ret.Get(0).(executors.NodeStatus)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, executors.ExecutionContext, executors.DAGStructure, executors.NodeLookup, *core.LiteralMap) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, executors.ExecutionContext, executors.DAGStructureWithStartNode, executors.NodeLookup, *core.LiteralMap) error); ok {
 		r1 = rf(ctx, execContext, dag, nl, inputs)
 	} else {
 		r1 = ret.Error(1)

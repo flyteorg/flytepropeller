@@ -63,7 +63,7 @@ func (p NodePhase) String() string {
 type Node interface {
 	// This method is used specifically to set inputs for start node. This is because start node does not retrieve inputs
 	// from predecessors, but the inputs are inputs to the workflow or inputs to the parent container (workflow) node.
-	SetInputsForStartNode(ctx context.Context, execContext ExecutionContext, dag DAGStructure, nl NodeLookup, inputs *core.LiteralMap) (NodeStatus, error)
+	SetInputsForStartNode(ctx context.Context, execContext ExecutionContext, dag DAGStructureWithStartNode, nl NodeLookup, inputs *core.LiteralMap) (NodeStatus, error)
 
 	// This is the main entrypoint to execute a node. It recursively depth-first goes through all ready nodes and starts their execution
 	// This returns either

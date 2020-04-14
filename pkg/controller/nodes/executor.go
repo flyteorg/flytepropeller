@@ -543,7 +543,7 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, execContext executo
 	return executors.NodeStatusPending, nil
 }
 
-func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, inputs *core.LiteralMap) (executors.NodeStatus, error) {
+func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructureWithStartNode, nl executors.NodeLookup, inputs *core.LiteralMap) (executors.NodeStatus, error) {
 	startNode := dag.StartNode()
 	ctx = contextutils.WithNodeID(ctx, startNode.GetID())
 	if inputs == nil {
