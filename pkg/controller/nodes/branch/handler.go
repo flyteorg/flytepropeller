@@ -105,9 +105,11 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 }
 
 func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.NodeExecutionContext, nodeStatus v1alpha1.ExecutableNodeStatus, branchTakenNode v1alpha1.ExecutableNode) (handler.Transition, error) {
-	// There is no DAGStructure for the branch nodes
-	// TODO @kumare before merging, we should have a non DAG structure passed in here
-	downstreamStatus, err := b.nodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), nil, nCtx.ContextualNodeLookup(), branchTakenNode)
+	// TODO we should replace the call to RecursiveNodeHandler with a call to SingleNode Handler. The inputs are also already known ahead of time
+	// There is no DAGStructure for the branch nodes, the branch taken node is the leaf node. The node itself may be arbitrarily complex, but in that case the node should reference a subworkflow etc
+	// The parent of the BranchTaken Node is the actual Branch Node and all the data is just forwarded from the Branch to the executed node.
+	dag := executors.NewLeafNodeDAGStructure(branchTakenNode.GetID(), nCtx.NodeID())
+	downstreamStatus, err := b.nodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), branchTakenNode)
 	if err != nil {
 		return handler.UnknownTransition, err
 	}
@@ -164,9 +166,12 @@ func (b *branchHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionCon
 		return nil
 	}
 
-	// TODO @kumare before merging, we should have a non DAG structure passed in here
 	// Recurse downstream
-	return b.nodeExecutor.AbortHandler(ctx, nCtx.ExecutionContext(), nil, nCtx.ContextualNodeLookup(), branchTakenNode, reason)
+	// TODO we should replace the call to RecursiveNodeHandler with a call to SingleNode Handler. The inputs are also already known ahead of time
+	// There is no DAGStructure for the branch nodes, the branch taken node is the leaf node. The node itself may be arbitrarily complex, but in that case the node should reference a subworkflow etc
+	// The parent of the BranchTaken Node is the actual Branch Node and all the data is just forwarded from the Branch to the executed node.
+	dag := executors.NewLeafNodeDAGStructure(branchTakenNode.GetID(), nCtx.NodeID())
+	return b.nodeExecutor.AbortHandler(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), branchTakenNode, reason)
 }
 
 func (b *branchHandler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
@@ -196,9 +201,12 @@ func (b *branchHandler) Finalize(ctx context.Context, nCtx handler.NodeExecution
 		return nil
 	}
 
-	// TODO @kumare before merging, we should have a non DAG structure passed in here
 	// Recurse downstream
-	return b.nodeExecutor.FinalizeHandler(ctx, nCtx.ExecutionContext(), nil, nCtx.ContextualNodeLookup(), branchTakenNode)
+	// TODO we should replace the call to RecursiveNodeHandler with a call to SingleNode Handler. The inputs are also already known ahead of time
+	// There is no DAGStructure for the branch nodes, the branch taken node is the leaf node. The node itself may be arbitrarily complex, but in that case the node should reference a subworkflow etc
+	// The parent of the BranchTaken Node is the actual Branch Node and all the data is just forwarded from the Branch to the executed node.
+	dag := executors.NewLeafNodeDAGStructure(branchTakenNode.GetID(), nCtx.NodeID())
+	return b.nodeExecutor.FinalizeHandler(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), branchTakenNode)
 }
 
 func New(executor executors.Node, scope promutils.Scope) handler.Node {

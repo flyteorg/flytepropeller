@@ -61,7 +61,8 @@ func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler
 
 	if state.HasFailed() {
 		if subworkflow.GetOnFailureNode() != nil {
-			// TODO ssingh: this is supposed to be failing. @kumare comment: We need to add new state to the executor so that, we can continue returning Running, but in the next round start executing DoInFailureHandling - NOTE1
+			// TODO Handle Failure node for subworkflows. We need to add new state to the executor so that, we can continue returning Running, but in the next round start executing DoInFailureHandling - NOTE1
+			// https://github.com/lyft/flyte/issues/265
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(errors.SubWorkflowExecutionFailed, state.Err.Error(), nil)), err
 		}
 
@@ -111,7 +112,8 @@ func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)), nil
 }
 
-// @kumare related to NOTE1, this is not used currently, but should be used. For this we will need to clean up the state machine in the main handle function
+// TODO related to NOTE1, this is not used currently, but should be used. For this we will need to clean up the state machine in the main handle function
+// https://github.com/lyft/flyte/issues/265
 func (s *subworkflowHandler) HandleFailureNodeOfSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext, subworkflow v1alpha1.ExecutableSubWorkflow, nl executors.NodeLookup) (handler.Transition, error) {
 	if subworkflow.GetOnFailureNode() != nil {
 		state, err := s.nodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), subworkflow, nl, subworkflow.GetOnFailureNode())
