@@ -164,7 +164,7 @@ func (h *ComputeResourceAwareBackOffHandler) Handle(ctx context.Context, operati
 					"remains unchanged [%v]). The requests are [%v]. The ceilings are [%v]\n",
 					err, h.SimpleBackOffBlocker.NextEligibleTime, requestedResourceList, h.computeResourceCeilings)
 			}
-			if IsResourceQuotaExceeded(err){
+			if IsResourceQuotaExceeded(err) {
 				// It is necessary to parse the error message to get the actual constraints
 				// in this case, if the error message indicates constraints on memory only, then we shouldn't be used to lower the CPU ceiling
 				// even if CPU appears in requestedResourceList
