@@ -62,7 +62,7 @@ func (b *branchHandler) HandleBranchNode(ctx context.Context, branchNode v1alpha
 		childNodeStatus := nl.GetNodeExecutionStatus(ctx, finalNode.GetID())
 		childNodeStatus.SetParentNodeID(&i)
 
-		logger.Debugf(ctx, "Recursing down branchNodestatus node")
+		logger.Debugf(ctx, "Recursively executing branchNode's chosen path")
 		nodeStatus := nl.GetNodeExecutionStatus(ctx, nCtx.NodeID())
 		return b.recurseDownstream(ctx, nCtx, nodeStatus, finalNode)
 	}

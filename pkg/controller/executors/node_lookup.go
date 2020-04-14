@@ -47,3 +47,26 @@ func NewNodeLookup(n v1alpha1.NodeGetter, s v1alpha1.NodeStatusGetter) NodeLooku
 		NodeStatusGetter: s,
 	}
 }
+
+// Implements a nodeLookup using Maps, very useful in Testing
+type staticNodeLookup struct {
+	nodes  map[v1alpha1.NodeID]v1alpha1.ExecutableNode
+	status map[v1alpha1.NodeID]v1alpha1.ExecutableNodeStatus
+}
+
+func (s staticNodeLookup) GetNode(nodeID v1alpha1.NodeID) (v1alpha1.ExecutableNode, bool) {
+	n, ok := s.nodes[nodeID]
+	return n, ok
+}
+
+func (s staticNodeLookup) GetNodeExecutionStatus(_ context.Context, id v1alpha1.NodeID) v1alpha1.ExecutableNodeStatus {
+	return s.status[id]
+}
+
+// Returns a new NodeLookup useful in Testing. Not recommended to be used in production
+func NewTestNodeLookup(nodes map[v1alpha1.NodeID]v1alpha1.ExecutableNode, status map[v1alpha1.NodeID]v1alpha1.ExecutableNodeStatus) NodeLookup {
+	return staticNodeLookup{
+		nodes:  nodes,
+		status: status,
+	}
+}

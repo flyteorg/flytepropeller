@@ -67,7 +67,7 @@ func CanExecute(ctx context.Context, dag executors.DAGStructure, nl executors.No
 			}
 
 			// This only happens if current node is the child node of a branch node
-			if upstreamNode.GetBranchNode() == nil || upstreamNodeStatus.GetOrCreateBranchStatus().GetPhase() != v1alpha1.BranchNodeSuccess {
+			if upstreamNode.GetBranchNode() == nil || upstreamNodeStatus.GetBranchStatus().GetPhase() != v1alpha1.BranchNodeSuccess {
 				logger.Debugf(ctx, "Branch sub node is expected to have parent branch node in succeeded state")
 				return PredicatePhaseUndefined, errors.Errorf(errors.IllegalStateError, nodeID, "Upstream node [%v] is set as parent, but is not a branch node of [%v] or in illegal state.", upstreamNodeID, nodeID)
 			}
@@ -114,7 +114,7 @@ func GetParentNodeMaxEndTime(ctx context.Context, dag executors.DAGStructure, nl
 			}
 
 			// This only happens if current node is the child node of a branch node
-			if upstreamNode.GetBranchNode() == nil || upstreamNodeStatus.GetOrCreateBranchStatus().GetPhase() != v1alpha1.BranchNodeSuccess {
+			if upstreamNode.GetBranchNode() == nil || upstreamNodeStatus.GetBranchStatus().GetPhase() != v1alpha1.BranchNodeSuccess {
 				logger.Debugf(ctx, "Branch sub node is expected to have parent branch node in succeeded state")
 				return zeroTime, errors.Errorf(errors.IllegalStateError, nodeID, "Upstream node [%v] is set as parent, but is not a branch node of [%v] or in illegal state.", upstreamNodeID, nodeID)
 			}

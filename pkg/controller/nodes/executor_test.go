@@ -603,7 +603,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				hf := &mocks2.HandlerFactory{}
 
 				h := &nodeHandlerMocks.Node{}
-				h.On("Handle",
+				h.OnHandleMatch(
 					mock.MatchedBy(func(ctx context.Context) bool { return true }),
 					mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
 				).Return(handler.UnknownTransition, fmt.Errorf("should not be called"))
@@ -1104,6 +1104,109 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 				assert.Equal(t, test.expectedPhase, s.NodePhase, "expected: %s, received %s", test.expectedPhase.String(), s.NodePhase.String())
 				assert.Equal(t, uint32(0), mockNodeStatus.GetAttempts())
 				assert.Equal(t, test.expectedNodePhase, mockNodeStatus.GetPhase(), "expected %s, received %s", test.expectedNodePhase.String(), mockNodeStatus.GetPhase().String())
+			})
+		}
+	}
+}
+
+func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
+	ctx := context.TODO()
+	enQWf := func(workflowID v1alpha1.WorkflowID) {
+	}
+	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+
+	store := createInmemoryDataStore(t, promutils.NewTestScope())
+
+	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
+	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
+		10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+	assert.NoError(t, err)
+	exec := execIface.(*nodeExecutor)
+	// Node not yet started
+	{
+		tests := []struct {
+			name                string
+			parentNodePhase     v1alpha1.BranchNodePhase
+			currentNodePhase    v1alpha1.NodePhase
+			phaseUpdateExpected bool
+			expectedPhase       executors.NodePhase
+			expectedError       bool
+		}{
+			{"branchSuccess", v1alpha1.BranchNodeSuccess, v1alpha1.NodePhaseNotYetStarted, true, executors.NodePhaseQueued, false},
+			{"branchNotYetDone", v1alpha1.BranchNodeNotYetEvaluated, v1alpha1.NodePhaseNotYetStarted, false, executors.NodePhaseUndefined, true},
+			{"branchError", v1alpha1.BranchNodeError, v1alpha1.NodePhaseNotYetStarted, false, executors.NodePhaseUndefined, true},
+		}
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				hf := &mocks2.HandlerFactory{}
+				exec.nodeHandlerFactory = hf
+				h := &nodeHandlerMocks.Node{}
+				h.OnHandleMatch(
+					mock.MatchedBy(func(ctx context.Context) bool { return true }),
+					mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
+				).Return(handler.UnknownTransition, fmt.Errorf("should not be called"))
+				h.OnFinalizeRequired().Return(true)
+				h.OnFinalizeMatch(mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
+
+				hf.OnGetHandlerMatch(v1alpha1.NodeKindTask).Return(h, nil)
+
+				parentBranchNodeID := "branchNode"
+				parentBranchNode := &mocks.ExecutableNode{}
+				parentBranchNode.OnGetID().Return(parentBranchNodeID)
+				parentBranchNode.OnGetBranchNode().Return(&mocks.ExecutableBranchNode{})
+				parentBranchNodeStatus := &mocks.ExecutableNodeStatus{}
+				parentBranchNodeStatus.OnGetPhase().Return(v1alpha1.NodePhaseRunning)
+				parentBranchNodeStatus.OnIsDirty().Return(false)
+				bns := &mocks.MutableBranchNodeStatus{}
+				parentBranchNodeStatus.OnGetBranchStatus().Return(bns)
+				bns.OnGetPhase().Return(test.parentNodePhase)
+
+				tk := &mocks.ExecutableTask{}
+				tk.OnCoreTask().Return(&core.TaskTemplate{})
+
+				tid := "tid"
+				eCtx := &mocks4.ExecutionContext{}
+				eCtx.OnGetTask(tid).Return(tk, nil)
+				eCtx.OnIsInterruptible().Return(true)
+				eCtx.OnGetExecutionID().Return(v1alpha1.WorkflowExecutionIdentifier{WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{}})
+				eCtx.OnGetLabels().Return(nil)
+
+				branchTakenNodeID := "branchTakenNode"
+				branchTakenNode := &mocks.ExecutableNode{}
+				branchTakenNode.OnGetID().Return(branchTakenNodeID)
+				branchTakenNode.OnGetKind().Return(v1alpha1.NodeKindTask)
+				branchTakenNode.OnGetTaskID().Return(&tid)
+				branchTakenNode.OnIsInterruptible().Return(nil)
+				branchTakenNode.OnIsStartNode().Return(false)
+				branchTakenNode.OnIsEndNode().Return(false)
+				branchTakenNode.OnGetInputBindings().Return(nil)
+				branchTakeNodeStatus := &mocks.ExecutableNodeStatus{}
+				branchTakeNodeStatus.OnGetPhase().Return(test.currentNodePhase)
+				branchTakeNodeStatus.OnIsDirty().Return(false)
+				branchTakeNodeStatus.OnGetSystemFailures().Return(1)
+				branchTakeNodeStatus.OnGetDataDir().Return("data")
+				branchTakeNodeStatus.OnGetParentNodeID().Return(&parentBranchNodeID)
+				branchTakeNodeStatus.OnGetParentTaskID().Return(nil)
+
+				if test.phaseUpdateExpected {
+					branchTakeNodeStatus.On("UpdatePhase", v1alpha1.NodePhaseQueued, mock.Anything, mock.Anything).Return()
+				}
+
+				leafDag := executors.NewLeafNodeDAGStructure(branchTakenNodeID, parentBranchNodeID)
+
+				nl := executors.NewTestNodeLookup(
+					map[v1alpha1.NodeID]v1alpha1.ExecutableNode{branchTakenNodeID: branchTakenNode, parentBranchNodeID: parentBranchNode},
+					map[v1alpha1.NodeID]v1alpha1.ExecutableNodeStatus{branchTakenNodeID: branchTakeNodeStatus, parentBranchNodeID: parentBranchNodeStatus},
+				)
+
+				s, err := exec.RecursiveNodeHandler(ctx, eCtx, leafDag, nl, branchTakenNode)
+				if test.expectedError {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+				}
+				assert.Equal(t, test.expectedPhase, s.NodePhase, "expected: %s, received %s", test.expectedPhase.String(), s.NodePhase.String())
 			})
 		}
 	}

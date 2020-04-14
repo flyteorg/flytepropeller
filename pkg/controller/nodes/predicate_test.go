@@ -371,7 +371,7 @@ func TestCanExecute(t *testing.T) {
 		mockN0Node.On("GetBranchNode").Return(mockN0BranchNode)
 		mockN0Status := &mocks.ExecutableNodeStatus{}
 		mockN0Status.On("GetPhase").Return(v1alpha1.NodePhaseSucceeded)
-		mockN0Status.On("GetOrCreateBranchStatus").Return(mockN0BranchStatus)
+		mockN0Status.On("GetBranchStatus").Return(mockN0BranchStatus)
 		mockN0Status.On("IsDirty").Return(false)
 
 		mockN1Status := &mocks.ExecutableNodeStatus{}
@@ -409,7 +409,7 @@ func TestCanExecute(t *testing.T) {
 		mockN0Node.On("GetBranchNode").Return(mockN0BranchNode)
 		mockN0Status := &mocks.ExecutableNodeStatus{}
 		mockN0Status.On("GetPhase").Return(v1alpha1.NodePhaseSucceeded)
-		mockN0Status.On("GetOrCreateBranchStatus").Return(mockN0BranchStatus)
+		mockN0Status.On("GetBranchStatus").Return(mockN0BranchStatus)
 		mockN0Status.On("IsDirty").Return(false)
 
 		mockN1Status := &mocks.ExecutableNodeStatus{}
@@ -448,7 +448,7 @@ func TestCanExecute(t *testing.T) {
 		mockN0Node.On("GetBranchNode").Return(mockN0BranchNode)
 		mockN0Status := &mocks.ExecutableNodeStatus{}
 		mockN0Status.On("GetPhase").Return(v1alpha1.NodePhaseSucceeded)
-		mockN0Status.On("GetOrCreateBranchStatus").Return(mockN0BranchStatus)
+		mockN0Status.On("GetBranchStatus").Return(mockN0BranchStatus)
 		mockN0Status.On("IsDirty").Return(false)
 
 		mockN1Status := &mocks.ExecutableNodeStatus{}
@@ -487,7 +487,7 @@ func TestCanExecute(t *testing.T) {
 		mockN0Node.On("GetBranchNode").Return(mockN0BranchNode)
 		mockN0Status := &mocks.ExecutableNodeStatus{}
 		mockN0Status.On("GetPhase").Return(v1alpha1.NodePhaseSucceeded)
-		mockN0Status.On("GetOrCreateBranchStatus").Return(mockN0BranchStatus)
+		mockN0Status.On("GetBranchStatus").Return(mockN0BranchStatus)
 		mockN0Status.On("IsDirty").Return(false)
 
 		mockN1Status := &mocks.ExecutableNodeStatus{}
@@ -526,7 +526,7 @@ func TestCanExecute(t *testing.T) {
 		mockN0Node.On("GetBranchNode").Return(mockN0BranchNode)
 		mockN0Status := &mocks.ExecutableNodeStatus{}
 		mockN0Status.On("GetPhase").Return(v1alpha1.NodePhaseSucceeded)
-		mockN0Status.On("GetOrCreateBranchStatus").Return(mockN0BranchStatus)
+		mockN0Status.On("GetBranchStatus").Return(mockN0BranchStatus)
 		mockN0Status.On("IsDirty").Return(false)
 
 		mockN1Status := &mocks.ExecutableNodeStatus{}
