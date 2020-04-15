@@ -67,6 +67,8 @@ func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference) {
 	}
 	p.execInfo.TaskNodeInfo.CacheHit = true
 	p.ObserveSuccess(outputPath)
+	// emit metrics
+	// catalogHitCount.Inc()
 }
 
 func (p *pluginRequestedTransition) ObservedTransitionAndState(trns pluginCore.Transition, pluginStateVersion uint32, pluginState []byte) {
