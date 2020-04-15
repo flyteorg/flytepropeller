@@ -233,7 +233,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindStart).Return(h, nil)
 
 				mockWf, startNode, startNodeStatus := createStartNodeWf(test.currentNodePhase, 0)
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
+				s, err := exec.DAGTraversingNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -318,7 +318,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindEnd).Return(h, nil)
 
 				mockWf, mockNode, mockNodeStatus := createSingleNodeWf(test.parentNodePhase, 0)
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, mockNode)
+				s, err := exec.DAGTraversingNodeHandler(ctx, mockWf, mockWf, mockWf, mockNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -423,7 +423,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 				startNode := mockWf.StartNode()
 				startStatus := mockWf.GetNodeExecutionStatus(ctx, startNode.GetID())
 				assert.Equal(t, v1alpha1.NodePhaseSucceeded, startStatus.GetPhase())
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
+				s, err := exec.DAGTraversingNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -621,7 +621,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				exec := execIface.(*nodeExecutor)
 				exec.nodeHandlerFactory = hf
 
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
+				s, err := exec.DAGTraversingNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -723,7 +723,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				startNode := mockWf.StartNode()
 				startStatus := mockWf.GetNodeExecutionStatus(ctx, startNode.GetID())
 				assert.Equal(t, v1alpha1.NodePhaseSucceeded, startStatus.GetPhase())
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
+				s, err := exec.DAGTraversingNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -822,7 +822,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 
 				mockWf, _, mockNodeStatus := createSingleNodeWf(test.currentNodePhase, 1)
 				startNode := mockWf.StartNode()
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
+				s, err := exec.DAGTraversingNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -858,7 +858,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 
 		mockWf, _, mockNodeStatus := createSingleNodeWf(v1alpha1.NodePhaseRunning, 0)
 		startNode := mockWf.StartNode()
-		s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
+		s, err := exec.DAGTraversingNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 		assert.NoError(t, err)
 		assert.Equal(t, executors.NodePhasePending.String(), s.NodePhase.String())
 		assert.Equal(t, uint32(0), mockNodeStatus.GetAttempts())
@@ -887,7 +887,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 
 		mockWf, _, mockNodeStatus := createSingleNodeWf(v1alpha1.NodePhaseRunning, 1)
 		startNode := mockWf.StartNode()
-		s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
+		s, err := exec.DAGTraversingNodeHandler(ctx, mockWf, mockWf, mockWf, startNode)
 		assert.NoError(t, err)
 		assert.Equal(t, executors.NodePhasePending.String(), s.NodePhase.String())
 		assert.Equal(t, uint32(0), mockNodeStatus.GetAttempts())
@@ -991,7 +991,7 @@ func TestNodeExecutor_RecursiveNodeHandler_NoDownstream(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
 
 				mockWf, mockNode, mockNodeStatus := createSingleNodeWf(test.currentNodePhase, 1)
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, mockNode)
+				s, err := exec.DAGTraversingNodeHandler(ctx, mockWf, mockWf, mockWf, mockNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {
@@ -1095,7 +1095,7 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
 
 				mockWf, mockNode, mockNodeStatus := createSingleNodeWf(test.parentNodePhase, 0)
-				s, err := exec.RecursiveNodeHandler(ctx, mockWf, mockWf, mockWf, mockNode)
+				s, err := exec.DAGTraversingNodeHandler(ctx, mockWf, mockWf, mockWf, mockNode)
 				if test.expectedError {
 					assert.Error(t, err)
 				} else {

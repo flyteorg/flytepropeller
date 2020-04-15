@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	errors2 "github.com/lyft/flytestdlib/errors"
 
@@ -428,18 +429,12 @@ func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx *nodeExe
 	return executors.NodeStatusPending, nil
 }
 
-func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructure, nCtx *nodeExecContext, h handler.Node) (executors.NodeStatus, error) {
+func (c *nodeExecutor) handleNode(ctx context.Context, nCtx *nodeExecContext, h handler.Node) (executors.NodeStatus, error) {
 	logger.Debugf(ctx, "Handling Node [%s]", nCtx.NodeID())
 	defer logger.Debugf(ctx, "Completed node [%s]", nCtx.NodeID())
 
 	nodeStatus := nCtx.NodeStatus()
 	currentPhase := nodeStatus.GetPhase()
-
-	// Optimization!
-	// If it is start node we directly move it to Queued without needing to run preExecute
-	if currentPhase == v1alpha1.NodePhaseNotYetStarted && !nCtx.Node().IsStartNode() {
-		return c.handleNotYetStartedNode(ctx, dag, nCtx, h)
-	}
 
 	if currentPhase == v1alpha1.NodePhaseFailing {
 		logger.Debugf(ctx, "node failing")
@@ -488,7 +483,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 }
 
 // The space search for the next node to execute is implemented like a DFS algorithm. handleDownstream visits all the nodes downstream from
-// the currentNode. Visit a node is the RecursiveNodeHandler. A visit may be partial, complete or may result in a failure.
+// the currentNode. Visit a node is the DAGTraversingNodeHandler. A visit may be partial, complete or may result in a failure.
 func (c *nodeExecutor) handleDownstream(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
 	logger.Debugf(ctx, "Handling downstream Nodes")
 	// This node is success. Handle all downstream nodes
@@ -511,7 +506,7 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, execContext executo
 		if !ok {
 			return executors.NodeStatusFailed(errors.Errorf(errors.BadSpecificationError, currentNode.GetID(), "Unable to find Downstream Node [%v]", downstreamNodeName)), nil
 		}
-		state, err := c.RecursiveNodeHandler(ctx, execContext, dag, nl, downstreamNode)
+		state, err := c.DAGTraversingNodeHandler(ctx, execContext, dag, nl, downstreamNode)
 		if err != nil {
 			return executors.NodeStatusUndefined, err
 		}
@@ -568,7 +563,42 @@ func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, execContext ex
 	return executors.NodeStatusComplete, nil
 }
 
-func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
+func (c *nodeExecutor) HandleNode(ctx context.Context, execContext executors.ExecutionContext, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode, inputs io.InputReader) (executors.NodeStatus, error) {
+	currentNodeCtx := contextutils.WithNodeID(ctx, currentNode.GetID())
+	nodeStatus := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
+	logger.Debugf(currentNodeCtx, "Handling node Status [%v]", nodeStatus.GetPhase().String())
+	// This is an optimization to avoid creating the nodeContext object in case the node has already been looked at.
+	// If the overhead was zero, we would just do the isDirtyCheck after the nodeContext is created
+	if nodeStatus.IsDirty() {
+		return executors.NodeStatusRunning, nil
+	}
+
+	t := c.metrics.NodeExecutionTime.Start(ctx)
+	defer t.Stop()
+
+	nCtx, err := c.newNodeExecContextDefault(ctx, currentNode.GetID(), execContext, nl)
+	if err != nil {
+		// NodeExecution creation failure is a permanent fail / system error.
+		// Should a system failure always return an err?
+		return executors.NodeStatusFailed(err), nil
+	}
+
+	// Now depending on the node type decide
+	h, err := c.nodeHandlerFactory.GetHandler(nCtx.Node().GetKind())
+	if err != nil {
+		return executors.NodeStatusUndefined, err
+	}
+	// Optimization!
+	// If it is start node we directly move it to Queued without needing to run preExecute
+	if nodeStatus.GetPhase() == v1alpha1.NodePhaseNotYetStarted && !nCtx.Node().IsStartNode() {
+		executors.DAGStructure()
+		return c.handleNotYetStartedNode(ctx, , nCtx, h)
+	}
+	return c.handleNode(currentNodeCtx, nCtx, h)
+}
+
+
+func (c *nodeExecutor) DAGTraversingNodeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
 	currentNodeCtx := contextutils.WithNodeID(ctx, currentNode.GetID())
 	nodeStatus := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
 
@@ -582,16 +612,14 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 		// 5. the method will delegate all other node handling to HandleNode.
 		// 6. Thus we can get rid of SetInputs for StartNode as well
 		logger.Debugf(currentNodeCtx, "Handling node Status [%v]", nodeStatus.GetPhase().String())
-
-		t := c.metrics.NodeExecutionTime.Start(ctx)
-		defer t.Stop()
-
 		// This is an optimization to avoid creating the nodeContext object in case the node has already been looked at.
 		// If the overhead was zero, we would just do the isDirtyCheck after the nodeContext is created
-		nodeStatus := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
 		if nodeStatus.IsDirty() {
 			return executors.NodeStatusRunning, nil
 		}
+
+		t := c.metrics.NodeExecutionTime.Start(ctx)
+		defer t.Stop()
 
 		nCtx, err := c.newNodeExecContextDefault(ctx, currentNode.GetID(), execContext, nl)
 		if err != nil {
@@ -605,7 +633,12 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 		if err != nil {
 			return executors.NodeStatusUndefined, err
 		}
-		return c.handleNode(currentNodeCtx, dag, nCtx, h)
+		// Optimization!
+		// If it is start node we directly move it to Queued without needing to run preExecute
+		if nodeStatus.GetPhase() == v1alpha1.NodePhaseNotYetStarted && !nCtx.Node().IsStartNode() {
+			return c.handleNotYetStartedNode(ctx, dag, nCtx, h)
+		}
+		return c.handleNode(currentNodeCtx, nCtx, h)
 
 		// TODO we can optimize skip state handling by iterating down the graph and marking all as skipped
 		// Currently we treat either Skip or Success the same way. In this approach only one node will be skipped

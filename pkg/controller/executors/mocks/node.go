@@ -123,17 +123,17 @@ func (_m Node_RecursiveNodeHandler) Return(_a0 executors.NodeStatus, _a1 error) 
 }
 
 func (_m *Node) OnRecursiveNodeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) *Node_RecursiveNodeHandler {
-	c := _m.On("RecursiveNodeHandler", ctx, execContext, dag, nl, currentNode)
+	c := _m.On("DAGTraversingNodeHandler", ctx, execContext, dag, nl, currentNode)
 	return &Node_RecursiveNodeHandler{Call: c}
 }
 
 func (_m *Node) OnRecursiveNodeHandlerMatch(matchers ...interface{}) *Node_RecursiveNodeHandler {
-	c := _m.On("RecursiveNodeHandler", matchers...)
+	c := _m.On("DAGTraversingNodeHandler", matchers...)
 	return &Node_RecursiveNodeHandler{Call: c}
 }
 
-// RecursiveNodeHandler provides a mock function with given fields: ctx, execContext, dag, nl, currentNode
-func (_m *Node) RecursiveNodeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
+// DAGTraversingNodeHandler provides a mock function with given fields: ctx, execContext, dag, nl, currentNode
+func (_m *Node) DAGTraversingNodeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
 	ret := _m.Called(ctx, execContext, dag, nl, currentNode)
 
 	var r0 executors.NodeStatus

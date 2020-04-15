@@ -119,7 +119,7 @@ func (c *workflowExecutor) handleRunningWorkflow(ctx context.Context, w *v1alpha
 	if startNode == nil {
 		return StatusFailed(errors.Errorf(errors.IllegalStateError, w.GetID(), "StartNode not found in running workflow?")), nil
 	}
-	state, err := c.nodeExecutor.RecursiveNodeHandler(ctx, w, w, w, startNode)
+	state, err := c.nodeExecutor.DAGTraversingNodeHandler(ctx, w, w, w, startNode)
 	if err != nil {
 		return StatusRunning, err
 	}
@@ -148,7 +148,7 @@ func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha
 
 	errorNode := w.GetOnFailureNode()
 	if errorNode != nil {
-		state, err := c.nodeExecutor.RecursiveNodeHandler(ctx, w, w, w, errorNode)
+		state, err := c.nodeExecutor.DAGTraversingNodeHandler(ctx, w, w, w, errorNode)
 		if err != nil {
 			return StatusFailing(nil), err
 		}
