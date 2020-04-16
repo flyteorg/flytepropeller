@@ -143,6 +143,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, w v1alpha1.ExecutableWork
 			if err != nil {
 				c.metrics.ResolutionFailure.Inc(ctx)
 				logger.Warningf(ctx, "Failed to resolve inputs for Node. Error [%v]", err)
+				// system
 				return handler.PhaseInfoFailure("BindingResolutionFailure", err.Error(), nil), nil
 			}
 
@@ -227,6 +228,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 		}
 		if c.isTimeoutExpired(nodeStatus.GetLastAttemptStartedAt(), executionDeadline) {
 			logger.Errorf(ctx, "Current execution for the node timed out; timeout configured: %v", executionDeadline)
+			// user error
 			phase = handler.PhaseInfoRetryableFailure("TimeoutExpired", fmt.Sprintf("task execution timeout [%s] expired", executionDeadline.String()), nil)
 		}
 	}
@@ -234,6 +236,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *execCo
 	if phase.GetPhase() == handler.EPhaseRetryableFailure {
 		currentAttempt, maxAttempts, isEligible := c.isEligibleForRetry(nCtx, nodeStatus, phase.GetErr())
 		if !isEligible {
+			// user error
 			return handler.PhaseInfoFailure(
 				fmt.Sprintf("RetriesExhausted|%s", phase.GetErr().Code),
 				fmt.Sprintf("[%d/%d] currentAttempt done. Last Error: %s::%s", currentAttempt, maxAttempts, phase.GetErr().Kind.String(), phase.GetErr().Message),
