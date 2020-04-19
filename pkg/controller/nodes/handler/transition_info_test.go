@@ -1,9 +1,7 @@
 package handler
 
 import (
-	"reflect"
 	"testing"
-	"time"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
@@ -20,10 +18,13 @@ func TestEPhase_String(t *testing.T) {
 		p    EPhase
 	}{
 		{"queued", EPhaseQueued},
+		{"not-ready", EPhaseNotReady},
+		{"timedout", EPhaseTimedout},
 		{"undefined", EPhaseUndefined},
 		{"success", EPhaseSuccess},
 		{"skip", EPhaseSkip},
 		{"failed", EPhaseFailed},
+		{"running", EPhaseRunning},
 		{"retryable-fail", EPhaseRetryableFailure},
 	}
 	for _, tt := range tests {
@@ -59,534 +60,115 @@ func TestEPhase_IsTerminal(t *testing.T) {
 	}
 }
 
-func TestPhaseInfoFailure(t *testing.T) {
-	type args struct {
-		code   string
-		reason string
-		info   *ExecutionInfo
-	}
-	tests := []struct {
-		name string
-		args args
-		want PhaseInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := PhaseInfoFailure(tt.args.code, tt.args.reason, tt.args.info); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PhaseInfoFailure() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+func TestPhaseInfo(t *testing.T) {
+	t.Run("undefined", func(t *testing.T) {
+		assert.Equal(t, EPhaseUndefined, PhaseInfoUndefined.GetPhase())
+	})
 
-func TestPhaseInfoFailureErr(t *testing.T) {
-	type args struct {
-		err  *core.ExecutionError
-		info *ExecutionInfo
-	}
-	tests := []struct {
-		name string
-		args args
-		want PhaseInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := PhaseInfoFailureErr(tt.args.err, tt.args.info); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PhaseInfoFailureErr() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+	t.Run("success", func(t *testing.T) {
+		i := &ExecutionInfo{}
+		p := PhaseInfoSuccess(i)
+		assert.Equal(t, EPhaseSuccess, p.GetPhase())
+		assert.Equal(t, i, p.GetInfo())
+		assert.Nil(t, p.GetErr())
+		assert.NotNil(t, p.GetOccurredAt())
+	})
 
-func TestPhaseInfoNotReady(t *testing.T) {
-	type args struct {
-		reason string
-	}
-	tests := []struct {
-		name string
-		args args
-		want PhaseInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := PhaseInfoNotReady(tt.args.reason); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PhaseInfoNotReady() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+	t.Run("not-ready", func(t *testing.T) {
+		p := PhaseInfoNotReady("reason")
+		assert.Equal(t, EPhaseNotReady, p.GetPhase())
+		assert.Nil(t, p.GetErr())
+		assert.NotNil(t, p.GetOccurredAt())
+		assert.Equal(t, "reason", p.GetReason())
+	})
 
-func TestPhaseInfoQueued1(t *testing.T) {
-	type args struct {
-		reason string
-	}
-	tests := []struct {
-		name string
-		args args
-		want PhaseInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := PhaseInfoQueued(tt.args.reason); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PhaseInfoQueued() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+	t.Run("queued", func(t *testing.T) {
+		p := PhaseInfoQueued("reason")
+		assert.Equal(t, EPhaseQueued, p.GetPhase())
+		assert.Nil(t, p.GetErr())
+		assert.NotNil(t, p.GetOccurredAt())
+		assert.Equal(t, "reason", p.GetReason())
+	})
 
-func TestPhaseInfoRetryableFailure(t *testing.T) {
-	type args struct {
-		code   string
-		reason string
-		info   *ExecutionInfo
-	}
-	tests := []struct {
-		name string
-		args args
-		want PhaseInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := PhaseInfoRetryableFailure(tt.args.code, tt.args.reason, tt.args.info); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PhaseInfoRetryableFailure() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+	t.Run("running", func(t *testing.T) {
+		i := &ExecutionInfo{}
+		p := PhaseInfoRunning(i)
+		assert.Equal(t, EPhaseRunning, p.GetPhase())
+		assert.Equal(t, i, p.GetInfo())
+		assert.Nil(t, p.GetErr())
+		assert.NotNil(t, p.GetOccurredAt())
+	})
 
-func TestPhaseInfoRetryableFailureErr(t *testing.T) {
-	type args struct {
-		err  *core.ExecutionError
-		info *ExecutionInfo
-	}
-	tests := []struct {
-		name string
-		args args
-		want PhaseInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := PhaseInfoRetryableFailureErr(tt.args.err, tt.args.info); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PhaseInfoRetryableFailureErr() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+	t.Run("skip", func(t *testing.T) {
+		i := &ExecutionInfo{}
+		p := PhaseInfoSkip(i, "reason")
+		assert.Equal(t, EPhaseSkip, p.GetPhase())
+		assert.Equal(t, i, p.GetInfo())
+		assert.Nil(t, p.GetErr())
+		assert.NotNil(t, p.GetOccurredAt())
+		assert.Equal(t, "reason", p.GetReason())
+	})
 
-func TestPhaseInfoRunning(t *testing.T) {
-	type args struct {
-		info *ExecutionInfo
-	}
-	tests := []struct {
-		name string
-		args args
-		want PhaseInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := PhaseInfoRunning(tt.args.info); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PhaseInfoRunning() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+	t.Run("timeout", func(t *testing.T) {
+		i := &ExecutionInfo{}
+		p := PhaseInfoTimedOut(i, "reason")
+		assert.Equal(t, EPhaseTimedout, p.GetPhase())
+		assert.Equal(t, i, p.GetInfo())
+		assert.Nil(t, p.GetErr())
+		assert.NotNil(t, p.GetOccurredAt())
+		assert.Equal(t, "reason", p.GetReason())
+	})
 
-func TestPhaseInfoSkip(t *testing.T) {
-	type args struct {
-		info   *ExecutionInfo
-		reason string
-	}
-	tests := []struct {
-		name string
-		args args
-		want PhaseInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := PhaseInfoSkip(tt.args.info, tt.args.reason); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PhaseInfoSkip() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+	t.Run("failure", func(t *testing.T) {
+		i := &ExecutionInfo{}
+		p := PhaseInfoFailure("code", "reason", i)
+		assert.Equal(t, EPhaseFailed, p.GetPhase())
+		assert.Equal(t, i, p.GetInfo())
+		if assert.NotNil(t, p.GetErr()) {
+			assert.Equal(t, "code", p.GetErr().Code)
+			assert.Equal(t, "reason", p.GetErr().Message)
+		}
+		assert.NotNil(t, p.GetOccurredAt())
+	})
 
-func TestPhaseInfoSuccess(t *testing.T) {
-	type args struct {
-		info *ExecutionInfo
-	}
-	tests := []struct {
-		name string
-		args args
-		want PhaseInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := PhaseInfoSuccess(tt.args.info); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PhaseInfoSuccess() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+	t.Run("failure-err", func(t *testing.T) {
+		i := &ExecutionInfo{}
+		e := &core.ExecutionError{}
+		p := PhaseInfoFailureErr(e, i)
+		assert.Equal(t, EPhaseFailed, p.GetPhase())
+		assert.Equal(t, i, p.GetInfo())
+		assert.Equal(t, e, p.GetErr())
+		assert.NotNil(t, p.GetOccurredAt())
+	})
 
-func TestPhaseInfoTimedOut(t *testing.T) {
-	type args struct {
-		info   *ExecutionInfo
-		reason string
-	}
-	tests := []struct {
-		name string
-		args args
-		want PhaseInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := PhaseInfoTimedOut(tt.args.info, tt.args.reason); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PhaseInfoTimedOut() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+	t.Run("failure-err", func(t *testing.T) {
+		i := &ExecutionInfo{}
+		p := PhaseInfoFailureErr(nil, i)
+		assert.Equal(t, EPhaseFailed, p.GetPhase())
+		assert.Equal(t, i, p.GetInfo())
+		assert.NotNil(t, p.GetErr())
+		assert.NotNil(t, p.GetOccurredAt())
+	})
 
-func TestPhaseInfo_GetErr(t *testing.T) {
-	type fields struct {
-		p          EPhase
-		occurredAt time.Time
-		err        *core.ExecutionError
-		info       *ExecutionInfo
-		reason     string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   *core.ExecutionError
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := PhaseInfo{
-				p:          tt.fields.p,
-				occurredAt: tt.fields.occurredAt,
-				err:        tt.fields.err,
-				info:       tt.fields.info,
-				reason:     tt.fields.reason,
-			}
-			if got := p.GetErr(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetErr() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+	t.Run("retryable-fail", func(t *testing.T) {
+		i := &ExecutionInfo{}
+		p := PhaseInfoRetryableFailure("code", "reason", i)
+		assert.Equal(t, EPhaseRetryableFailure, p.GetPhase())
+		assert.Equal(t, i, p.GetInfo())
+		if assert.NotNil(t, p.GetErr()) {
+			assert.Equal(t, "code", p.GetErr().Code)
+			assert.Equal(t, "reason", p.GetErr().Message)
+		}
+		assert.NotNil(t, p.GetOccurredAt())
+	})
 
-func TestPhaseInfo_GetInfo(t *testing.T) {
-	type fields struct {
-		p          EPhase
-		occurredAt time.Time
-		err        *core.ExecutionError
-		info       *ExecutionInfo
-		reason     string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   *ExecutionInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := PhaseInfo{
-				p:          tt.fields.p,
-				occurredAt: tt.fields.occurredAt,
-				err:        tt.fields.err,
-				info:       tt.fields.info,
-				reason:     tt.fields.reason,
-			}
-			if got := p.GetInfo(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetInfo() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestPhaseInfo_GetOccurredAt(t *testing.T) {
-	type fields struct {
-		p          EPhase
-		occurredAt time.Time
-		err        *core.ExecutionError
-		info       *ExecutionInfo
-		reason     string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   time.Time
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := PhaseInfo{
-				p:          tt.fields.p,
-				occurredAt: tt.fields.occurredAt,
-				err:        tt.fields.err,
-				info:       tt.fields.info,
-				reason:     tt.fields.reason,
-			}
-			if got := p.GetOccurredAt(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetOccurredAt() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestPhaseInfo_GetPhase(t *testing.T) {
-	type fields struct {
-		p          EPhase
-		occurredAt time.Time
-		err        *core.ExecutionError
-		info       *ExecutionInfo
-		reason     string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   EPhase
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := PhaseInfo{
-				p:          tt.fields.p,
-				occurredAt: tt.fields.occurredAt,
-				err:        tt.fields.err,
-				info:       tt.fields.info,
-				reason:     tt.fields.reason,
-			}
-			if got := p.GetPhase(); got != tt.want {
-				t.Errorf("GetPhase() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestPhaseInfo_GetReason(t *testing.T) {
-	type fields struct {
-		p          EPhase
-		occurredAt time.Time
-		err        *core.ExecutionError
-		info       *ExecutionInfo
-		reason     string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   string
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := PhaseInfo{
-				p:          tt.fields.p,
-				occurredAt: tt.fields.occurredAt,
-				err:        tt.fields.err,
-				info:       tt.fields.info,
-				reason:     tt.fields.reason,
-			}
-			if got := p.GetReason(); got != tt.want {
-				t.Errorf("GetReason() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestPhaseInfo_SetErr(t *testing.T) {
-	type fields struct {
-		p          EPhase
-		occurredAt time.Time
-		err        *core.ExecutionError
-		info       *ExecutionInfo
-		reason     string
-	}
-	type args struct {
-		err *core.ExecutionError
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &PhaseInfo{
-				p:          tt.fields.p,
-				occurredAt: tt.fields.occurredAt,
-				err:        tt.fields.err,
-				info:       tt.fields.info,
-				reason:     tt.fields.reason,
-			}
-		})
-	}
-}
-
-func TestPhaseInfo_SetInfo(t *testing.T) {
-	type fields struct {
-		p          EPhase
-		occurredAt time.Time
-		err        *core.ExecutionError
-		info       *ExecutionInfo
-		reason     string
-	}
-	type args struct {
-		info *ExecutionInfo
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &PhaseInfo{
-				p:          tt.fields.p,
-				occurredAt: tt.fields.occurredAt,
-				err:        tt.fields.err,
-				info:       tt.fields.info,
-				reason:     tt.fields.reason,
-			}
-		})
-	}
-}
-
-func TestPhaseInfo_SetOcurredAt(t *testing.T) {
-	type fields struct {
-		p          EPhase
-		occurredAt time.Time
-		err        *core.ExecutionError
-		info       *ExecutionInfo
-		reason     string
-	}
-	type args struct {
-		t time.Time
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &PhaseInfo{
-				p:          tt.fields.p,
-				occurredAt: tt.fields.occurredAt,
-				err:        tt.fields.err,
-				info:       tt.fields.info,
-				reason:     tt.fields.reason,
-			}
-		})
-	}
-}
-
-func TestPhaseInfo_SetReason(t *testing.T) {
-	type fields struct {
-		p          EPhase
-		occurredAt time.Time
-		err        *core.ExecutionError
-		info       *ExecutionInfo
-		reason     string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   string
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &PhaseInfo{
-				p:          tt.fields.p,
-				occurredAt: tt.fields.occurredAt,
-				err:        tt.fields.err,
-				info:       tt.fields.info,
-				reason:     tt.fields.reason,
-			}
-			if got := p.SetReason(); got != tt.want {
-				t.Errorf("SetReason() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_phaseInfo(t *testing.T) {
-	type args struct {
-		p      EPhase
-		err    *core.ExecutionError
-		info   *ExecutionInfo
-		reason string
-	}
-	tests := []struct {
-		name string
-		args args
-		want PhaseInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := phaseInfo(tt.args.p, tt.args.err, tt.args.info, tt.args.reason); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("phaseInfo() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_phaseInfoFailed(t *testing.T) {
-	type args struct {
-		p    EPhase
-		err  *core.ExecutionError
-		info *ExecutionInfo
-	}
-	tests := []struct {
-		name string
-		args args
-		want PhaseInfo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := phaseInfoFailed(tt.args.p, tt.args.err, tt.args.info); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("phaseInfoFailed() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	t.Run("retryable-fail-err", func(t *testing.T) {
+		i := &ExecutionInfo{}
+		e := &core.ExecutionError{}
+		p := PhaseInfoRetryableFailureErr(e, i)
+		assert.Equal(t, EPhaseRetryableFailure, p.GetPhase())
+		assert.Equal(t, i, p.GetInfo())
+		assert.Equal(t, e, p.GetErr())
+		assert.NotNil(t, p.GetOccurredAt())
+	})
 }
