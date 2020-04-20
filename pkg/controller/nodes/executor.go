@@ -34,18 +34,18 @@ import (
 )
 
 type nodeMetrics struct {
-	Scope                     promutils.Scope
-	FailureDuration           labeled.StopWatch
-	SuccessDuration           labeled.StopWatch
-	UserErrorDuration         labeled.StopWatch
-	SystemErrorDuration       labeled.StopWatch
-	UnknownErrorDuration      labeled.StopWatch
+	Scope                         promutils.Scope
+	FailureDuration               labeled.StopWatch
+	SuccessDuration               labeled.StopWatch
+	UserErrorDuration             labeled.StopWatch
+	SystemErrorDuration           labeled.StopWatch
+	UnknownErrorDuration          labeled.StopWatch
 	PermanentUserErrorDuration    labeled.StopWatch
 	PermanentSystemErrorDuration  labeled.StopWatch
 	PermanentUnknownErrorDuration labeled.StopWatch
-	ResolutionFailure         labeled.Counter
-	InputsWriteFailure        labeled.Counter
-	TimedOutFailure           labeled.Counter
+	ResolutionFailure             labeled.Counter
+	InputsWriteFailure            labeled.Counter
+	TimedOutFailure               labeled.Counter
 
 	InterruptedThresholdHit labeled.Counter
 
@@ -789,23 +789,23 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		taskRecorder:        events.NewTaskEventRecorder(eventSink, scope.NewSubScope("task")),
 		maxDatasetSizeBytes: maxDatasetSize,
 		metrics: &nodeMetrics{
-			Scope:                   nodeScope,
-			FailureDuration:         labeled.NewStopWatch("failure_duration", "Indicates the total execution time of a failed workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			SuccessDuration:         labeled.NewStopWatch("success_duration", "Indicates the total execution time of a successful workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			UserErrorDuration:       labeled.NewStopWatch("user_error_duration", "Indicates the total execution time before user error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			SystemErrorDuration:     labeled.NewStopWatch("system_error_duration", "Indicates the total execution time before system error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			UnknownErrorDuration:    labeled.NewStopWatch("unknown_error_duration", "Indicates the total execution time before unknown error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			PermanentUserErrorDuration:       labeled.NewStopWatch("perma_user_error_duration", "Indicates the total execution time before non recoverable user error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			PermanentSystemErrorDuration:     labeled.NewStopWatch("perma_system_error_duration", "Indicates the total execution time before non recoverable system error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			PermanentUnknownErrorDuration:    labeled.NewStopWatch("perma_unknown_error_duration", "Indicates the total execution time before non recoverable unknown error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			InputsWriteFailure:      labeled.NewCounter("inputs_write_fail", "Indicates failure in writing node inputs to metastore", nodeScope),
-			TimedOutFailure:         labeled.NewCounter("timeout_fail", "Indicates failure due to timeout", nodeScope),
-			InterruptedThresholdHit: labeled.NewCounter("interrupted_threshold", "Indicates the node interruptible disabled because it hit max failure count", nodeScope),
-			ResolutionFailure:       labeled.NewCounter("input_resolve_fail", "Indicates failure in resolving node inputs", nodeScope),
-			TransitionLatency:       labeled.NewStopWatch("transition_latency", "Measures the latency between the last parent node stoppedAt time and current node's queued time.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			QueuingLatency:          labeled.NewStopWatch("queueing_latency", "Measures the latency between the time a node's been queued to the time the handler reported the executable moved to running state", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			NodeExecutionTime:       labeled.NewStopWatch("node_exec_latency", "Measures the time taken to execute one node, a node can be complex so it may encompass sub-node latency.", time.Microsecond, nodeScope, labeled.EmitUnlabeledMetric),
-			NodeInputGatherLatency:  labeled.NewStopWatch("node_input_latency", "Measures the latency to aggregate inputs and check readiness of a node", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			Scope:                         nodeScope,
+			FailureDuration:               labeled.NewStopWatch("failure_duration", "Indicates the total execution time of a failed workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			SuccessDuration:               labeled.NewStopWatch("success_duration", "Indicates the total execution time of a successful workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			UserErrorDuration:             labeled.NewStopWatch("user_error_duration", "Indicates the total execution time before user error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			SystemErrorDuration:           labeled.NewStopWatch("system_error_duration", "Indicates the total execution time before system error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			UnknownErrorDuration:          labeled.NewStopWatch("unknown_error_duration", "Indicates the total execution time before unknown error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			PermanentUserErrorDuration:    labeled.NewStopWatch("perma_user_error_duration", "Indicates the total execution time before non recoverable user error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			PermanentSystemErrorDuration:  labeled.NewStopWatch("perma_system_error_duration", "Indicates the total execution time before non recoverable system error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			PermanentUnknownErrorDuration: labeled.NewStopWatch("perma_unknown_error_duration", "Indicates the total execution time before non recoverable unknown error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			InputsWriteFailure:            labeled.NewCounter("inputs_write_fail", "Indicates failure in writing node inputs to metastore", nodeScope),
+			TimedOutFailure:               labeled.NewCounter("timeout_fail", "Indicates failure due to timeout", nodeScope),
+			InterruptedThresholdHit:       labeled.NewCounter("interrupted_threshold", "Indicates the node interruptible disabled because it hit max failure count", nodeScope),
+			ResolutionFailure:             labeled.NewCounter("input_resolve_fail", "Indicates failure in resolving node inputs", nodeScope),
+			TransitionLatency:             labeled.NewStopWatch("transition_latency", "Measures the latency between the last parent node stoppedAt time and current node's queued time.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			QueuingLatency:                labeled.NewStopWatch("queueing_latency", "Measures the latency between the time a node's been queued to the time the handler reported the executable moved to running state", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			NodeExecutionTime:             labeled.NewStopWatch("node_exec_latency", "Measures the time taken to execute one node, a node can be complex so it may encompass sub-node latency.", time.Microsecond, nodeScope, labeled.EmitUnlabeledMetric),
+			NodeInputGatherLatency:        labeled.NewStopWatch("node_input_latency", "Measures the latency to aggregate inputs and check readiness of a node", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 		},
 		outputResolver:                  NewRemoteFileOutputResolver(store),
 		defaultExecutionDeadline:        nodeConfig.DefaultDeadlines.DefaultNodeExecutionDeadline.Duration,
