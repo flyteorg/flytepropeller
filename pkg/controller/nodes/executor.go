@@ -219,7 +219,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeEx
 		}
 		if c.isTimeoutExpired(nodeStatus.GetQueuedAt(), activeDeadline) {
 			logger.Errorf(ctx, "Node has timed out; timeout configured: %v", activeDeadline)
-			return handler.PhaseInfoTimedOut(nil, fmt.Sprintf("active deadline(%v) elapsed", activeDeadline)), nil
+			return handler.PhaseInfoTimedOut(nil, fmt.Sprintf("task active timeout [%s] expired", activeDeadline.String())), nil
 		}
 
 		// Execution timeout is a retry-able error
