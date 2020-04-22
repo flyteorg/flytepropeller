@@ -1302,7 +1302,7 @@ func Test_nodeExecutor_timeout(t *testing.T) {
 			executionDeadline: 0,
 			retries:           2,
 			err:               nil,
-			expectedReason:    "Node has timed out; timeout configured: 5s",
+			expectedReason:    "task execution timeout [1s] expired",
 		},
 		{
 			name:              "retryable-failure",
