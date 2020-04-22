@@ -214,17 +214,17 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeEx
 	// check for timeout for non-terminal phases
 	if !phase.GetPhase().IsTerminal() {
 		activeDeadline := c.defaultActiveDeadline
-		if nCtx.Node().GetActiveDeadline() != nil {
+		if nCtx.Node().GetActiveDeadline() != nil && *nCtx.Node().GetActiveDeadline() > 0 {
 			activeDeadline = *nCtx.Node().GetActiveDeadline()
 		}
 		if c.isTimeoutExpired(nodeStatus.GetQueuedAt(), activeDeadline) {
 			logger.Errorf(ctx, "Node has timed out; timeout configured: %v", activeDeadline)
-			return handler.PhaseInfoTimedOut(nil, "active deadline elapsed"), nil
+			return handler.PhaseInfoTimedOut(nil, fmt.Sprintf("active deadline(%v) elapsed", activeDeadline)), nil
 		}
 
 		// Execution timeout is a retry-able error
 		executionDeadline := c.defaultExecutionDeadline
-		if nCtx.Node().GetExecutionDeadline() != nil {
+		if nCtx.Node().GetExecutionDeadline() != nil && *nCtx.Node().GetExecutionDeadline() > 0 {
 			executionDeadline = *nCtx.Node().GetExecutionDeadline()
 		}
 		if c.isTimeoutExpired(nodeStatus.GetLastAttemptStartedAt(), executionDeadline) {
@@ -412,7 +412,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 
 func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx *nodeExecContext, h handler.Node) (executors.NodeStatus, error) {
 	nodeStatus := nCtx.NodeStatus()
-	logger.Debugf(ctx, "node failed with retryable failure, aborting and finalizing, message: %s", nodeStatus.GetMessage())
+	logger.Debugf(ctx, "node failed with retryable failure, aborting and finalizing, expectedReason: %s", nodeStatus.GetMessage())
 	if err := c.abort(ctx, h, nCtx, nodeStatus.GetMessage()); err != nil {
 		return executors.NodeStatusUndefined, err
 	}
