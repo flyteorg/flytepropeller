@@ -412,7 +412,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 
 func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx *nodeExecContext, h handler.Node) (executors.NodeStatus, error) {
 	nodeStatus := nCtx.NodeStatus()
-	logger.Debugf(ctx, "node failed with retryable failure, aborting and finalizing, expectedReason: %s", nodeStatus.GetMessage())
+	logger.Debugf(ctx, "node failed with retryable failure, aborting and finalizing, message: %s", nodeStatus.GetMessage())
 	if err := c.abort(ctx, h, nCtx, nodeStatus.GetMessage()); err != nil {
 		return executors.NodeStatusUndefined, err
 	}
