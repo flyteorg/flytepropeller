@@ -18,6 +18,7 @@ const (
 	EPhaseFailed
 	EPhaseRetryableFailure
 	EPhaseSuccess
+	EPhaseTimedout
 )
 
 func (p EPhase) String() string {
@@ -36,12 +37,14 @@ func (p EPhase) String() string {
 		return "retryable-fail"
 	case EPhaseSuccess:
 		return "success"
+	case EPhaseTimedout:
+		return "timedout"
 	}
 	return "undefined"
 }
 
 func (p EPhase) IsTerminal() bool {
-	if p == EPhaseFailed || p == EPhaseSuccess || p == EPhaseSkip {
+	if p == EPhaseFailed || p == EPhaseSuccess || p == EPhaseSkip || p == EPhaseTimedout {
 		return true
 	}
 	return false
@@ -102,22 +105,6 @@ func (p PhaseInfo) GetReason() string {
 	return p.reason
 }
 
-func (p *PhaseInfo) SetOcurredAt(t time.Time) {
-	p.occurredAt = t
-}
-
-func (p *PhaseInfo) SetErr(err *core.ExecutionError) {
-	p.err = err
-}
-
-func (p *PhaseInfo) SetInfo(info *ExecutionInfo) {
-	p.info = info
-}
-
-func (p *PhaseInfo) SetReason() string {
-	return p.reason
-}
-
 var PhaseInfoUndefined = PhaseInfo{p: EPhaseUndefined}
 
 func phaseInfo(p EPhase, err *core.ExecutionError, info *ExecutionInfo, reason string) PhaseInfo {
@@ -150,6 +137,10 @@ func PhaseInfoSkip(info *ExecutionInfo, reason string) PhaseInfo {
 	return phaseInfo(EPhaseSkip, nil, info, reason)
 }
 
+func PhaseInfoTimedOut(info *ExecutionInfo, reason string) PhaseInfo {
+	return phaseInfo(EPhaseTimedout, nil, info, reason)
+}
+
 func phaseInfoFailed(p EPhase, err *core.ExecutionError, info *ExecutionInfo) PhaseInfo {
 	if err == nil {
 		err = &core.ExecutionError{
@@ -157,7 +148,7 @@ func phaseInfoFailed(p EPhase, err *core.ExecutionError, info *ExecutionInfo) Ph
 			Message: "Unknown error message",
 		}
 	}
-	return phaseInfo(p, err, info, "")
+	return phaseInfo(p, err, info, err.Message)
 }
 
 func PhaseInfoFailure(code, reason string, info *ExecutionInfo) PhaseInfo {

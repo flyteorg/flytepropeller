@@ -7,6 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
+
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
+
+	"github.com/lyft/flytestdlib/contextutils"
+	"github.com/lyft/flytestdlib/promutils/labeled"
+
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
@@ -26,7 +33,6 @@ import (
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	flyteMocks "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
@@ -34,6 +40,7 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/codex"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/config"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/fakeplugins"
+	rmConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
 )
 
 func Test_task_setDefault(t *testing.T) {
@@ -297,6 +304,12 @@ func (t taskNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) err
 	panic("not implemented")
 }
 
+func CreateNoopResourceManager(ctx context.Context, scope promutils.Scope) resourcemanager.BaseResourceManager {
+	rmBuilder, _ := resourcemanager.GetResourceManagerBuilderByType(ctx, rmConfig.TypeNoop, scope)
+	rm, _ := rmBuilder.BuildResourceManager(ctx)
+	return rm
+}
+
 func Test_task_Handle_NoCatalog(t *testing.T) {
 
 	createNodeContext := func(pluginPhase pluginCore.Phase, pluginVer uint32, pluginResp fakeplugins.NextPhaseState, recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder) *nodeMocks.NodeExecutionContext {
@@ -306,16 +319,19 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 			Name:    "name",
 		}
 
+		nodeID := "n1"
+
 		nm := &nodeMocks.NodeExecutionMetadata{}
-		nm.On("GetAnnotations").Return(map[string]string{})
-		nm.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{
-			WorkflowExecutionIdentifier: wfExecID,
+		nm.OnGetAnnotations().Return(map[string]string{})
+		nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
+			NodeId:      nodeID,
+			ExecutionId: wfExecID,
 		})
-		nm.On("GetK8sServiceAccount").Return("service-account")
-		nm.On("GetLabels").Return(map[string]string{})
-		nm.On("GetNamespace").Return("namespace")
-		nm.On("GetOwnerID").Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
-		nm.On("GetOwnerReference").Return(v12.OwnerReference{
+		nm.OnGetK8sServiceAccount().Return("service-account")
+		nm.OnGetLabels().Return(map[string]string{})
+		nm.OnGetNamespace().Return("namespace")
+		nm.OnGetOwnerID().Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
+		nm.OnGetOwnerReference().Return(v12.OwnerReference{
 			Kind: "sample",
 			Name: "name",
 		})
@@ -342,45 +358,58 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 		}
 		taskID := &core.Identifier{}
 		tr := &nodeMocks.TaskReader{}
-		tr.On("GetTaskID").Return(taskID)
-		tr.On("GetTaskType").Return(ttype)
-		tr.On("Read", mock.Anything).Return(tk, nil)
+		tr.OnGetTaskID().Return(taskID)
+		tr.OnGetTaskType().Return(ttype)
+		tr.OnReadMatch(mock.Anything).Return(tk, nil)
 
 		ns := &flyteMocks.ExecutableNodeStatus{}
-		ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
+		ns.OnGetDataDir().Return("data-dir")
+		ns.OnGetOutputDir().Return("data-dir")
 
 		res := &v1.ResourceRequirements{}
 		n := &flyteMocks.ExecutableNode{}
-		n.On("GetResources").Return(res)
+		n.OnGetResources().Return(res)
 
 		ir := &ioMocks.InputReader{}
-		ir.On("GetInputPath").Return(storage.DataReference("input"))
+		ir.OnGetInputPath().Return("input")
 		nCtx := &nodeMocks.NodeExecutionContext{}
-		nCtx.On("NodeExecutionMetadata").Return(nm)
-		nCtx.On("Node").Return(n)
-		nCtx.On("InputReader").Return(ir)
-		nCtx.On("DataStore").Return(storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope()))
-		nCtx.On("CurrentAttempt").Return(uint32(1))
-		nCtx.On("TaskReader").Return(tr)
-		nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
-		nCtx.On("NodeStatus").Return(ns)
-		nCtx.On("NodeID").Return("n1")
-		nCtx.On("EventsRecorder").Return(recorder)
-		nCtx.On("EnqueueOwner").Return(nil)
+		nCtx.OnNodeExecutionMetadata().Return(nm)
+		nCtx.OnNode().Return(n)
+		nCtx.OnInputReader().Return(ir)
+		ds, err := storage.NewDataStore(
+			&storage.Config{
+				Type: storage.TypeMemory,
+			},
+			promutils.NewTestScope(),
+		)
+		assert.NoError(t, err)
+		nCtx.OnDataStore().Return(ds)
+		nCtx.OnCurrentAttempt().Return(uint32(1))
+		nCtx.OnTaskReader().Return(tr)
+		nCtx.OnMaxDatasetSizeBytes().Return(int64(1))
+		nCtx.OnNodeStatus().Return(ns)
+		nCtx.OnNodeID().Return(nodeID)
+		nCtx.OnEventsRecorder().Return(recorder)
+		nCtx.OnEnqueueOwnerFunc().Return(nil)
+
+		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
+		nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
 
 		st := bytes.NewBuffer([]byte{})
 		cod := codex.GobStateCodec{}
 		assert.NoError(t, cod.Encode(pluginResp, st))
 		nr := &nodeMocks.NodeStateReader{}
-		nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
+		nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
 			PluginState:        st.Bytes(),
 			PluginPhase:        pluginPhase,
 			PluginPhaseVersion: pluginVer,
 		})
-		nCtx.On("NodeStateReader").Return(nr)
-		nCtx.On("NodeStateWriter").Return(s)
+		nCtx.OnNodeStateReader().Return(nr)
+		nCtx.OnNodeStateWriter().Return(s)
 		return nCtx
 	}
+
+	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())
 
 	type args struct {
 		startingPluginPhase        pluginCore.Phase
@@ -552,6 +581,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 				barrierCache: newLRUBarrier(context.TODO(), config.BarrierConfig{
 					Enabled: false,
 				}),
+				resourceManager: noopRm,
 			}
 			got, err := tk.Handle(context.TODO(), nCtx)
 			if (err != nil) != tt.want.wantErr {
@@ -603,16 +633,19 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			Name:    "name",
 		}
 
+		nodeID := "n1"
+
 		nm := &nodeMocks.NodeExecutionMetadata{}
-		nm.On("GetAnnotations").Return(map[string]string{})
-		nm.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{
-			WorkflowExecutionIdentifier: wfExecID,
+		nm.OnGetAnnotations().Return(map[string]string{})
+		nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
+			NodeId:      nodeID,
+			ExecutionId: wfExecID,
 		})
-		nm.On("GetK8sServiceAccount").Return("service-account")
-		nm.On("GetLabels").Return(map[string]string{})
-		nm.On("GetNamespace").Return("namespace")
-		nm.On("GetOwnerID").Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
-		nm.On("GetOwnerReference").Return(v12.OwnerReference{
+		nm.OnGetK8sServiceAccount().Return("service-account")
+		nm.OnGetLabels().Return(map[string]string{})
+		nm.OnGetNamespace().Return("namespace")
+		nm.OnGetOwnerID().Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
+		nm.OnGetOwnerReference().Return(v12.OwnerReference{
 			Kind: "sample",
 			Name: "name",
 		})
@@ -639,31 +672,43 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			},
 		}
 		tr := &nodeMocks.TaskReader{}
-		tr.On("GetTaskID").Return(taskID)
-		tr.On("GetTaskType").Return(ttype)
-		tr.On("Read", mock.Anything).Return(tk, nil)
+		tr.OnGetTaskID().Return(taskID)
+		tr.OnGetTaskType().Return(ttype)
+		tr.OnReadMatch(mock.Anything).Return(tk, nil)
 
 		ns := &flyteMocks.ExecutableNodeStatus{}
-		ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
+		ns.OnGetDataDir().Return(storage.DataReference("data-dir"))
+		ns.OnGetOutputDir().Return(storage.DataReference("output-dir"))
 
 		res := &v1.ResourceRequirements{}
 		n := &flyteMocks.ExecutableNode{}
-		n.On("GetResources").Return(res)
+		n.OnGetResources().Return(res)
 
 		ir := &ioMocks.InputReader{}
-		ir.On("GetInputPath").Return(storage.DataReference("input"))
+		ir.OnGetInputPath().Return(storage.DataReference("input"))
 		nCtx := &nodeMocks.NodeExecutionContext{}
-		nCtx.On("NodeExecutionMetadata").Return(nm)
-		nCtx.On("Node").Return(n)
-		nCtx.On("InputReader").Return(ir)
-		nCtx.On("DataStore").Return(storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope()))
-		nCtx.On("CurrentAttempt").Return(uint32(1))
-		nCtx.On("TaskReader").Return(tr)
-		nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
-		nCtx.On("NodeStatus").Return(ns)
-		nCtx.On("NodeID").Return("n1")
-		nCtx.On("EventsRecorder").Return(recorder)
-		nCtx.On("EnqueueOwner").Return(nil)
+		nCtx.OnNodeExecutionMetadata().Return(nm)
+		nCtx.OnNode().Return(n)
+		nCtx.OnInputReader().Return(ir)
+		nCtx.OnInputReader().Return(ir)
+		ds, err := storage.NewDataStore(
+			&storage.Config{
+				Type: storage.TypeMemory,
+			},
+			promutils.NewTestScope(),
+		)
+		assert.NoError(t, err)
+		nCtx.OnDataStore().Return(ds)
+		nCtx.OnCurrentAttempt().Return(uint32(1))
+		nCtx.OnTaskReader().Return(tr)
+		nCtx.OnMaxDatasetSizeBytes().Return(int64(1))
+		nCtx.OnNodeStatus().Return(ns)
+		nCtx.OnNodeID().Return(nodeID)
+		nCtx.OnEventsRecorder().Return(recorder)
+		nCtx.OnEnqueueOwnerFunc().Return(nil)
+
+		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
+		nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
 
 		st := bytes.NewBuffer([]byte{})
 		cod := codex.GobStateCodec{}
@@ -672,13 +717,15 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			OutputExists: true,
 		}, st))
 		nr := &nodeMocks.NodeStateReader{}
-		nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
+		nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
 			PluginState: st.Bytes(),
 		})
-		nCtx.On("NodeStateReader").Return(nr)
-		nCtx.On("NodeStateWriter").Return(s)
+		nCtx.OnNodeStateReader().Return(nr)
+		nCtx.OnNodeStateWriter().Return(s)
 		return nCtx
 	}
+
+	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())
 
 	type args struct {
 		catalogFetch      bool
@@ -763,6 +810,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 				"test": fakeplugins.NewPhaseBasedPlugin(),
 			}
 			tk.catalog = c
+			tk.resourceManager = noopRm
 			got, err := tk.Handle(context.TODO(), nCtx)
 			if (err != nil) != tt.want.wantErr {
 				t.Errorf("Handler.Handle() error = %v, wantErr %v", err, tt.want.wantErr)
@@ -781,7 +829,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 						assert.True(t, got.Info().GetInfo().TaskNodeInfo.CacheHit)
 					}
 					assert.NotNil(t, got.Info().GetInfo().OutputInfo)
-					s := storage.DataReference("/data-dir/outputs.pb")
+					s := storage.DataReference("/output-dir/outputs.pb")
 					assert.Equal(t, s, got.Info().GetInfo().OutputInfo.OutputURI)
 					r, err := nCtx.DataStore().Head(context.TODO(), s)
 					assert.NoError(t, err)
@@ -793,6 +841,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 }
 
 func Test_task_Handle_Barrier(t *testing.T) {
+	// NOTE: Caching is disabled for this test
 
 	createNodeContext := func(recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder, prevBarrierClockTick uint32) *nodeMocks.NodeExecutionContext {
 		wfExecID := &core.WorkflowExecutionIdentifier{
@@ -801,16 +850,19 @@ func Test_task_Handle_Barrier(t *testing.T) {
 			Name:    "name",
 		}
 
+		nodeID := "n1"
+
 		nm := &nodeMocks.NodeExecutionMetadata{}
-		nm.On("GetAnnotations").Return(map[string]string{})
-		nm.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{
-			WorkflowExecutionIdentifier: wfExecID,
+		nm.OnGetAnnotations().Return(map[string]string{})
+		nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
+			NodeId:      nodeID,
+			ExecutionId: wfExecID,
 		})
-		nm.On("GetK8sServiceAccount").Return("service-account")
-		nm.On("GetLabels").Return(map[string]string{})
-		nm.On("GetNamespace").Return("namespace")
-		nm.On("GetOwnerID").Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
-		nm.On("GetOwnerReference").Return(v12.OwnerReference{
+		nm.OnGetK8sServiceAccount().Return("service-account")
+		nm.OnGetLabels().Return(map[string]string{})
+		nm.OnGetNamespace().Return("namespace")
+		nm.OnGetOwnerID().Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
+		nm.OnGetOwnerReference().Return(v12.OwnerReference{
 			Kind: "sample",
 			Name: "name",
 		})
@@ -837,31 +889,42 @@ func Test_task_Handle_Barrier(t *testing.T) {
 			},
 		}
 		tr := &nodeMocks.TaskReader{}
-		tr.On("GetTaskID").Return(taskID)
-		tr.On("GetTaskType").Return(ttype)
-		tr.On("Read", mock.Anything).Return(tk, nil)
+		tr.OnGetTaskID().Return(taskID)
+		tr.OnGetTaskType().Return(ttype)
+		tr.OnReadMatch(mock.Anything).Return(tk, nil)
 
 		ns := &flyteMocks.ExecutableNodeStatus{}
-		ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
+		ns.OnGetDataDir().Return(storage.DataReference("data-dir"))
+		ns.OnGetOutputDir().Return(storage.DataReference("output-dir"))
 
 		res := &v1.ResourceRequirements{}
 		n := &flyteMocks.ExecutableNode{}
-		n.On("GetResources").Return(res)
+		n.OnGetResources().Return(res)
 
 		ir := &ioMocks.InputReader{}
-		ir.On("GetInputPath").Return(storage.DataReference("input"))
+		ir.OnGetInputPath().Return(storage.DataReference("input"))
 		nCtx := &nodeMocks.NodeExecutionContext{}
-		nCtx.On("NodeExecutionMetadata").Return(nm)
-		nCtx.On("Node").Return(n)
-		nCtx.On("InputReader").Return(ir)
-		nCtx.On("DataStore").Return(storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope()))
-		nCtx.On("CurrentAttempt").Return(uint32(1))
-		nCtx.On("TaskReader").Return(tr)
-		nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
-		nCtx.On("NodeStatus").Return(ns)
-		nCtx.On("NodeID").Return("n1")
-		nCtx.On("EventsRecorder").Return(recorder)
-		nCtx.On("EnqueueOwner").Return(nil)
+		nCtx.OnNodeExecutionMetadata().Return(nm)
+		nCtx.OnNode().Return(n)
+		nCtx.OnInputReader().Return(ir)
+		ds, err := storage.NewDataStore(
+			&storage.Config{
+				Type: storage.TypeMemory,
+			},
+			promutils.NewTestScope(),
+		)
+		assert.NoError(t, err)
+		nCtx.OnDataStore().Return(ds)
+		nCtx.OnCurrentAttempt().Return(uint32(1))
+		nCtx.OnTaskReader().Return(tr)
+		nCtx.OnMaxDatasetSizeBytes().Return(int64(1))
+		nCtx.OnNodeStatus().Return(ns)
+		nCtx.OnNodeID().Return("n1")
+		nCtx.OnEventsRecorder().Return(recorder)
+		nCtx.OnEnqueueOwnerFunc().Return(nil)
+
+		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
+		nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
 
 		st := bytes.NewBuffer([]byte{})
 		cod := codex.GobStateCodec{}
@@ -870,14 +933,16 @@ func Test_task_Handle_Barrier(t *testing.T) {
 			OutputExists: true,
 		}, st))
 		nr := &nodeMocks.NodeStateReader{}
-		nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
+		nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
 			PluginState:      st.Bytes(),
 			BarrierClockTick: prevBarrierClockTick,
 		})
-		nCtx.On("NodeStateReader").Return(nr)
-		nCtx.On("NodeStateWriter").Return(s)
+		nCtx.OnNodeStateReader().Return(nr)
+		nCtx.OnNodeStateWriter().Return(s)
 		return nCtx
 	}
+
+	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())
 
 	trns := pluginCore.DoTransitionType(pluginCore.TransitionTypeBarrier, pluginCore.PhaseInfoQueued(time.Now(), 1, "z"))
 	type args struct {
@@ -1021,6 +1086,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 
 			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, promutils.NewTestScope())
 			assert.NoError(t, err)
+			tk.resourceManager = noopRm
 
 			tctx, err := tk.newTaskExecutionContext(context.TODO(), nCtx, "plugin1")
 			assert.NoError(t, err)
@@ -1036,6 +1102,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 				"test": fakeplugins.NewReplayer("test", pluginCore.PluginProperties{},
 					tt.args.res, nil, nil),
 			}
+
 			got, err := tk.Handle(context.TODO(), nCtx)
 			if (err != nil) != tt.want.wantErr {
 				t.Errorf("Handler.Handle() error = %v, wantErr %v", err, tt.want.wantErr)
@@ -1071,45 +1138,59 @@ func Test_task_Abort(t *testing.T) {
 			Name:    "name",
 		}
 
+		nodeID := "n1"
+
 		nm := &nodeMocks.NodeExecutionMetadata{}
-		nm.On("GetAnnotations").Return(map[string]string{})
-		nm.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{
-			WorkflowExecutionIdentifier: wfExecID,
+		nm.OnGetAnnotations().Return(map[string]string{})
+		nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
+			NodeId:      nodeID,
+			ExecutionId: wfExecID,
 		})
-		nm.On("GetK8sServiceAccount").Return("service-account")
-		nm.On("GetLabels").Return(map[string]string{})
-		nm.On("GetNamespace").Return("namespace")
-		nm.On("GetOwnerID").Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
-		nm.On("GetOwnerReference").Return(v12.OwnerReference{
+		nm.OnGetK8sServiceAccount().Return("service-account")
+		nm.OnGetLabels().Return(map[string]string{})
+		nm.OnGetNamespace().Return("namespace")
+		nm.OnGetOwnerID().Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
+		nm.OnGetOwnerReference().Return(v12.OwnerReference{
 			Kind: "sample",
 			Name: "name",
 		})
 
 		taskID := &core.Identifier{}
 		tr := &nodeMocks.TaskReader{}
-		tr.On("GetTaskID").Return(taskID)
-		tr.On("GetTaskType").Return("x")
+		tr.OnGetTaskID().Return(taskID)
+		tr.OnGetTaskType().Return("x")
 
 		ns := &flyteMocks.ExecutableNodeStatus{}
-		ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
+		ns.OnGetDataDir().Return(storage.DataReference("data-dir"))
+		ns.OnGetOutputDir().Return(storage.DataReference("output-dir"))
 
 		res := &v1.ResourceRequirements{}
 		n := &flyteMocks.ExecutableNode{}
-		n.On("GetResources").Return(res)
+		n.OnGetResources().Return(res)
 
 		ir := &ioMocks.InputReader{}
 		nCtx := &nodeMocks.NodeExecutionContext{}
-		nCtx.On("NodeExecutionMetadata").Return(nm)
-		nCtx.On("Node").Return(n)
-		nCtx.On("InputReader").Return(ir)
-		nCtx.On("DataStore").Return(storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope()))
-		nCtx.On("CurrentAttempt").Return(uint32(1))
-		nCtx.On("TaskReader").Return(tr)
-		nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
-		nCtx.On("NodeStatus").Return(ns)
-		nCtx.On("NodeID").Return("n1")
-		nCtx.On("EnqueueOwner").Return(nil)
-		nCtx.On("EventsRecorder").Return(ev)
+		nCtx.OnNodeExecutionMetadata().Return(nm)
+		nCtx.OnNode().Return(n)
+		nCtx.OnInputReader().Return(ir)
+		ds, err := storage.NewDataStore(
+			&storage.Config{
+				Type: storage.TypeMemory,
+			},
+			promutils.NewTestScope(),
+		)
+		assert.NoError(t, err)
+		nCtx.OnDataStore().Return(ds)
+		nCtx.OnCurrentAttempt().Return(uint32(1))
+		nCtx.OnTaskReader().Return(tr)
+		nCtx.OnMaxDatasetSizeBytes().Return(int64(1))
+		nCtx.OnNodeStatus().Return(ns)
+		nCtx.OnNodeID().Return("n1")
+		nCtx.OnEnqueueOwnerFunc().Return(nil)
+		nCtx.OnEventsRecorder().Return(ev)
+
+		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
+		nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
 
 		st := bytes.NewBuffer([]byte{})
 		a := 45
@@ -1119,12 +1200,14 @@ func Test_task_Abort(t *testing.T) {
 		cod := codex.GobStateCodec{}
 		assert.NoError(t, cod.Encode(test{A: a}, st))
 		nr := &nodeMocks.NodeStateReader{}
-		nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
+		nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
 			PluginState: st.Bytes(),
 		})
-		nCtx.On("NodeStateReader").Return(nr)
+		nCtx.OnNodeStateReader().Return(nr)
 		return nCtx
 	}
+
+	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())
 
 	type fields struct {
 		defaultPluginCallback func() pluginCore.Plugin
@@ -1160,7 +1243,8 @@ func Test_task_Abort(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := tt.fields.defaultPluginCallback()
 			tk := Handler{
-				defaultPlugin: m,
+				defaultPlugin:   m,
+				resourceManager: noopRm,
 			}
 			nCtx := createNodeCtx(tt.args.ev)
 			if err := tk.Abort(context.TODO(), nCtx, "reason"); (err != nil) != tt.wantErr {
@@ -1188,45 +1272,61 @@ func Test_task_Finalize(t *testing.T) {
 		Name:    "name",
 	}
 
+	nodeID := "n1"
+
 	nm := &nodeMocks.NodeExecutionMetadata{}
-	nm.On("GetAnnotations").Return(map[string]string{})
-	nm.On("GetExecutionID").Return(v1alpha1.WorkflowExecutionIdentifier{
-		WorkflowExecutionIdentifier: wfExecID,
+	nm.OnGetAnnotations().Return(map[string]string{})
+	nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
+		NodeId:      nodeID,
+		ExecutionId: wfExecID,
 	})
-	nm.On("GetK8sServiceAccount").Return("service-account")
-	nm.On("GetLabels").Return(map[string]string{})
-	nm.On("GetNamespace").Return("namespace")
-	nm.On("GetOwnerID").Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
-	nm.On("GetOwnerReference").Return(v12.OwnerReference{
+	nm.OnGetK8sServiceAccount().Return("service-account")
+	nm.OnGetLabels().Return(map[string]string{})
+	nm.OnGetNamespace().Return("namespace")
+	nm.OnGetOwnerID().Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
+	nm.OnGetOwnerReference().Return(v12.OwnerReference{
 		Kind: "sample",
 		Name: "name",
 	})
 
 	taskID := &core.Identifier{}
 	tr := &nodeMocks.TaskReader{}
-	tr.On("GetTaskID").Return(taskID)
-	tr.On("GetTaskType").Return("x")
+	tr.OnGetTaskID().Return(taskID)
+	tr.OnGetTaskType().Return("x")
 
 	ns := &flyteMocks.ExecutableNodeStatus{}
-	ns.On("GetDataDir").Return(storage.DataReference("data-dir"))
+	ns.OnGetDataDir().Return(storage.DataReference("data-dir"))
+	ns.OnGetOutputDir().Return(storage.DataReference("output-dir"))
 
 	res := &v1.ResourceRequirements{}
 	n := &flyteMocks.ExecutableNode{}
-	n.On("GetResources").Return(res)
+	n.OnGetResources().Return(res)
 
 	ir := &ioMocks.InputReader{}
 	nCtx := &nodeMocks.NodeExecutionContext{}
-	nCtx.On("NodeExecutionMetadata").Return(nm)
-	nCtx.On("Node").Return(n)
-	nCtx.On("InputReader").Return(ir)
-	nCtx.On("DataStore").Return(storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope()))
-	nCtx.On("CurrentAttempt").Return(uint32(1))
-	nCtx.On("TaskReader").Return(tr)
-	nCtx.On("MaxDatasetSizeBytes").Return(int64(1))
-	nCtx.On("NodeStatus").Return(ns)
-	nCtx.On("NodeID").Return("n1")
-	nCtx.On("EventsRecorder").Return(nil)
-	nCtx.On("EnqueueOwner").Return(nil)
+	nCtx.OnNodeExecutionMetadata().Return(nm)
+	nCtx.OnNode().Return(n)
+	nCtx.OnInputReader().Return(ir)
+	ds, err := storage.NewDataStore(
+		&storage.Config{
+			Type: storage.TypeMemory,
+		},
+		promutils.NewTestScope(),
+	)
+	assert.NoError(t, err)
+	nCtx.OnDataStore().Return(ds)
+	nCtx.OnCurrentAttempt().Return(uint32(1))
+	nCtx.OnTaskReader().Return(tr)
+	nCtx.OnMaxDatasetSizeBytes().Return(int64(1))
+	nCtx.OnNodeStatus().Return(ns)
+	nCtx.OnNodeID().Return("n1")
+	nCtx.OnEventsRecorder().Return(nil)
+	nCtx.OnEnqueueOwnerFunc().Return(nil)
+
+	nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
+	nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
+
+	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())
 
 	st := bytes.NewBuffer([]byte{})
 	a := 45
@@ -1274,7 +1374,8 @@ func Test_task_Finalize(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := tt.fields.defaultPluginCallback()
 			tk := Handler{
-				defaultPlugin: m,
+				defaultPlugin:   m,
+				resourceManager: noopRm,
 			}
 			if err := tk.Finalize(context.TODO(), tt.args.nCtx); (err != nil) != tt.wantErr {
 				t.Errorf("Handler.Finalize() error = %v, wantErr %v", err, tt.wantErr)
@@ -1297,4 +1398,9 @@ func TestNew(t *testing.T) {
 	assert.NotNil(t, got.plugins)
 	assert.NotNil(t, got.metrics)
 	assert.Equal(t, got.pluginRegistry, pluginmachinery.PluginRegistry())
+}
+
+func init() {
+	labeled.SetMetricKeys(contextutils.ProjectKey, contextutils.DomainKey, contextutils.WorkflowIDKey,
+		contextutils.TaskIDKey)
 }

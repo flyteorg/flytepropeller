@@ -46,6 +46,7 @@ func (n nodeStateManager) GetTaskNodeState() handler.TaskNodeState {
 			PluginStateVersion: tn.GetPluginStateVersion(),
 			PluginState:        tn.GetPluginState(),
 			BarrierClockTick:   tn.GetBarrierClockTick(),
+			LastPhaseUpdatedAt: tn.GetLastPhaseUpdatedAt(),
 		}
 	}
 	return handler.TaskNodeState{}
@@ -85,6 +86,8 @@ func (n nodeStateManager) clearNodeStatus() {
 	n.t = nil
 	n.b = nil
 	n.d = nil
+	n.w = nil
+	n.nodeStatus.ClearLastAttemptStartedAt()
 }
 
 func newNodeStateManager(_ context.Context, status v1alpha1.ExecutableNodeStatus) *nodeStateManager {

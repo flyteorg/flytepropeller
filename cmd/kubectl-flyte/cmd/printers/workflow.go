@@ -1,11 +1,13 @@
 package printers
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	gotree "github.com/DiSiqueira/GoTree"
 	"github.com/fatih/color"
+
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/visualize"
 )
@@ -24,7 +26,7 @@ func ColorizeWorkflowPhase(p v1alpha1.WorkflowPhase) string {
 	return color.CyanString("%s", p.String())
 }
 
-func CalculateWorkflowRuntime(s v1alpha1.ExecutableWorkflowStatus) string {
+func CalculateWorkflowRuntime(s v1alpha1.ExecutionTimeInfo) string {
 	if s.GetStartedAt() != nil {
 		if s.GetStoppedAt() != nil {
 			return s.GetStoppedAt().Sub(s.GetStartedAt().Time).String()
@@ -34,10 +36,16 @@ func CalculateWorkflowRuntime(s v1alpha1.ExecutableWorkflowStatus) string {
 	return "na"
 }
 
+type ContextualWorkflow struct {
+	v1alpha1.MetaExtended
+	v1alpha1.ExecutableSubWorkflow
+	v1alpha1.NodeStatusGetter
+}
+
 type WorkflowPrinter struct {
 }
 
-func (p WorkflowPrinter) Print(tree gotree.Tree, w v1alpha1.ExecutableWorkflow) error {
+func (p WorkflowPrinter) Print(ctx context.Context, tree gotree.Tree, w v1alpha1.ExecutableWorkflow) error {
 	sortedNodes, err := visualize.TopologicalSort(w)
 	if err != nil {
 		return err
@@ -49,7 +57,23 @@ func (p WorkflowPrinter) Print(tree gotree.Tree, w v1alpha1.ExecutableWorkflow) 
 		tree.AddTree(newTree)
 	}
 	np := NodePrinter{}
-	return np.PrintList(newTree, w, sortedNodes)
+	return np.PrintList(ctx, newTree, w, sortedNodes)
+}
+
+func (p WorkflowPrinter) PrintSubWorkflow(ctx context.Context, tree gotree.Tree, w v1alpha1.ExecutableWorkflow, swf v1alpha1.ExecutableSubWorkflow, ns v1alpha1.ExecutableNodeStatus) error {
+	sortedNodes, err := visualize.TopologicalSort(swf)
+	if err != nil {
+		return err
+	}
+	newTree := gotree.New(fmt.Sprintf("SubWorkflow [%s] (%s %s %s)",
+		swf.GetID(), CalculateWorkflowRuntime(ns),
+		ColorizeNodePhase(ns.GetPhase()), ns.GetMessage()))
+	if tree != nil {
+		tree.AddTree(newTree)
+	}
+	np := NodePrinter{}
+
+	return np.PrintList(ctx, newTree, &ContextualWorkflow{MetaExtended: w, ExecutableSubWorkflow: swf, NodeStatusGetter: ns}, sortedNodes)
 }
 
 func (p WorkflowPrinter) PrintShort(tree gotree.Tree, w v1alpha1.ExecutableWorkflow) error {

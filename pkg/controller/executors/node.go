@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
@@ -30,6 +31,10 @@ const (
 	NodePhaseFailed
 	// Internal error observed. This state should always be accompanied with an `error`. if not the behavior is undefined
 	NodePhaseUndefined
+	// Finalize node failing due to timeout
+	NodePhaseTimingOut
+	// Node failed because execution timed out
+	NodePhaseTimedOut
 )
 
 func (p NodePhase) String() string {
@@ -48,6 +53,8 @@ func (p NodePhase) String() string {
 		return "Complete"
 	case NodePhaseUndefined:
 		return "Undefined"
+	case NodePhaseTimedOut:
+		return "NodePhaseTimedOut"
 	}
 	return fmt.Sprintf("Unknown - %d", p)
 }
@@ -56,19 +63,19 @@ func (p NodePhase) String() string {
 type Node interface {
 	// This method is used specifically to set inputs for start node. This is because start node does not retrieve inputs
 	// from predecessors, but the inputs are inputs to the workflow or inputs to the parent container (workflow) node.
-	SetInputsForStartNode(ctx context.Context, w v1alpha1.BaseWorkflowWithStatus, inputs *core.LiteralMap) (NodeStatus, error)
+	SetInputsForStartNode(ctx context.Context, execContext ExecutionContext, dag DAGStructureWithStartNode, nl NodeLookup, inputs *core.LiteralMap) (NodeStatus, error)
 
 	// This is the main entrypoint to execute a node. It recursively depth-first goes through all ready nodes and starts their execution
 	// This returns either
 	// - 1. It finds a blocking node (not ready, or running)
 	// - 2. A node fails and hence the workflow will fail
 	// - 3. The final/end node has completed and the workflow should be stopped
-	RecursiveNodeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) (NodeStatus, error)
+	RecursiveNodeHandler(ctx context.Context, execContext ExecutionContext, dag DAGStructure, nl NodeLookup, currentNode v1alpha1.ExecutableNode) (NodeStatus, error)
 
 	// This aborts the given node. If the given node is complete then it recursively finds the running nodes and aborts them
-	AbortHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode, reason string) error
+	AbortHandler(ctx context.Context, execContext ExecutionContext, dag DAGStructure, nl NodeLookup, currentNode v1alpha1.ExecutableNode, reason string) error
 
-	FinalizeHandler(ctx context.Context, w v1alpha1.ExecutableWorkflow, currentNode v1alpha1.ExecutableNode) error
+	FinalizeHandler(ctx context.Context, execContext ExecutionContext, dag DAGStructure, nl NodeLookup, currentNode v1alpha1.ExecutableNode) error
 
 	// This method should be used to initialize Node executor
 	Initialize(ctx context.Context) error
@@ -88,6 +95,10 @@ func (n *NodeStatus) HasFailed() bool {
 	return n.NodePhase == NodePhaseFailed
 }
 
+func (n *NodeStatus) HasTimedOut() bool {
+	return n.NodePhase == NodePhaseTimedOut
+}
+
 func (n *NodeStatus) PartiallyComplete() bool {
 	return n.NodePhase == NodePhaseSuccess
 }
@@ -98,6 +109,7 @@ var NodeStatusRunning = NodeStatus{NodePhase: NodePhaseRunning}
 var NodeStatusSuccess = NodeStatus{NodePhase: NodePhaseSuccess}
 var NodeStatusComplete = NodeStatus{NodePhase: NodePhaseComplete}
 var NodeStatusUndefined = NodeStatus{NodePhase: NodePhaseUndefined}
+var NodeStatusTimedOut = NodeStatus{NodePhase: NodePhaseTimedOut}
 
 func NodeStatusFailed(err error) NodeStatus {
 	return NodeStatus{NodePhase: NodePhaseFailed, Err: err}

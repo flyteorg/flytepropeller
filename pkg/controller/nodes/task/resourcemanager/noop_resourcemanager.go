@@ -6,13 +6,19 @@ import (
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
+const NoopResourceManagerID = "noopresourcemanager"
+
 type NoopResourceManagerBuilder struct {
 }
 
-func (r *NoopResourceManagerBuilder) ResourceRegistrar(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceRegistrar {
+func (r *NoopResourceManagerBuilder) GetID() string {
+	return NoopResourceManagerID
+}
+
+func (r *NoopResourceManagerBuilder) GetResourceRegistrar(namespacePrefix pluginCore.ResourceNamespace) pluginCore.ResourceRegistrar {
 	return ResourceRegistrarProxy{
-		ResourceRegistrar: r,
-		NamespacePrefix:   namespacePrefix,
+		ResourceRegistrar:       r,
+		ResourceNamespacePrefix: namespacePrefix,
 	}
 }
 
@@ -20,19 +26,23 @@ func (r *NoopResourceManagerBuilder) RegisterResourceQuota(ctx context.Context, 
 	return nil
 }
 
-func (r *NoopResourceManagerBuilder) BuildResourceManager(ctx context.Context) (pluginCore.ResourceManager, error) {
+func (r *NoopResourceManagerBuilder) BuildResourceManager(ctx context.Context) (BaseResourceManager, error) {
 	return &NoopResourceManager{}, nil
 }
 
 type NoopResourceManager struct {
 }
 
-func (*NoopResourceManager) AllocateResource(ctx context.Context, namespace pluginCore.ResourceNamespace, allocationToken string) (
+func (*NoopResourceManager) GetID() string {
+	return NoopResourceManagerID
+}
+
+func (*NoopResourceManager) AllocateResource(ctx context.Context, namespace pluginCore.ResourceNamespace, allocationToken Token, constraints []FullyQualifiedResourceConstraint) (
 	pluginCore.AllocationStatus, error) {
 
 	return pluginCore.AllocationStatusGranted, nil
 }
 
-func (*NoopResourceManager) ReleaseResource(ctx context.Context, namespace pluginCore.ResourceNamespace, allocationToken string) error {
+func (*NoopResourceManager) ReleaseResource(ctx context.Context, namespace pluginCore.ResourceNamespace, allocationToken Token) error {
 	return nil
 }

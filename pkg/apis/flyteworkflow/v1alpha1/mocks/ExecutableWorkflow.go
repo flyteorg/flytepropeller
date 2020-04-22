@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	mock "github.com/stretchr/testify/mock"
 	types "k8s.io/apimachinery/pkg/types"
 
@@ -468,8 +470,8 @@ func (_m ExecutableWorkflow_GetNodeExecutionStatus) Return(_a0 v1alpha1.Executab
 	return &ExecutableWorkflow_GetNodeExecutionStatus{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *ExecutableWorkflow) OnGetNodeExecutionStatus(id string) *ExecutableWorkflow_GetNodeExecutionStatus {
-	c := _m.On("GetNodeExecutionStatus", id)
+func (_m *ExecutableWorkflow) OnGetNodeExecutionStatus(ctx context.Context, id string) *ExecutableWorkflow_GetNodeExecutionStatus {
+	c := _m.On("GetNodeExecutionStatus", ctx, id)
 	return &ExecutableWorkflow_GetNodeExecutionStatus{Call: c}
 }
 
@@ -478,13 +480,13 @@ func (_m *ExecutableWorkflow) OnGetNodeExecutionStatusMatch(matchers ...interfac
 	return &ExecutableWorkflow_GetNodeExecutionStatus{Call: c}
 }
 
-// GetNodeExecutionStatus provides a mock function with given fields: id
-func (_m *ExecutableWorkflow) GetNodeExecutionStatus(id string) v1alpha1.ExecutableNodeStatus {
-	ret := _m.Called(id)
+// GetNodeExecutionStatus provides a mock function with given fields: ctx, id
+func (_m *ExecutableWorkflow) GetNodeExecutionStatus(ctx context.Context, id string) v1alpha1.ExecutableNodeStatus {
+	ret := _m.Called(ctx, id)
 
 	var r0 v1alpha1.ExecutableNodeStatus
-	if rf, ok := ret.Get(0).(func(string) v1alpha1.ExecutableNodeStatus); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, string) v1alpha1.ExecutableNodeStatus); ok {
+		r0 = rf(ctx, id)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(v1alpha1.ExecutableNodeStatus)
@@ -735,6 +737,38 @@ func (_m *ExecutableWorkflow) GetTask(id string) (v1alpha1.ExecutableTask, error
 	return r0, r1
 }
 
+type ExecutableWorkflow_IsInterruptible struct {
+	*mock.Call
+}
+
+func (_m ExecutableWorkflow_IsInterruptible) Return(_a0 bool) *ExecutableWorkflow_IsInterruptible {
+	return &ExecutableWorkflow_IsInterruptible{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableWorkflow) OnIsInterruptible() *ExecutableWorkflow_IsInterruptible {
+	c := _m.On("IsInterruptible")
+	return &ExecutableWorkflow_IsInterruptible{Call: c}
+}
+
+func (_m *ExecutableWorkflow) OnIsInterruptibleMatch(matchers ...interface{}) *ExecutableWorkflow_IsInterruptible {
+	c := _m.On("IsInterruptible", matchers...)
+	return &ExecutableWorkflow_IsInterruptible{Call: c}
+}
+
+// IsInterruptible provides a mock function with given fields:
+func (_m *ExecutableWorkflow) IsInterruptible() bool {
+	ret := _m.Called()
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 type ExecutableWorkflow_StartNode struct {
 	*mock.Call
 }
@@ -767,4 +801,45 @@ func (_m *ExecutableWorkflow) StartNode() v1alpha1.ExecutableNode {
 	}
 
 	return r0
+}
+
+type ExecutableWorkflow_ToNode struct {
+	*mock.Call
+}
+
+func (_m ExecutableWorkflow_ToNode) Return(_a0 []string, _a1 error) *ExecutableWorkflow_ToNode {
+	return &ExecutableWorkflow_ToNode{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *ExecutableWorkflow) OnToNode(name string) *ExecutableWorkflow_ToNode {
+	c := _m.On("ToNode", name)
+	return &ExecutableWorkflow_ToNode{Call: c}
+}
+
+func (_m *ExecutableWorkflow) OnToNodeMatch(matchers ...interface{}) *ExecutableWorkflow_ToNode {
+	c := _m.On("ToNode", matchers...)
+	return &ExecutableWorkflow_ToNode{Call: c}
+}
+
+// ToNode provides a mock function with given fields: name
+func (_m *ExecutableWorkflow) ToNode(name string) ([]string, error) {
+	ret := _m.Called(name)
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func(string) []string); ok {
+		r0 = rf(name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(name)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }

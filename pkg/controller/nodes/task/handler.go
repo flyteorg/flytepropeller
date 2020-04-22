@@ -44,6 +44,7 @@ type metrics struct {
 	catalogMissCount       labeled.Counter
 	catalogHitCount        labeled.Counter
 	pluginExecutionLatency labeled.StopWatch
+	pluginQueueLatency     labeled.StopWatch
 
 	// TODO We should have a metric to capture custom state size
 	scope promutils.Scope
@@ -137,7 +138,7 @@ type Handler struct {
 	pluginRegistry  PluginRegistryIface
 	kubeClient      pluginCore.KubeClient
 	secretManager   pluginCore.SecretManager
-	resourceManager pluginCore.ResourceManager
+	resourceManager resourcemanager.BaseResourceManager
 	barrierCache    *barrier
 	cfg             *config.Config
 }
@@ -161,8 +162,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 
 	// Create a new base resource negotiator
 	resourceManagerConfig := rmConfig.GetConfig()
-	newResourceManagerBuilder, err := resourcemanager.GetResourceManagerBuilderByType(ctx, resourceManagerConfig.Type,
-		t.metrics.scope.NewSubScope("resourcemanager"))
+	newResourceManagerBuilder, err := resourcemanager.GetResourceManagerBuilderByType(ctx, resourceManagerConfig.Type, t.metrics.scope)
 	if err != nil {
 		return err
 	}
@@ -176,10 +176,10 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	}
 
 	for _, p := range enabledPlugins {
-		// rn = create a new resource negotiator proxy for each plugin
-		sCtxFinal := newNameSpacedSetupCtx(tSCtx, newResourceManagerBuilder.ResourceRegistrar(pluginCore.ResourceNamespace(p.ID)))
-		// sCtxFinal := newNSSetupCtx(tSCtx)
-		// tSCtx.resourceNegotiator = tSCtx.ResourceRegistrar().ResourceRegistrar(pluginCore.ResourceNamespace(p.ID))
+		// create a new resource registrar proxy for each plugin, and pass it into the plugin's LoadPlugin() via a setup context
+		pluginResourceNamespacePrefix := pluginCore.ResourceNamespace(newResourceManagerBuilder.GetID()).CreateSubNamespace(pluginCore.ResourceNamespace(p.ID))
+		sCtxFinal := newNameSpacedSetupCtx(
+			tSCtx, newResourceManagerBuilder.GetResourceRegistrar(pluginResourceNamespacePrefix))
 		logger.Infof(ctx, "Loading Plugin [%s] ENABLED", p.ID)
 		// cp, err := p.LoadPlugin(ctx, tSCtx)
 		cp, err := p.LoadPlugin(ctx, sCtxFinal)
@@ -268,6 +268,14 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		v = ts.PluginPhaseVersion
 	}
 	pluginTrns.ObservedTransitionAndState(trns, v, b)
+
+	// Emit the queue latency if the task has just transitioned from Queued to Running.
+	if ts.PluginPhase == pluginCore.PhaseQueued &&
+		(pluginTrns.pInfo.Phase() == pluginCore.PhaseInitializing || pluginTrns.pInfo.Phase() == pluginCore.PhaseRunning) {
+		if !ts.LastPhaseUpdatedAt.IsZero() {
+			t.metrics.pluginQueueLatency.Observe(ctx, ts.LastPhaseUpdatedAt, time.Now())
+		}
+	}
 
 	if pluginTrns.pInfo.Phase() == ts.PluginPhase {
 		if pluginTrns.pInfo.Version() == ts.PluginPhaseVersion {
@@ -478,6 +486,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		PluginPhase:        pluginTrns.pInfo.Phase(),
 		PluginPhaseVersion: pluginTrns.pInfo.Version(),
 		BarrierClockTick:   barrierTick,
+		LastPhaseUpdatedAt: time.Now(),
 	})
 	if err != nil {
 		logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())
@@ -564,7 +573,7 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 			if r := recover(); r != nil {
 				t.metrics.pluginPanics.Inc(ctx)
 				stack := debug.Stack()
-				logger.Errorf(ctx, "Panic in plugin.Abort for TaskType [%s]", tCtx.tr.GetTaskType())
+				logger.Errorf(ctx, "Panic in plugin.Finalize for TaskType [%s]", tCtx.tr.GetTaskType())
 				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", tCtx.tr.GetTaskType(), string(stack))
 			}
 		}()
@@ -575,7 +584,7 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 }
 
 func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) (*Handler, error) {
-	// TODO NewShould take apointer
+	// TODO New should take a pointer
 	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig(), scope.NewSubScope("async_catalog"))
 	if err != nil {
 		return nil, err
@@ -597,7 +606,8 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 			catalogPutSuccessCount: labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", scope),
 			catalogPutFailureCount: labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			catalogGetFailureCount: labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
-			pluginExecutionLatency: labeled.NewStopWatch("plugin_exec_latecny", "Time taken to invoke plugin for one round", time.Microsecond, scope),
+			pluginExecutionLatency: labeled.NewStopWatch("plugin_exec_latency", "Time taken to invoke plugin for one round", time.Microsecond, scope),
+			pluginQueueLatency:     labeled.NewStopWatch("plugin_queue_latency", "Time spent by plugin in queued phase", time.Microsecond, scope),
 			scope:                  scope,
 		},
 		kubeClient:      kubeClient,

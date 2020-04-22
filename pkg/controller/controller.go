@@ -3,6 +3,10 @@ package controller
 import (
 	"context"
 
+	stdErrs "github.com/lyft/flytestdlib/errors"
+
+	errors3 "github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
+
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog"
 
@@ -174,13 +178,13 @@ func newControllerMetrics(scope promutils.Scope) *metrics {
 	}
 }
 
-func newK8sEventRecorder(ctx context.Context, kubeclientset kubernetes.Interface, publishK8sEvents bool) record.EventRecorder {
+func newK8sEventRecorder(ctx context.Context, kubeclientset kubernetes.Interface, publishK8sEvents bool) (record.EventRecorder, error) {
 	// Create event broadcaster
 	// Add FlyteWorkflow controller types to the default Kubernetes Scheme so Events can be
 	// logged for FlyteWorkflow Controller types.
 	err := flyteScheme.AddToScheme(scheme.Scheme)
 	if err != nil {
-		logger.Panicf(ctx, "failed to add flyte workflows scheme, %s", err.Error())
+		return nil, err
 	}
 	logger.Info(ctx, "Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
@@ -188,33 +192,33 @@ func newK8sEventRecorder(ctx context.Context, kubeclientset kubernetes.Interface
 	if publishK8sEvents {
 		eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
 	}
-	return eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
+	return eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName}), nil
 }
 
 // NewController returns a new FlyteWorkflow controller
 func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Interface, flytepropellerClientset clientset.Interface,
 	flyteworkflowInformerFactory informers.SharedInformerFactory, kubeClient executors.Client, scope promutils.Scope) (*Controller, error) {
 
-	var wfLauncher launchplan.Executor
+	var launchPlanActor launchplan.FlyteAdmin
 	if cfg.EnableAdminLauncher {
 		adminClient, err := admin.InitializeAdminClientFromConfig(ctx)
 		if err != nil {
 			logger.Errorf(ctx, "failed to initialize Admin client, err :%s", err.Error())
 			return nil, err
 		}
-		wfLauncher, err = launchplan.NewAdminLaunchPlanExecutor(ctx, adminClient, cfg.DownstreamEval.Duration,
+		launchPlanActor, err = launchplan.NewAdminLaunchPlanExecutor(ctx, adminClient, cfg.DownstreamEval.Duration,
 			launchplan.GetAdminConfig(), scope.NewSubScope("admin_launcher"))
 		if err != nil {
 			logger.Errorf(ctx, "failed to create Admin workflow Launcher, err: %v", err.Error())
 			return nil, err
 		}
 
-		if err := wfLauncher.Initialize(ctx); err != nil {
+		if err := launchPlanActor.Initialize(ctx); err != nil {
 			logger.Errorf(ctx, "failed to initialize Admin workflow Launcher, err: %v", err.Error())
 			return nil, err
 		}
 	} else {
-		wfLauncher = launchplan.NewFailFastLaunchPlanExecutor()
+		launchPlanActor = launchplan.NewFailFastLaunchPlanExecutor()
 	}
 
 	logger.Info(ctx, "Setting up event sink and recorder")
@@ -222,13 +226,17 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create EventSink [%v], error %v", events.GetConfig(ctx).Type, err)
 	}
-	gc, err := NewGarbageCollector(cfg, scope, clock.RealClock{}, kubeclientset.CoreV1().Namespaces(), flytepropellerClientset.FlyteworkflowV1alpha1(), cfg.LimitNamespace)
+	gc, err := NewGarbageCollector(cfg, scope, clock.RealClock{}, kubeclientset.CoreV1().Namespaces(), flytepropellerClientset.FlyteworkflowV1alpha1())
 	if err != nil {
 		logger.Errorf(ctx, "failed to initialize GC for workflows")
 		return nil, errors.Wrapf(err, "failed to initialize WF GC")
 	}
 
-	eventRecorder := newK8sEventRecorder(ctx, kubeclientset, cfg.PublishK8sEvents)
+	eventRecorder, err := newK8sEventRecorder(ctx, kubeclientset, cfg.PublishK8sEvents)
+	if err != nil {
+		logger.Errorf(ctx, "failed to event recorder %v", err)
+		return nil, errors.Wrapf(err, "failed to initialize resource lock.")
+	}
 	controller := &Controller{
 		metrics:    newControllerMetrics(scope),
 		recorder:   eventRecorder,
@@ -285,9 +293,14 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	}
 	controller.workQueue = workQ
 
-	controller.workflowStore = workflowstore.NewPassthroughWorkflowStore(ctx, scope, flytepropellerClientset.FlyteworkflowV1alpha1(), flyteworkflowInformer.Lister())
+	controller.workflowStore, err = workflowstore.NewWorkflowStore(ctx, workflowstore.GetConfig(), flyteworkflowInformer.Lister(), flytepropellerClientset.FlyteworkflowV1alpha1(), scope)
+	if err != nil {
+		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize workflow store")
+	}
 
-	nodeExecutor, err := nodes.NewExecutor(ctx, store, controller.enqueueWorkflowForNodeUpdates, eventSink, wfLauncher, cfg.MaxDatasetSizeBytes, kubeClient, catalogClient, scope)
+	nodeExecutor, err := nodes.NewExecutor(ctx, cfg.NodeConfig, store, controller.enqueueWorkflowForNodeUpdates, eventSink,
+		launchPlanActor, launchPlanActor, cfg.MaxDatasetSizeBytes,
+		storage.DataReference(cfg.DefaultRawOutputPrefix), kubeClient, catalogClient, scope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create Controller.")
 	}

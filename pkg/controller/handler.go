@@ -105,6 +105,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	wfDeepCopy := w.DeepCopy()
 	t.Stop()
 	ctx = contextutils.WithWorkflowID(ctx, wfDeepCopy.GetID())
+	ctx = contextutils.WithResourceVersion(ctx, wfDeepCopy.GetResourceVersion())
 
 	maxRetries := uint32(p.cfg.MaxWorkflowRetries)
 	if IsDeleted(wfDeepCopy) || (wfDeepCopy.Status.FailedAttempts > maxRetries) {
@@ -114,6 +115,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 				if r := recover(); r != nil {
 					stack := debug.Stack()
 					err = fmt.Errorf("panic when aborting workflow, Stack: [%s]", string(stack))
+					logger.Errorf(ctx, err.Error())
 					p.metrics.PanicObserved.Inc(ctx)
 				}
 			}()
@@ -142,6 +144,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 					if r := recover(); r != nil {
 						stack := debug.Stack()
 						err = fmt.Errorf("panic when reconciling workflow, Stack: [%s]", string(stack))
+						logger.Errorf(ctx, err.Error())
 						p.metrics.PanicObserved.Inc(ctx)
 					}
 				}()
@@ -178,7 +181,8 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	// update the GetExecutionStatus block of the FlyteWorkflow resource. UpdateStatus will not
 	// allow changes to the Spec of the resource, which is ideal for ensuring
 	// nothing other than resource status has been updated.
-	return p.wfStore.Update(ctx, wfDeepCopy, workflowstore.PriorityClassCritical)
+	_, err = p.wfStore.Update(ctx, wfDeepCopy, workflowstore.PriorityClassCritical)
+	return err
 }
 
 func NewPropellerHandler(_ context.Context, cfg *config.Config, wfStore workflowstore.FlyteWorkflow, executor executors.Workflow, scope promutils.Scope) *Propeller {

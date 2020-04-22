@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	core "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	mock "github.com/stretchr/testify/mock"
 
@@ -20,6 +22,16 @@ type ExecutableNodeStatus struct {
 
 // ClearDynamicNodeStatus provides a mock function with given fields:
 func (_m *ExecutableNodeStatus) ClearDynamicNodeStatus() {
+	_m.Called()
+}
+
+// ClearLastAttemptStartedAt provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) ClearLastAttemptStartedAt() {
+	_m.Called()
+}
+
+// ClearSubNodeStatus provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) ClearSubNodeStatus() {
 	_m.Called()
 }
 
@@ -165,6 +177,40 @@ func (_m *ExecutableNodeStatus) GetDynamicNodeStatus() v1alpha1.MutableDynamicNo
 	return r0
 }
 
+type ExecutableNodeStatus_GetLastAttemptStartedAt struct {
+	*mock.Call
+}
+
+func (_m ExecutableNodeStatus_GetLastAttemptStartedAt) Return(_a0 *v1.Time) *ExecutableNodeStatus_GetLastAttemptStartedAt {
+	return &ExecutableNodeStatus_GetLastAttemptStartedAt{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableNodeStatus) OnGetLastAttemptStartedAt() *ExecutableNodeStatus_GetLastAttemptStartedAt {
+	c := _m.On("GetLastAttemptStartedAt")
+	return &ExecutableNodeStatus_GetLastAttemptStartedAt{Call: c}
+}
+
+func (_m *ExecutableNodeStatus) OnGetLastAttemptStartedAtMatch(matchers ...interface{}) *ExecutableNodeStatus_GetLastAttemptStartedAt {
+	c := _m.On("GetLastAttemptStartedAt", matchers...)
+	return &ExecutableNodeStatus_GetLastAttemptStartedAt{Call: c}
+}
+
+// GetLastAttemptStartedAt provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) GetLastAttemptStartedAt() *v1.Time {
+	ret := _m.Called()
+
+	var r0 *v1.Time
+	if rf, ok := ret.Get(0).(func() *v1.Time); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.Time)
+		}
+	}
+
+	return r0
+}
+
 type ExecutableNodeStatus_GetLastUpdatedAt struct {
 	*mock.Call
 }
@@ -239,8 +285,8 @@ func (_m ExecutableNodeStatus_GetNodeExecutionStatus) Return(_a0 v1alpha1.Execut
 	return &ExecutableNodeStatus_GetNodeExecutionStatus{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *ExecutableNodeStatus) OnGetNodeExecutionStatus(id string) *ExecutableNodeStatus_GetNodeExecutionStatus {
-	c := _m.On("GetNodeExecutionStatus", id)
+func (_m *ExecutableNodeStatus) OnGetNodeExecutionStatus(ctx context.Context, id string) *ExecutableNodeStatus_GetNodeExecutionStatus {
+	c := _m.On("GetNodeExecutionStatus", ctx, id)
 	return &ExecutableNodeStatus_GetNodeExecutionStatus{Call: c}
 }
 
@@ -249,13 +295,13 @@ func (_m *ExecutableNodeStatus) OnGetNodeExecutionStatusMatch(matchers ...interf
 	return &ExecutableNodeStatus_GetNodeExecutionStatus{Call: c}
 }
 
-// GetNodeExecutionStatus provides a mock function with given fields: id
-func (_m *ExecutableNodeStatus) GetNodeExecutionStatus(id string) v1alpha1.ExecutableNodeStatus {
-	ret := _m.Called(id)
+// GetNodeExecutionStatus provides a mock function with given fields: ctx, id
+func (_m *ExecutableNodeStatus) GetNodeExecutionStatus(ctx context.Context, id string) v1alpha1.ExecutableNodeStatus {
+	ret := _m.Called(ctx, id)
 
 	var r0 v1alpha1.ExecutableNodeStatus
-	if rf, ok := ret.Get(0).(func(string) v1alpha1.ExecutableNodeStatus); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, string) v1alpha1.ExecutableNodeStatus); ok {
+		r0 = rf(ctx, id)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(v1alpha1.ExecutableNodeStatus)
@@ -396,6 +442,38 @@ func (_m *ExecutableNodeStatus) GetOrCreateWorkflowStatus() v1alpha1.MutableWork
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(v1alpha1.MutableWorkflowNodeStatus)
 		}
+	}
+
+	return r0
+}
+
+type ExecutableNodeStatus_GetOutputDir struct {
+	*mock.Call
+}
+
+func (_m ExecutableNodeStatus_GetOutputDir) Return(_a0 storage.DataReference) *ExecutableNodeStatus_GetOutputDir {
+	return &ExecutableNodeStatus_GetOutputDir{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableNodeStatus) OnGetOutputDir() *ExecutableNodeStatus_GetOutputDir {
+	c := _m.On("GetOutputDir")
+	return &ExecutableNodeStatus_GetOutputDir{Call: c}
+}
+
+func (_m *ExecutableNodeStatus) OnGetOutputDirMatch(matchers ...interface{}) *ExecutableNodeStatus_GetOutputDir {
+	c := _m.On("GetOutputDir", matchers...)
+	return &ExecutableNodeStatus_GetOutputDir{Call: c}
+}
+
+// GetOutputDir provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) GetOutputDir() storage.DataReference {
+	ret := _m.Called()
+
+	var r0 storage.DataReference
+	if rf, ok := ret.Get(0).(func() storage.DataReference); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(storage.DataReference)
 	}
 
 	return r0
@@ -603,6 +681,38 @@ func (_m *ExecutableNodeStatus) GetStoppedAt() *v1.Time {
 	return r0
 }
 
+type ExecutableNodeStatus_GetSystemFailures struct {
+	*mock.Call
+}
+
+func (_m ExecutableNodeStatus_GetSystemFailures) Return(_a0 uint32) *ExecutableNodeStatus_GetSystemFailures {
+	return &ExecutableNodeStatus_GetSystemFailures{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableNodeStatus) OnGetSystemFailures() *ExecutableNodeStatus_GetSystemFailures {
+	c := _m.On("GetSystemFailures")
+	return &ExecutableNodeStatus_GetSystemFailures{Call: c}
+}
+
+func (_m *ExecutableNodeStatus) OnGetSystemFailuresMatch(matchers ...interface{}) *ExecutableNodeStatus_GetSystemFailures {
+	c := _m.On("GetSystemFailures", matchers...)
+	return &ExecutableNodeStatus_GetSystemFailures{Call: c}
+}
+
+// GetSystemFailures provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) GetSystemFailures() uint32 {
+	ret := _m.Called()
+
+	var r0 uint32
+	if rf, ok := ret.Get(0).(func() uint32); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(uint32)
+	}
+
+	return r0
+}
+
 type ExecutableNodeStatus_GetTaskNodeStatus struct {
 	*mock.Call
 }
@@ -771,6 +881,38 @@ func (_m *ExecutableNodeStatus) IncrementAttempts() uint32 {
 	return r0
 }
 
+type ExecutableNodeStatus_IncrementSystemFailures struct {
+	*mock.Call
+}
+
+func (_m ExecutableNodeStatus_IncrementSystemFailures) Return(_a0 uint32) *ExecutableNodeStatus_IncrementSystemFailures {
+	return &ExecutableNodeStatus_IncrementSystemFailures{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableNodeStatus) OnIncrementSystemFailures() *ExecutableNodeStatus_IncrementSystemFailures {
+	c := _m.On("IncrementSystemFailures")
+	return &ExecutableNodeStatus_IncrementSystemFailures{Call: c}
+}
+
+func (_m *ExecutableNodeStatus) OnIncrementSystemFailuresMatch(matchers ...interface{}) *ExecutableNodeStatus_IncrementSystemFailures {
+	c := _m.On("IncrementSystemFailures", matchers...)
+	return &ExecutableNodeStatus_IncrementSystemFailures{Call: c}
+}
+
+// IncrementSystemFailures provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) IncrementSystemFailures() uint32 {
+	ret := _m.Called()
+
+	var r0 uint32
+	if rf, ok := ret.Get(0).(func() uint32); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(uint32)
+	}
+
+	return r0
+}
+
 type ExecutableNodeStatus_IsCached struct {
 	*mock.Call
 }
@@ -848,6 +990,11 @@ func (_m *ExecutableNodeStatus) SetCached() {
 // SetDataDir provides a mock function with given fields: _a0
 func (_m *ExecutableNodeStatus) SetDataDir(_a0 storage.DataReference) {
 	_m.Called(_a0)
+}
+
+// SetOutputDir provides a mock function with given fields: d
+func (_m *ExecutableNodeStatus) SetOutputDir(d storage.DataReference) {
+	_m.Called(d)
 }
 
 // SetParentNodeID provides a mock function with given fields: n

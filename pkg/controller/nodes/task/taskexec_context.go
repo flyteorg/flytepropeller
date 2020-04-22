@@ -10,6 +10,7 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+
 	pluginCatalog "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
@@ -123,8 +124,11 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		return nil, err
 	}
 
-	ow := ioutils.NewBufferedOutputWriter(ctx, ioutils.NewRemoteFileOutputPaths(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetDataDir()))
-
+	outputSandbox, err := ioutils.NewShardedRawOutputPath(ctx, nCtx.OutputShardSelector(), nCtx.RawOutputPrefix(), uniqueID, nCtx.DataStore())
+	if err != nil {
+		return nil, errors.Wrapf(errors.StorageError, nCtx.NodeID(), err, "failed to create output sandbox for node execution")
+	}
+	ow := ioutils.NewBufferedOutputWriter(ctx, ioutils.NewRemoteFileOutputPaths(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetOutputDir(), outputSandbox))
 	ts := nCtx.NodeStateReader().GetTaskNodeState()
 	var b *bytes.Buffer
 	if ts.PluginState != nil {
@@ -135,7 +139,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to initialize plugin state manager")
 	}
 
-	namespacePrefix := pluginCore.ResourceNamespace(pluginID)
+	resourceNamespacePrefix := pluginCore.ResourceNamespace(t.resourceManager.GetID()).CreateSubNamespace(pluginCore.ResourceNamespace(pluginID))
 
 	return &taskExecutionContext{
 		NodeExecutionContext: nCtx,
@@ -144,7 +148,8 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
 			o:                     nCtx.Node(),
 		},
-		rm:  resourcemanager.GetTaskResourceManager(t.resourceManager, namespacePrefix),
+		rm: resourcemanager.GetTaskResourceManager(
+			t.resourceManager, resourceNamespacePrefix, id),
 		psm: psm,
 		tr:  nCtx.TaskReader(),
 		ow:  ow,

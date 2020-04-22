@@ -3,8 +3,6 @@ package dynamic
 import (
 	"context"
 
-	"github.com/Masterminds/semver"
-
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -29,27 +27,27 @@ func underlyingInterface(ctx context.Context, taskReader handler.TaskReader) (*c
 	return iface, nil
 }
 
-func hierarchicalNodeID(parentNodeID, nodeID string) (string, error) {
-	return utils.FixedLengthUniqueIDForParts(20, parentNodeID, nodeID)
+func hierarchicalNodeID(parentNodeID, retryAttempt, nodeID string) (string, error) {
+	return utils.FixedLengthUniqueIDForParts(20, parentNodeID, retryAttempt, nodeID)
 }
 
-func updateBindingNodeIDsWithLineage(parentNodeID string, binding *core.BindingData) (err error) {
+func updateBindingNodeIDsWithLineage(parentNodeID, retryAttempt string, binding *core.BindingData) (err error) {
 	switch b := binding.Value.(type) {
 	case *core.BindingData_Promise:
-		b.Promise.NodeId, err = hierarchicalNodeID(parentNodeID, b.Promise.NodeId)
+		b.Promise.NodeId, err = hierarchicalNodeID(parentNodeID, retryAttempt, b.Promise.NodeId)
 		if err != nil {
 			return err
 		}
 	case *core.BindingData_Collection:
 		for _, item := range b.Collection.Bindings {
-			err = updateBindingNodeIDsWithLineage(parentNodeID, item)
+			err = updateBindingNodeIDsWithLineage(parentNodeID, retryAttempt, item)
 			if err != nil {
 				return err
 			}
 		}
 	case *core.BindingData_Map:
 		for _, item := range b.Map.Bindings {
-			err = updateBindingNodeIDsWithLineage(parentNodeID, item)
+			err = updateBindingNodeIDsWithLineage(parentNodeID, retryAttempt, item)
 			if err != nil {
 				return err
 			}
@@ -77,23 +75,6 @@ func compileTasks(_ context.Context, tasks []*core.TaskTemplate) ([]*core.Compil
 	}
 
 	return compiledTasks, nil
-}
-
-func isFlyteKitVersionBelow(runtime *core.RuntimeMetadata, ver *semver.Version) (bool, error) {
-	if runtime == nil {
-		return false, nil
-	}
-
-	if runtime.Type != core.RuntimeMetadata_FLYTE_SDK {
-		return false, nil
-	}
-
-	v, err := semver.NewVersion(runtime.Version)
-	if err != nil {
-		return false, err
-	}
-
-	return v.LessThan(ver), nil
 }
 
 func makeArrayInterface(varMap *core.VariableMap) *core.VariableMap {

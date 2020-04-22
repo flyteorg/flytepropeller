@@ -2,7 +2,10 @@ package v1alpha1
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+
+	"github.com/lyft/flytestdlib/storage"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -31,6 +34,8 @@ type FlyteWorkflow struct {
 	// Value must be a positive integer.
 	// +optional
 	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
+	// Defaults value of parameters to be used for nodes if not set by the node.
+	NodeDefaults NodeDefaults `json:"node-defaults,omitempty"`
 	// Specifies the time when the workflow has been accepted into the system.
 	AcceptedAt *metav1.Time `json:"acceptedAt,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run this pod.
@@ -39,6 +44,14 @@ type FlyteWorkflow struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty" protobuf:"bytes,8,opt,name=serviceAccountName"`
 	// Status is the only mutable section in the workflow. It holds all the execution information
 	Status WorkflowStatus `json:"status,omitempty"`
+
+	// non-Serialized fields
+	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
+}
+
+type NodeDefaults struct {
+	// Default behaviour for Interruptible for nodes unless explicitly set at the node level.
+	Interruptible bool `json:"interruptible,omitempty"`
 }
 
 var FlyteWorkflowGVK = SchemeGroupVersion.WithKind(FlyteWorkflowKind)
@@ -61,7 +74,9 @@ func (in *FlyteWorkflow) GetTask(id TaskID) (ExecutableTask, error) {
 }
 
 func (in *FlyteWorkflow) GetExecutionStatus() ExecutableWorkflowStatus {
-	return &in.Status
+	s := &in.Status
+	s.DataReferenceConstructor = in.DataReferenceConstructor
+	return s
 }
 
 func (in *FlyteWorkflow) GetK8sWorkflowID() types.NamespacedName {
@@ -83,12 +98,16 @@ func (in *FlyteWorkflow) FindSubWorkflow(subID WorkflowID) ExecutableSubWorkflow
 	return s
 }
 
-func (in *FlyteWorkflow) GetNodeExecutionStatus(id NodeID) ExecutableNodeStatus {
-	return in.Status.GetNodeExecutionStatus(id)
+func (in *FlyteWorkflow) GetNodeExecutionStatus(ctx context.Context, id NodeID) ExecutableNodeStatus {
+	return in.GetExecutionStatus().GetNodeExecutionStatus(ctx, id)
 }
 
 func (in *FlyteWorkflow) GetServiceAccountName() string {
 	return in.ServiceAccountName
+}
+
+func (in *FlyteWorkflow) IsInterruptible() bool {
+	return in.NodeDefaults.Interruptible
 }
 
 type Inputs struct {
@@ -186,10 +205,19 @@ func (in *WorkflowSpec) GetID() WorkflowID {
 	return in.ID
 }
 
+func (in *WorkflowSpec) ToNode(name NodeID) ([]NodeID, error) {
+	if _, ok := in.Nodes[name]; !ok {
+		return nil, errors.Errorf("Bad Node [%v], is not defined in the Workflow [%v]", name, in.ID)
+	}
+	upstreamNodes := in.Connections.UpstreamEdges[name]
+	return upstreamNodes, nil
+}
+
 func (in *WorkflowSpec) FromNode(name NodeID) ([]NodeID, error) {
 	if _, ok := in.Nodes[name]; !ok {
 		return nil, errors.Errorf("Bad Node [%v], is not defined in the Workflow [%v]", name, in.ID)
 	}
+
 	downstreamNodes := in.Connections.DownstreamEdges[name]
 	return downstreamNodes, nil
 }

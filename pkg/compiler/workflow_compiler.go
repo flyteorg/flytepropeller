@@ -280,14 +280,15 @@ func CompileWorkflow(primaryWf *core.WorkflowTemplate, subworkflows []*core.Work
 	}
 
 	// Validate overall requirements of the coreWorkflow.
-	wfIndex, ok := c.NewWorkflowIndex(toCompiledWorkflows(subworkflows...), errs.NewScope())
+	compiledSubWorkflows := toCompiledWorkflows(subworkflows...)
+	wfIndex, ok := c.NewWorkflowIndex(compiledSubWorkflows, errs.NewScope())
 	if !ok {
 		return nil, errs
 	}
 
 	compiledWf := &core.CompiledWorkflow{Template: wf}
 
-	gb := newWorfklowBuilder(compiledWf, wfIndex, c.NewTaskIndex(taskBuilders...), toInterfaceProviderMap(launchPlans))
+	gb := newWorkflowBuilder(compiledWf, wfIndex, c.NewTaskIndex(taskBuilders...), toInterfaceProviderMap(launchPlans))
 	// Terminate early if there are some required component not present.
 	if !gb.validateAllRequirements(errs.NewScope()) {
 		return nil, errs
@@ -301,8 +302,9 @@ func CompileWorkflow(primaryWf *core.WorkflowTemplate, subworkflows []*core.Work
 		}
 
 		return &core.CompiledWorkflowClosure{
-			Primary: validatedWf.GetCoreWorkflow(),
-			Tasks:   compiledTasks,
+			Primary:      validatedWf.GetCoreWorkflow(),
+			Tasks:        compiledTasks,
+			SubWorkflows: compiledSubWorkflows,
 		}, nil
 	}
 
@@ -310,10 +312,10 @@ func CompileWorkflow(primaryWf *core.WorkflowTemplate, subworkflows []*core.Work
 }
 
 func (w workflowBuilder) newWorkflowBuilder(fg *flyteWorkflow) workflowBuilder {
-	return newWorfklowBuilder(fg, w.allSubWorkflows, w.allTasks, w.allLaunchPlans)
+	return newWorkflowBuilder(fg, w.allSubWorkflows, w.allTasks, w.allLaunchPlans)
 }
 
-func newWorfklowBuilder(fg *flyteWorkflow, wfIndex c.WorkflowIndex, tasks c.TaskIndex,
+func newWorkflowBuilder(fg *flyteWorkflow, wfIndex c.WorkflowIndex, tasks c.TaskIndex,
 	workflows map[string]c.InterfaceProvider) workflowBuilder {
 
 	return workflowBuilder{

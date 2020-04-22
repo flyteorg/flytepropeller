@@ -22,9 +22,16 @@ var testScope = promutils.NewScope("test")
 type dummyBaseWorkflow struct {
 	DummyStartNode v1alpha1.ExecutableNode
 	ID             v1alpha1.WorkflowID
+	ToNodeCb       func(name v1alpha1.NodeID) ([]v1alpha1.NodeID, error)
 	FromNodeCb     func(name v1alpha1.NodeID) ([]v1alpha1.NodeID, error)
 	GetNodeCb      func(nodeId v1alpha1.NodeID) (v1alpha1.ExecutableNode, bool)
 	Status         map[v1alpha1.NodeID]*v1alpha1.NodeStatus
+	DataStore      *storage.DataStore
+	Interruptible  bool
+}
+
+func (d *dummyBaseWorkflow) ToNode(name v1alpha1.NodeID) ([]v1alpha1.NodeID, error) {
+	return d.ToNodeCb(name)
 }
 
 func (d *dummyBaseWorkflow) GetOutputBindings() []*v1alpha1.Binding {
@@ -81,6 +88,10 @@ func (d *dummyBaseWorkflow) GetLabels() map[string]string {
 	return map[string]string{}
 }
 
+func (d *dummyBaseWorkflow) IsInterruptible() bool {
+	return d.Interruptible
+}
+
 func (d *dummyBaseWorkflow) GetName() string {
 	return d.ID
 }
@@ -101,13 +112,17 @@ func (d *dummyBaseWorkflow) GetExecutionStatus() v1alpha1.ExecutableWorkflowStat
 	return nil
 }
 
-func (d *dummyBaseWorkflow) GetNodeExecutionStatus(id v1alpha1.NodeID) v1alpha1.ExecutableNodeStatus {
+func (d *dummyBaseWorkflow) GetNodeExecutionStatus(_ context.Context, id v1alpha1.NodeID) v1alpha1.ExecutableNodeStatus {
 	n, ok := d.Status[id]
 	if ok {
+		n.DataReferenceConstructor = d.DataStore
 		return n
 	}
-	n = &v1alpha1.NodeStatus{}
+	n = &v1alpha1.NodeStatus{
+		MutableStruct: v1alpha1.MutableStruct{},
+	}
 	d.Status[id] = n
+	n.DataReferenceConstructor = d.DataStore
 	return n
 }
 
@@ -127,12 +142,13 @@ func (d *dummyBaseWorkflow) GetNode(nodeID v1alpha1.NodeID) (v1alpha1.Executable
 	return d.GetNodeCb(nodeID)
 }
 
-func createDummyBaseWorkflow() *dummyBaseWorkflow {
+func createDummyBaseWorkflow(dataStore *storage.DataStore) *dummyBaseWorkflow {
 	return &dummyBaseWorkflow{
 		ID: "w1",
 		Status: map[v1alpha1.NodeID]*v1alpha1.NodeStatus{
 			v1alpha1.StartNodeID: {},
 		},
+		DataStore: dataStore,
 	}
 }
 
@@ -177,7 +193,8 @@ func TestResolveBindingData(t *testing.T) {
 	w := &dummyBaseWorkflow{
 		Status: map[v1alpha1.NodeID]*v1alpha1.NodeStatus{
 			"n2": {
-				DataDir: outputRef,
+				DataDir:   outputRef,
+				OutputDir: outputRef,
 			},
 		},
 		GetNodeCb: func(nodeId v1alpha1.NodeID) (v1alpha1.ExecutableNode, bool) {
@@ -347,7 +364,8 @@ func TestResolve(t *testing.T) {
 	w := &dummyBaseWorkflow{
 		Status: map[v1alpha1.NodeID]*v1alpha1.NodeStatus{
 			"n1": {
-				DataDir: outputRef,
+				DataDir:   outputRef,
+				OutputDir: outputRef,
 			},
 		},
 		GetNodeCb: func(nodeId v1alpha1.NodeID) (v1alpha1.ExecutableNode, bool) {

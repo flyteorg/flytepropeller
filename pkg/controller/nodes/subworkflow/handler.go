@@ -35,7 +35,7 @@ func (w *workflowNodeHandler) FinalizeRequired() bool {
 	return false
 }
 
-func (w *workflowNodeHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
+func (w *workflowNodeHandler) Setup(_ context.Context, _ handler.SetupContext) error {
 	return nil
 }
 
@@ -80,9 +80,7 @@ func (w *workflowNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecu
 	}
 
 	if wfNode.GetSubWorkflowRef() != nil {
-		wf := nCtx.Workflow()
-		status := wf.GetNodeExecutionStatus(nCtx.NodeID())
-		return w.subWfHandler.CheckSubWorkflowStatus(ctx, nCtx, wf, status)
+		return w.subWfHandler.CheckSubWorkflowStatus(ctx, nCtx)
 	} else if wfNode.GetLaunchPlanRefID() != nil {
 		return w.lpHandler.CheckLaunchPlanStatus(ctx, nCtx)
 	}
@@ -91,20 +89,19 @@ func (w *workflowNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecu
 }
 
 func (w *workflowNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
-	wf := nCtx.Workflow()
 	wfNode := nCtx.Node().GetWorkflowNode()
 	if wfNode.GetSubWorkflowRef() != nil {
-		return w.subWfHandler.HandleAbort(ctx, nCtx, wf, *wfNode.GetSubWorkflowRef())
+		return w.subWfHandler.HandleAbort(ctx, nCtx, reason)
 	}
 
 	if wfNode.GetLaunchPlanRefID() != nil {
-		return w.lpHandler.HandleAbort(ctx, wf, nCtx.Node())
+		return w.lpHandler.HandleAbort(ctx, nCtx, reason)
 	}
 	return nil
 }
 
-func (w *workflowNodeHandler) Finalize(ctx context.Context, executionContext handler.NodeExecutionContext) error {
-	logger.Debugf(ctx, "WorkflowNode::Finalizer: nothing to do")
+func (w *workflowNodeHandler) Finalize(ctx context.Context, _ handler.NodeExecutionContext) error {
+	logger.Warnf(ctx, "Subworkflow finalize invoked. Nothing to be done")
 	return nil
 }
 
