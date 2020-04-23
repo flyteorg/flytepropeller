@@ -13,15 +13,7 @@ jobs:
         with:
           username: "${{ github.actor }}"
           password: "${{ secrets.GITHUB_TOKEN }}"
-          image_name: lyft/{{REPOSITORY}}/operator
+          image_name: ${{ secrets.flytegithub_repo }}/operator
           image_tag: ${{ github.sha }}
           push_git_tag: true
           registry: docker.pkg.github.com
-      - name: Push Docker Image to DockerHub
-        uses: whoan/docker-build-with-cache-action@v5
-        with:
-          username: flytegithub
-          password: "${{ secrets.flytegithub_dockerhub }}"
-          image_name: lyft/{{REPOSITORY}}
-          image_tag: ${{ github.sha }}
-          push_git_tag: true
