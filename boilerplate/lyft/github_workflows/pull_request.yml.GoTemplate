@@ -13,7 +13,7 @@ jobs:
         with:
           username: "${{ github.actor }}"
           password: "${{ secrets.GITHUB_TOKEN }}"
-          image_name: lyft/flytepropeller/operator
+          image_name: lyft/{{REPOSITORY}}/operator
           image_tag: ${{ github.sha }}
           push_git_tag: true
           registry: docker.pkg.github.com
@@ -22,6 +22,6 @@ jobs:
         with:
           username: flytegithub
           password: "${{ secrets.flytegithub_dockerhub }}"
-          image_name: lyft/flytepropeller
+          image_name: lyft/{{REPOSITORY}}
           image_tag: ${{ github.sha }}
           push_git_tag: true
