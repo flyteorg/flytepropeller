@@ -467,6 +467,11 @@ func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 		*out = new(BranchNodeStatus)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Err != nil {
+		in, out := &in.Err, &out.Err
+		*out = new(ExecutionError)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.SubNodeStatus != nil {
 		in, out := &in.SubNodeStatus, &out.SubNodeStatus
 		*out = make(map[string]*NodeStatus, len(*in))
@@ -677,6 +682,11 @@ func (in *WorkflowStatus) DeepCopyInto(out *WorkflowStatus) {
 	if in.LastUpdatedAt != nil {
 		in, out := &in.LastUpdatedAt, &out.LastUpdatedAt
 		*out = (*in).DeepCopy()
+	}
+	if in.Err != nil {
+		in, out := &in.Err, &out.Err
+		*out = new(ExecutionError)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.NodeStatus != nil {
 		in, out := &in.NodeStatus, &out.NodeStatus

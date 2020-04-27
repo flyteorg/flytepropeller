@@ -139,7 +139,7 @@ func (c *workflowExecutor) handleRunningWorkflow(ctx context.Context, w *v1alpha
 		return StatusRunning, err
 	}
 	if state.HasFailed() {
-		logger.Infof(ctx, "Workflow has failed. Error [%s]", utils.ToString(state.Err))
+		logger.Infof(ctx, "Workflow has failed. Error [%s]", state.Err.String())
 		return StatusFailing(state.Err), nil
 	}
 	if state.HasTimedOut() {
@@ -185,7 +185,15 @@ func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha
 		}
 		// Fallthrough to handle state is complete
 	}
-	return StatusFailed(utils.ParseExecutionError(w.GetExecutionStatus().GetMessage())), nil
+	err := w.GetExecutionStatus().GetExecutionError()
+	if err == nil {
+		err = &core.ExecutionError{
+			Code:    "UnknownError",
+			Message: fmt.Sprintf("Unknown error, last seen message [%s]", w.GetExecutionStatus().GetMessage()),
+			Kind:    core.ExecutionError_UNKNOWN,
+		}
+	}
+	return StatusFailed(err), nil
 }
 
 func (c *workflowExecutor) handleSucceedingWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) Status {
@@ -199,14 +207,15 @@ func (c *workflowExecutor) handleSucceedingWorkflow(ctx context.Context, w *v1al
 	return StatusSuccess
 }
 
-func convertToExecutionError(err *core.ExecutionError, alternateErr string) *event.WorkflowExecutionEvent_Error {
+func convertToExecutionError(err *core.ExecutionError, alternateErr *core.ExecutionError) *event.WorkflowExecutionEvent_Error {
 	if err == nil {
-		if alternateErr != "" {
-			err = utils.ParseExecutionError(alternateErr)
+		if alternateErr != nil {
+			err = alternateErr
 		} else {
 			err = &core.ExecutionError{
 				Code:    errors.RuntimeExecutionError.String(),
 				Message: "Unknown error",
+				Kind:    core.ExecutionError_UNKNOWN,
 			}
 		}
 	}
@@ -232,26 +241,26 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 		wfEvent := &event.WorkflowExecutionEvent{
 			ExecutionId: execID,
 		}
-		previousMsg := wStatus.GetMessage()
+		previousError := wStatus.GetExecutionError()
 		switch toStatus.TransitionToPhase {
 		case v1alpha1.WorkflowPhaseReady:
 			// Do nothing
 			return nil
 		case v1alpha1.WorkflowPhaseRunning:
 			wfEvent.Phase = core.WorkflowExecution_RUNNING
-			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseRunning, fmt.Sprintf("Workflow Started"))
+			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseRunning, fmt.Sprintf("Workflow Started"), nil)
 			wfEvent.OccurredAt = utils.GetProtoTime(wStatus.GetStartedAt())
 		case v1alpha1.WorkflowPhaseFailing:
 			wfEvent.Phase = core.WorkflowExecution_FAILING
-			wfEvent.OutputResult = convertToExecutionError(toStatus.Err, previousMsg)
-			// Completion latency is only observed when a workflow completes successfully
-			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseFailing, utils.ToString(wfEvent.GetError()))
+			wfEvent.OutputResult = convertToExecutionError(toStatus.Err, previousError)
+			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseFailing, "", wfEvent.GetError())
 			wfEvent.OccurredAt = utils.GetProtoTime(nil)
 		case v1alpha1.WorkflowPhaseFailed:
 			wfEvent.Phase = core.WorkflowExecution_FAILED
-			wfEvent.OutputResult = convertToExecutionError(toStatus.Err, previousMsg)
-			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseFailed, utils.ToString(wfEvent.GetError()))
+			wfEvent.OutputResult = convertToExecutionError(toStatus.Err, previousError)
+			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseFailed, "", wfEvent.GetError())
 			wfEvent.OccurredAt = utils.GetProtoTime(wStatus.GetStoppedAt())
+			// Completion latency is only observed when a workflow completes successfully
 			c.metrics.FailureDuration.Observe(ctx, wStatus.GetStartedAt().Time, wStatus.GetStoppedAt().Time)
 		case v1alpha1.WorkflowPhaseSucceeding:
 			wfEvent.Phase = core.WorkflowExecution_SUCCEEDING
@@ -262,11 +271,11 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 				c.metrics.CompletionLatency.Observe(ctx, endNodeStatus.GetStartedAt().Time, time.Now())
 			}
 
-			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseSucceeding, "")
+			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseSucceeding, "", nil)
 			wfEvent.OccurredAt = utils.GetProtoTime(nil)
 		case v1alpha1.WorkflowPhaseSuccess:
 			wfEvent.Phase = core.WorkflowExecution_SUCCEEDED
-			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseSuccess, "")
+			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseSuccess, "", nil)
 			// Not all workflows have outputs
 			if wStatus.GetOutputReference() != "" {
 				wfEvent.OutputResult = &event.WorkflowExecutionEvent_OutputUri{
@@ -280,7 +289,7 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 			if wStatus.GetLastUpdatedAt() != nil {
 				c.metrics.CompletionLatency.Observe(ctx, wStatus.GetLastUpdatedAt().Time, time.Now())
 			}
-			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseAborted, "")
+			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseAborted, "", nil)
 			wfEvent.OccurredAt = utils.GetProtoTime(wStatus.GetStoppedAt())
 		default:
 			return errors.Errorf(errors.IllegalStateError, "", "Illegal transition from [%v] -> [%v]", wStatus.GetPhase().String(), toStatus.TransitionToPhase.String())
@@ -291,7 +300,7 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 				// Move to WorkflowPhaseFailed for state mis-match
 				msg := fmt.Sprintf("workflow state mismatch between propeller and control plane; Propeller State: %s, ExecutionId %s", wfEvent.Phase.String(), wfEvent.ExecutionId)
 				logger.Warningf(ctx, msg)
-				wStatus.UpdatePhase(v1alpha1.WorkflowPhaseFailed, msg)
+				wStatus.UpdatePhase(v1alpha1.WorkflowPhaseFailed, msg, nil)
 				return nil
 			}
 			logger.Warningf(ctx, "Event recording failed. Error [%s]", recordingErr.Error())

@@ -22,10 +22,9 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 
-	"github.com/lyft/flytepropeller/pkg/controller/config"
-	"github.com/lyft/flytepropeller/pkg/utils"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/lyft/flytepropeller/pkg/controller/config"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
@@ -351,8 +350,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 	// execErr in phase-info 'p' is only available if node has failed to execute, and the current phase at that time
 	// will be v1alpha1.NodePhaseRunning
 	execErr := p.GetErr()
-	if execErr != nil && currentPhase == v1alpha1.NodePhaseRunning {
-
+	if execErr != nil && (currentPhase == v1alpha1.NodePhaseRunning || currentPhase == v1alpha1.NodePhaseQueued) {
 		endTime := time.Now()
 		startTime := endTime
 		if lastAttemptStartTime != nil {
@@ -400,6 +398,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 	}
 
 	// If it is retryable failure, we do no want to send any events, as the node is essentially still running
+	// Similarly if the phase has not changed from the last time, events do not need to be sent
 	if np != nodeStatus.GetPhase() && np != v1alpha1.NodePhaseRetryableFailure {
 		// assert np == skipped, succeeding or failing
 		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s], (handler phase [%s])", nodeStatus.GetPhase().String(), np.String(), p.GetPhase().String())
@@ -436,7 +435,7 @@ func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx *nodeExe
 	// NOTE: It is important to increment attempts only after abort has been called. Increment attempt mutates the state
 	// Attempt is used throughout the system to determine the idempotent resource version.
 	nodeStatus.IncrementAttempts()
-	nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying")
+	nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying", nil)
 	// We are going to retry in the next round, so we should clear all current state
 	nodeStatus.ClearSubNodeStatus()
 	nodeStatus.ClearTaskStatus()
@@ -463,9 +462,9 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 		if err := c.finalize(ctx, h, nCtx); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), nodeStatus.GetMessage())
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), nodeStatus.GetMessage(), nodeStatus.GetExecutionError())
 		c.metrics.FailureDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
-		return executors.NodeStatusFailed(utils.ParseExecutionError(nodeStatus.GetMessage())), nil
+		return executors.NodeStatusFailed(nodeStatus.GetExecutionError()), nil
 	}
 
 	if currentPhase == v1alpha1.NodePhaseTimingOut {
@@ -475,7 +474,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 		}
 
 		nodeStatus.ClearSubNodeStatus()
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseTimedOut, v1.Now(), nodeStatus.GetMessage())
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseTimedOut, v1.Now(), nodeStatus.GetMessage(), nodeStatus.GetExecutionError())
 		c.metrics.TimedOutFailure.Inc(ctx)
 		return executors.NodeStatusTimedOut, nil
 	}
@@ -487,7 +486,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 		}
 
 		nodeStatus.ClearSubNodeStatus()
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully")
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully", nil)
 		c.metrics.SuccessDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		return executors.NodeStatusSuccess, nil
 	}
@@ -498,7 +497,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 
 	if currentPhase == v1alpha1.NodePhaseFailed {
 		// This should never happen
-		return executors.NodeStatusFailed(utils.ParseExecutionError(nodeStatus.GetMessage())), nil
+		return executors.NodeStatusFailed(nodeStatus.GetExecutionError()), nil
 	}
 
 	return c.handleQueuedOrRunningNode(ctx, nCtx, h)

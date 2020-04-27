@@ -159,8 +159,8 @@ func PhaseInfoFailureErr(err *core.ExecutionError, info *ExecutionInfo) PhaseInf
 	return phaseInfoFailed(EPhaseFailed, err, info)
 }
 
-func PhaseInfoRetryableFailure(code, reason string, info *ExecutionInfo) PhaseInfo {
-	return phaseInfoFailed(EPhaseRetryableFailure, &core.ExecutionError{Code: code, Message: reason}, info)
+func PhaseInfoRetryableFailure(kind core.ExecutionError_ErrorKind, code, reason string, info *ExecutionInfo) PhaseInfo {
+	return phaseInfoFailed(EPhaseRetryableFailure, &core.ExecutionError{Kind: kind, Code: code, Message: reason}, info)
 }
 
 func PhaseInfoRetryableFailureErr(err *core.ExecutionError, info *ExecutionInfo) PhaseInfo {
