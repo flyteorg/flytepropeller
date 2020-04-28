@@ -102,11 +102,11 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 			WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},
 		})), nil
 	case core.WorkflowExecution_FAILED:
-		errMsg := fmt.Sprintf("launchplan execution failed without explicit error")
+		execErr := &core.ExecutionError{Code:"LaunchPlanExecutionFailed", Message:"Unknown Error"}
 		if wfStatusClosure.GetError() != nil {
-			errMsg = fmt.Sprintf(" errorCode[%s]: %s", wfStatusClosure.GetError().Code, wfStatusClosure.GetError().Message)
+			execErr = wfStatusClosure.GetError()
 		}
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_USER, errors.RemoteChildWorkflowExecutionFailed, errMsg, &handler.ExecutionInfo{
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailureErr(execErr, &handler.ExecutionInfo{
 			WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},
 		})), nil
 	case core.WorkflowExecution_SUCCEEDED:
