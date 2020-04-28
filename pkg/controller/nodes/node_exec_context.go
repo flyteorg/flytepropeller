@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flytepropeller/pkg/controller/workflow"
+	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -26,10 +27,10 @@ const NodeInterruptibleLabel = "interruptible"
 
 type nodeExecMetadata struct {
 	v1alpha1.Meta
-	nodeExecID     *core.NodeExecutionIdentifier
-	interrutptible bool
-	nodeLabels     map[string]string
-	queuingBudget  time.Duration
+	nodeExecID             *core.NodeExecutionIdentifier
+	interruptible          bool
+	nodeLabels             map[string]string
+	queuingBudgetAllocator workflow.QueueBudgetHandler
 }
 
 func (e nodeExecMetadata) GetNodeExecutionID() *core.NodeExecutionIdentifier {
@@ -45,11 +46,11 @@ func (e nodeExecMetadata) GetOwnerID() types.NamespacedName {
 }
 
 func (e nodeExecMetadata) IsInterruptible() bool {
-	return e.interrutptible
+	return e.interruptible
 }
 
-func (e nodeExecMetadata) GetQueuingBudget() time.Duration {
-	return e.queuingBudget
+func (e nodeExecMetadata) GetQueuingBudgetAllocator() workflow.QueueBudgetHandler {
+	return e.queuingBudgetAllocator
 }
 
 func (e nodeExecMetadata) GetLabels() map[string]string {
@@ -141,15 +142,18 @@ func (e nodeExecContext) MaxDatasetSizeBytes() int64 {
 	return e.maxDatasetSizeBytes
 }
 
-func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, queueingBudget time.Duration, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
+func newNodeExecContext(ctx context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
+
+	// TODO ssingh: dont initiliaze it here, instead pass this down from caller
+	queuingBudgetAllocator := workflow.NewDefaultQueueBudgetHandler(nil, nl)
+
 	md := nodeExecMetadata{
 		Meta: execContext,
 		nodeExecID: &core.NodeExecutionIdentifier{
 			NodeId:      node.GetID(),
 			ExecutionId: execContext.GetExecutionID().WorkflowExecutionIdentifier,
 		},
-		interrutptible: interruptible,
-		queuingBudget:  queueingBudget,
+		queuingBudgetAllocator: queuingBudgetAllocator,
 	}
 
 	// Copy the wf labels before adding node specific labels.
@@ -161,7 +165,13 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 	if tr != nil && tr.GetTaskID() != nil {
 		nodeLabels[TaskNameLabel] = utils.SanitizeLabelValue(tr.GetTaskID().Name)
 	}
-	nodeLabels[NodeInterruptibleLabel] = strconv.FormatBool(interruptible)
+
+	schedulingParameters, err := queuingBudgetAllocator.GetNodeSchedulingParameters(ctx, node.GetID())
+	if err != nil {
+		// TODO: return err
+		logger.Error(ctx, err)
+	}
+	nodeLabels[NodeInterruptibleLabel] = strconv.FormatBool(schedulingParameters.IsInterruptible)
 	md.nodeLabels = nodeLabels
 
 	return &nodeExecContext{
@@ -205,20 +215,6 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		return nil
 	}
 
-	interruptible := executionContext.IsInterruptible()
-	if n.IsInterruptible() != nil {
-		interruptible = *n.IsInterruptible()
-	}
-
-	s := nl.GetNodeExecutionStatus(ctx, currentNodeID)
-
-	// a node is not considered interruptible if the system failures have exceeded the configured threshold
-	if interruptible && s.GetSystemFailures() >= c.interruptibleFailureThreshold {
-		interruptible = false
-		c.metrics.InterruptedThresholdHit.Inc(ctx)
-	}
-
-	var queueingBudget time.Duration
 	return newNodeExecContext(ctx, c.store, executionContext, nl, n, s,
 		ioutils.NewCachedInputReader(
 			ctx,
@@ -232,8 +228,6 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 				),
 			),
 		),
-		interruptible,
-		queueingBudget,
 		c.maxDatasetSizeBytes,
 		&taskEventRecorder{TaskEventRecorder: c.taskRecorder},
 		tr,

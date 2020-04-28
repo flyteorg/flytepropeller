@@ -261,7 +261,7 @@ type ExecutableNodeStatus interface {
 	GetSystemFailures() uint32
 	GetWorkflowNodeStatus() ExecutableWorkflowNodeStatus
 	GetTaskNodeStatus() ExecutableTaskNodeStatus
-	GetQueuingBudgetSeconds() *int64
+	GetMaxQueueTime() *int64
 	GetQueuingDelaySeconds() *int64
 
 	IsCached() bool
