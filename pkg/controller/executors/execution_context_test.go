@@ -30,7 +30,6 @@ func TestExecutionContext(t *testing.T) {
 	assert.Equal(t, typed.SubWorkflowGetter, subWfGetter)
 	assert.Equal(t, typed.TaskDetailsGetter, taskGetter)
 
-
 	taskGetter2 := tdGetter{}
 	NewExecutionContextWithTasksGetter(ec, taskGetter2)
 	assert.NotNil(t, ec)

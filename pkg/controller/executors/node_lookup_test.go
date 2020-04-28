@@ -38,7 +38,6 @@ func TestNewTestNodeLookup(t *testing.T) {
 	assert.Equal(t, n, r)
 	assert.Equal(t, ns, nl.GetNodeExecutionStatus(context.TODO(), "n1"))
 
-
 	_, ok = nl.GetNode("n")
 	assert.False(t, ok)
 	assert.NotEqual(t, ns, nl.GetNodeExecutionStatus(context.TODO(), "n"))

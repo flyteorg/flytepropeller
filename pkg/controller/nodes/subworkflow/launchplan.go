@@ -102,7 +102,7 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 			WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},
 		})), nil
 	case core.WorkflowExecution_FAILED:
-		execErr := &core.ExecutionError{Code:"LaunchPlanExecutionFailed", Message:"Unknown Error"}
+		execErr := &core.ExecutionError{Code: "LaunchPlanExecutionFailed", Message: "Unknown Error"}
 		if wfStatusClosure.GetError() != nil {
 			execErr = wfStatusClosure.GetError()
 		}
