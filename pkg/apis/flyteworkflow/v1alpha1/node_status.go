@@ -181,7 +181,7 @@ type NodeStatus struct {
 	TaskNodeStatus    *TaskNodeStatus    `json:",omitempty"`
 	DynamicNodeStatus *DynamicNodeStatus `json:"dynamicNodeStatus,omitempty"`
 	// In case of Failing/Failed Phase, an execution error can be optionally associated with the Node
-	Err *ExecutionError `json:"error,omitempty"`
+	Error *ExecutionError `json:"error,omitempty"`
 
 	// Not Persisted
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
@@ -399,8 +399,7 @@ func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason st
 	}
 
 	if err != nil {
-		in.Err = new(ExecutionError)
-		in.Err.ExecutionError = err
+		in.Error = &ExecutionError{err}
 	}
 
 	if p == NodePhaseQueued && in.QueuedAt == nil {
@@ -637,8 +636,8 @@ func (in *NodeStatus) Equals(other *NodeStatus) bool {
 }
 
 func (in *NodeStatus) GetExecutionError() *core.ExecutionError {
-	if in.Err != nil {
-		return in.Err.ExecutionError
+	if in.Error != nil {
+		return in.Error.ExecutionError
 	}
 	return nil
 }

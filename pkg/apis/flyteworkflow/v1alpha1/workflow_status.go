@@ -33,7 +33,7 @@ type WorkflowStatus struct {
 	FailedAttempts uint32 `json:"failedAttempts,omitempty"`
 
 	// Stores the Error during the Execution of the Workflow. It is optional and usually associated with Failing/Failed state only
-	Err *ExecutionError `json:"error,omitempty"`
+	Error *ExecutionError `json:"error,omitempty"`
 
 	// non-Serialized fields
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
@@ -60,8 +60,7 @@ func (in *WorkflowStatus) UpdatePhase(p WorkflowPhase, msg string, err *core.Exe
 	}
 
 	if err != nil {
-		in.Err = new(ExecutionError)
-		in.Err.ExecutionError = err
+		in.Error = &ExecutionError{err}
 	}
 
 	if IsWorkflowPhaseTerminal(p) && in.StoppedAt == nil {
@@ -72,8 +71,8 @@ func (in *WorkflowStatus) UpdatePhase(p WorkflowPhase, msg string, err *core.Exe
 }
 
 func (in *WorkflowStatus) GetExecutionError() *core.ExecutionError {
-	if in.Err != nil {
-		return in.Err.ExecutionError
+	if in.Error != nil {
+		return in.Error.ExecutionError
 	}
 	return nil
 }

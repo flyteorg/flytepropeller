@@ -510,8 +510,8 @@ func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 		*out = new(DynamicNodeStatus)
 		**out = **in
 	}
-	if in.Err != nil {
-		in, out := &in.Err, &out.Err
+	if in.Error != nil {
+		in, out := &in.Error, &out.Error
 		*out = (*in).DeepCopy()
 	}
 	if in.DataReferenceConstructor != nil {
@@ -715,8 +715,8 @@ func (in *WorkflowStatus) DeepCopyInto(out *WorkflowStatus) {
 			(*out)[key] = outVal
 		}
 	}
-	if in.Err != nil {
-		in, out := &in.Err, &out.Err
+	if in.Error != nil {
+		in, out := &in.Error, &out.Error
 		*out = (*in).DeepCopy()
 	}
 	if in.DataReferenceConstructor != nil {

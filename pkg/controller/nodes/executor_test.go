@@ -469,7 +469,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		ns := &v1alpha1.NodeStatus{
 			Phase:                p,
 			LastAttemptStartedAt: &v1.Time{},
-			Err:                  err,
+			Error:                err,
 		}
 
 		startNode := &v1alpha1.NodeSpec{
