@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -28,6 +29,7 @@ type nodeExecMetadata struct {
 	nodeExecID     *core.NodeExecutionIdentifier
 	interrutptible bool
 	nodeLabels     map[string]string
+	queuingBudget  time.Duration
 }
 
 func (e nodeExecMetadata) GetNodeExecutionID() *core.NodeExecutionIdentifier {
@@ -44,6 +46,10 @@ func (e nodeExecMetadata) GetOwnerID() types.NamespacedName {
 
 func (e nodeExecMetadata) IsInterruptible() bool {
 	return e.interrutptible
+}
+
+func (e nodeExecMetadata) GetQueuingBudget() time.Duration {
+	return e.queuingBudget
 }
 
 func (e nodeExecMetadata) GetLabels() map[string]string {
@@ -135,7 +141,7 @@ func (e nodeExecContext) MaxDatasetSizeBytes() int64 {
 	return e.maxDatasetSizeBytes
 }
 
-func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
+func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, queueingBudget time.Duration, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
 	md := nodeExecMetadata{
 		Meta: execContext,
 		nodeExecID: &core.NodeExecutionIdentifier{
@@ -143,6 +149,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 			ExecutionId: execContext.GetExecutionID().WorkflowExecutionIdentifier,
 		},
 		interrutptible: interruptible,
+		queuingBudget:  queueingBudget,
 	}
 
 	// Copy the wf labels before adding node specific labels.
@@ -198,19 +205,20 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		return nil
 	}
 
-	interrutible := executionContext.IsInterruptible()
+	interruptible := executionContext.IsInterruptible()
 	if n.IsInterruptible() != nil {
-		interrutible = *n.IsInterruptible()
+		interruptible = *n.IsInterruptible()
 	}
 
 	s := nl.GetNodeExecutionStatus(ctx, currentNodeID)
 
 	// a node is not considered interruptible if the system failures have exceeded the configured threshold
-	if interrutible && s.GetSystemFailures() >= c.interruptibleFailureThreshold {
-		interrutible = false
+	if interruptible && s.GetSystemFailures() >= c.interruptibleFailureThreshold {
+		interruptible = false
 		c.metrics.InterruptedThresholdHit.Inc(ctx)
 	}
 
+	var queueingBudget time.Duration
 	return newNodeExecContext(ctx, c.store, executionContext, nl, n, s,
 		ioutils.NewCachedInputReader(
 			ctx,
@@ -224,7 +232,8 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 				),
 			),
 		),
-		interrutible,
+		interruptible,
+		queueingBudget,
 		c.maxDatasetSizeBytes,
 		&taskEventRecorder{TaskEventRecorder: c.taskRecorder},
 		tr,

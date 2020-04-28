@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -38,6 +39,7 @@ type NodeExecutionMetadata interface {
 	GetAnnotations() map[string]string
 	GetK8sServiceAccount() string
 	IsInterruptible() bool
+	GetQueuingBudget() time.Duration
 }
 
 type NodeExecutionContext interface {

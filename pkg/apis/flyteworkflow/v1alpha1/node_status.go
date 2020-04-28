@@ -183,6 +183,9 @@ type NodeStatus struct {
 
 	// Not Persisted
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
+
+	QueuingBudgetSeconds *int64 `json:"queuingBudgetSeconds,omitempty"`
+	QueuingDelaySeconds  *int64 `json:"queuingDelaySeconds,omitempty"`
 }
 
 func (in *NodeStatus) IsDirty() bool {
@@ -418,6 +421,14 @@ func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason st
 
 	in.LastUpdatedAt = &n
 	in.SetDirty()
+}
+
+func (in *NodeStatus) GetQueuingBudgetSeconds() *int64 {
+	return in.QueuingBudgetSeconds
+}
+
+func (in *NodeStatus) GetQueuingDelaySeconds() *int64 {
+	return in.QueuingDelaySeconds
 }
 
 func (in *NodeStatus) GetStartedAt() *metav1.Time {

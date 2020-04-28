@@ -328,6 +328,8 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 	// across execute which is used to emit metrics
 	lastAttemptStartTime := nodeStatus.GetLastAttemptStartedAt()
 
+	// pass the max-wait-time from here
+	// plugin that new interface: calculate remaining budget and invoke that budget-allocator
 	p, err := c.execute(ctx, h, nCtx, nodeStatus)
 	if err != nil {
 		logger.Errorf(ctx, "failed Execute for node. Error: %s", err.Error())

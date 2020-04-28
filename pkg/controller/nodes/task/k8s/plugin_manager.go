@@ -178,6 +178,7 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 		cfg := nodeTaskConfig.GetConfig()
 		backOffHandler := e.backOffController.GetOrCreateHandler(ctx, key, cfg.BackOffConfig.BaseSecond, cfg.BackOffConfig.MaxDuration.Duration)
 
+		// this is returning an error on RQ, which keep node in same queued state. We should instead return PhaseNotReady
 		err = backOffHandler.Handle(ctx, func() error {
 			return e.kubeClient.GetClient().Create(ctx, o)
 		}, podRequestedResources)
@@ -282,6 +283,7 @@ func (e PluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutio
 		return pluginsCore.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 	if ps.Phase == PluginPhaseNotStarted {
+		// backoff on RQ
 		t, err := e.LaunchResource(ctx, tCtx)
 		if err == nil && t.Info().Phase() == pluginsCore.PhaseQueued {
 			if err := tCtx.PluginStateWriter().Put(pluginStateVersion, &PluginState{Phase: PluginPhaseStarted}); err != nil {

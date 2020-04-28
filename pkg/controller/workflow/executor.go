@@ -434,3 +434,8 @@ func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1al
 		},
 	}, nil
 }
+
+// Interface for the Workflow p. This is the mutable portion for a Workflow
+type QueueingBudgetAllocationStrategy interface {
+	GetQueueingBudget(n core.Node) time.Duration
+}
