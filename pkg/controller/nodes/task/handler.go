@@ -243,6 +243,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 			}
 		}()
 		childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
+		// this is where plugin is called and RQ is handled
 		trns, err = p.Handle(childCtx, tCtx)
 		return
 	}()
@@ -365,6 +366,12 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// So now we will derive this from the plugin phase
 	// TODO @kumare re-evaluate this decision
 
+	// STEP 0: bookkeeping step just to accept the request in taskhandler, so any queueing from here onwards is measured in the task
+	// handler
+	if ts.PluginPhase == pluginCore.PhaseUndefined {
+
+	}
+
 	// STEP 1: Check Cache
 	if ts.PluginPhase == pluginCore.PhaseUndefined && checkCatalog {
 		// This is assumed to be first time. we will check catalog and call handle
@@ -405,6 +412,8 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		// Lets check if this value in cache is less than or equal to one in the store
 		if barrierTick <= ts.BarrierClockTick {
 			var err error
+
+			// thie is where the object is created the first time
 			pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
 			if err != nil {
 				return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")

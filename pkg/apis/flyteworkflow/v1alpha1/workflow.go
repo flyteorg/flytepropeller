@@ -47,6 +47,10 @@ type FlyteWorkflow struct {
 
 	// non-Serialized fields
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
+
+	// Description
+	// +optional
+	QueuingBudgetSeconds *int64
 }
 
 type NodeDefaults struct {

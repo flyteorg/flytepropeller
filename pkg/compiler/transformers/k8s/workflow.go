@@ -164,6 +164,12 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		interruptible = wf.GetMetadataDefaults().GetInterruptible()
 	}
 
+	var queuingBudgetSeconds *int64
+	if wf.GetMetadata() != nil && wf.GetMetadata().GetQueuingBudget() != nil {
+		budgetSeconds := wf.GetMetadata().GetQueuingBudget().GetSeconds()
+		queuingBudgetSeconds = &budgetSeconds
+	}
+
 	obj := &v1alpha1.FlyteWorkflow{
 		TypeMeta: v1.TypeMeta{
 			Kind:       v1alpha1.FlyteWorkflowKind,
@@ -173,11 +179,12 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 			Namespace: namespace,
 			Labels:    map[string]string{},
 		},
-		Inputs:       &v1alpha1.Inputs{LiteralMap: inputs},
-		WorkflowSpec: primarySpec,
-		SubWorkflows: subwfs,
-		Tasks:        buildTasks(tasks, errs.NewScope()),
-		NodeDefaults: v1alpha1.NodeDefaults{Interruptible: interruptible},
+		Inputs:               &v1alpha1.Inputs{LiteralMap: inputs},
+		WorkflowSpec:         primarySpec,
+		SubWorkflows:         subwfs,
+		Tasks:                buildTasks(tasks, errs.NewScope()),
+		NodeDefaults:         v1alpha1.NodeDefaults{Interruptible: interruptible},
+		QueuingBudgetSeconds: queuingBudgetSeconds,
 	}
 
 	var err error
