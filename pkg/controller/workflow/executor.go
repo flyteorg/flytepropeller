@@ -437,7 +437,7 @@ func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1al
 
 // Interface for the Workflow p. This is the mutable portion for a Workflow
 type QueueBudgetHandler interface {
-	GetNodeSchedulingParameters(ctx context.Context, id v1alpha1.NodeID) (*NodeQueuingParameters, error)
+	GetNodeQueuingParameters(ctx context.Context, id v1alpha1.NodeID) (*NodeQueuingParameters, error)
 }
 
 type NodeQueuingParameters struct {
@@ -450,7 +450,7 @@ type defaultQueueBudgetHandler struct {
 	nl  executors.NodeLookup
 }
 
-func (in *defaultQueueBudgetHandler) GetNodeSchedulingParameters(ctx context.Context, id v1alpha1.NodeID) (*NodeQueuingParameters, error) {
+func (in *defaultQueueBudgetHandler) GetNodeQueuingParameters(ctx context.Context, id v1alpha1.NodeID) (*NodeQueuingParameters, error) {
 
 	if id == v1alpha1.StartNodeID {
 		return nil, nil

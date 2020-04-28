@@ -27,10 +27,10 @@ const NodeInterruptibleLabel = "interruptible"
 
 type nodeExecMetadata struct {
 	v1alpha1.Meta
-	nodeExecID             *core.NodeExecutionIdentifier
-	interruptible          bool
-	nodeLabels             map[string]string
-	queuingBudgetAllocator workflow.QueueBudgetHandler
+	nodeExecID         *core.NodeExecutionIdentifier
+	interruptible      bool
+	nodeLabels         map[string]string
+	queueBudgetHandler workflow.QueueBudgetHandler
 }
 
 func (e nodeExecMetadata) GetNodeExecutionID() *core.NodeExecutionIdentifier {
@@ -50,7 +50,7 @@ func (e nodeExecMetadata) IsInterruptible() bool {
 }
 
 func (e nodeExecMetadata) GetQueuingBudgetAllocator() workflow.QueueBudgetHandler {
-	return e.queuingBudgetAllocator
+	return e.queueBudgetHandler
 }
 
 func (e nodeExecMetadata) GetLabels() map[string]string {
@@ -144,8 +144,8 @@ func (e nodeExecContext) MaxDatasetSizeBytes() int64 {
 
 func newNodeExecContext(ctx context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
 
-	// TODO ssingh: dont initiliaze it here, instead pass this down from caller
-	queuingBudgetAllocator := workflow.NewDefaultQueueBudgetHandler(nil, nl)
+	// TODO ssingh: dont initialize it here, instead pass this down from caller
+	queueBudgetHandler := workflow.NewDefaultQueueBudgetHandler(nil, nl)
 
 	md := nodeExecMetadata{
 		Meta: execContext,
@@ -153,7 +153,7 @@ func newNodeExecContext(ctx context.Context, store *storage.DataStore, execConte
 			NodeId:      node.GetID(),
 			ExecutionId: execContext.GetExecutionID().WorkflowExecutionIdentifier,
 		},
-		queuingBudgetAllocator: queuingBudgetAllocator,
+		queueBudgetHandler: queueBudgetHandler,
 	}
 
 	// Copy the wf labels before adding node specific labels.
@@ -166,7 +166,7 @@ func newNodeExecContext(ctx context.Context, store *storage.DataStore, execConte
 		nodeLabels[TaskNameLabel] = utils.SanitizeLabelValue(tr.GetTaskID().Name)
 	}
 
-	schedulingParameters, err := queuingBudgetAllocator.GetNodeSchedulingParameters(ctx, node.GetID())
+	schedulingParameters, err := queueBudgetHandler.GetNodeQueuingParameters(ctx, node.GetID())
 	if err != nil {
 		// TODO: return err
 		logger.Error(ctx, err)
