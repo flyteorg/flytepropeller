@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -16,7 +17,9 @@ import (
 	"github.com/lyft/flytepropeller/pkg/compiler/transformers/k8s"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task"
+	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
 type dynamicWorkflowContext struct {
@@ -150,21 +153,22 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	var closure *core.CompiledWorkflowClosure
 	wf, err := d.buildDynamicWorkflowTemplate(ctx, djSpec, nCtx, dynamicNodeStatus)
 	if err != nil {
-		return dynamicWorkflowContext{}, err
+		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "failed to build dynamic workflow template")
 	}
 
 	compiledTasks, err := compileTasks(ctx, djSpec.Tasks)
 	if err != nil {
-		return dynamicWorkflowContext{}, err
+		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeUser, err, "failed to compile dynamic tasks")
 	}
 
 	// Get the requirements, that is, a list of all the task IDs and the launch plan IDs that will be called as part of this dynamic task.
 	// The definition of these will need to be fetched from Admin (in order to get the interface).
 	requirements, err := compiler.GetRequirements(wf, djSpec.Subworkflows)
 	if err != nil {
-		return dynamicWorkflowContext{}, err
+		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeUser, err, "failed to Get requirements for subworkflows")
 	}
 
+	// This method handles user vs system errors internally
 	launchPlanInterfaces, err := d.getLaunchPlanInterfaces(ctx, requirements.GetRequiredLaunchPlanIds())
 	if err != nil {
 		return dynamicWorkflowContext{}, err
@@ -176,12 +180,12 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 
 	closure, err = compiler.CompileWorkflow(wf, djSpec.Subworkflows, compiledTasks, launchPlanInterfaces)
 	if err != nil {
-		return dynamicWorkflowContext{}, err
+		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeUnknown, err, "malformed dynamic workflow")
 	}
 
 	dynamicWf, err := k8s.BuildFlyteWorkflow(closure, &core.LiteralMap{}, nil, "")
 	if err != nil {
-		return dynamicWorkflowContext{}, err
+		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "failed to build workflow")
 	}
 
 	if err := f.Cache(ctx, dynamicWf); err != nil {
@@ -273,7 +277,10 @@ func (d dynamicNodeTaskNodeHandler) getLaunchPlanInterfaces(ctx context.Context,
 		lp, err := d.lpReader.GetLaunchPlan(ctx, &id)
 		if err != nil {
 			logger.Debugf(ctx, "Error fetching launch plan definition from admin")
-			return nil, err
+			if launchplan.IsNotFound(err) || launchplan.IsUserError(err) {
+				return nil, errors.Wrapf(utils.ErrorCodeUser, err, "incorrectly specified launchplan")
+			}
+			return nil, errors.Wrapf(utils.ErrorCodeSystem, err, "unable to retrieve launchplan information")
 		}
 		launchPlanInterfaces[idx] = compiler.NewLaunchPlanInterfaceProvider(*lp)
 	}

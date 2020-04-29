@@ -2,8 +2,6 @@ package dynamic
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
@@ -246,8 +244,3 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 	})
 }
 
-func TestNew(t *testing.T) {
-	e := fmt.Errorf("outer error:%w", fmt.Errorf("some reason"))
-	assert.Equal(t, "", e.Error())
-	assert.True(t, errors.Is("outer error"))
-}

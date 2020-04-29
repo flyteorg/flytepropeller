@@ -12,11 +12,13 @@ import (
 	"github.com/lyft/flytestdlib/promutils/labeled"
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
+	"github.com/lyft/flytepropeller/pkg/utils"
 
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	stdErrors "github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/promutils"
 
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -90,9 +92,15 @@ func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevSt
 func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, nCtx handler.NodeExecutionContext, prevState handler.DynamicNodeState) (handler.Transition, handler.DynamicNodeState, error) {
 	dCtx, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 	if err != nil {
-		// TODO @kumare classify system vs user errors
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM,
-			"DynamicWorkflowBuildFailed", err.Error(), nil)), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: err.Error()}, nil
+		kind := core.ExecutionError_UNKNOWN
+		if stdErrors.IsCausedBy(err, utils.ErrorCodeUser) {
+			kind = core.ExecutionError_USER
+		} else if stdErrors.IsCausedBy(err, utils.ErrorCodeSystem) {
+			kind = core.ExecutionError_SYSTEM
+		}
+		return handler.DoTransition(handler.TransitionTypeEphemeral,
+			handler.PhaseInfoFailure(kind, "DynamicWorkflowBuildFailed", err.Error(), nil),
+		), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: err.Error()}, nil
 	}
 
 	trns, newState, err := d.progressDynamicWorkflow(ctx, dCtx.execContext, dCtx.subWorkflow, dCtx.nodeLookup, nCtx, prevState)
@@ -187,6 +195,9 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 		logger.Infof(ctx, "Aborting dynamic workflow at RetryAttempt [%d]", nCtx.CurrentAttempt())
 		dCtx, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 		if err != nil {
+			if stdErrors.IsCausedBy(err, utils.ErrorCodeUser) {
+				logger.Errorf(ctx, "failed to build dynamic workflow, user error: %s", err)
+			}
 			return err
 		}
 
