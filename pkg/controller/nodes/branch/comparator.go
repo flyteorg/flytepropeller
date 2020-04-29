@@ -103,7 +103,7 @@ func Evaluate(lValue *core.Primitive, rValue *core.Primitive, op core.Comparison
 		return !(comps.gt(lValue, rValue) || comps.eq(lValue, rValue)), nil
 	case core.ComparisonExpression_LTE:
 		if isBoolean {
-			return false, errors.Errorf(ErrorCodeMalformedBranch,"[LTE] not defined for boolean operands.")
+			return false, errors.Errorf(ErrorCodeMalformedBranch, "[LTE] not defined for boolean operands.")
 		}
 		return !comps.gt(lValue, rValue), nil
 	case core.ComparisonExpression_EQ:
@@ -111,12 +111,12 @@ func Evaluate(lValue *core.Primitive, rValue *core.Primitive, op core.Comparison
 	case core.ComparisonExpression_NEQ:
 		return !comps.eq(lValue, rValue), nil
 	}
-	return false, errors.Errorf(ErrorCodeMalformedBranch,"Unsupported operator type in Propeller. System error.")
+	return false, errors.Errorf(ErrorCodeMalformedBranch, "Unsupported operator type in Propeller. System error.")
 }
 
 func Evaluate1(lValue *core.Primitive, rValue *core.Literal, op core.ComparisonExpression_Operator) (bool, error) {
 	if rValue.GetScalar() == nil || rValue.GetScalar().GetPrimitive() == nil {
-		return false, errors.Errorf(ErrorCodeMalformedBranch,"Only primitives can be compared. RHS Variable is non primitive.")
+		return false, errors.Errorf(ErrorCodeMalformedBranch, "Only primitives can be compared. RHS Variable is non primitive.")
 	}
 	return Evaluate(lValue, rValue.GetScalar().GetPrimitive(), op)
 }
