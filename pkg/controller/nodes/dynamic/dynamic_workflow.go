@@ -71,7 +71,7 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 		// If the parent is a task, pass down data children nodes should inherit.
 		parentTask, err := nCtx.TaskReader().Read(ctx)
 		if err != nil {
-			return nil, err // errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to find task [%v].", nCtx.TaskReader().GetTaskID())
+			return nil, errors.Wrapf("TaskReadFailed", err, "Failed to find task [%v].", nCtx.TaskReader().GetTaskID())
 		}
 
 		for _, t := range djSpec.Tasks {
@@ -146,8 +146,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	// We know for sure that futures file was generated. Lets read it
 	djSpec, err := f.Read(ctx)
 	if err != nil {
-		// err = errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to read futures file, maybe corrupted")
-		return dynamicWorkflowContext{}, err
+		return dynamicWorkflowContext{}, errors.Wrapf("DynamicJobSpecReadFailed", err, "unable to read futures file, maybe corrupted")
 	}
 
 	var closure *core.CompiledWorkflowClosure
@@ -180,7 +179,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 
 	closure, err = compiler.CompileWorkflow(wf, djSpec.Subworkflows, compiledTasks, launchPlanInterfaces)
 	if err != nil {
-		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeUnknown, err, "malformed dynamic workflow")
+		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeUser, err, "malformed dynamic workflow")
 	}
 
 	dynamicWf, err := k8s.BuildFlyteWorkflow(closure, &core.LiteralMap{}, nil, "")
@@ -248,7 +247,7 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 			if err := nCtx.DataStore().CopyRaw(ctx, sourcePath, destinationPath, storage.Options{}); err != nil {
 				return handler.DoTransition(handler.TransitionTypeEphemeral,
 						handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, "OutputsNotFound",
-							fmt.Sprintf("Failed to copy subworkflow outputs from [%v] to [%v]", sourcePath, destinationPath), nil),
+							fmt.Sprintf("Failed to copy subworkflow outputs from [%v] to [%v]. Error: %s", sourcePath, destinationPath, err.Error()), nil),
 					), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: "Failed to copy subworkflow outputs"},
 					nil
 			}
