@@ -166,9 +166,6 @@ func TestWorkflowStatus_Deserialize(t *testing.T) {
 }
 
 func TestDynamicNodeStatus_SetExecutionError(t *testing.T) {
-	type args struct {
-		err *core.ExecutionError
-	}
 	tests := []struct {
 		name     string
 		Error    *ExecutionError
