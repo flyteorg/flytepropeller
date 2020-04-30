@@ -131,6 +131,7 @@ func (in *DynamicNodeStatus) SetExecutionError(err *core.ExecutionError) {
 	if err != nil {
 		in.Error = &ExecutionError{ExecutionError: err}
 	}
+	in.Error = nil
 }
 
 func (in *DynamicNodeStatus) Equals(o *DynamicNodeStatus) bool {
