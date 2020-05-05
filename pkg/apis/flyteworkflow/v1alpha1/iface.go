@@ -261,8 +261,8 @@ type ExecutableNodeStatus interface {
 	GetSystemFailures() uint32
 	GetWorkflowNodeStatus() ExecutableWorkflowNodeStatus
 	GetTaskNodeStatus() ExecutableTaskNodeStatus
-	GetMaxQueueTime() *int64
-	GetQueuingDelaySeconds() *int64
+
+	GetQueuingBudget() *metav1.Duration
 
 	IsCached() bool
 }

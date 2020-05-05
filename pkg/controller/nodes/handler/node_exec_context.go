@@ -39,9 +39,7 @@ type NodeExecutionMetadata interface {
 	GetAnnotations() map[string]string
 	GetK8sServiceAccount() string
 	IsInterruptible() bool
-	//GetQueuingBudgetAllocator() workflow.QueuingBudgetAllocator
-
-	GetQueuingBudget() time.Duration
+	GetMaxQueueTime() time.Duration
 }
 
 type NodeExecutionContext interface {

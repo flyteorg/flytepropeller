@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -27,10 +28,12 @@ const NodeInterruptibleLabel = "interruptible"
 
 type nodeExecMetadata struct {
 	v1alpha1.Meta
-	nodeExecID         *core.NodeExecutionIdentifier
-	interruptible      bool
-	nodeLabels         map[string]string
-	queueBudgetHandler workflow.QueueBudgetHandler
+	nodeExecID *core.NodeExecutionIdentifier
+	nodeLabels map[string]string
+
+	// TODO ssingh merge these two parameters into QueuingParameters
+	interruptible bool
+	maxQueueTime  time.Duration
 }
 
 func (e nodeExecMetadata) GetNodeExecutionID() *core.NodeExecutionIdentifier {
@@ -49,8 +52,8 @@ func (e nodeExecMetadata) IsInterruptible() bool {
 	return e.interruptible
 }
 
-func (e nodeExecMetadata) GetQueuingBudgetAllocator() workflow.QueueBudgetHandler {
-	return e.queueBudgetHandler
+func (e nodeExecMetadata) GetMaxQueueTime() time.Duration {
+	return e.maxQueueTime
 }
 
 func (e nodeExecMetadata) GetLabels() map[string]string {
@@ -147,13 +150,23 @@ func newNodeExecContext(ctx context.Context, store *storage.DataStore, execConte
 	// TODO ssingh: dont initialize it here, instead pass this down from caller
 	queueBudgetHandler := workflow.NewDefaultQueueBudgetHandler(nil, nl)
 
+	// queueBudgetHandler doesn't need to worry about current-attempt-# or time spent in queued state in previous attempts,
+	// it deduces it from node-queued-at and last-attempt-started-at which includes the total time(execution + waittime)
+	// spent before this attempt.
+	param, err := queueBudgetHandler.GetNodeQueuingParameters(ctx, node.GetID())
+	if err != nil {
+		// TODO: return err
+		logger.Error(ctx, err)
+	}
+
 	md := nodeExecMetadata{
 		Meta: execContext,
 		nodeExecID: &core.NodeExecutionIdentifier{
 			NodeId:      node.GetID(),
 			ExecutionId: execContext.GetExecutionID().WorkflowExecutionIdentifier,
 		},
-		queueBudgetHandler: queueBudgetHandler,
+		interruptible: param.IsInterruptible,
+		maxQueueTime:  param.MaxQueueTime,
 	}
 
 	// Copy the wf labels before adding node specific labels.
@@ -166,12 +179,7 @@ func newNodeExecContext(ctx context.Context, store *storage.DataStore, execConte
 		nodeLabels[TaskNameLabel] = utils.SanitizeLabelValue(tr.GetTaskID().Name)
 	}
 
-	schedulingParameters, err := queueBudgetHandler.GetNodeQueuingParameters(ctx, node.GetID())
-	if err != nil {
-		// TODO: return err
-		logger.Error(ctx, err)
-	}
-	nodeLabels[NodeInterruptibleLabel] = strconv.FormatBool(schedulingParameters.IsInterruptible)
+	nodeLabels[NodeInterruptibleLabel] = strconv.FormatBool(param.IsInterruptible)
 	md.nodeLabels = nodeLabels
 
 	return &nodeExecContext{
@@ -215,6 +223,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		return nil
 	}
 
+	s := nl.GetNodeExecutionStatus(ctx, currentNodeID)
 	return newNodeExecContext(ctx, c.store, executionContext, nl, n, s,
 		ioutils.NewCachedInputReader(
 			ctx,

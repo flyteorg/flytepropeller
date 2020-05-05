@@ -462,7 +462,7 @@ func (in *defaultQueueBudgetHandler) GetNodeQueuingParameters(ctx context.Contex
 	}
 
 	// TODO init with wf budget or default value
-	remainingWaitTime := int64(0)
+	nodeBudget := time.Second
 	for _, upstreamNodeID := range upstreamNodes {
 		upstreamNodeStatus := in.nl.GetNodeExecutionStatus(ctx, upstreamNodeID)
 
@@ -471,17 +471,25 @@ func (in *defaultQueueBudgetHandler) GetNodeQueuingParameters(ctx context.Contex
 			continue
 		}
 
-		budget := int64(0) // TODO use default instead of 0
-		delay := int64(0)
-		if upstreamNodeStatus.GetMaxQueueTime() != nil && *upstreamNodeStatus.GetMaxQueueTime() > 0 {
-			budget = *upstreamNodeStatus.GetMaxQueueTime()
-		}
-		if upstreamNodeStatus.GetQueuingDelaySeconds() != nil {
-			delay = *upstreamNodeStatus.GetQueuingDelaySeconds()
-		}
+		budget := time.Second // TODO assign
 
-		if remainingWaitTime > (budget - delay) {
-			remainingWaitTime = budget - delay
+		// fix this
+		//if upstreamNodeStatus.GetMaxQueueTimeSeconds() != nil && *upstreamNodeStatus.GetMaxQueueTimeSeconds() > 0 {
+		//	budget = *upstreamNodeStatus.GetMaxQueueTimeSeconds()
+		//}
+
+		if upstreamNodeStatus.GetQueuedAt() != nil {
+			queuedAt := upstreamNodeStatus.GetQueuedAt().Time
+			if upstreamNodeStatus.GetLastAttemptStartedAt() == nil {
+				// nothing used
+			}
+			lastAttemptStartedAt := upstreamNodeStatus.GetLastAttemptStartedAt().Time
+			queuingDelay := lastAttemptStartedAt.Sub(queuedAt)
+			parentRemainingBudget := budget - queuingDelay
+
+			if nodeBudget > parentRemainingBudget {
+				nodeBudget = parentRemainingBudget
+			}
 		}
 	}
 
@@ -501,7 +509,7 @@ func (in *defaultQueueBudgetHandler) GetNodeQueuingParameters(ctx context.Contex
 	//
 	isInterruptible := false
 
-	return &NodeQueuingParameters{IsInterruptible: isInterruptible, MaxQueueTime: time.Second * time.Duration(remainingWaitTime)}, nil
+	return &NodeQueuingParameters{IsInterruptible: isInterruptible, MaxQueueTime: time.Second * time.Duration(nodeBudget)}, nil
 }
 
 func NewDefaultQueueBudgetHandler(dag executors.DAGStructure, nl executors.NodeLookup) QueueBudgetHandler {
