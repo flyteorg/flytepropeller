@@ -12,8 +12,6 @@ import (
 type NodeLookup interface {
 	GetNode(nodeID v1alpha1.NodeID) (v1alpha1.ExecutableNode, bool)
 	GetNodeExecutionStatus(ctx context.Context, id v1alpha1.NodeID) v1alpha1.ExecutableNodeStatus
-	//GetNodeSchedulingParameters(ctx context.Context, id v1alpha1.NodeID) v1alpha1.NodeSchedulingParameters
-
 }
 
 // Implements a de-generate case of NodeLookup, where only one Node is always looked up

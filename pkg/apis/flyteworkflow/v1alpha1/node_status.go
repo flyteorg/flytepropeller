@@ -185,7 +185,7 @@ type NodeStatus struct {
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
 
 	// queuing budget a node can consume across at its attempts
-	QueuingBudget *metav1.Duration `json:"queuingBudgetSeconds,omitempty"`
+	QueuingBudget *metav1.Duration `json:"queuingBudget,omitempty"`
 }
 
 func (in *NodeStatus) IsDirty() bool {
