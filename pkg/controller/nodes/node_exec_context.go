@@ -15,7 +15,6 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
-
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
@@ -145,10 +144,7 @@ func (e nodeExecContext) MaxDatasetSizeBytes() int64 {
 	return e.maxDatasetSizeBytes
 }
 
-func newNodeExecContext(ctx context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
-
-	// TODO ssingh: dont initialize it here, instead pass this down from caller
-	queueBudgetHandler := workflow.NewDefaultQueueBudgetHandler(nil, nl)
+func newNodeExecContext(ctx context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector, queueBudgetHandler workflow.QueueBudgetHandler) *nodeExecContext {
 
 	// queueBudgetHandler doesn't need to worry about current-attempt-# or time spent in queued state in previous attempts,
 	// it deduces it from node-queued-at and last-attempt-started-at which includes the total time(execution + waittime)
@@ -200,7 +196,7 @@ func newNodeExecContext(ctx context.Context, store *storage.DataStore, execConte
 	}
 }
 
-func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNodeID v1alpha1.NodeID, executionContext executors.ExecutionContext, nl executors.NodeLookup) (*nodeExecContext, error) {
+func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNodeID v1alpha1.NodeID, executionContext executors.ExecutionContext, nl executors.NodeLookup, queueBudgetHandler workflow.QueueBudgetHandler) (*nodeExecContext, error) {
 	n, ok := nl.GetNode(currentNodeID)
 	if !ok {
 		return nil, fmt.Errorf("failed to find node with ID [%s] in execution [%s]", currentNodeID, executionContext.GetID())
@@ -246,5 +242,6 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		// https://github.com/lyft/flyte/issues/211
 		c.defaultDataSandbox,
 		c.shardSelector,
+		queueBudgetHandler,
 	), nil
 }

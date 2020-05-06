@@ -23,6 +23,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 
 	"github.com/lyft/flytepropeller/pkg/controller/config"
+	"github.com/lyft/flytepropeller/pkg/controller/workflow"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -490,7 +491,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 
 // The space search for the next node to execute is implemented like a DFS algorithm. handleDownstream visits all the nodes downstream from
 // the currentNode. Visit a node is the RecursiveNodeHandler. A visit may be partial, complete or may result in a failure.
-func (c *nodeExecutor) handleDownstream(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
+func (c *nodeExecutor) handleDownstream(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, queueingBudgetHandler workflow.QueueBudgetHandler, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
 	logger.Debugf(ctx, "Handling downstream Nodes")
 	// This node is success. Handle all downstream nodes
 	downstreamNodes, err := dag.FromNode(currentNode.GetID())
@@ -512,7 +513,7 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, execContext executo
 		if !ok {
 			return executors.NodeStatusFailed(errors.Errorf(errors.BadSpecificationError, currentNode.GetID(), "Unable to find Downstream Node [%v]", downstreamNodeName)), nil
 		}
-		state, err := c.RecursiveNodeHandler(ctx, execContext, dag, nl, downstreamNode)
+		state, err := c.RecursiveNodeHandler(ctx, execContext, dag, nl, queueingBudgetHandler, downstreamNode)
 		if err != nil {
 			return executors.NodeStatusUndefined, err
 		}
@@ -569,7 +570,7 @@ func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, execContext ex
 	return executors.NodeStatusComplete, nil
 }
 
-func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
+func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, queuingBudgetHandler workflow.QueueBudgetHandler, currentNode v1alpha1.ExecutableNode) (executors.NodeStatus, error) {
 	currentNodeCtx := contextutils.WithNodeID(ctx, currentNode.GetID())
 	nodeStatus := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
 
@@ -612,7 +613,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 		// Currently we treat either Skip or Success the same way. In this approach only one node will be skipped
 		// at a time. As we iterate down, further nodes will be skipped
 	case v1alpha1.NodePhaseSucceeded, v1alpha1.NodePhaseSkipped:
-		return c.handleDownstream(ctx, execContext, dag, nl, currentNode)
+		return c.handleDownstream(ctx, execContext, dag, nl, queueingBudgetHandler, currentNode)
 	case v1alpha1.NodePhaseFailed:
 		logger.Debugf(currentNodeCtx, "Node Failed")
 		return executors.NodeStatusFailed(errors.Errorf(errors.RuntimeExecutionError, currentNode.GetID(), "Node Failed.")), nil
