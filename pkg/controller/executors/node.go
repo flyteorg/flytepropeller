@@ -3,7 +3,6 @@ package executors
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flytepropeller/pkg/controller/workflow"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
@@ -71,7 +70,7 @@ type Node interface {
 	// - 1. It finds a blocking node (not ready, or running)
 	// - 2. A node fails and hence the workflow will fail
 	// - 3. The final/end node has completed and the workflow should be stopped
-	RecursiveNodeHandler(ctx context.Context, execContext ExecutionContext, dag DAGStructure, nl NodeLookup, queueBudgetHandler workflow.QueueBudgetHandler, currentNode v1alpha1.ExecutableNode) (NodeStatus, error)
+	RecursiveNodeHandler(ctx context.Context, execContext ExecutionContext, dag DAGStructure, nl NodeLookup, queuingBudgetHandler QueuingBudgetHandler, currentNode v1alpha1.ExecutableNode) (NodeStatus, error)
 
 	// This aborts the given node. If the given node is complete then it recursively finds the running nodes and aborts them
 	AbortHandler(ctx context.Context, execContext ExecutionContext, dag DAGStructure, nl NodeLookup, currentNode v1alpha1.ExecutableNode, reason string) error

@@ -8,7 +8,6 @@ import (
 
 	"github.com/lyft/flyteidl/clients/go/events"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytepropeller/pkg/controller/workflow"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 	"k8s.io/apimachinery/pkg/types"
@@ -144,15 +143,21 @@ func (e nodeExecContext) MaxDatasetSizeBytes() int64 {
 	return e.maxDatasetSizeBytes
 }
 
-func newNodeExecContext(ctx context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector, queueBudgetHandler workflow.QueueBudgetHandler) *nodeExecContext {
+func newNodeExecContext(ctx context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager, enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector, queuingBudgetHandler executors.QueuingBudgetHandler) *nodeExecContext {
 
-	// queueBudgetHandler doesn't need to worry about current-attempt-# or time spent in queued state in previous attempts,
-	// it deduces it from node-queued-at and last-attempt-started-at which includes the total time(execution + waittime)
-	// spent before this attempt.
-	param, err := queueBudgetHandler.GetNodeQueuingParameters(ctx, node.GetID())
-	if err != nil {
-		// TODO: return err
-		logger.Error(ctx, err)
+	// queuingBudgetHandler doesn't need to worry about current-attempt-# or time spent in queued state in previous attempts,
+	// as it only cares about overall time spent between node first qu and start of this attempt.
+
+	isInterruptible := false
+	maxQueueTime := time.Duration(0)
+	if queuingBudgetHandler != nil {
+		param, err := queuingBudgetHandler.GetNodeQueuingParameters(ctx, node.GetID())
+		if err != nil {
+			// TODO: return err
+			logger.Error(ctx, err)
+		}
+		isInterruptible = param.IsInterruptible
+		maxQueueTime = param.MaxQueueTime
 	}
 
 	md := nodeExecMetadata{
@@ -161,8 +166,8 @@ func newNodeExecContext(ctx context.Context, store *storage.DataStore, execConte
 			NodeId:      node.GetID(),
 			ExecutionId: execContext.GetExecutionID().WorkflowExecutionIdentifier,
 		},
-		interruptible: param.IsInterruptible,
-		maxQueueTime:  param.MaxQueueTime,
+		interruptible: isInterruptible,
+		maxQueueTime:  maxQueueTime,
 	}
 
 	// Copy the wf labels before adding node specific labels.
@@ -175,7 +180,7 @@ func newNodeExecContext(ctx context.Context, store *storage.DataStore, execConte
 		nodeLabels[TaskNameLabel] = utils.SanitizeLabelValue(tr.GetTaskID().Name)
 	}
 
-	nodeLabels[NodeInterruptibleLabel] = strconv.FormatBool(param.IsInterruptible)
+	nodeLabels[NodeInterruptibleLabel] = strconv.FormatBool(isInterruptible)
 	md.nodeLabels = nodeLabels
 
 	return &nodeExecContext{
@@ -196,7 +201,7 @@ func newNodeExecContext(ctx context.Context, store *storage.DataStore, execConte
 	}
 }
 
-func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNodeID v1alpha1.NodeID, executionContext executors.ExecutionContext, nl executors.NodeLookup, queueBudgetHandler workflow.QueueBudgetHandler) (*nodeExecContext, error) {
+func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNodeID v1alpha1.NodeID, executionContext executors.ExecutionContext, nl executors.NodeLookup, queuingBudgetHandler executors.QueuingBudgetHandler) (*nodeExecContext, error) {
 	n, ok := nl.GetNode(currentNodeID)
 	if !ok {
 		return nil, fmt.Errorf("failed to find node with ID [%s] in execution [%s]", currentNodeID, executionContext.GetID())
@@ -242,6 +247,6 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		// https://github.com/lyft/flyte/issues/211
 		c.defaultDataSandbox,
 		c.shardSelector,
-		queueBudgetHandler,
+		queuingBudgetHandler,
 	), nil
 }

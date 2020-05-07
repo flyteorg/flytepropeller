@@ -120,7 +120,7 @@ func (c *workflowExecutor) handleRunningWorkflow(ctx context.Context, w *v1alpha
 		return StatusFailed(errors.Errorf(errors.IllegalStateError, w.GetID(), "StartNode not found in running workflow?")), nil
 	}
 
-	queueingBudgetHandler := NewDefaultQueueBudgetHandler(w, w, w.QueuingBudgetSeconds)
+	queueingBudgetHandler := executors.NewDefaultQueuingBudgetHandler(w, w, w.QueuingBudgetSeconds)
 	state, err := c.nodeExecutor.RecursiveNodeHandler(ctx, w, w, w, queueingBudgetHandler, startNode)
 	if err != nil {
 		return StatusRunning, err
@@ -148,7 +148,7 @@ func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha
 		logger.Errorf(ctx, "Failed to propagate Abort for workflow:%v. Error: %v", w.ExecutionID.WorkflowExecutionIdentifier, err)
 	}
 
-	queueingBudgetHandler := NewDefaultQueueBudgetHandler(w, w, w.QueuingBudgetSeconds)
+	queueingBudgetHandler := executors.NewDefaultQueuingBudgetHandler(w, w, w.QueuingBudgetSeconds)
 	errorNode := w.GetOnFailureNode()
 	if errorNode != nil {
 		state, err := c.nodeExecutor.RecursiveNodeHandler(ctx, w, w, w, queueingBudgetHandler, errorNode)
@@ -436,86 +436,4 @@ func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1al
 			CompletionLatency:         labeled.NewStopWatch("completion_latency", "Measures the time between when the WF moved to succeeding/failing state and when it finally moved to a terminal state.", time.Millisecond, workflowScope, labeled.EmitUnlabeledMetric),
 		},
 	}, nil
-}
-
-// Interface for the Workflow p. This is the mutable portion for a Workflow
-type QueueBudgetHandler interface {
-	GetNodeQueuingParameters(ctx context.Context, id v1alpha1.NodeID) (*NodeQueuingParameters, error)
-}
-
-type NodeQueuingParameters struct {
-	IsInterruptible bool
-	MaxQueueTime    time.Duration
-}
-
-type defaultQueueBudgetHandler struct {
-	dag      executors.DAGStructure
-	nl       executors.NodeLookup
-	wfBudget time.Duration
-}
-
-func (in *defaultQueueBudgetHandler) GetNodeQueuingParameters(ctx context.Context, id v1alpha1.NodeID) (*NodeQueuingParameters, error) {
-
-	if id == v1alpha1.StartNodeID {
-		return nil, nil
-	}
-
-	upstreamNodes, err := in.dag.ToNode(id)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO init with wf budget or default value
-	nodeBudget := in.wfBudget
-	for _, upstreamNodeID := range upstreamNodes {
-		upstreamNodeStatus := in.nl.GetNodeExecutionStatus(ctx, upstreamNodeID)
-
-		if upstreamNodeStatus.GetPhase() == v1alpha1.NodePhaseSkipped {
-			// TODO handle skipped parent case: if parent doesn't have queue budget info then get it from its parent.
-			continue
-		}
-
-		budget := time.Second // TODO assign
-
-		// fix this
-		//if upstreamNodeStatus.GetMaxQueueTimeSeconds() != nil && *upstreamNodeStatus.GetMaxQueueTimeSeconds() > 0 {
-		//	budget = *upstreamNodeStatus.GetMaxQueueTimeSeconds()
-		//}
-
-		if upstreamNodeStatus.GetQueuedAt() != nil {
-			queuedAt := upstreamNodeStatus.GetQueuedAt().Time
-			if upstreamNodeStatus.GetLastAttemptStartedAt() == nil {
-				// nothing used
-			}
-			lastAttemptStartedAt := upstreamNodeStatus.GetLastAttemptStartedAt().Time
-			queuingDelay := lastAttemptStartedAt.Sub(queuedAt)
-			parentRemainingBudget := budget - queuingDelay
-
-			if nodeBudget > parentRemainingBudget {
-				nodeBudget = parentRemainingBudget
-			}
-		}
-	}
-
-	// TODO: fix this
-	//interruptible := executionContext.IsInterruptible()
-	//if n.IsInterruptible() != nil {
-	//	interruptible = *n.IsInterruptible()
-	//}
-	//
-	//s := nl.GetNodeExecutionStatus(ctx, currentNodeID)
-	//
-	//// a node is not considered interruptible if the system failures have exceeded the configured threshold
-	//if interruptible && s.GetSystemFailures() >= c.interruptibleFailureThreshold {
-	//	interruptible = false
-	//	c.metrics.InterruptedThresholdHit.Inc(ctx)
-	//}
-	//
-	isInterruptible := false
-
-	return &NodeQueuingParameters{IsInterruptible: isInterruptible, MaxQueueTime: time.Second * time.Duration(nodeBudget)}, nil
-}
-
-func NewDefaultQueueBudgetHandler(dag executors.DAGStructure, nl executors.NodeLookup, queueingBudget *int64) QueueBudgetHandler {
-	return &defaultQueueBudgetHandler{dag: dag, nl: nl, wfBudget: time.Duration(*queueingBudget)}
 }
