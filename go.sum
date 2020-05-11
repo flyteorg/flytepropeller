@@ -395,6 +395,10 @@ github.com/lyft/flyteplugins v0.3.21 h1:0PaQ5CZkUY07cNiBPcxdL1Pm26A0QRwoFw1VT6ly
 github.com/lyft/flyteplugins v0.3.21/go.mod h1:NDhdkOAn2q6p7YLq9a0/lxyS0dburoAEgipOY5TiO8A=
 github.com/lyft/flyteplugins v0.3.22 h1:CvqlpL5JQTfgtqBNtl91II2jjRyceMTxvyF8qfzAY/M=
 github.com/lyft/flyteplugins v0.3.22/go.mod h1:NDhdkOAn2q6p7YLq9a0/lxyS0dburoAEgipOY5TiO8A=
+github.com/lyft/flyteplugins v0.3.23-0.20200505055343-7c8a254c81d3 h1:MClWRa4bdun+uoPcmyRb3Qb2f9NYsgKz5TWznXY4HV8=
+github.com/lyft/flyteplugins v0.3.23-0.20200505055343-7c8a254c81d3/go.mod h1:BDOuViKxQGSPTYZW+Sywyz9LvgETmFu4MjGJ/P0l18A=
+github.com/lyft/flyteplugins v0.3.23-0.20200511051429-5e76ca7ac493 h1:KLuBr3oqWrGbUjfYvG0oDXBkPeqTyhfF00CLsdCyNC4=
+github.com/lyft/flyteplugins v0.3.23-0.20200511051429-5e76ca7ac493/go.mod h1:BDOuViKxQGSPTYZW+Sywyz9LvgETmFu4MjGJ/P0l18A=
 github.com/lyft/flytestdlib v0.3.0/go.mod h1:LJPPJlkFj+wwVWMrQT3K5JZgNhZi2mULsCG4ZYhinhU=
 github.com/lyft/flytestdlib v0.3.3 h1:MkWXPkwQinh6MR3Yf5siZhmRSt9r4YmsF+5kvVVVedE=
 github.com/lyft/flytestdlib v0.3.3/go.mod h1:LJPPJlkFj+wwVWMrQT3K5JZgNhZi2mULsCG4ZYhinhU=
@@ -425,6 +429,7 @@ github.com/mattn/go-sqlite3 v1.11.0/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsO
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/mitchellh/go-homedir v1.1.0/go.mod h1:SfyaCUpYCn1Vlf4IUYiD9fPX4A5wJrkLzIz1N1q0pr0=
+github.com/mitchellh/go-ps v1.0.0/go.mod h1:J4lOc8z8yJs6vUwklHw2XEIiT4z4C40KtWVN3nvg8Pg=
 github.com/mitchellh/mapstructure v1.1.2 h1:fmNYVwqnSfB9mZU6OS2O6GsXM+wcskZDuKQzvN1EDeE=
 github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
