@@ -399,6 +399,12 @@ github.com/lyft/flyteplugins v0.3.23-0.20200505055343-7c8a254c81d3 h1:MClWRa4bdu
 github.com/lyft/flyteplugins v0.3.23-0.20200505055343-7c8a254c81d3/go.mod h1:BDOuViKxQGSPTYZW+Sywyz9LvgETmFu4MjGJ/P0l18A=
 github.com/lyft/flyteplugins v0.3.23-0.20200511051429-5e76ca7ac493 h1:KLuBr3oqWrGbUjfYvG0oDXBkPeqTyhfF00CLsdCyNC4=
 github.com/lyft/flyteplugins v0.3.23-0.20200511051429-5e76ca7ac493/go.mod h1:BDOuViKxQGSPTYZW+Sywyz9LvgETmFu4MjGJ/P0l18A=
+github.com/lyft/flyteplugins v0.3.23-0.20200511195957-5df5c285f357 h1:gV43dEkjOMw0/6otT7CSKiVYJr3KRLddd22CzTfmf4E=
+github.com/lyft/flyteplugins v0.3.23-0.20200511195957-5df5c285f357/go.mod h1:BDOuViKxQGSPTYZW+Sywyz9LvgETmFu4MjGJ/P0l18A=
+github.com/lyft/flyteplugins v0.3.23-0.20200511224303-eb6d6dc60117 h1:m5vHPz0yEmifgvmkDK1EwDpBJh2Vm4sbqYK2lt0dB+0=
+github.com/lyft/flyteplugins v0.3.23-0.20200511224303-eb6d6dc60117/go.mod h1:BDOuViKxQGSPTYZW+Sywyz9LvgETmFu4MjGJ/P0l18A=
+github.com/lyft/flyteplugins v0.3.23-0.20200511231245-fe9ad4bf1e6d h1:9x9vUDSBOz66tis/uo18YvwMKQWoWIuhX61irTBkePk=
+github.com/lyft/flyteplugins v0.3.23-0.20200511231245-fe9ad4bf1e6d/go.mod h1:BDOuViKxQGSPTYZW+Sywyz9LvgETmFu4MjGJ/P0l18A=
 github.com/lyft/flytestdlib v0.3.0/go.mod h1:LJPPJlkFj+wwVWMrQT3K5JZgNhZi2mULsCG4ZYhinhU=
 github.com/lyft/flytestdlib v0.3.3 h1:MkWXPkwQinh6MR3Yf5siZhmRSt9r4YmsF+5kvVVVedE=
 github.com/lyft/flytestdlib v0.3.3/go.mod h1:LJPPJlkFj+wwVWMrQT3K5JZgNhZi2mULsCG4ZYhinhU=

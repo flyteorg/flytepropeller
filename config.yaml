@@ -51,6 +51,9 @@ plugins:
       - FLYTE_AWS_ENDPOINT: "http://minio.flyte:9000"
       - FLYTE_AWS_ACCESS_KEY_ID: minio
       - FLYTE_AWS_SECRET_ACCESS_KEY: miniostorage
+    co-pilot:
+      name: "flyte-copilot-"
+      image: "flyteplugins:5df5c285f357ed985ded924d41d58f2906fec090"
   # Logging configuration
   logs:
     kubernetes-enabled: true
