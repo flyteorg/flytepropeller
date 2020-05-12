@@ -459,7 +459,11 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 
 	if currentPhase == v1alpha1.NodePhaseFailing {
 		logger.Debugf(ctx, "node failing")
-		if err := c.finalize(ctx, h, nCtx); err != nil {
+		msg := "[Node failed] Unknown error"
+		if nodeStatus.GetExecutionError() != nil {
+			msg = fmt.Sprintf("[%s|%s]: %s", nodeStatus.GetExecutionError().Kind.String(), nodeStatus.GetExecutionError().Code, nodeStatus.GetExecutionError().GetMessage())
+		}
+		if err := c.abort(ctx, h, nCtx, msg); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), nodeStatus.GetMessage(), nodeStatus.GetExecutionError())

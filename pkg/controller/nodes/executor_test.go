@@ -655,45 +655,46 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			finalizeReturnErr bool
 			expectedError     bool
 			eventRecorded     bool
+			abortExepcted     bool
 			eventPhase        core.NodeExecution_Phase
 		}{
 			// Starting at Queued
 			{"queued->running", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseRunning, executors.NodePhasePending, func() (handler.Transition, error) {
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)), nil
-			}, true, false, true, core.NodeExecution_RUNNING},
+			}, true, false, true, false, core.NodeExecution_RUNNING},
 
 			{"queued->queued", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseQueued, executors.NodePhasePending, func() (handler.Transition, error) {
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoQueued("reason")), nil
-			}, true, false, false, core.NodeExecution_QUEUED},
+			}, true, false, false, false, core.NodeExecution_QUEUED},
 
 			{"queued->failing", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseFailing, executors.NodePhasePending, func() (handler.Transition, error) {
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_USER, "code", "reason", nil)), nil
-			}, true, false, true, core.NodeExecution_FAILED},
+			}, true, false, true, false, core.NodeExecution_FAILED},
 
 			{"failing->failed", v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseFailed, executors.NodePhaseFailed, func() (handler.Transition, error) {
 				return handler.UnknownTransition, fmt.Errorf("error")
-			}, false, false, false, core.NodeExecution_FAILED},
+			}, false, false, false, true, core.NodeExecution_FAILED},
 
 			{"failing->failed(error)", v1alpha1.NodePhaseFailing, v1alpha1.NodePhaseFailing, executors.NodePhaseUndefined, func() (handler.Transition, error) {
 				return handler.UnknownTransition, fmt.Errorf("error")
-			}, true, true, false, core.NodeExecution_FAILING},
+			}, true, true, false, true, core.NodeExecution_FAILING},
 
 			{"queued->succeeding", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseSucceeding, executors.NodePhasePending, func() (handler.Transition, error) {
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(nil)), nil
-			}, true, false, true, core.NodeExecution_SUCCEEDED},
+			}, true, false, true, false, core.NodeExecution_SUCCEEDED},
 
 			{"succeeding->success", v1alpha1.NodePhaseSucceeding, v1alpha1.NodePhaseSucceeded, executors.NodePhaseSuccess, func() (handler.Transition, error) {
 				return handler.UnknownTransition, fmt.Errorf("error")
-			}, false, false, false, core.NodeExecution_SUCCEEDED},
+			}, false, false, false, false, core.NodeExecution_SUCCEEDED},
 
 			{"succeeding->success(error)", v1alpha1.NodePhaseSucceeding, v1alpha1.NodePhaseSucceeding, executors.NodePhaseUndefined, func() (handler.Transition, error) {
 
 				return handler.UnknownTransition, fmt.Errorf("error")
-			}, true, true, false, core.NodeExecution_SUCCEEDED},
+			}, true, true, false, false, core.NodeExecution_SUCCEEDED},
 
 			{"queued->error", v1alpha1.NodePhaseQueued, v1alpha1.NodePhaseQueued, executors.NodePhaseUndefined, func() (handler.Transition, error) {
 				return handler.UnknownTransition, fmt.Errorf("error")
-			}, true, true, false, core.NodeExecution_RUNNING},
+			}, true, true, false, false, core.NodeExecution_RUNNING},
 		}
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
@@ -718,12 +719,15 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				}
 
 				h := &nodeHandlerMocks.Node{}
-				h.On("Handle",
+				h.OnHandleMatch(
 					mock.MatchedBy(func(ctx context.Context) bool { return true }),
 					mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
 				).Return(test.handlerReturn())
-				h.On("FinalizeRequired").Return(true)
+				h.OnFinalizeRequired().Return(true)
 
+				if test.abortExepcted {
+					h.OnAbortMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+				}
 				if test.finalizeReturnErr {
 					h.OnFinalizeMatch(mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
 				} else {
