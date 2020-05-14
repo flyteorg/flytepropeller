@@ -34,7 +34,6 @@ func (in *defaultQueuingBudgetHandler) GetNodeQueuingParameters(ctx context.Cont
 		return nil, err
 	}
 
-	// TODO init with wf budget or default value
 	nodeBudget := in.wfBudget
 	for _, upstreamNodeID := range upstreamNodes {
 		upstreamNodeStatus := in.nl.GetNodeExecutionStatus(ctx, upstreamNodeID)
@@ -44,12 +43,10 @@ func (in *defaultQueuingBudgetHandler) GetNodeQueuingParameters(ctx context.Cont
 			continue
 		}
 
-		budget := time.Second // TODO assign
-
-		// fix this
-		//if upstreamNodeStatus.GetMaxQueueTimeSeconds() != nil && *upstreamNodeStatus.GetMaxQueueTimeSeconds() > 0 {
-		//	budget = *upstreamNodeStatus.GetMaxQueueTimeSeconds()
-		//}
+		var budget time.Duration
+		if upstreamNodeStatus.GetQueuingBudget() != nil && *&upstreamNodeStatus.GetQueuingBudget().Duration > 0 {
+			budget = *&upstreamNodeStatus.GetQueuingBudget().Duration
+		}
 
 		if upstreamNodeStatus.GetQueuedAt() != nil {
 			queuedAt := upstreamNodeStatus.GetQueuedAt().Time
@@ -66,25 +63,28 @@ func (in *defaultQueuingBudgetHandler) GetNodeQueuingParameters(ctx context.Cont
 		}
 	}
 
-	// TODO: fix this
-	//interruptible := executionContext.IsInterruptible()
-	//if n.IsInterruptible() != nil {
-	//	interruptible = *n.IsInterruptible()
-	//}
-	//
-	//s := nl.GetNodeExecutionStatus(ctx, currentNodeID)
-	//
+	currNode, exists := in.nl.GetNode(id)
+	if !exists {
+		// mtoledo: what should be the error here
+		return nil, err
+	}
+	var interruptible bool
+	if currNode.IsInterruptible() != nil {
+		interruptible = *currNode.IsInterruptible()
+	}
+	// TODO: Where to get config value from?
 	//// a node is not considered interruptible if the system failures have exceeded the configured threshold
-	//if interruptible && s.GetSystemFailures() >= c.interruptibleFailureThreshold {
+	// currNodeStatus := in.nl.GetNodeExecutionStatus(ctx, id)
+	//if interruptible && currNodeStatus.GetSystemFailures() >= c.interruptibleFailureThreshold {
 	//	interruptible = false
 	//	c.metrics.InterruptedThresholdHit.Inc(ctx)
 	//}
 	//
-	isInterruptible := false
 
-	return &NodeQueuingParameters{IsInterruptible: isInterruptible, MaxQueueTime: time.Second * time.Duration(nodeBudget)}, nil
+	return &NodeQueuingParameters{IsInterruptible: interruptible, MaxQueueTime: time.Second * time.Duration(nodeBudget)}, nil
 }
 
+// instead of *int64 use duration?
 func NewDefaultQueuingBudgetHandler(dag DAGStructure, nl NodeLookup, queueingBudget *int64) QueuingBudgetHandler {
 	return &defaultQueuingBudgetHandler{dag: dag, nl: nl, wfBudget: time.Duration(*queueingBudget)}
 }

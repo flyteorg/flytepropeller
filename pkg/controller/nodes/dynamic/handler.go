@@ -102,7 +102,10 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 			"DynamicWorkflowBuildFailed", err.Error(), nil)), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: err.Error()}, nil
 	}
 
-	trns, newState, err := d.progressDynamicWorkflow(ctx, execContext, dynamicWF, nl, nCtx, prevState)
+	// get queuing budget
+	queuingBudgetHandler := executors.NewDefaultQueuingBudgetHandler(dynamicWF, nl, nil)
+
+	trns, newState, err := d.progressDynamicWorkflow(ctx, execContext, dynamicWF, nl, nCtx, prevState, queuingBudgetHandler)
 	if err != nil {
 		return handler.UnknownTransition, prevState, err
 	}
@@ -434,10 +437,9 @@ func (d dynamicNodeTaskNodeHandler) getLaunchPlanInterfaces(ctx context.Context,
 }
 
 func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context, execContext executors.ExecutionContext, dynamicWorkflow v1alpha1.ExecutableWorkflow, nl executors.NodeLookup,
-	nCtx handler.NodeExecutionContext, prevState handler.DynamicNodeState) (handler.Transition, handler.DynamicNodeState, error) {
+	nCtx handler.NodeExecutionContext, prevState handler.DynamicNodeState, queuingBudgetHandler executors.QueuingBudgetHandler) (handler.Transition, handler.DynamicNodeState, error) {
 
-	// TODO: pass queuingBudgetHandler
-	state, err := d.nodeExecutor.RecursiveNodeHandler(ctx, execContext, dynamicWorkflow, nl, nil, dynamicWorkflow.StartNode())
+	state, err := d.nodeExecutor.RecursiveNodeHandler(ctx, execContext, dynamicWorkflow, nl, queuingBudgetHandler, dynamicWorkflow.StartNode())
 	if err != nil {
 		return handler.UnknownTransition, prevState, err
 	}

@@ -32,6 +32,10 @@ func (b *branchHandler) Setup(ctx context.Context, setupContext handler.SetupCon
 }
 
 func (b *branchHandler) HandleBranchNode(ctx context.Context, branchNode v1alpha1.ExecutableBranchNode, nCtx handler.NodeExecutionContext, nl executors.NodeLookup) (handler.Transition, error) {
+	// Create Queue Budget Handler from nodeContext
+	// TODO(mtoledo): get dagStructure, ask about duration
+	queuingBudgetHandler := executors.NewDefaultQueuingBudgetHandler(nil, nl, nil)
+
 	if nCtx.NodeStateReader().GetBranchNode().FinalizedNodeID == nil {
 		nodeInputs, err := nCtx.InputReader().Get(ctx)
 		if err != nil {
@@ -64,7 +68,7 @@ func (b *branchHandler) HandleBranchNode(ctx context.Context, branchNode v1alpha
 
 		logger.Debugf(ctx, "Recursively executing branchNode's chosen path")
 		nodeStatus := nl.GetNodeExecutionStatus(ctx, nCtx.NodeID())
-		return b.recurseDownstream(ctx, nCtx, nodeStatus, finalNode)
+		return b.recurseDownstream(ctx, nCtx, nodeStatus, finalNode, queuingBudgetHandler)
 	}
 
 	// If the branchNodestatus was already evaluated i.e, Node is in Running status
@@ -89,7 +93,7 @@ func (b *branchHandler) HandleBranchNode(ctx context.Context, branchNode v1alpha
 
 	// Recurse downstream
 	nodeStatus := nl.GetNodeExecutionStatus(ctx, nCtx.NodeID())
-	return b.recurseDownstream(ctx, nCtx, nodeStatus, branchTakenNode)
+	return b.recurseDownstream(ctx, nCtx, nodeStatus, branchTakenNode, queuingBudgetHandler)
 }
 
 func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
@@ -104,14 +108,13 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 	return b.HandleBranchNode(ctx, branchNode, nCtx, nl)
 }
 
-func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.NodeExecutionContext, nodeStatus v1alpha1.ExecutableNodeStatus, branchTakenNode v1alpha1.ExecutableNode) (handler.Transition, error) {
+func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.NodeExecutionContext, nodeStatus v1alpha1.ExecutableNodeStatus, branchTakenNode v1alpha1.ExecutableNode, queuingBudgetHandler executors.QueuingBudgetHandler) (handler.Transition, error) {
 	// TODO we should replace the call to RecursiveNodeHandler with a call to SingleNode Handler. The inputs are also already known ahead of time
 	// There is no DAGStructure for the branch nodes, the branch taken node is the leaf node. The node itself may be arbitrarily complex, but in that case the node should reference a subworkflow etc
 	// The parent of the BranchTaken Node is the actual Branch Node and all the data is just forwarded from the Branch to the executed node.
 	dag := executors.NewLeafNodeDAGStructure(branchTakenNode.GetID(), nCtx.NodeID())
 
-	// TODO: pass queuingBudgetHandler
-	downstreamStatus, err := b.nodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nil, branchTakenNode)
+	downstreamStatus, err := b.nodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), queuingBudgetHandler, branchTakenNode)
 	if err != nil {
 		return handler.UnknownTransition, err
 	}

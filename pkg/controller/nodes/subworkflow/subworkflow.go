@@ -48,14 +48,17 @@ func (s *subworkflowHandler) startAndHandleSubWorkflow(ctx context.Context, nCtx
 		errorCode, _ := errors.GetErrorCode(startStatus.Err)
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(errorCode, startStatus.Err.Error(), nil)), nil
 	}
-	return s.handleSubWorkflow(ctx, nCtx, subWorkflow, nl)
+
+	// Get queuing budget
+	queuingBudgetHandler := executors.NewDefaultQueuingBudgetHandler(subWorkflow, nl, nil)
+
+	return s.handleSubWorkflow(ctx, nCtx, subWorkflow, nl, queuingBudgetHandler)
 }
 
 // Calls the recursive node executor to handle the SubWorkflow and translates the results after the success
-func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext, subworkflow v1alpha1.ExecutableSubWorkflow, nl executors.NodeLookup) (handler.Transition, error) {
+func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext, subworkflow v1alpha1.ExecutableSubWorkflow, nl executors.NodeLookup, queuingBudgetHandler executors.QueuingBudgetHandler) (handler.Transition, error) {
 
-	// TODO: pass queuingBudgetHandler
-	state, err := s.nodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), subworkflow, nl, nil, subworkflow.StartNode())
+	state, err := s.nodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), subworkflow, nl, queuingBudgetHandler, subworkflow.StartNode())
 	if err != nil {
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoUndefined), err
 	}
@@ -118,7 +121,7 @@ func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler
 func (s *subworkflowHandler) HandleFailureNodeOfSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext, subworkflow v1alpha1.ExecutableSubWorkflow, nl executors.NodeLookup) (handler.Transition, error) {
 	if subworkflow.GetOnFailureNode() != nil {
 
-		// TODO: pass queuingBudgetHandler
+		// TODO: pass queuingBudgetHandler when this method is invoked from caller.
 		state, err := s.nodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), subworkflow, nl, nil, subworkflow.GetOnFailureNode())
 		if err != nil {
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoUndefined), err
