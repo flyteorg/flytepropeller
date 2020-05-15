@@ -190,7 +190,7 @@ type ResourceLevelMonitor struct {
 	// This is a labeled gauge
 	levels *prometheus.GaugeVec
 
-	// The thing that we want to current levels of
+	// The thing that we want to measure the current levels of
 	lister lister.FlyteWorkflowLister
 }
 
