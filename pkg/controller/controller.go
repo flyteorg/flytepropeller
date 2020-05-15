@@ -211,9 +211,10 @@ func (r *ResourceLevelMonitor) countList(ctx context.Context, workflows []*v1alp
 			logger.Warningf(ctx, "Workflow does not have an execution identifier! [%v]", wf)
 			project = missing
 			domain = missing
+		} else {
+			project = wf.ExecutionID.Project
+			domain = wf.ExecutionID.Domain
 		}
-		project = wf.ExecutionID.Project
-		domain = wf.ExecutionID.Domain
 		if _, ok := counts[project]; !ok {
 			counts[project] = map[string]int{}
 		}
