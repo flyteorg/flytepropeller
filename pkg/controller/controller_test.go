@@ -71,8 +71,8 @@ func TestResourceLevelMonitor_collect(t *testing.T) {
 	lm.collect(context.Background())
 
 	var expected = `
-		# HELP testhcltns:unittest testing
-		# TYPE testhcltns:unittest gauge
+		# HELP testscope:unittest testing
+		# TYPE testscope:unittest gauge
 		testscope:unittest{domain="dev",project="proj"} 2
 		testscope:unittest{domain="dev",project="proj2"} 1
 	`
