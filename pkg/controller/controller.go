@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"github.com/lyft/flytestdlib/contextutils"
 	"k8s.io/apimachinery/pkg/labels"
 	"runtime/pprof"
@@ -200,13 +199,12 @@ func (r *ResourceLevelMonitor) countList(ctx context.Context, workflows []*v1alp
 	counts := map[string]map[string]int{}
 
 	// Collect all workflow metrics
-	for i, wf := range workflows {
+	for _, wf := range workflows {
 		execID := wf.GetExecutionID()
 		if execID.WorkflowExecutionIdentifier == nil {
 			logger.Warningf(ctx, "Workflow does not have an execution identifier! [%v]", wf)
 			continue
 		}
-		fmt.Printf("in the loop %d: %s %s %s %s\n", i, wf.ExecutionID.Project, wf.ExecutionID.Domain, wf.GetID(), wf.ExecutionID.Name)
 		project := wf.ExecutionID.Project
 		domain := wf.ExecutionID.Domain
 		if _, ok := counts[project]; !ok {
