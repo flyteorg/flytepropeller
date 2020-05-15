@@ -195,7 +195,7 @@ type ResourceLevelMonitor struct {
 	lister lister.FlyteWorkflowLister
 }
 
-func (r *ResourceLevelMonitor) countList(ctx context.Context, workflows []*v1alpha1.FlyteWorkflow) {
+func (r *ResourceLevelMonitor) countList(ctx context.Context, workflows []*v1alpha1.FlyteWorkflow) map[string]map[string]int {
 	// Map of Projects to Domains to counts
 	counts := map[string]map[string]int{}
 
@@ -214,10 +214,12 @@ func (r *ResourceLevelMonitor) countList(ctx context.Context, workflows []*v1alp
 		}
 		counts[project][domain] += 1
 	}
+
+	return counts
 }
 
 func (r *ResourceLevelMonitor) collect(ctx context.Context) {
-	// Emit gauges at both the project/domain level, but also at the aggregate level
+	// Emit gauges at both the project/domain level - aggregation to be handled by Prometheus
 	workflows, err := r.lister.List(labels.Everything())
 	if err != nil {
 		logger.Errorf(ctx, "Error listing workflows when attempting to collect data for gauges %s", err)
@@ -264,7 +266,7 @@ func NewResourceLevelMonitor(scope promutils.Scope, lister lister.FlyteWorkflowL
 
 	return &ResourceLevelMonitor{
 		Scope:          scope,
-		CollectorTimer: promutils.StopWatch{},
+		CollectorTimer: scope.MustNewStopWatch("collection_cycle", "Measures how long it takes to run a collection", time.Millisecond),
 		levels:         gauge,
 		lister:         lister,
 	}
