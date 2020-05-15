@@ -45,6 +45,7 @@ import (
 )
 
 const resourceLevelMonitorCycleDuration = 5 * time.Second
+const missing = "missing"
 
 type metrics struct {
 	Scope            promutils.Scope
@@ -204,16 +205,19 @@ func (r *ResourceLevelMonitor) countList(ctx context.Context, workflows []*v1alp
 	// Collect all workflow metrics
 	for _, wf := range workflows {
 		execID := wf.GetExecutionID()
+		var project string
+		var domain string
 		if execID.WorkflowExecutionIdentifier == nil {
 			logger.Warningf(ctx, "Workflow does not have an execution identifier! [%v]", wf)
-			continue
+			project = missing
+			domain = missing
 		}
-		project := wf.ExecutionID.Project
-		domain := wf.ExecutionID.Domain
+		project = wf.ExecutionID.Project
+		domain = wf.ExecutionID.Domain
 		if _, ok := counts[project]; !ok {
 			counts[project] = map[string]int{}
 		}
-		counts[project][domain] += 1
+		counts[project][domain]++
 	}
 
 	return counts
