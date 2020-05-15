@@ -2,6 +2,11 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"github.com/lyft/flytestdlib/contextutils"
+	"k8s.io/apimachinery/pkg/labels"
+	"runtime/pprof"
+	"time"
 
 	stdErrs "github.com/lyft/flytestdlib/errors"
 
@@ -33,6 +38,7 @@ import (
 	clientset "github.com/lyft/flytepropeller/pkg/client/clientset/versioned"
 	flyteScheme "github.com/lyft/flytepropeller/pkg/client/clientset/versioned/scheme"
 	informers "github.com/lyft/flytepropeller/pkg/client/informers/externalversions"
+	lister "github.com/lyft/flytepropeller/pkg/client/listers/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/lyft/flytepropeller/pkg/controller/workflow"
@@ -57,6 +63,7 @@ type Controller struct {
 	recorder      record.EventRecorder
 	metrics       *metrics
 	leaderElector *leaderelection.LeaderElector
+	levelMonitor  *ResourceLevelMonitor
 }
 
 // Runs either as a leader -if configured- or as a standalone process.
@@ -85,6 +92,9 @@ func (c *Controller) run(ctx context.Context) error {
 		logger.Errorf(ctx, "failed to start background GC")
 		return err
 	}
+
+	// Start the collector process
+	c.levelMonitor.RunCollector(ctx)
 
 	// Start the informer factories to begin populating the informer caches
 	logger.Info(ctx, "Starting FlyteWorkflow controller")
@@ -166,6 +176,97 @@ func (c *Controller) getWorkflowUpdatesHandler() cache.ResourceEventHandler {
 
 			logger.Infof(context.TODO(), "Deletion triggered for %v", name)
 		},
+	}
+}
+
+// This object is responsible for emitting metrics that show the current number of Flyte workflows, cut by project and domain.
+// It contains
+// It needs to be kicked off. The periodicity is not currently configurable because it seems unnecessary.
+type ResourceLevelMonitor struct {
+	Scope promutils.Scope
+
+	// Meta timer - this times each collection cycle
+	CollectorTimer promutils.StopWatch
+
+	// This is a labeled gauge
+	levels *prometheus.GaugeVec
+
+	// The thing that we want to current levels of
+	lister lister.FlyteWorkflowLister
+}
+
+func (r *ResourceLevelMonitor) countList(ctx context.Context, workflows []*v1alpha1.FlyteWorkflow) {
+	// Map of Projects to Domains to counts
+	counts := map[string]map[string]int{}
+
+	// Collect all workflow metrics
+	for i, wf := range workflows {
+		execID := wf.GetExecutionID()
+		if execID.WorkflowExecutionIdentifier == nil {
+			logger.Warningf(ctx, "Workflow does not have an execution identifier! [%v]", wf)
+			continue
+		}
+		fmt.Printf("in the loop %d: %s %s %s %s\n", i, wf.ExecutionID.Project, wf.ExecutionID.Domain, wf.GetID(), wf.ExecutionID.Name)
+		project := wf.ExecutionID.Project
+		domain := wf.ExecutionID.Domain
+		if _, ok := counts[project]; !ok {
+			counts[project] = map[string]int{}
+		}
+		counts[project][domain] += 1
+	}
+}
+
+func (r *ResourceLevelMonitor) collect(ctx context.Context) {
+	// Emit gauges at both the project/domain level, but also at the aggregate level
+	workflows, err := r.lister.List(labels.Everything())
+	if err != nil {
+		logger.Errorf(ctx, "Error listing workflows when attempting to collect data for gauges %s", err)
+	}
+
+	counts := r.countList(ctx, workflows)
+
+	// Emit labeled metrics, for each project/domain combination. This can be aggregated later with Prometheus queries.
+	metricKeys := []contextutils.Key{contextutils.ProjectKey, contextutils.DomainKey}
+	for project, val := range counts {
+		for domain, num := range val {
+			tempContext := contextutils.WithProjectDomain(ctx, project, domain)
+			gauge, err := r.levels.GetMetricWith(contextutils.Values(tempContext, metricKeys...))
+			if err != nil {
+				panic(err)
+			}
+			gauge.Set(float64(num))
+		}
+	}
+}
+
+func (r *ResourceLevelMonitor) RunCollector(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Second)
+	collectorCtx := contextutils.WithGoroutineLabel(ctx, "resource-level-monitor")
+	pprof.SetGoroutineLabels(collectorCtx)
+
+	go func() {
+		for {
+			select {
+			case <-collectorCtx.Done():
+				return
+			case <-ticker.C:
+				t := r.CollectorTimer.Start()
+				r.collect(collectorCtx)
+				t.Stop()
+			}
+		}
+	}()
+}
+
+func NewResourceLevelMonitor(scope promutils.Scope, lister lister.FlyteWorkflowLister) *ResourceLevelMonitor {
+	gauge := scope.MustNewGaugeVec("flyteworkflow", "Current FlyteWorkflow levels", contextutils.ProjectKey.String(),
+		contextutils.DomainKey.String())
+
+	return &ResourceLevelMonitor{
+		Scope:          scope,
+		CollectorTimer: promutils.StopWatch{},
+		levels:         gauge,
+		lister:         lister,
 	}
 }
 
@@ -297,6 +398,8 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	if err != nil {
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize workflow store")
 	}
+
+	controller.levelMonitor = NewResourceLevelMonitor(scope.NewSubScope("collector"), flyteworkflowInformer.Lister())
 
 	nodeExecutor, err := nodes.NewExecutor(ctx, cfg.NodeConfig, store, controller.enqueueWorkflowForNodeUpdates, eventSink,
 		launchPlanActor, launchPlanActor, cfg.MaxDatasetSizeBytes,
