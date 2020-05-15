@@ -3,7 +3,6 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"k8s.io/client-go/kubernetes/scheme"
 	"strings"
 	"time"
 
@@ -407,8 +406,6 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		return nil, err
 	}
 
-	iCtx.KubeClient().GetCache().GetInformerForKind()
-	scheme.Scheme.AllKnownTypes()
 	metricsScope := iCtx.MetricsScope().NewSubScope(entry.ID)
 	updateCount := labeled.NewCounter("informer_update", "Update events from informer", metricsScope)
 	droppedUpdateCount := labeled.NewCounter("informer_update_dropped", "Update events from informer that have the same resource version", metricsScope)
