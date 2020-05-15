@@ -43,6 +43,8 @@ import (
 	"github.com/lyft/flytepropeller/pkg/controller/workflow"
 )
 
+const resourceLevelMonitorCycleDuration = 5 * time.Second
+
 type metrics struct {
 	Scope            promutils.Scope
 	EnqueueCountWf   prometheus.Counter
@@ -179,8 +181,8 @@ func (c *Controller) getWorkflowUpdatesHandler() cache.ResourceEventHandler {
 }
 
 // This object is responsible for emitting metrics that show the current number of Flyte workflows, cut by project and domain.
-// It contains
-// It needs to be kicked off. The periodicity is not currently configurable because it seems unnecessary.
+// It needs to be kicked off. The periodicity is not currently configurable because it seems unnecessary. It will also
+// a timer measuring how long it takes to run each measurement cycle.
 type ResourceLevelMonitor struct {
 	Scope promutils.Scope
 
@@ -240,7 +242,7 @@ func (r *ResourceLevelMonitor) collect(ctx context.Context) {
 }
 
 func (r *ResourceLevelMonitor) RunCollector(ctx context.Context) {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(resourceLevelMonitorCycleDuration)
 	collectorCtx := contextutils.WithGoroutineLabel(ctx, "resource-level-monitor")
 	pprof.SetGoroutineLabels(collectorCtx)
 
@@ -259,14 +261,12 @@ func (r *ResourceLevelMonitor) RunCollector(ctx context.Context) {
 }
 
 func NewResourceLevelMonitor(scope promutils.Scope, lister lister.FlyteWorkflowLister) *ResourceLevelMonitor {
-	gauge := scope.MustNewGaugeVec("flyteworkflow", "Current FlyteWorkflow levels", contextutils.ProjectKey.String(),
-		contextutils.DomainKey.String())
-
 	return &ResourceLevelMonitor{
 		Scope:          scope,
 		CollectorTimer: scope.MustNewStopWatch("collection_cycle", "Measures how long it takes to run a collection", time.Millisecond),
-		levels:         gauge,
-		lister:         lister,
+		levels: scope.MustNewGaugeVec("flyteworkflow", "Current FlyteWorkflow levels",
+			contextutils.ProjectKey.String(), contextutils.DomainKey.String()),
+		lister: lister,
 	}
 }
 
