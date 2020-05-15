@@ -2,6 +2,10 @@ package controller
 
 import (
 	"context"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	listers "github.com/lyft/flytepropeller/pkg/client/listers/flyteworkflow/v1alpha1"
@@ -9,9 +13,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/labels"
-	"strings"
-	"testing"
-	"time"
 )
 
 var wfs = []*v1alpha1.FlyteWorkflow{

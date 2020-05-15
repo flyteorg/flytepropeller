@@ -2,10 +2,11 @@ package controller
 
 import (
 	"context"
-	"github.com/lyft/flytestdlib/contextutils"
-	"k8s.io/apimachinery/pkg/labels"
 	"runtime/pprof"
 	"time"
+
+	"github.com/lyft/flytestdlib/contextutils"
+	"k8s.io/apimachinery/pkg/labels"
 
 	stdErrs "github.com/lyft/flytestdlib/errors"
 
