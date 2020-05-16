@@ -188,10 +188,11 @@ func (c *Controller) getWorkflowUpdatesHandler() cache.ResourceEventHandler {
 type ResourceLevelMonitor struct {
 	Scope promutils.Scope
 
-	// Meta timer - this times each collection cycle
+	// Meta timer - this times each collection cycle to measure how long it takes to collect the levels GaugeVec below
 	CollectorTimer promutils.StopWatch
 
-	// This is a labeled gauge
+	// System Observability: This is a labeled gauge that emits the current number of FlyteWorkflow objects in the informer. It is used
+	// to monitor current levels. It currently only splits by project/domain, not workflow status.
 	levels *prometheus.GaugeVec
 
 	// The thing that we want to measure the current levels of
