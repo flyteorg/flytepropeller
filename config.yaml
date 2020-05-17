@@ -1,6 +1,7 @@
 # This is a sample configuration file.
 # Real configuration when running inside K8s (local or otherwise) lives in a ConfigMap
 propeller:
+  rawoutput-prefix: s3://my-s3-bucket/
   metadata-prefix: metadata/propeller/sandbox
   workers: 4
   workflow-reeval-duration: 10s
@@ -31,7 +32,6 @@ tasks:
       - container
       - K8S-ARRAY
       - qubole-hive-executor
-      - raw_container
 # Sample plugins config
 plugins:
   # All k8s plugins default configuration
@@ -53,7 +53,8 @@ plugins:
       - FLYTE_AWS_SECRET_ACCESS_KEY: miniostorage
     co-pilot:
       name: "flyte-copilot-"
-      image: "flyteplugins:5df5c285f357ed985ded924d41d58f2906fec090"
+      image: "flyteplugins:7c8fa1e6a4a77b0d393cb94cfa0106cf9f801bce"
+      start-timeout: "5s"
   # Logging configuration
   logs:
     kubernetes-enabled: true
