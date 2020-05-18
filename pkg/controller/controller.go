@@ -251,9 +251,9 @@ func (r *ResourceLevelMonitor) collect(ctx context.Context) {
 func (r *ResourceLevelMonitor) RunCollector(ctx context.Context) {
 	ticker := time.NewTicker(resourceLevelMonitorCycleDuration)
 	collectorCtx := contextutils.WithGoroutineLabel(ctx, "resource-level-monitor")
-	pprof.SetGoroutineLabels(collectorCtx)
 
 	go func() {
+		pprof.SetGoroutineLabels(collectorCtx)
 		for {
 			select {
 			case <-collectorCtx.Done():
