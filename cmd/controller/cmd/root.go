@@ -215,6 +215,13 @@ func executeRootCmd(cfg *config2.Config) {
 		logger.Fatalf(ctx, "Failed to initialize controller run-time manager. Error: %v", err)
 	}
 
+	go func() {
+		err = mgr.Start(ctx.Done())
+		if err != nil {
+			logger.Fatalf(ctx, "Failed to start manager. Error: %v", err)
+		}
+	}()
+
 	c, err := controller.New(ctx, cfg, kubeClient, flyteworkflowClient, flyteworkflowInformerFactory, mgr, propellerScope)
 
 	if err != nil {
