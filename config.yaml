@@ -31,6 +31,7 @@ tasks:
       - container
       - K8S-ARRAY
       - qubole-hive-executor
+      - spark
 # Sample plugins config
 plugins:
   # All k8s plugins default configuration
@@ -62,7 +63,7 @@ storage:
     endpoint: http://localhost:30084
     region: us-east-1
     secret-key: miniostorage
-  type: minio
+  type: mem
   container: "my-s3-bucket"
 event:
   type: admin
