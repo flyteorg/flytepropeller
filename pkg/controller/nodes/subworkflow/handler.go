@@ -82,6 +82,12 @@ func (w *workflowNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecu
 		}
 
 		return invalidWFNodeError()
+	} else if workflowPhase == v1alpha1.WorkflowNodePhaseExecuting {
+		if wfNode.GetSubWorkflowRef() != nil {
+			return w.subWfHandler.CheckSubWorkflowStatus(ctx, nCtx)
+		} else if wfNode.GetLaunchPlanRefID() != nil {
+			return w.lpHandler.CheckLaunchPlanStatus(ctx, nCtx)
+		}
 	} else if workflowPhase == v1alpha1.WorkflowNodePhaseFailing {
 		if wfNode == nil {
 			errMsg := "Invoked workflow handler, for a non workflow Node."
@@ -97,12 +103,6 @@ func (w *workflowNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecu
 		}
 
 		return invalidWFNodeError()
-	}
-
-	if wfNode.GetSubWorkflowRef() != nil {
-		return w.subWfHandler.CheckSubWorkflowStatus(ctx, nCtx)
-	} else if wfNode.GetLaunchPlanRefID() != nil {
-		return w.lpHandler.CheckLaunchPlanStatus(ctx, nCtx)
 	}
 
 	return invalidWFNodeError()

@@ -181,6 +181,8 @@ func (c *workflowExecutor) handleFailureNode(ctx context.Context, w *v1alpha1.Fl
 		c.enqueueWorkflow(w.GetK8sWorkflowID().String())
 		return StatusFailureNode, nil
 	}
+
+	return StatusFailureNode, nil
 }
 
 func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) (Status, error) {
