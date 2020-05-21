@@ -43,7 +43,10 @@ var StatusReady = Status{TransitionToPhase: v1alpha1.WorkflowPhaseReady}
 var StatusRunning = Status{TransitionToPhase: v1alpha1.WorkflowPhaseRunning}
 var StatusSucceeding = Status{TransitionToPhase: v1alpha1.WorkflowPhaseSucceeding}
 var StatusSuccess = Status{TransitionToPhase: v1alpha1.WorkflowPhaseSuccess}
-var StatusFailureNode = Status{TransitionToPhase: v1alpha1.WorkflowPhaseHandlingFailureNode}
+
+func StatusFailureNode(originalErr *core.ExecutionError) Status {
+	return Status{TransitionToPhase: v1alpha1.WorkflowPhaseHandlingFailureNode, Err: originalErr}
+}
 
 func StatusFailing(err *core.ExecutionError) Status {
 	return Status{TransitionToPhase: v1alpha1.WorkflowPhaseFailing, Err: err}
@@ -159,10 +162,11 @@ func (c *workflowExecutor) handleRunningWorkflow(ctx context.Context, w *v1alpha
 }
 
 func (c *workflowExecutor) handleFailureNode(ctx context.Context, w *v1alpha1.FlyteWorkflow) (Status, error) {
+	execErr := executionErrorOrDefault(w.GetExecutionStatus().GetExecutionError())
 	errorNode := w.GetOnFailureNode()
 	state, err := c.nodeExecutor.RecursiveNodeHandler(ctx, w, w, w, errorNode)
 	if err != nil {
-		return StatusFailureNode, err
+		return StatusFailureNode(execErr), err
 	}
 
 	if state.HasFailed() {
@@ -173,40 +177,47 @@ func (c *workflowExecutor) handleFailureNode(ctx context.Context, w *v1alpha1.Fl
 		return StatusFailed(&core.ExecutionError{
 			Kind:    core.ExecutionError_USER,
 			Code:    "TimedOut",
-			Message: "FailureNode Timedout"}), nil
+			Message: "FailureNode Timed-out"}), nil
 	}
 
 	if state.PartiallyComplete() {
 		// Re-enqueue the workflow
 		c.enqueueWorkflow(w.GetK8sWorkflowID().String())
-		return StatusFailureNode, nil
+		return StatusFailureNode(execErr), nil
 	}
 
-	return StatusFailureNode, nil
+	// If the failure node finished executing, transition to failed.
+	return StatusFailed(execErr), nil
 }
 
-func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) (Status, error) {
-	// Best effort clean-up.
-	if err := c.cleanupRunningNodes(ctx, w, "Some node execution failed, auto-abort."); err != nil {
-		logger.Errorf(ctx, "Failed to propagate Abort for workflow:%v. Error: %v",
-			w.ExecutionID.WorkflowExecutionIdentifier, err)
-		return StatusFailing(nil), err
-	}
-
-	errorNode := w.GetOnFailureNode()
-	if errorNode != nil {
-		return StatusFailureNode, nil
-	}
-
-	err := w.GetExecutionStatus().GetExecutionError()
-	if err == nil {
-		err = &core.ExecutionError{
+func executionErrorOrDefault(execError *core.ExecutionError) *core.ExecutionError {
+	if execError == nil {
+		return &core.ExecutionError{
 			Code:    "UnknownError",
 			Message: fmt.Sprintf("Unknown error, last seen message [%s]", w.GetExecutionStatus().GetMessage()),
 			Kind:    core.ExecutionError_UNKNOWN,
 		}
 	}
-	return StatusFailed(err), nil
+
+	return execError
+}
+
+func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) (Status, error) {
+	execErr := executionErrorOrDefault(w.GetExecutionStatus().GetExecutionError())
+
+	// Best effort clean-up.
+	if err := c.cleanupRunningNodes(ctx, w, "Some node execution failed, auto-abort."); err != nil {
+		logger.Errorf(ctx, "Failed to propagate Abort for workflow:%v. Error: %v",
+			w.ExecutionID.WorkflowExecutionIdentifier, err)
+		return StatusFailing(execErr), err
+	}
+
+	errorNode := w.GetOnFailureNode()
+	if errorNode != nil {
+		return StatusFailureNode(execErr), nil
+	}
+
+	return StatusFailed(execErr), nil
 }
 
 func (c *workflowExecutor) handleSucceedingWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) Status {
@@ -263,6 +274,8 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 			wfEvent.Phase = core.WorkflowExecution_RUNNING
 			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseRunning, fmt.Sprintf("Workflow Started"), nil)
 			wfEvent.OccurredAt = utils.GetProtoTime(wStatus.GetStartedAt())
+		case v1alpha1.WorkflowPhaseHandlingFailureNode:
+			fallthrough
 		case v1alpha1.WorkflowPhaseFailing:
 			wfEvent.Phase = core.WorkflowExecution_FAILING
 			wfEvent.OutputResult = convertToExecutionError(toStatus.Err, previousError)
