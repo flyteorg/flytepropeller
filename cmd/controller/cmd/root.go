@@ -230,7 +230,6 @@ func executeRootCmd(cfg *config2.Config) {
 	}(ctx)
 
 	c, err := controller.New(ctx, cfg, kubeClient, flyteworkflowClient, flyteworkflowInformerFactory, mgr, propellerScope)
-
 	if err != nil {
 		logger.Fatalf(ctx, "Failed to start Controller - [%v]", err.Error())
 	} else if c == nil {
