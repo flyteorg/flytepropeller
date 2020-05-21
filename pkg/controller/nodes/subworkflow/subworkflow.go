@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lyft/flytestdlib/logger"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/storage"
 
@@ -48,6 +50,7 @@ func (s *subworkflowHandler) startAndHandleSubWorkflow(ctx context.Context, nCtx
 	if startStatus.HasFailed() {
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailureErr(startStatus.Err, nil)), nil
 	}
+
 	return s.handleSubWorkflow(ctx, nCtx, subWorkflow, nl)
 }
 
@@ -61,9 +64,7 @@ func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler
 
 	if state.HasFailed() {
 		if subworkflow.GetOnFailureNode() != nil {
-			// TODO Handle Failure node for subworkflows. We need to add new state to the executor so that, we can continue returning Running, but in the next round start executing DoInFailureHandling - NOTE1
-			// https://github.com/lyft/flyte/issues/265
-			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailureErr(state.Err, nil)), err
+			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailingErr(state.Err, nil)), err
 		}
 
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailureErr(state.Err, nil)), err
@@ -142,6 +143,24 @@ func (s *subworkflowHandler) HandleFailureNodeOfSubWorkflow(ctx context.Context,
 		Message: "Failure in subworkflow missing in internal state",
 		Kind:    core.ExecutionError_SYSTEM, // Should be USER ERROR once we have internal state
 	}, nil)), nil
+}
+
+func (s *subworkflowHandler) HandleFailingSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
+	subWorkflow, err := GetSubWorkflow(ctx, nCtx)
+	if err != nil {
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.SubWorkflowExecutionFailed, err.Error(), nil)), nil
+	}
+
+	status := nCtx.NodeStatus()
+	status.GetWorkflowNodeStatus()
+	if subWorkflow.GetOnFailureNode() == nil {
+		logger.Infof(ctx, "Subworkflow has no failure nodes, failing immediately.")
+		return handler.DoTransition(handler.TransitionTypeEphemeral,
+			handler.PhaseInfoFailureErr(status.GetWorkflowNodeStatus().GetExecutionError(), nil)), err
+	}
+
+	nodeLookup := executors.NewNodeLookup(subWorkflow, status)
+	return s.HandleFailureNodeOfSubWorkflow(ctx, nCtx, subWorkflow, nodeLookup)
 }
 
 func (s *subworkflowHandler) StartSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {

@@ -43,6 +43,7 @@ var StatusReady = Status{TransitionToPhase: v1alpha1.WorkflowPhaseReady}
 var StatusRunning = Status{TransitionToPhase: v1alpha1.WorkflowPhaseRunning}
 var StatusSucceeding = Status{TransitionToPhase: v1alpha1.WorkflowPhaseSucceeding}
 var StatusSuccess = Status{TransitionToPhase: v1alpha1.WorkflowPhaseSuccess}
+var StatusFailureNode = Status{TransitionToPhase: v1alpha1.WorkflowPhaseHandlingFailureNode}
 
 func StatusFailing(err *core.ExecutionError) Status {
 	return Status{TransitionToPhase: v1alpha1.WorkflowPhaseFailing, Err: err}
@@ -157,34 +158,44 @@ func (c *workflowExecutor) handleRunningWorkflow(ctx context.Context, w *v1alpha
 	return StatusRunning, nil
 }
 
+func (c *workflowExecutor) handleFailureNode(ctx context.Context, w *v1alpha1.FlyteWorkflow) (Status, error) {
+	errorNode := w.GetOnFailureNode()
+	state, err := c.nodeExecutor.RecursiveNodeHandler(ctx, w, w, w, errorNode)
+	if err != nil {
+		return StatusFailureNode, err
+	}
+
+	if state.HasFailed() {
+		return StatusFailed(state.Err), nil
+	}
+
+	if state.HasTimedOut() {
+		return StatusFailed(&core.ExecutionError{
+			Kind:    core.ExecutionError_USER,
+			Code:    "TimedOut",
+			Message: "FailureNode Timedout"}), nil
+	}
+
+	if state.PartiallyComplete() {
+		// Re-enqueue the workflow
+		c.enqueueWorkflow(w.GetK8sWorkflowID().String())
+		return StatusFailureNode, nil
+	}
+}
+
 func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) (Status, error) {
 	// Best effort clean-up.
 	if err := c.cleanupRunningNodes(ctx, w, "Some node execution failed, auto-abort."); err != nil {
-		logger.Errorf(ctx, "Failed to propagate Abort for workflow:%v. Error: %v", w.ExecutionID.WorkflowExecutionIdentifier, err)
+		logger.Errorf(ctx, "Failed to propagate Abort for workflow:%v. Error: %v",
+			w.ExecutionID.WorkflowExecutionIdentifier, err)
+		return StatusFailing(nil), err
 	}
 
 	errorNode := w.GetOnFailureNode()
 	if errorNode != nil {
-		state, err := c.nodeExecutor.RecursiveNodeHandler(ctx, w, w, w, errorNode)
-		if err != nil {
-			return StatusFailing(nil), err
-		}
-		if state.HasFailed() {
-			return StatusFailed(state.Err), nil
-		}
-		if state.HasTimedOut() {
-			return StatusFailed(&core.ExecutionError{
-				Kind:    core.ExecutionError_USER,
-				Code:    "TimedOut",
-				Message: "FailureNode Timedout"}), nil
-		}
-		if state.PartiallyComplete() {
-			// Re-enqueue the workflow
-			c.enqueueWorkflow(w.GetK8sWorkflowID().String())
-			return StatusFailing(nil), nil
-		}
-		// Fallthrough to handle state is complete
+		return StatusFailureNode, nil
 	}
+
 	err := w.GetExecutionStatus().GetExecutionError()
 	if err == nil {
 		err = &core.ExecutionError{
@@ -364,6 +375,16 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 		return nil
 	case v1alpha1.WorkflowPhaseFailing:
 		newStatus, err := c.handleFailingWorkflow(ctx, w)
+		if err != nil {
+			return err
+		}
+		if err := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, wStatus, newStatus); err != nil {
+			return err
+		}
+		c.k8sRecorder.Event(w, corev1.EventTypeWarning, v1alpha1.WorkflowPhaseFailed.String(), "Workflow failed.")
+		return nil
+	case v1alpha1.WorkflowPhaseHandlingFailureNode:
+		newStatus, err := c.handleFailureNode(ctx, w)
 		if err != nil {
 			return err
 		}

@@ -99,6 +99,7 @@ const (
 	WorkflowPhaseFailing
 	WorkflowPhaseFailed
 	WorkflowPhaseAborted
+	WorkflowPhaseHandlingFailureNode
 )
 
 func (p WorkflowPhase) String() string {
@@ -117,6 +118,8 @@ func (p WorkflowPhase) String() string {
 		return "Succeeding"
 	case WorkflowPhaseAborted:
 		return "Aborted"
+	case WorkflowPhaseHandlingFailureNode:
+		return "HandlingFailureNode"
 	}
 	return "Unknown"
 }
@@ -198,12 +201,14 @@ type ExecutableBranchNode interface {
 
 type ExecutableWorkflowNodeStatus interface {
 	GetWorkflowNodePhase() WorkflowNodePhase
+	GetExecutionError() *core.ExecutionError
 }
 
 type MutableWorkflowNodeStatus interface {
 	Mutable
 	ExecutableWorkflowNodeStatus
 	SetWorkflowNodePhase(phase WorkflowNodePhase)
+	SetExecutionError(executionError *core.ExecutionError)
 }
 
 type Mutable interface {
