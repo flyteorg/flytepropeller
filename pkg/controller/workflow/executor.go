@@ -162,7 +162,7 @@ func (c *workflowExecutor) handleRunningWorkflow(ctx context.Context, w *v1alpha
 }
 
 func (c *workflowExecutor) handleFailureNode(ctx context.Context, w *v1alpha1.FlyteWorkflow) (Status, error) {
-	execErr := executionErrorOrDefault(w.GetExecutionStatus().GetExecutionError())
+	execErr := executionErrorOrDefault(w.GetExecutionStatus().GetExecutionError(), w.GetExecutionStatus().GetMessage())
 	errorNode := w.GetOnFailureNode()
 	state, err := c.nodeExecutor.RecursiveNodeHandler(ctx, w, w, w, errorNode)
 	if err != nil {
@@ -190,11 +190,11 @@ func (c *workflowExecutor) handleFailureNode(ctx context.Context, w *v1alpha1.Fl
 	return StatusFailed(execErr), nil
 }
 
-func executionErrorOrDefault(execError *core.ExecutionError) *core.ExecutionError {
+func executionErrorOrDefault(execError *core.ExecutionError, fallbackMessage string) *core.ExecutionError {
 	if execError == nil {
 		return &core.ExecutionError{
 			Code:    "UnknownError",
-			Message: fmt.Sprintf("Unknown error, last seen message [%s]", w.GetExecutionStatus().GetMessage()),
+			Message: fmt.Sprintf("Unknown error, last seen message [%s]", fallbackMessage),
 			Kind:    core.ExecutionError_UNKNOWN,
 		}
 	}
@@ -203,7 +203,7 @@ func executionErrorOrDefault(execError *core.ExecutionError) *core.ExecutionErro
 }
 
 func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) (Status, error) {
-	execErr := executionErrorOrDefault(w.GetExecutionStatus().GetExecutionError())
+	execErr := executionErrorOrDefault(w.GetExecutionStatus().GetExecutionError(), w.GetExecutionStatus().GetMessage())
 
 	// Best effort clean-up.
 	if err := c.cleanupRunningNodes(ctx, w, "Some node execution failed, auto-abort."); err != nil {
