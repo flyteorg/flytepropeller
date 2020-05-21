@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"runtime/pprof"
 	"time"
 
 	"github.com/lyft/flytestdlib/contextutils"
@@ -139,17 +138,17 @@ func (w *WorkerPool) Run(ctx context.Context, threadiness int, synced ...cache.I
 	}
 
 	logger.Infof(ctx, "Starting workers [%d]", threadiness)
-	// Launch workers to process FlyteWorkflow resources
-	for i := 0; i < threadiness; i++ {
-		w.metrics.FreeWorkers.Inc()
-		logger.Infof(ctx, "Starting worker [%d]", i)
-		workerLabel := fmt.Sprintf("worker-%v", i)
-		go func() {
-			workerCtx := contextutils.WithGoroutineLabel(ctx, workerLabel)
-			pprof.SetGoroutineLabels(workerCtx)
-			w.runWorker(workerCtx)
-		}()
-	}
+	//// Launch workers to process FlyteWorkflow resources
+	//for i := 0; i < threadiness; i++ {
+	//	w.metrics.FreeWorkers.Inc()
+	//	logger.Infof(ctx, "Starting worker [%d]", i)
+	//	workerLabel := fmt.Sprintf("worker-%v", i)
+	//	go func() {
+	//		workerCtx := contextutils.WithGoroutineLabel(ctx, workerLabel)
+	//		pprof.SetGoroutineLabels(workerCtx)
+	//		w.runWorker(workerCtx)
+	//	}()
+	//}
 
 	w.workQueue.Start(ctx)
 	logger.Info(ctx, "Started workers")

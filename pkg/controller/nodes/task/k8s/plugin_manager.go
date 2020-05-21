@@ -3,8 +3,11 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
+
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/backoff"
 	v1 "k8s.io/api/core/v1"
@@ -417,8 +420,31 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		handler.Funcs{
 			CreateFunc: func(evt event.CreateEvent, q2 workqueue.RateLimitingInterface) {
 				logger.Debugf(context.Background(), "Create received for %s, ignoring.", evt.Meta.GetName())
+				i, err := iCtx.KubeClient().GetCache().GetInformer(entry.ResourceToWatch)
+				if err != nil {
+					panic(err)
+				}
+
+				si, casted := i.(cache.SharedIndexInformer)
+				if !casted {
+					panic(fmt.Errorf("wrong type. Actual: %v", reflect.TypeOf(i)))
+				}
+
+				logger.Infof(ctx, "Found items in store [%v]", len(si.GetStore().List()))
 			},
 			UpdateFunc: func(evt event.UpdateEvent, q2 workqueue.RateLimitingInterface) {
+				i, err := iCtx.KubeClient().GetCache().GetInformer(entry.ResourceToWatch)
+				if err != nil {
+					panic(err)
+				}
+
+				si, casted := i.(cache.SharedIndexInformer)
+				if !casted {
+					panic(fmt.Errorf("wrong type. Actual: %v", reflect.TypeOf(i)))
+				}
+
+				logger.Infof(ctx, "Found items in store [%v] for kind [%v]", len(si.GetStore().List()), entry.ResourceToWatch)
+
 				if evt.MetaNew == nil {
 					logger.Warn(context.Background(), "Received an Update event with nil MetaNew.")
 				} else if evt.MetaOld == nil || evt.MetaOld.GetResourceVersion() != evt.MetaNew.GetResourceVersion() {
@@ -465,6 +491,18 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	if err != nil {
 		return nil, err
 	}
+
+	i, err := iCtx.KubeClient().GetCache().GetInformer(entry.ResourceToWatch)
+	if err != nil {
+		panic(err)
+	}
+
+	si, casted := i.(cache.SharedIndexInformer)
+	if !casted {
+		panic(fmt.Errorf("wrong type. Actual: %v", reflect.TypeOf(i)))
+	}
+
+	logger.Infof(ctx, "Found items in store [%v]", len(si.GetStore().List()))
 
 	return &PluginManager{
 		id:              entry.ID,
