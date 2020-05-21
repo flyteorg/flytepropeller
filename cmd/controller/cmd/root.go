@@ -5,7 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/pprof"
 	"strings"
+
+	"github.com/lyft/flytestdlib/contextutils"
 
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -215,12 +218,16 @@ func executeRootCmd(cfg *config2.Config) {
 		logger.Fatalf(ctx, "Failed to initialize controller run-time manager. Error: %v", err)
 	}
 
-	go func() {
+	// Start controller runtime manager to start listening to resource changes.
+	go func(ctx context.Context) {
+		ctx = contextutils.WithGoroutineLabel(ctx, "controller-runtime")
+		pprof.SetGoroutineLabels(ctx)
+		logger.Infof(ctx, "Starting controller-runtime manager")
 		err = mgr.Start(ctx.Done())
 		if err != nil {
 			logger.Fatalf(ctx, "Failed to start manager. Error: %v", err)
 		}
-	}()
+	}(ctx)
 
 	c, err := controller.New(ctx, cfg, kubeClient, flyteworkflowClient, flyteworkflowInformerFactory, mgr, propellerScope)
 
