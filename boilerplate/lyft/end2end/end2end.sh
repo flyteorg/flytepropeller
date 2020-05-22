@@ -9,7 +9,7 @@ set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
-OUT="$(mktemp -d)"
+OUT="${DIR}/tmp"
 git clone git@github.com:lyft/flyte.git "${OUT}"
 
 pushd ${OUT}
