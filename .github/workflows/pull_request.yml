@@ -17,7 +17,7 @@ jobs:
         with:
           username: "${{ github.actor }}"
           password: "${{ secrets.GITHUB_TOKEN }}"
-          image_name: ${{ secrets.flytegithub_repo }}/${{ secrets.flytegithub_repo }}
+          image_name: ${{ secrets.flytegithub_repo }}/operator
           image_tag: ${{ github.sha }}
           push_git_tag: true
           registry: docker.pkg.github.com
@@ -26,4 +26,4 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
       - name: Run end-to-end tests
-        run: PROPELLER=${{ secrets.flytegithub_repo }}/${{ secrets.flytegithub_repo }}:${{ github.sha }} make end2end
+        run: PROPELLER=${{ secrets.flytegithub_repo }}/operator:${{ github.sha }} make end2end
