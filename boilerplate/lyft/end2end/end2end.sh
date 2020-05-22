@@ -10,7 +10,7 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
 OUT="${DIR}/tmp"
-git clone git@github.com:lyft/flyte.git "${OUT}"
+git clone https://github.com/lyft/flyte.git "${OUT}"
 
 pushd ${OUT}
 make kustomize
