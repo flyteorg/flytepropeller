@@ -82,6 +82,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 				IsRecoverable: true,
 			}, nil
 		}
+		logger.Infof(ctx, "received Nil output reader. Ignoring, as outputs are not required for this task.")
 		return nil, nil
 	}
 	// Reader exists, we can check for error, even if this task may not have any outputs declared
@@ -98,6 +99,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 	}
 
 	// Do this if we have outputs declared for the Handler interface!
+	// Caching will not be enabled if there are no outputs declared.
 	if outputsDeclared {
 		ok, err := r.Exists(ctx)
 		if err != nil {

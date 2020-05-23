@@ -159,10 +159,9 @@ func (h *ComputeResourceAwareBackOffHandler) Handle(ctx context.Context, operati
 				// For example, if the creation of a pod requiring X cpus and Y memory got rejected because of
 				// 	insufficient memory, we should only lower the ceiling of memory to Y, without touching the cpu ceiling
 
-				logger.Infof(ctx, "The operation was attempted because the resource requested is lower than the ceilings, "+
-					"but failed due to %s (the next eligible time "+
-					"remains unchanged [%v]). The requests are [%v]. The ceilings are [%v]\n",
-					err, h.SimpleBackOffBlocker.NextEligibleTime, requestedResourceList, h.computeResourceCeilings)
+				logger.Infof(ctx, "The operation was attempted because the requested resourced [%v] is lower than the ceilings [%v], "+
+					"but failed due to Err[%s] (the next eligible time remains unchanged [%v])\n",
+					requestedResourceList, h.computeResourceCeilings, err, h.SimpleBackOffBlocker.NextEligibleTime)
 			}
 			if IsResourceQuotaExceeded(err) {
 				// It is necessary to parse the error message to get the actual constraints
@@ -198,6 +197,8 @@ func GetComputeResourceAndQuantityRequested(err error) v1.ResourceList {
 
 	// Sample message:
 	// "requested: limits.cpu=7,limits.memory=64Gi, used: limits.cpu=249,limits.memory=2012730Mi, limited: limits.cpu=250,limits.memory=2000Gi"
+	// OR
+	// requested: limits.cpu=1, used: limits.cpu=499216m, limited: limits.cpu=500
 
 	// Extracting "requested: limits.cpu=7,limits.memory=64Gi"
 	matches := reqRegexp.FindAllStringSubmatch(err.Error(), -1)

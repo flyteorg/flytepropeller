@@ -372,6 +372,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			logger.Errorf(ctx, "failed to check catalog cache with error")
 			return handler.UnknownTransition, err
 		} else if ok {
+			logger.Infof(ctx, "Catalog Cache Hit for Task [%s]", tCtx.tr.GetTaskID())
 			r := tCtx.ow.GetReader()
 			if r != nil {
 				// TODO @kumare this can be optimized, if we have paths then the reader could be pipelined to a sink
@@ -462,7 +463,11 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	}
 
 	// STEP 5: Send Transition events
-	logger.Debugf(ctx, "Sending transition event for plugin phase [%s]", pluginTrns.pInfo.Phase().String())
+	if pluginTrns.pInfo.Phase().IsTerminal() {
+		logger.Infof(ctx, "Sending Terminat Transition event for plugin phase [%s]", pluginTrns.pInfo.Phase().String())
+	} else {
+		logger.Debugf(ctx, "Sending transition event for plugin phase [%s]", pluginTrns.pInfo.Phase().String())
+	}
 	evInfo, err := pluginTrns.FinalTaskEvent(&execID, nCtx.InputReader(), tCtx.ow)
 	if err != nil {
 		logger.Errorf(ctx, "failed to convert plugin transition to TaskExecutionEvent. Error: %s", err.Error())

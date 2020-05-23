@@ -155,7 +155,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			}()
 
 			if err != nil {
-				logger.Errorf(ctx, "Error when trying to reconcile workflow. Error [%v]. Error Type[%v]. Is nill [%v]",
+				logger.Errorf(ctx, "Error when trying to reconcile workflow. Error [%v]. Error Type[%v].",
 					err, reflect.TypeOf(err))
 
 				// Let's mark these as system errors.
