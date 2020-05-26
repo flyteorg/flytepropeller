@@ -13,31 +13,10 @@ OUT="${DIR}/tmp"
 rm -rf ${OUT}
 git clone -b ignore-log-errors https://github.com/lyft/flyte.git "${OUT}"
 
+echo "Loading github docker images into 'kind' cluster to workaround this issue: https://github.com/containerd/containerd/issues/3291#issuecomment-631746985"
 docker login --username ${DOCKER_USERNAME} --password ${DOCKER_PASSWORD} docker.pkg.github.com
 docker pull docker.pkg.github.com/${PROPELLER}
 kind load docker-image docker.pkg.github.com/${PROPELLER}
-
-# Create docker secret in flyte namespace
-kubectl create namespace flyte
-
-kubectl create secret docker-registry githubpackages \
-  --docker-server="docker.pkg.github.com" \
-  --docker-username="${DOCKER_USERNAME}" \
-  --docker-password="${DOCKER_PASSWORD}" \
-  --docker-email="localhost@localhost"
-
-kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"githubpackages"}]}'
-
-kubectl create secret docker-registry githubpackages -n flyte \
-  --docker-server="docker.pkg.github.com" \
-  --docker-username="${DOCKER_USERNAME}" \
-  --docker-password="${DOCKER_PASSWORD}" \
-  --docker-email="localhost@localhost"
-
-kubectl patch serviceaccount default -n flyte -p '{"imagePullSecrets":[{"name":"githubpackages"}]}'
-
-kubectl create serviceaccount -n flyte flytepropeller
-kubectl patch serviceaccount flytepropeller -n flyte -p '{"imagePullSecrets":[{"name":"githubpackages"}]}'
 
 pushd ${OUT}
 sed -i.bak -e "s_docker.io/lyft/flytepropeller:v0.2.36_docker.pkg.github.com/${PROPELLER}_g" ${OUT}/kustomize/base/propeller/deployment.yaml
