@@ -21,9 +21,17 @@ jobs:
           image_tag: ${{ github.sha }}
           push_git_tag: true
           registry: docker.pkg.github.com
-      - name: Set up Go@${{ matrix.go-version }}
-        uses: actions/setup-go@v1
-        with:
-          go-version: ${{ matrix.go-version }}
-      - name: Run end-to-end tests
-        run: PROPELLER=${{ secrets.flytegithub_repo }}/operator:${{ github.sha }} make end2end
+      - uses: engineerd/setup-kind@v0.4.0
+      - name: Testing
+        run: |
+          kubectl cluster-info
+          kubectl get pods -n kube-system
+          echo "current-context:" $(kubectl config current-context)
+          echo "environment-kubeconfig:" ${KUBECONFIG}
+          PROPELLER=${{ secrets.flytegithub_repo }}/operator:${{ github.sha }} make end2end_execute
+#      - name: Set up Go@${{ matrix.go-version }}
+#        uses: actions/setup-go@v1
+#        with:
+#          go-version: ${{ matrix.go-version }}
+#      - name: Run end-to-end tests
+#        run: PROPELLER=${{ secrets.flytegithub_repo }}/operator:${{ github.sha }} make end2end
