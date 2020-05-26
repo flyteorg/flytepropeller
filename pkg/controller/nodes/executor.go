@@ -592,7 +592,7 @@ func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, execContext ex
 	return executors.NodeStatusComplete, nil
 }
 
-func canOperateOnNode(phase v1alpha1.NodePhase) bool {
+func canHandleNode(phase v1alpha1.NodePhase) bool {
 	return phase == v1alpha1.NodePhaseNotYetStarted ||
 		phase == v1alpha1.NodePhaseQueued ||
 		phase == v1alpha1.NodePhaseRunning ||
@@ -607,7 +607,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 	nodeStatus := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
 	nodePhase := nodeStatus.GetPhase()
 
-	if canOperateOnNode(nodePhase) {
+	if canHandleNode(nodePhase) {
 		// TODO Follow up Pull Request,
 		// 1. Rename this method to DAGTraversalHandleNode (accepts a DAGStructure along-with) the remaining arguments
 		// 2. Create a new method called HandleNode (part of the interface) (remaining all args as the previous method, but no DAGStructure
@@ -669,7 +669,7 @@ func (c *nodeExecutor) FinalizeHandler(ctx context.Context, execContext executor
 	nodeStatus := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
 	nodePhase := nodeStatus.GetPhase()
 
-	if canOperateOnNode(nodePhase) {
+	if canHandleNode(nodePhase) {
 		ctx = contextutils.WithNodeID(ctx, currentNode.GetID())
 
 		// Now depending on the node type decide
@@ -721,7 +721,7 @@ func (c *nodeExecutor) FinalizeHandler(ctx context.Context, execContext executor
 func (c *nodeExecutor) AbortHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode, reason string) error {
 	nodeStatus := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
 	nodePhase := nodeStatus.GetPhase()
-	if canOperateOnNode(nodePhase) {
+	if canHandleNode(nodePhase) {
 		ctx = contextutils.WithNodeID(ctx, currentNode.GetID())
 
 		// Now depending on the node type decide
