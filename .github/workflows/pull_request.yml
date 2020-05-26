@@ -23,12 +23,15 @@ jobs:
       #          registry: docker.pkg.github.com
       - uses: engineerd/setup-kind@v0.4.0
       - name: Testing
+        env:
+          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           kubectl cluster-info
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
-          make end2end_execute
+          PROPELLER=${{ secrets.flytegithub_repo }}/operator:5e302257c66f9056655a0d3fd9f34ed48fe37be8 make end2end_execute
 #          PROPELLER=${{ secrets.flytegithub_repo }}/operator:${{ github.sha }} make end2end_execute
 #      - name: Set up Go@${{ matrix.go-version }}
 #        uses: actions/setup-go@v1
