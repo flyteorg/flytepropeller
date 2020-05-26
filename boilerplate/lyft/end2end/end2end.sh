@@ -31,6 +31,7 @@ kubectl create secret docker-registry githubpackages -n flyte \
   --docker-email="localhost@localhost"
 
 kubectl patch serviceaccount default -n flyte -p '{"imagePullSecrets":[{"name":"githubpackages"}]}'
+kubectl patch serviceaccount flytepropeller -n flyte -p '{"imagePullSecrets":[{"name":"githubpackages"}]}'
 
 pushd ${OUT}
 sed -i.bak -e "s_docker.io/lyft/flytepropeller:v0.2.36_docker.pkg.github.com/${PROPELLER}_g" ${OUT}/kustomize/base/propeller/deployment.yaml
