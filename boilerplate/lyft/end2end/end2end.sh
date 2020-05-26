@@ -13,6 +13,10 @@ OUT="${DIR}/tmp"
 rm -rf ${OUT}
 git clone -b ignore-log-errors https://github.com/lyft/flyte.git "${OUT}"
 
+docker login --username ${DOCKER_USERNAME} --password ${DOCKER_PASSWORD} docker.pkg.github.com
+docker pull docker.pkg.github.com/${PROPELLER}
+kind load docker-image docker.pkg.github.com/${PROPELLER}
+
 # Create docker secret in flyte namespace
 kubectl create namespace flyte
 
