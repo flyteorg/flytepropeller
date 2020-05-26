@@ -12,15 +12,15 @@ jobs:
         go-version: [1.13]
     steps:
       - uses: actions/checkout@v1
-      - name: Push Docker Image to Github Registry
-        uses: whoan/docker-build-with-cache-action@v5
-        with:
-          username: "${{ github.actor }}"
-          password: "${{ secrets.GITHUB_TOKEN }}"
-          image_name: ${{ secrets.flytegithub_repo }}/operator
-          image_tag: ${{ github.sha }}
-          push_git_tag: true
-          registry: docker.pkg.github.com
+      #      - name: Push Docker Image to Github Registry
+      #        uses: whoan/docker-build-with-cache-action@v5
+      #        with:
+      #          username: "${{ github.actor }}"
+      #          password: "${{ secrets.GITHUB_TOKEN }}"
+      #          image_name: ${{ secrets.flytegithub_repo }}/operator
+      #          image_tag: ${{ github.sha }}
+      #          push_git_tag: true
+      #          registry: docker.pkg.github.com
       - uses: engineerd/setup-kind@v0.4.0
       - name: Testing
         run: |
@@ -28,7 +28,8 @@ jobs:
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
-          PROPELLER=${{ secrets.flytegithub_repo }}/operator:${{ github.sha }} make end2end_execute
+          PROPELLER=lyft/flytepropeller/operator:5e302257c66f9056655a0d3fd9f34ed48fe37be8 make end2end_execute
+#          PROPELLER=${{ secrets.flytegithub_repo }}/operator:${{ github.sha }} make end2end_execute
 #      - name: Set up Go@${{ matrix.go-version }}
 #        uses: actions/setup-go@v1
 #        with:
