@@ -14,6 +14,8 @@ rm -rf ${OUT}
 git clone -b ignore-log-errors https://github.com/lyft/flyte.git "${OUT}"
 
 # Create docker secret in flyte namespace
+kubectl create namespace flyte
+
 kubectl create secret docker-registry githubpackages -n flyte \
   --docker-server="docker.pkg.github.com" \
   --docker-username="${DOCKER_USERNAME}" \
