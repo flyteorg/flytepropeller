@@ -22,7 +22,7 @@ jobs:
       #          push_git_tag: true
       #          registry: docker.pkg.github.com
       - uses: engineerd/setup-kind@v0.4.0
-      - name: Testing
+      - name: End2End
         env:
           DOCKER_USERNAME: ${{ github.actor }}
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
