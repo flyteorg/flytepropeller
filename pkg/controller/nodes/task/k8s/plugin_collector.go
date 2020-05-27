@@ -87,7 +87,7 @@ func (r *ResourceLevelMonitor) RunCollector(ctx context.Context) {
 			case <-collectorCtx.Done():
 				return
 			case <-ticker.C:
-				stopwatch, err := r.CollectorTimer.GetMetricWith(map[string]string{"kind": strings.ToLower(r.gvk.Kind)})
+				stopwatch, err := r.CollectorTimer.GetMetricWith(map[string]string{KindKey: strings.ToLower(r.gvk.Kind)})
 				if err != nil {
 					panic(err)
 				}
