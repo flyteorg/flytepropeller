@@ -3,6 +3,9 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/cache"
+	"reflect"
 	"strings"
 	"time"
 
@@ -102,6 +105,7 @@ type PluginManager struct {
 	metrics         PluginMetrics
 	// Per namespace-resource
 	backOffController *backoff.Controller
+	resourceLevelMonitor *ResourceLevelMonitor
 }
 
 func (e *PluginManager) GetProperties() pluginsCore.PluginProperties {
@@ -466,11 +470,41 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		return nil, err
 	}
 
+	// Construct the collector that will emit a gauge indicating current levels of the resource that this K8s plugin operates on
+	var rm *ResourceLevelMonitor
+	rm, err = constructResourceLevelMonitor(ctx, iCtx, metricsScope, entry.ResourceToWatch)
+	if rm != nil {
+		// Start the poller and gauge emitter
+		rm.RunCollector(ctx)
+	}
+
 	return &PluginManager{
 		id:              entry.ID,
 		plugin:          entry.Plugin,
 		resourceToWatch: entry.ResourceToWatch,
 		metrics:         newPluginMetrics(metricsScope),
 		kubeClient:      iCtx.KubeClient(),
+		resourceLevelMonitor: rm,
 	}, nil
+}
+
+func constructResourceLevelMonitor(ctx context.Context, iCtx pluginsCore.SetupContext, scope promutils.Scope, resourceToWatch runtime.Object) (*ResourceLevelMonitor, error) {
+	// Construct the collector that will emit a gauge indicating current levels of the resource that this K8s plugin operates on
+	kinds, _, err := scheme.Scheme.ObjectKinds(resourceToWatch)
+	if err != nil && len(kinds) == 0 {
+		return nil, errors.Errorf( errors.PluginInitializationFailed, "No kind in schema for %v", resourceToWatch)
+	}
+	gvk := kinds[0]
+
+	i, err := iCtx.KubeClient().GetCache().GetInformer(resourceToWatch)
+	if err != nil {
+		return nil, err
+	}
+
+	si, casted := i.(cache.SharedIndexInformer)
+	if !casted {
+		return nil, errors.Errorf( errors.PluginInitializationFailed, "wrong type. Actual: %v", reflect.TypeOf(i))
+	}
+
+	return NewResourceLevelMonitor(ctx, scope, si, gvk), nil
 }
