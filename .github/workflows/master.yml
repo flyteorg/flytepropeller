@@ -33,7 +33,7 @@ jobs:
       - name: End2End
         env:
           DOCKER_USERNAME: ${{ github.actor }}
-          DOCKER_PASSWORD: ${{ secrets.enghabu_secret }}
+          DOCKER_PASSWORD: "${{ secrets.GITHUB_TOKEN }}"
         run: |
           kubectl cluster-info
           kubectl get pods -n kube-system
