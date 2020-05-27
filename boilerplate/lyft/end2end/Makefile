@@ -3,10 +3,6 @@
 #
 # TO OPT OUT OF UPDATES, SEE https://github.com/lyft/boilerplate/blob/master/Readme.rst
 
-# .PHONY: end2end
-# end2end:
-# 	./boilerplate/lyft/end2end/end2end.sh
-#
 .PHONY: end2end_execute
 end2end_execute:
 	./boilerplate/lyft/end2end/end2end.sh
