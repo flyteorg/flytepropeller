@@ -106,7 +106,7 @@ func NewResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cach
 		Scope:          scope,
 		CollectorTimer: collectorStopWatch,
 		levels: scope.MustNewGaugeVec("k8s_resources", "Current Stuff levels",
-			"kind", contextutils.NamespaceKey.String()),
+			KindKey, contextutils.NamespaceKey.String()),
 		sharedInformer: si,
 		gvk:            gvk,
 	}
