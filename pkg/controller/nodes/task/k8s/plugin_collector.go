@@ -92,6 +92,9 @@ func (r *ResourceLevelMonitor) RunCollector(ctx context.Context) {
 	}()
 }
 
+var gauge *labeled.Gauge
+var collectorStopWatch *labeled.StopWatch
+
 func NewResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cache.SharedIndexInformer, gvk schema.GroupVersionKind) *ResourceLevelMonitor {
 	logger.Infof(ctx, "Launching K8s gauge emitter for kind %s", gvk.Kind)
 
@@ -99,14 +102,20 @@ func NewResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cach
 	additionalLabels := labeled.AdditionalLabelsOption{
 		Labels: []string{contextutils.NamespaceKey.String(), KindKey.String()},
 	}
-	gauge := labeled.NewGauge("k8s_resources", "Current levels of K8s objects as seen from their informer caches", scope, additionalLabels)
-	collectorStopWatch := labeled.NewStopWatch("k8s_collection_cycle", "Measures how long it takes to run a collection",
-		time.Millisecond, scope, additionalLabels)
+	if gauge == nil {
+		x := labeled.NewGauge("k8s_resources", "Current levels of K8s objects as seen from their informer caches", scope, additionalLabels)
+		gauge = &x
+	}
+	if collectorStopWatch == nil {
+		x := labeled.NewStopWatch("k8s_collection_cycle", "Measures how long it takes to run a collection",
+			time.Millisecond, scope, additionalLabels)
+		collectorStopWatch = &x
+	}
 
 	return &ResourceLevelMonitor{
 		Scope:          scope,
-		CollectorTimer: &collectorStopWatch,
-		Levels:         &gauge,
+		CollectorTimer: collectorStopWatch,
+		Levels:         gauge,
 		sharedInformer: si,
 		gvk:            gvk,
 	}
