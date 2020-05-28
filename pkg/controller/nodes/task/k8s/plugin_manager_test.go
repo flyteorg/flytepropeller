@@ -577,5 +577,5 @@ func TestAddObjectMetadata(t *testing.T) {
 }
 
 func init() {
-	labeled.SetMetricKeys(contextutils.NamespaceKey)
+	labeled.SetMetricKeys(contextutils.ProjectKey)
 }
