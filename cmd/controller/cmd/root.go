@@ -222,14 +222,7 @@ func executeRootCmd(cfg *config2.Config) {
 	} else if c == nil {
 		logger.Fatalf(ctx, "Failed to start Controller, nil controller received.")
 	}
-
-	go func() {
-		err = mgr.Start(ctx.Done())
-		if err != nil {
-			logger.Fatalf(ctx, "Failed to start manager. Error: %v", err)
-		}
-	}()
-
+	
 	go flyteworkflowInformerFactory.Start(ctx.Done())
 
 	if err = c.Run(ctx); err != nil {
