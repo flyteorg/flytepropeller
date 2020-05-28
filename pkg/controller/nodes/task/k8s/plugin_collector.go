@@ -87,7 +87,7 @@ func (r *ResourceLevelMonitor) RunCollector(ctx context.Context) {
 			case <-collectorCtx.Done():
 				return
 			case <-ticker.C:
-				stopwatch, err := r.CollectorTimer.GetMetricWith(map[string]string{"kind": strings.ToLower(r.gvk.Kind)})
+				stopwatch, err := r.CollectorTimer.GetMetricWith(map[string]string{KindKey: strings.ToLower(r.gvk.Kind)})
 				if err != nil {
 					panic(err)
 				}
@@ -106,7 +106,7 @@ func NewResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cach
 		Scope:          scope,
 		CollectorTimer: collectorStopWatch,
 		levels: scope.MustNewGaugeVec("k8s_resources", "Current Stuff levels",
-			"kind", contextutils.NamespaceKey.String()),
+			KindKey, contextutils.NamespaceKey.String()),
 		sharedInformer: si,
 		gvk:            gvk,
 	}
