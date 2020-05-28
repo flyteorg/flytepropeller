@@ -104,7 +104,7 @@ type PluginManager struct {
 	kubeClient      pluginsCore.KubeClient
 	metrics         PluginMetrics
 	// Per namespace-resource
-	backOffController *backoff.Controller
+	backOffController    *backoff.Controller
 	resourceLevelMonitor *ResourceLevelMonitor
 }
 
@@ -473,17 +473,19 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	// Construct the collector that will emit a gauge indicating current levels of the resource that this K8s plugin operates on
 	var rm *ResourceLevelMonitor
 	rm, err = constructResourceLevelMonitor(ctx, iCtx, metricsScope, entry.ResourceToWatch)
-	if rm != nil {
+	if err != nil {
+		logger.Errorf(ctx, "Error constructing the K8s resource gauge %s", err)
+	} else {
 		// Start the poller and gauge emitter
 		rm.RunCollector(ctx)
 	}
 
 	return &PluginManager{
-		id:              entry.ID,
-		plugin:          entry.Plugin,
-		resourceToWatch: entry.ResourceToWatch,
-		metrics:         newPluginMetrics(metricsScope),
-		kubeClient:      iCtx.KubeClient(),
+		id:                   entry.ID,
+		plugin:               entry.Plugin,
+		resourceToWatch:      entry.ResourceToWatch,
+		metrics:              newPluginMetrics(metricsScope),
+		kubeClient:           iCtx.KubeClient(),
 		resourceLevelMonitor: rm,
 	}, nil
 }
@@ -492,18 +494,18 @@ func constructResourceLevelMonitor(ctx context.Context, iCtx pluginsCore.SetupCo
 	// Construct the collector that will emit a gauge indicating current levels of the resource that this K8s plugin operates on
 	kinds, _, err := scheme.Scheme.ObjectKinds(resourceToWatch)
 	if err != nil && len(kinds) == 0 {
-		return nil, errors.Errorf( errors.PluginInitializationFailed, "No kind in schema for %v", resourceToWatch)
+		return nil, errors.Errorf(errors.PluginInitializationFailed, "No kind in schema for %v", resourceToWatch)
 	}
 	gvk := kinds[0]
 
 	i, err := iCtx.KubeClient().GetCache().GetInformer(resourceToWatch)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(errors.PluginInitializationFailed, err, "Error getting informer for %s", reflect.TypeOf(i))
 	}
 
 	si, casted := i.(cache.SharedIndexInformer)
 	if !casted {
-		return nil, errors.Errorf( errors.PluginInitializationFailed, "wrong type. Actual: %v", reflect.TypeOf(i))
+		return nil, errors.Errorf(errors.PluginInitializationFailed, "wrong type. Actual: %v", reflect.TypeOf(i))
 	}
 
 	return NewResourceLevelMonitor(ctx, scope, si, gvk), nil
