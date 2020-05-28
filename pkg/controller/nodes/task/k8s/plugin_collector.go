@@ -18,7 +18,7 @@ import (
 const resourceLevelMonitorCycleDuration = 10 * time.Second
 const KindKey contextutils.Key = "kind"
 
-// This object is responsible for emitting metrics that show the current number of Flyte workflows, cut by project and domain.
+// This object is responsible for emitting metrics that show the current number of a given K8s resource kind, cut by namespace.
 // It needs to be kicked off. The periodicity is not currently configurable because it seems unnecessary. It will also
 // a timer measuring how long it takes to run each measurement cycle.
 type ResourceLevelMonitor struct {
@@ -27,8 +27,8 @@ type ResourceLevelMonitor struct {
 	// Meta timer - this times each collection cycle to measure how long it takes to collect the levels GaugeVec below
 	CollectorTimer *labeled.StopWatch
 
-	// System Observability: This is a labeled gauge that emits the current number of FlyteWorkflow objects in the informer. It is used
-	// to monitor current levels. It currently only splits by project/domain, not workflow status.
+	// System Observability: This is a labeled gauge that emits the current number of objects in the informer. It is used
+	// to monitor current levels.
 	Levels *labeled.Gauge
 
 	// This informer will be used to get a list of the underlying objects that we want a tally of
@@ -92,6 +92,9 @@ func (r *ResourceLevelMonitor) RunCollector(ctx context.Context) {
 	}()
 }
 
+// These are declared here because this constructor will be called more than once, by different K8s resource types (Pods, SparkApps, OtherCrd, etc.)
+// and metric names have to be unique. It felt more reasonable at time of writing to have one metric and have each resource type just be a label
+// rather than one metric per type, but can revisit this down the road.
 var gauge *labeled.Gauge
 var collectorStopWatch *labeled.StopWatch
 

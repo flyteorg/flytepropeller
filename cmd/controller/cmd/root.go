@@ -239,7 +239,7 @@ func executeRootCmd(cfg *config2.Config) {
 	} else if c == nil {
 		logger.Fatalf(ctx, "Failed to start Controller, nil controller received.")
 	}
-	
+
 	go flyteworkflowInformerFactory.Start(ctx.Done())
 
 	if err = c.Run(ctx); err != nil {
