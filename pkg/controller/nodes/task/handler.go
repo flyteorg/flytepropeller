@@ -500,11 +500,6 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 	currentPhase := nCtx.NodeStateReader().GetTaskNodeState().PluginPhase
 	logger.Debugf(ctx, "Abort invoked with phase [%v]", currentPhase)
 
-	if currentPhase.IsTerminal() {
-		logger.Debugf(ctx, "Returning immediately from Abort since task is already in terminal phase.", currentPhase)
-		return nil
-	}
-
 	ttype := nCtx.TaskReader().GetTaskType()
 	p, err := t.ResolvePlugin(ctx, ttype)
 	if err != nil {
@@ -535,6 +530,14 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 		logger.Errorf(ctx, "Abort failed when calling plugin abort.")
 		return err
 	}
+
+	// We should not try and send an event if we are already in terminal case, as we probably have already sent the event.
+	// Only if we are non terminal - lets send a failure event
+	if currentPhase.IsTerminal() {
+		logger.Debugf(ctx, "Returning immediately from Abort since task is already in terminal phase.", currentPhase)
+		return nil
+	}
+
 	taskExecID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	evRecorder := nCtx.EventsRecorder()
 	if err := evRecorder.RecordTaskEvent(ctx, &event.TaskExecutionEvent{

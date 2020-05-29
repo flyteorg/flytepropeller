@@ -1131,7 +1131,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 }
 
 func Test_task_Abort(t *testing.T) {
-	createNodeCtx := func(ev *fakeBufferedTaskEventRecorder) *nodeMocks.NodeExecutionContext {
+	createNodeCtx := func(ev *fakeBufferedTaskEventRecorder, p pluginCore.Phase) *nodeMocks.NodeExecutionContext {
 		wfExecID := &core.WorkflowExecutionIdentifier{
 			Project: "project",
 			Domain:  "domain",
@@ -1201,6 +1201,7 @@ func Test_task_Abort(t *testing.T) {
 		assert.NoError(t, cod.Encode(test{A: a}, st))
 		nr := &nodeMocks.NodeStateReader{}
 		nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
+			PluginPhase: p,
 			PluginState: st.Bytes(),
 		})
 		nCtx.OnNodeStateReader().Return(nr)
@@ -1210,6 +1211,7 @@ func Test_task_Abort(t *testing.T) {
 	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())
 
 	type fields struct {
+		p                     pluginCore.Phase
 		defaultPluginCallback func() pluginCore.Plugin
 	}
 	type args struct {
@@ -1222,22 +1224,40 @@ func Test_task_Abort(t *testing.T) {
 		wantErr     bool
 		abortCalled bool
 	}{
-		{"no-plugin", fields{defaultPluginCallback: func() pluginCore.Plugin {
+		{"no-plugin", fields{p: pluginCore.PhaseInitializing, defaultPluginCallback: func() pluginCore.Plugin {
 			return nil
 		}}, args{nil}, true, false},
 
-		{"abort-fails", fields{defaultPluginCallback: func() pluginCore.Plugin {
+		{"abort-fails", fields{p: pluginCore.PhaseQueued, defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
-			p.On("GetID").Return("id")
-			p.On("Abort", mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
+			p.OnGetID().Return("id")
+			p.OnAbortMatch(mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
 			return p
 		}}, args{nil}, true, true},
-		{"abort-success", fields{defaultPluginCallback: func() pluginCore.Plugin {
+		{"abort-success", fields{p: pluginCore.PhaseWaitingForResources, defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
-			p.On("GetID").Return("id")
-			p.On("Abort", mock.Anything, mock.Anything).Return(nil)
+			p.OnGetID().Return("id")
+			p.OnAbortMatch(mock.Anything, mock.Anything).Return(nil)
 			return p
 		}}, args{ev: &fakeBufferedTaskEventRecorder{}}, false, true},
+		{"abort-terminal-event", fields{p: pluginCore.PhaseRetryableFailure, defaultPluginCallback: func() pluginCore.Plugin {
+			p := &pluginCoreMocks.Plugin{}
+			p.OnGetID().Return("id")
+			p.OnAbortMatch(mock.Anything, mock.Anything).Return(nil)
+			return p
+		}}, args{ev: nil}, false, true},
+		{"abort-terminal-event2", fields{p: pluginCore.PhaseSuccess, defaultPluginCallback: func() pluginCore.Plugin {
+			p := &pluginCoreMocks.Plugin{}
+			p.OnGetID().Return("id")
+			p.OnAbortMatch(mock.Anything, mock.Anything).Return(nil)
+			return p
+		}}, args{ev: nil}, false, true},
+		{"abort-terminal-event3", fields{p: pluginCore.PhasePermanentFailure, defaultPluginCallback: func() pluginCore.Plugin {
+			p := &pluginCoreMocks.Plugin{}
+			p.OnGetID().Return("id")
+			p.OnAbortMatch(mock.Anything, mock.Anything).Return(nil)
+			return p
+		}}, args{ev: nil}, false, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1246,14 +1266,14 @@ func Test_task_Abort(t *testing.T) {
 				defaultPlugin:   m,
 				resourceManager: noopRm,
 			}
-			nCtx := createNodeCtx(tt.args.ev)
+			nCtx := createNodeCtx(tt.args.ev, tt.fields.p)
 			if err := tk.Abort(context.TODO(), nCtx, "reason"); (err != nil) != tt.wantErr {
 				t.Errorf("Handler.Abort() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			c := 0
 			if tt.abortCalled {
 				c = 1
-				if !tt.wantErr {
+				if !tt.wantErr && tt.args.ev != nil {
 					assert.Len(t, tt.args.ev.evs, 1)
 				}
 			}
