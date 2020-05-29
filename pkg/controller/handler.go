@@ -67,18 +67,18 @@ func (p *Propeller) Initialize(ctx context.Context) error {
 // The return value should be an error, in the case, we wish to retry this workflow
 // <pre>
 //
-//     +--------+        +--------+        +--------+     +--------+
-//     |        |        |        |        |        |     |        |
-//     | Ready  +--------> Running+--------> Succeeding---> Success|
-//     |        |        |        |        |        |     |        |
-//     +--------+        +--------+        +---------     +--------+
+//     +--------+        +---------+        +------------+     +---------+
+//     |        |        |         |        |            |     |         |
+//     | Ready  +--------> Running +--------> Succeeding +-----> Success |
+//     |        |        |         |        |            |     |         |
+//     +--------+        +---------+        +------------+     +---------+
 //         |                  |
 //         |                  |
-//         |             +----v---+        +--------+
-//         |             |        |        |        |
-//         +-------------> Failing+--------> Failed |
-//                       |        |        |        |
-//                       +--------+        +--------+
+//         |             +----v----+        +---------------------+        +--------+
+//         |             |         |        |     (optional)      |        |        |
+//         +-------------> Failing +--------> HandlingFailureNode +--------> Failed |
+//                       |         |        |                     |        |        |
+//                       +---------+        +---------------------+        +--------+
 // </pre>
 func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	logger.Infof(ctx, "Processing Workflow.")
@@ -105,6 +105,9 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	wfDeepCopy := w.DeepCopy()
 	t.Stop()
 	ctx = contextutils.WithWorkflowID(ctx, wfDeepCopy.GetID())
+	if execID := wfDeepCopy.GetExecutionID(); execID.WorkflowExecutionIdentifier != nil {
+		ctx = contextutils.WithProjectDomain(ctx, wfDeepCopy.GetExecutionID().Project, wfDeepCopy.GetExecutionID().Domain)
+	}
 	ctx = contextutils.WithResourceVersion(ctx, wfDeepCopy.GetResourceVersion())
 
 	maxRetries := uint32(p.cfg.MaxWorkflowRetries)
