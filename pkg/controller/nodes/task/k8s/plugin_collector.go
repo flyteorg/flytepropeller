@@ -38,6 +38,9 @@ type ResourceLevelMonitor struct {
 	gvk schema.GroupVersionKind
 }
 
+// The reason that we use namespace as the one and only thing to cut by is because it's the feature that we are sure that any
+// K8s resource created by a plugin will have (as yet, Flyte doesn't have any plugins that create cluster level resources and
+// it probably won't for a long time).
 func (r *ResourceLevelMonitor) countList(ctx context.Context, objects []interface{}) map[string]int {
 	// Map of namespace to counts
 	counts := map[string]int{}
