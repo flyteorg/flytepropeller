@@ -2,10 +2,11 @@ package controller
 
 import (
 	"context"
-	"github.com/lyft/flytestdlib/promutils/labeled"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/lyft/flytestdlib/promutils/labeled"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"

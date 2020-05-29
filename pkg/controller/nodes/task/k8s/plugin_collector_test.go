@@ -2,6 +2,9 @@ package k8s
 
 import (
 	"context"
+	"strings"
+	"testing"
+
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -9,8 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
-	"strings"
-	"testing"
 )
 
 var pods = []interface{}{

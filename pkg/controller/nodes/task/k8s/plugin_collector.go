@@ -2,14 +2,15 @@ package k8s
 
 import (
 	"context"
+	"runtime/pprof"
+	"strings"
+	"time"
+
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils/labeled"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
-	"runtime/pprof"
-	"strings"
-	"time"
 
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils"
