@@ -579,3 +579,15 @@ func TestAddObjectMetadata(t *testing.T) {
 func init() {
 	labeled.SetMetricKeys(contextutils.ProjectKey)
 }
+
+func TestResourceManagerConstruction(t *testing.T) {
+	ctx := context.Background()
+	sCtx := &pluginsCoreMock.SetupContext{}
+	fakeKubeClient := mocks.NewFakeKubeClient()
+	sCtx.On("KubeClient").Return(fakeKubeClient)
+
+	scope := promutils.NewScope("test:plugin_manager")
+	rm, err := constructResourceLevelMonitor(ctx, sCtx, scope, &v1.Pod{})
+	assert.NoError(t, err)
+	assert.NotNil(t, rm)
+}
