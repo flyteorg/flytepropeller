@@ -53,7 +53,7 @@ plugins:
       - FLYTE_AWS_SECRET_ACCESS_KEY: miniostorage
     co-pilot:
       name: "flyte-copilot-"
-      image: "flyteplugins:512c57245cbae82389ef16b69c82870bf2f4f246"
+      image: "flyteplugins:b9aee8dee3aedd95f74b9bf7eeaa8316e2f35e11"
       start-timeout: "5s"
   # Logging configuration
   logs:
