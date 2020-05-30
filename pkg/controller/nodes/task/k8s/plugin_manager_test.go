@@ -576,10 +576,6 @@ func TestAddObjectMetadata(t *testing.T) {
 	assert.Equal(t, l, o.GetLabels())
 }
 
-func init() {
-	labeled.SetMetricKeys(contextutils.ProjectKey)
-}
-
 func TestResourceManagerConstruction(t *testing.T) {
 	ctx := context.Background()
 	sCtx := &pluginsCoreMock.SetupContext{}
@@ -590,4 +586,8 @@ func TestResourceManagerConstruction(t *testing.T) {
 	rm, err := constructResourceLevelMonitor(ctx, sCtx, scope, &v1.Pod{})
 	assert.NoError(t, err)
 	assert.NotNil(t, rm)
+}
+
+func init() {
+	labeled.SetMetricKeys(contextutils.ProjectKey)
 }

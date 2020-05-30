@@ -53,6 +53,10 @@ func (m MyFakeInformer) GetStore() cache.Store {
 	return m.store
 }
 
+func (m MyFakeInformer) HasSynced() bool {
+	return true
+}
+
 type MyFakeStore struct {
 	cache.Store
 }
@@ -83,4 +87,20 @@ func TestResourceLevelMonitor_collect(t *testing.T) {
 
 	err = testutil.CollectAndCompare(gauge.GaugeVec, strings.NewReader(expected))
 	assert.NoError(t, err)
+}
+
+func TestResourceLevelMonitorSingletonness(t *testing.T) {
+	ctx := context.Background()
+	scope := promutils.NewScope("testscope")
+
+	kinds, _, err := scheme.Scheme.ObjectKinds(&v1.Pod{})
+	assert.NoError(t, err)
+	myInformer := MyFakeInformer{
+		store: MyFakeStore{},
+	}
+
+	rm := NewResourceLevelMonitor(ctx, scope, myInformer, kinds[0])
+	rm2 := NewResourceLevelMonitor(ctx, scope, myInformer, kinds[0])
+
+	assert.Equal(t, rm, rm2)
 }

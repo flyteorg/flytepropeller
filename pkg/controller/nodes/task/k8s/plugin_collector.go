@@ -101,8 +101,6 @@ func (r *ResourceLevelMonitor) RunCollector(ctx context.Context) {
 	}()
 }
 
-
-
 func (r *ResourceLevelMonitor) RunCollectorOnce(ctx context.Context) {
 	r.once.Do(func() {
 		r.RunCollector(ctx)
@@ -127,7 +125,7 @@ var gauge *labeled.Gauge
 var collectorStopWatch *labeled.StopWatch
 
 func NewResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cache.SharedIndexInformer, gvk schema.GroupVersionKind) *ResourceLevelMonitor {
-	logger.Infof(ctx, "Attempting to create K8s gauge emitter for kind %s/%s", gvk.Kind)
+	logger.Infof(ctx, "Attempting to create K8s gauge emitter for kind %s/%s", gvk.Version, gvk.Kind)
 
 	index.lock.Lock()
 	defer index.lock.Unlock()
