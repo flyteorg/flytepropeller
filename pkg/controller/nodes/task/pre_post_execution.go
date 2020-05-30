@@ -94,6 +94,9 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 		if err != nil {
 			return nil, err
 		}
+
+		// Errors can be arbitrary long since they are written by
+		taskErr.Message = trimErrorMessage(taskErr.Message, t.cfg.MaxErrorMessageLength)
 		return &taskErr, nil
 	}
 
