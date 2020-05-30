@@ -95,7 +95,9 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 			return nil, err
 		}
 
-		// Errors can be arbitrary long since they are written by
+		// Errors can be arbitrary long since they are written by containers/potentially 3rd party plugins. This ensures
+		// the error message length will never be big enough to cause write failures to Etcd. or spam Admin DB with huge
+		// objects.
 		taskErr.Message = trimErrorMessage(taskErr.Message, t.cfg.MaxErrorMessageLength)
 		return &taskErr, nil
 	}
