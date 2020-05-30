@@ -2,15 +2,16 @@ package k8s
 
 import (
 	"context"
+	"runtime/pprof"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils/labeled"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
-	"runtime/pprof"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils"
@@ -112,7 +113,7 @@ func (r *ResourceLevelMonitor) RunCollectorOnce(ctx context.Context) {
 // underlying K8s resource type. If two plugins both created Pods (ie sidecar and container), without this we would launch two
 // ResourceLevelMonitor's, have two goroutines spinning, etc.
 type monitorIndex struct {
-	lock         *sync.Mutex
+	lock     *sync.Mutex
 	monitors map[schema.GroupVersionKind]*ResourceLevelMonitor
 }
 
@@ -165,7 +166,7 @@ func NewResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cach
 
 func init() {
 	index = monitorIndex{
-		lock:         &sync.Mutex{},
+		lock:     &sync.Mutex{},
 		monitors: make(map[schema.GroupVersionKind]*ResourceLevelMonitor),
 	}
 }
