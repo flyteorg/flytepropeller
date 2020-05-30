@@ -28,18 +28,19 @@ func TestToTaskEventPhase(t *testing.T) {
 }
 
 func Test_trimErrorMessage(t *testing.T) {
+	const inputStr = "0123456789"
 	t.Run("Length less or equal than max", func(t *testing.T) {
-		input := "0123456789"
+		input := inputStr
 		assert.Equal(t, input, trimErrorMessage(input, 10))
 	})
 
 	t.Run("Length > max", func(t *testing.T) {
-		input := "0123456789"
+		input := inputStr
 		assert.Equal(t, "01236789", trimErrorMessage(input, 8))
 	})
 
 	t.Run("Odd Max", func(t *testing.T) {
-		input := "0123456789"
+		input := inputStr
 		assert.Equal(t, "01236789", trimErrorMessage(input, 9))
 	})
 
