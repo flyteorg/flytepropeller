@@ -2,15 +2,15 @@ package k8s
 
 import (
 	"context"
-	"runtime/pprof"
-	"strings"
-	"time"
-
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils/labeled"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
+	"runtime/pprof"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils"
@@ -37,6 +37,11 @@ type ResourceLevelMonitor struct {
 
 	// The kind here will be used to differentiate all the metrics, we'll leave out group and version for now
 	gvk schema.GroupVersionKind
+
+	// We only want to create one of these ResourceLevelMonitor objects per K8s resource type. If one of these objects
+	// already exists because another plugin created it, we pass along the pointer to that older object. However, we don't
+	// want the collection goroutine to be kicked off multiple times.
+	once sync.Once
 }
 
 // The reason that we use namespace as the one and only thing to cut by is because it's the feature that we are sure that any
@@ -96,6 +101,25 @@ func (r *ResourceLevelMonitor) RunCollector(ctx context.Context) {
 	}()
 }
 
+
+
+func (r *ResourceLevelMonitor) RunCollectorOnce(ctx context.Context) {
+	r.once.Do(func() {
+		r.RunCollector(ctx)
+	})
+}
+
+// This struct is here to ensure that we do not create more than one of these monitors for a given GVK. It wouldn't necessarily break
+// anything, but it's a waste of compute cycles to compute counts multiple times. This can happen if multiple plugins create the same
+// underlying K8s resource type. If two plugins both created Pods (ie sidecar and container), without this we would launch two
+// ResourceLevelMonitor's, have two goroutines spinning, etc.
+type monitorIndex struct {
+	lock         *sync.Mutex
+	monitors map[schema.GroupVersionKind]*ResourceLevelMonitor
+}
+
+var index monitorIndex
+
 // These are declared here because this constructor will be called more than once, by different K8s resource types (Pods, SparkApps, OtherCrd, etc.)
 // and metric names have to be unique. It felt more reasonable at time of writing to have one metric and have each resource type just be a label
 // rather than one metric per type, but can revisit this down the road.
@@ -103,7 +127,16 @@ var gauge *labeled.Gauge
 var collectorStopWatch *labeled.StopWatch
 
 func NewResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cache.SharedIndexInformer, gvk schema.GroupVersionKind) *ResourceLevelMonitor {
-	logger.Infof(ctx, "Launching K8s gauge emitter for kind %s", gvk.Kind)
+	logger.Infof(ctx, "Attempting to create K8s gauge emitter for kind %s/%s", gvk.Kind)
+
+	index.lock.Lock()
+	defer index.lock.Unlock()
+
+	if index.monitors[gvk] != nil {
+		logger.Infof(ctx, "Monitor for resource type %s already created, skipping...", gvk.Kind)
+		return index.monitors[gvk]
+	}
+	logger.Infof(ctx, "Creating monitor for resource type %s...", gvk.Kind)
 
 	// Refer to the existing labels in main.go of this repo. For these guys, we need to add namespace and kind (the K8s resource name, pod, sparkapp, etc.)
 	additionalLabels := labeled.AdditionalLabelsOption{
@@ -119,11 +152,22 @@ func NewResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cach
 		collectorStopWatch = &x
 	}
 
-	return &ResourceLevelMonitor{
+	rm := &ResourceLevelMonitor{
 		Scope:          scope,
 		CollectorTimer: collectorStopWatch,
 		Levels:         gauge,
 		sharedInformer: si,
 		gvk:            gvk,
+	}
+
+	index.monitors[gvk] = rm
+
+	return rm
+}
+
+func init() {
+	index = monitorIndex{
+		lock:         &sync.Mutex{},
+		monitors: make(map[schema.GroupVersionKind]*ResourceLevelMonitor),
 	}
 }

@@ -478,7 +478,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		logger.Errorf(ctx, "Error constructing the K8s resource gauge %s", err)
 	} else {
 		// Start the poller and gauge emitter
-		rm.RunCollector(ctx)
+		rm.RunCollectorOnce(ctx)
 	}
 
 	return &PluginManager{
