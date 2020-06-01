@@ -6,6 +6,8 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/lyft/flytepropeller/pkg/utils"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"github.com/golang/protobuf/ptypes"
@@ -147,6 +149,7 @@ type Handler struct {
 	resourceManager resourcemanager.BaseResourceManager
 	barrierCache    *barrier
 	cfg             *config.Config
+	pluginScope     promutils.Scope
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -195,11 +198,17 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		for _, tt := range p.RegisteredTaskTypes {
 			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", p.ID, tt)
 			t.plugins[tt] = cp
-			t.taskMetricsMap[tt] = &taskMetrics{
-				taskSucceeded: labeled.NewCounter(tt+"_success",
-					"Task finished successfully", t.metrics.scope, labeled.EmitUnlabeledMetric),
-				taskFailed: labeled.NewCounter(tt+"_failure",
-					"Task failed", t.metrics.scope, labeled.EmitUnlabeledMetric),
+			metricName, err := utils.GetSanitizedPrometheusKey(tt)
+			if err != nil {
+				return err
+			}
+			if _, ok := t.taskMetricsMap[metricName]; !ok {
+				t.taskMetricsMap[metricName] = &taskMetrics{
+					taskSucceeded: labeled.NewCounter(metricName+"_success",
+						"Task finished successfully", t.pluginScope, labeled.EmitUnlabeledMetric),
+					taskFailed: labeled.NewCounter(metricName+"_failure",
+						"Task failed", t.pluginScope, labeled.EmitUnlabeledMetric),
+				}
 			}
 		}
 		if p.IsDefault {
@@ -632,6 +641,7 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 			pluginQueueLatency:     labeled.NewStopWatch("plugin_queue_latency", "Time spent by plugin in queued phase", time.Microsecond, scope),
 			scope:                  scope,
 		},
+		pluginScope:     scope.NewSubScope("plugin"),
 		kubeClient:      kubeClient,
 		catalog:         client,
 		asyncCatalog:    async,
