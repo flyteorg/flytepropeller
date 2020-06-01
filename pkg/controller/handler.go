@@ -125,6 +125,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			err = p.workflowExecutor.HandleAbortedWorkflow(ctx, wfDeepCopy, maxRetries)
 		}()
 		if err != nil {
+			logger.Errorf(ctx, "Abort failed for workflow, reason: [%s]", err)
 			p.metrics.AbortError.Inc(ctx)
 			return err
 		}

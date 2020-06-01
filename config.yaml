@@ -14,9 +14,11 @@ propeller:
   queue:
     type: batch
     queue:
-      type: bucket
+      type: maxof
       rate: 20
       capacity: 100
+      base-delay: 10s
+      max-delay: 120s
     sub-queue:
       type: bucket
       rate: 100
