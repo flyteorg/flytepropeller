@@ -577,6 +577,14 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 				plugins: map[pluginCore.TaskType]pluginCore.Plugin{
 					"test": fakeplugins.NewPhaseBasedPlugin(),
 				},
+				taskMetricsMap: map[pluginCore.TaskType]*taskMetrics{
+					"test": &taskMetrics{
+						taskSucceeded: labeled.NewCounter("success",
+							"Task finished successfully", promutils.NewTestScope(), labeled.EmitUnlabeledMetric),
+						taskFailed: labeled.NewCounter("failure",
+							"Task failed", promutils.NewTestScope(), labeled.EmitUnlabeledMetric),
+					},
+				},
 				catalog: c,
 				barrierCache: newLRUBarrier(context.TODO(), config.BarrierConfig{
 					Enabled: false,
@@ -808,6 +816,14 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			assert.NoError(t, err)
 			tk.plugins = map[pluginCore.TaskType]pluginCore.Plugin{
 				"test": fakeplugins.NewPhaseBasedPlugin(),
+			}
+			tk.taskMetricsMap = map[pluginCore.TaskType]*taskMetrics{
+				"test": &taskMetrics{
+					taskSucceeded: labeled.NewCounter("success",
+						"Task finished successfully", promutils.NewTestScope(), labeled.EmitUnlabeledMetric),
+					taskFailed: labeled.NewCounter("failure",
+						"Task failed", promutils.NewTestScope(), labeled.EmitUnlabeledMetric),
+				},
 			}
 			tk.catalog = c
 			tk.resourceManager = noopRm

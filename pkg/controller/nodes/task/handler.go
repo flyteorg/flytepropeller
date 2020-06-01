@@ -50,6 +50,11 @@ type metrics struct {
 	scope promutils.Scope
 }
 
+type taskMetrics struct {
+	taskSucceeded labeled.Counter
+	taskFailed    labeled.Counter
+}
+
 type pluginRequestedTransition struct {
 	previouslyObserved bool
 	ttype              handler.TransitionType
@@ -133,6 +138,7 @@ type Handler struct {
 	catalog         catalog.Client
 	asyncCatalog    catalog.AsyncClient
 	plugins         map[pluginCore.TaskType]pluginCore.Plugin
+	taskMetricsMap  map[pluginCore.TaskType]*taskMetrics
 	defaultPlugin   pluginCore.Plugin
 	metrics         *metrics
 	pluginRegistry  PluginRegistryIface
@@ -189,6 +195,12 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		for _, tt := range p.RegisteredTaskTypes {
 			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", p.ID, tt)
 			t.plugins[tt] = cp
+			t.taskMetricsMap[tt] = &taskMetrics{
+				taskSucceeded: labeled.NewCounter(tt+"_success",
+					"Task finished successfully", t.metrics.scope, labeled.EmitUnlabeledMetric),
+				taskFailed: labeled.NewCounter(tt+"_failure",
+					"Task failed", t.metrics.scope, labeled.EmitUnlabeledMetric),
+			}
 		}
 		if p.IsDefault {
 			if err := t.setDefault(ctx, cp); err != nil {
@@ -298,6 +310,15 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		}
 	}
 
+	if !pluginTrns.IsPreviouslyObserved() {
+		taskType := fmt.Sprintf("%v", ctx.Value(contextutils.TaskTypeKey))
+		if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
+			t.taskMetricsMap[taskType].taskSucceeded.Inc(ctx)
+		}
+		if pluginTrns.pInfo.Phase() == pluginCore.PhasePermanentFailure || pluginTrns.pInfo.Phase() == pluginCore.PhaseRetryableFailure {
+			t.taskMetricsMap[taskType].taskFailed.Inc(ctx)
+		}
+	}
 	if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
 		// -------------------------------------
 		// TODO: @kumare create Issue# Remove the code after we use closures to handle dynamic nodes
@@ -598,6 +619,7 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 	return &Handler{
 		pluginRegistry: pluginMachinery.PluginRegistry(),
 		plugins:        make(map[pluginCore.TaskType]pluginCore.Plugin),
+		taskMetricsMap: make(map[pluginCore.TaskType]*taskMetrics),
 		metrics: &metrics{
 			pluginPanics:           labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),
 			unsupportedTaskType:    labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),
