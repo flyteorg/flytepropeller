@@ -66,6 +66,9 @@ type pluginRequestedTransition struct {
 	pluginStateVersion uint32
 }
 
+func getPluginMetricKey(taskType string, id string) string {
+	return taskType + "_" + id
+}
 func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference) {
 	p.ttype = handler.TransitionTypeEphemeral
 	p.pInfo = pluginCore.PhaseInfoSuccess(nil)
@@ -198,16 +201,16 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		for _, tt := range p.RegisteredTaskTypes {
 			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", p.ID, tt)
 			t.plugins[tt] = cp
-			metricName, err := utils.GetSanitizedPrometheusKey(tt)
+			metricNameKey, err := utils.GetSanitizedPrometheusKey(getPluginMetricKey(tt, p.ID))
 			if err != nil {
 				return err
 			}
-			if _, ok := t.taskMetricsMap[metricName]; !ok {
-				t.taskMetricsMap[metricName] = &taskMetrics{
-					taskSucceeded: labeled.NewCounter(metricName+"_success",
-						"Task finished successfully", t.pluginScope, labeled.EmitUnlabeledMetric),
-					taskFailed: labeled.NewCounter(metricName+"_failure",
-						"Task failed", t.pluginScope, labeled.EmitUnlabeledMetric),
+			if _, ok := t.taskMetricsMap[metricNameKey]; !ok {
+				t.taskMetricsMap[metricNameKey] = &taskMetrics{
+					taskSucceeded: labeled.NewCounter(metricNameKey+"_success",
+						"Task "+metricNameKey+" finished successfully", t.pluginScope, labeled.EmitUnlabeledMetric),
+					taskFailed: labeled.NewCounter(metricNameKey+"_failure",
+						"Task "+metricNameKey+" failed", t.pluginScope, labeled.EmitUnlabeledMetric),
 				}
 			}
 		}
@@ -321,11 +324,12 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 
 	if !pluginTrns.IsPreviouslyObserved() {
 		taskType := fmt.Sprintf("%v", ctx.Value(contextutils.TaskTypeKey))
+		metricNameKey := getPluginMetricKey(taskType, p.GetID())
 		if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
-			t.taskMetricsMap[taskType].taskSucceeded.Inc(ctx)
+			t.taskMetricsMap[metricNameKey].taskSucceeded.Inc(ctx)
 		}
 		if pluginTrns.pInfo.Phase() == pluginCore.PhasePermanentFailure || pluginTrns.pInfo.Phase() == pluginCore.PhaseRetryableFailure {
-			t.taskMetricsMap[taskType].taskFailed.Inc(ctx)
+			t.taskMetricsMap[metricNameKey].taskFailed.Inc(ctx)
 		}
 	}
 	if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
