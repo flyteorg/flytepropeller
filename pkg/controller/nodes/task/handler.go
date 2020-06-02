@@ -199,9 +199,9 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 			return regErrors.Wrapf(err, "failed to load plugin - %s", p.ID)
 		}
 		for _, tt := range p.RegisteredTaskTypes {
-			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", p.ID, tt)
+			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cp.GetID(), tt)
 			t.plugins[tt] = cp
-			metricNameKey, err := utils.GetSanitizedPrometheusKey(getPluginMetricKey(tt, p.ID))
+			metricNameKey, err := utils.GetSanitizedPrometheusKey(getPluginMetricKey(tt, cp.GetID()))
 			if err != nil {
 				return err
 			}
@@ -324,8 +324,11 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 
 	if !pluginTrns.IsPreviouslyObserved() {
 		taskType := fmt.Sprintf("%v", ctx.Value(contextutils.TaskTypeKey))
-		metricNameKey := getPluginMetricKey(taskType, p.GetID())
-		logger.Infof(ctx, "Metrics for %s", metricNameKey)
+		metricNameKey, err := utils.GetSanitizedPrometheusKey(getPluginMetricKey(taskType, p.GetID()))
+		if err != nil {
+			return nil, err
+		}
+		logger.Infof(ctx, "Metrics for %s %v", metricNameKey, t.taskMetricsMap)
 		if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
 			t.taskMetricsMap[metricNameKey].taskSucceeded.Inc(ctx)
 		}
