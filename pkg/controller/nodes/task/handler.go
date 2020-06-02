@@ -325,6 +325,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 	if !pluginTrns.IsPreviouslyObserved() {
 		taskType := fmt.Sprintf("%v", ctx.Value(contextutils.TaskTypeKey))
 		metricNameKey := getPluginMetricKey(taskType, p.GetID())
+		logger.Infof(ctx, "Metrics for %s", metricNameKey)
 		if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
 			t.taskMetricsMap[metricNameKey].taskSucceeded.Inc(ctx)
 		}
