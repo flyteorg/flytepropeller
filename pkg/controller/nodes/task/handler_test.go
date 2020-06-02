@@ -573,18 +573,9 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 			ev := &fakeBufferedTaskEventRecorder{}
 			nCtx := createNodeContext(tt.args.startingPluginPhase, uint32(tt.args.startingPluginPhaseVersion), tt.args.expectedState, ev, "test", state)
 			c := &pluginCatalogMocks.Client{}
-			fakePlugin := fakeplugins.NewPhaseBasedPlugin()
 			tk := Handler{
 				plugins: map[pluginCore.TaskType]pluginCore.Plugin{
-					"test": fakePlugin,
-				},
-				taskMetricsMap: map[pluginCore.TaskType]*taskMetrics{
-					"test_" + fakePlugin.GetID(): &taskMetrics{
-						taskSucceeded: labeled.NewCounter("success",
-							"Task finished successfully", promutils.NewTestScope(), labeled.EmitUnlabeledMetric),
-						taskFailed: labeled.NewCounter("failure",
-							"Task failed", promutils.NewTestScope(), labeled.EmitUnlabeledMetric),
-					},
+					"test": fakeplugins.NewPhaseBasedPlugin(),
 				},
 				catalog: c,
 				barrierCache: newLRUBarrier(context.TODO(), config.BarrierConfig{
@@ -815,17 +806,8 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			}
 			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, promutils.NewTestScope())
 			assert.NoError(t, err)
-			fakePlugin := fakeplugins.NewPhaseBasedPlugin()
 			tk.plugins = map[pluginCore.TaskType]pluginCore.Plugin{
-				"test": fakePlugin,
-			}
-			tk.taskMetricsMap = map[pluginCore.TaskType]*taskMetrics{
-				"test_" + fakePlugin.GetID(): &taskMetrics{
-					taskSucceeded: labeled.NewCounter("success",
-						"Task finished successfully", promutils.NewTestScope(), labeled.EmitUnlabeledMetric),
-					taskFailed: labeled.NewCounter("failure",
-						"Task failed", promutils.NewTestScope(), labeled.EmitUnlabeledMetric),
-				},
+				"test": fakeplugins.NewPhaseBasedPlugin(),
 			}
 			tk.catalog = c
 			tk.resourceManager = noopRm

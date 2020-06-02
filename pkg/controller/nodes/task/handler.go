@@ -201,18 +201,6 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		for _, tt := range p.RegisteredTaskTypes {
 			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cp.GetID(), tt)
 			t.plugins[tt] = cp
-			metricNameKey, err := utils.GetSanitizedPrometheusKey(getPluginMetricKey(tt, cp.GetID()))
-			if err != nil {
-				return err
-			}
-			if _, ok := t.taskMetricsMap[metricNameKey]; !ok {
-				t.taskMetricsMap[metricNameKey] = &taskMetrics{
-					taskSucceeded: labeled.NewCounter(metricNameKey+"_success",
-						"Task "+metricNameKey+" finished successfully", t.pluginScope, labeled.EmitUnlabeledMetric),
-					taskFailed: labeled.NewCounter(metricNameKey+"_failure",
-						"Task "+metricNameKey+" failed", t.pluginScope, labeled.EmitUnlabeledMetric),
-				}
-			}
 		}
 		if p.IsDefault {
 			if err := t.setDefault(ctx, cp); err != nil {
@@ -251,6 +239,22 @@ func validateTransition(transition pluginCore.Transition) error {
 	}
 
 	return nil
+}
+
+func (t Handler) fetchPluginTaskMetrics(taskType, pluginID string) (*taskMetrics, error) {
+	metricNameKey, err := utils.GetSanitizedPrometheusKey(getPluginMetricKey(taskType, pluginID))
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := t.taskMetricsMap[metricNameKey]; !ok {
+		t.taskMetricsMap[metricNameKey] = &taskMetrics{
+			taskSucceeded: labeled.NewCounter(metricNameKey+"_success",
+				"Task "+metricNameKey+" finished successfully", t.pluginScope, labeled.EmitUnlabeledMetric),
+			taskFailed: labeled.NewCounter(metricNameKey+"_failure",
+				"Task "+metricNameKey+" failed", t.pluginScope, labeled.EmitUnlabeledMetric),
+		}
+	}
+	return t.taskMetricsMap[metricNameKey], nil
 }
 
 func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *taskExecutionContext, ts handler.TaskNodeState) (*pluginRequestedTransition, error) {
@@ -324,18 +328,18 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 
 	if !pluginTrns.IsPreviouslyObserved() {
 		taskType := fmt.Sprintf("%v", ctx.Value(contextutils.TaskTypeKey))
-		metricNameKey, err := utils.GetSanitizedPrometheusKey(getPluginMetricKey(taskType, p.GetID()))
+		taskMetric, err := t.fetchPluginTaskMetrics(taskType, p.GetID())
 		if err != nil {
 			return nil, err
 		}
-		logger.Infof(ctx, "Metric key %s", metricNameKey)
 		if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
-			t.taskMetricsMap[metricNameKey].taskSucceeded.Inc(ctx)
+			taskMetric.taskSucceeded.Inc(ctx)
 		}
 		if pluginTrns.pInfo.Phase() == pluginCore.PhasePermanentFailure || pluginTrns.pInfo.Phase() == pluginCore.PhaseRetryableFailure {
-			t.taskMetricsMap[metricNameKey].taskFailed.Inc(ctx)
+			taskMetric.taskFailed.Inc(ctx)
 		}
 	}
+
 	if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
 		// -------------------------------------
 		// TODO: @kumare create Issue# Remove the code after we use closures to handle dynamic nodes
