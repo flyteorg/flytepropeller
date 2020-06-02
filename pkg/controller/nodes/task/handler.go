@@ -328,6 +328,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		if err != nil {
 			return nil, err
 		}
+		logger.Infof(ctx, "Metric key %s", metricNameKey)
 		if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
 			t.taskMetricsMap[metricNameKey].taskSucceeded.Inc(ctx)
 		}
