@@ -52,6 +52,8 @@ type metrics struct {
 	scope promutils.Scope
 }
 
+type MetricKey = string
+
 type taskMetrics struct {
 	taskSucceeded labeled.Counter
 	taskFailed    labeled.Counter
@@ -66,9 +68,10 @@ type pluginRequestedTransition struct {
 	pluginStateVersion uint32
 }
 
-func getPluginMetricKey(taskType string, id string) string {
-	return taskType + "_" + id
+func getPluginMetricKey(pluginID, taskType string) string {
+	return taskType + "_" + pluginID
 }
+
 func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference) {
 	p.ttype = handler.TransitionTypeEphemeral
 	p.pInfo = pluginCore.PhaseInfoSuccess(nil)
@@ -143,7 +146,7 @@ type Handler struct {
 	catalog         catalog.Client
 	asyncCatalog    catalog.AsyncClient
 	plugins         map[pluginCore.TaskType]pluginCore.Plugin
-	taskMetricsMap  map[pluginCore.TaskType]*taskMetrics
+	taskMetricsMap  map[MetricKey]*taskMetrics
 	defaultPlugin   pluginCore.Plugin
 	metrics         *metrics
 	pluginRegistry  PluginRegistryIface
@@ -241,8 +244,8 @@ func validateTransition(transition pluginCore.Transition) error {
 	return nil
 }
 
-func (t Handler) fetchPluginTaskMetrics(taskType, pluginID string) (*taskMetrics, error) {
-	metricNameKey, err := utils.GetSanitizedPrometheusKey(getPluginMetricKey(taskType, pluginID))
+func (t Handler) fetchPluginTaskMetrics(pluginID, taskType string) (*taskMetrics, error) {
+	metricNameKey, err := utils.GetSanitizedPrometheusKey(getPluginMetricKey(pluginID, taskType))
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +331,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 
 	if !pluginTrns.IsPreviouslyObserved() {
 		taskType := fmt.Sprintf("%v", ctx.Value(contextutils.TaskTypeKey))
-		taskMetric, err := t.fetchPluginTaskMetrics(taskType, p.GetID())
+		taskMetric, err := t.fetchPluginTaskMetrics(p.GetID(), taskType)
 		if err != nil {
 			return nil, err
 		}
@@ -640,7 +643,7 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 	return &Handler{
 		pluginRegistry: pluginMachinery.PluginRegistry(),
 		plugins:        make(map[pluginCore.TaskType]pluginCore.Plugin),
-		taskMetricsMap: make(map[pluginCore.TaskType]*taskMetrics),
+		taskMetricsMap: make(map[MetricKey]*taskMetrics),
 		metrics: &metrics{
 			pluginPanics:           labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),
 			unsupportedTaskType:    labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),

@@ -583,7 +583,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 					Enabled: false,
 				}),
 				resourceManager: noopRm,
-				taskMetricsMap:  make(map[pluginCore.TaskType]*taskMetrics),
+				taskMetricsMap:  make(map[MetricKey]*taskMetrics),
 			}
 			got, err := tk.Handle(context.TODO(), nCtx)
 			if (err != nil) != tt.want.wantErr {
