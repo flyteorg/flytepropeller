@@ -577,13 +577,13 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 				plugins: map[pluginCore.TaskType]pluginCore.Plugin{
 					"test": fakeplugins.NewPhaseBasedPlugin(),
 				},
-				pluginScope:    promutils.NewTestScope(),
-				taskMetricsMap: make(map[pluginCore.TaskType]*taskMetrics),
-				catalog:        c,
+				pluginScope: promutils.NewTestScope(),
+				catalog:     c,
 				barrierCache: newLRUBarrier(context.TODO(), config.BarrierConfig{
 					Enabled: false,
 				}),
 				resourceManager: noopRm,
+				taskMetricsMap:  make(map[pluginCore.TaskType]*taskMetrics),
 			}
 			got, err := tk.Handle(context.TODO(), nCtx)
 			if (err != nil) != tt.want.wantErr {
