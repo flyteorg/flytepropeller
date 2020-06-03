@@ -577,7 +577,9 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 				plugins: map[pluginCore.TaskType]pluginCore.Plugin{
 					"test": fakeplugins.NewPhaseBasedPlugin(),
 				},
-				catalog: c,
+				pluginScope:    promutils.NewTestScope(),
+				taskMetricsMap: make(map[pluginCore.TaskType]*taskMetrics),
+				catalog:        c,
 				barrierCache: newLRUBarrier(context.TODO(), config.BarrierConfig{
 					Enabled: false,
 				}),
