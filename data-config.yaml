@@ -14,3 +14,4 @@ data:
         secret-key: miniostorage
       type: minio
       container: my-s3-bucket
+      enable-multicontainer: true
