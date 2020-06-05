@@ -186,7 +186,7 @@ func TestPropeller_Handle(t *testing.T) {
 			},
 			Status: v1alpha1.WorkflowStatus{
 				FailedAttempts: 1,
-				Phase: v1alpha1.WorkflowPhaseRunning,
+				Phase:          v1alpha1.WorkflowPhaseRunning,
 			},
 		}))
 		exec.HandleAbortedCb = func(ctx context.Context, w *v1alpha1.FlyteWorkflow, maxRetries uint32) error {
