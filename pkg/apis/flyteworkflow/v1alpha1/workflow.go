@@ -191,6 +191,8 @@ type WorkflowSpec struct {
 	// refer to specific outputs of a subset of the nodes executed in the Workflow. When executing the end-node,
 	// the execution engine will traverse these bindings and assemble the final set of outputs of the workflow.
 	OutputBindings []*Binding `json:"outputBindings,omitempty"`
+
+	FailureHandlingStrategy core.WorkflowMetadata
 }
 
 func (in *WorkflowSpec) StartNode() ExecutableNode {
