@@ -423,12 +423,12 @@ func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha
 		if w.Status.FailedAttempts > maxRetries {
 			reason = fmt.Sprintf("max number of system retry attempts [%d/%d] exhausted - system failure.", w.Status.FailedAttempts, maxRetries)
 			err = errors.Errorf(errors.RuntimeExecutionError, w.GetID(), "max number of system retry attempts [%d/%d] exhausted. Last known status message: %v", w.Status.FailedAttempts, maxRetries, w.Status.Message)
-		}
-
-		// Best effort clean-up.
-		if err2 := c.cleanupRunningNodes(ctx, w, reason); err2 != nil {
-			logger.Errorf(ctx, "Failed to propagate Abort for workflow:%v. Error: %v", w.ExecutionID.WorkflowExecutionIdentifier, err2)
-			return err2
+		} else {
+			// Best effort clean-up.
+			if err2 := c.cleanupRunningNodes(ctx, w, reason); err2 != nil {
+				logger.Errorf(ctx, "Failed to propagate Abort for workflow:%v. Error: %v", w.ExecutionID.WorkflowExecutionIdentifier, err2)
+				return err2
+			}
 		}
 
 		var status Status
