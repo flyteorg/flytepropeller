@@ -421,7 +421,7 @@ func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha
 		c.metrics.IncompleteWorkflowAborted.Inc(ctx)
 		// Check of the workflow was deleted and that caused the abort
 		if w.GetDeletionTimestamp() != nil {
-			reason = "User initiated workflow abort."
+			reason = "Workflow aborted."
 		}
 
 		// We will always try to cleanup, even if we have extinguished all our retries
