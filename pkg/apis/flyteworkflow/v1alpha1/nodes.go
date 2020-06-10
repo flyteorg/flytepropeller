@@ -93,16 +93,18 @@ func (in *NodeMetadata) DeepCopyInto(out *NodeMetadata) {
 }
 
 type NodeSpec struct {
-	ID            NodeID                        `json:"id"`
-	Resources     *typesv1.ResourceRequirements `json:"resources,omitempty"`
-	Kind          NodeKind                      `json:"kind"`
-	BranchNode    *BranchNodeSpec               `json:"branch,omitempty"`
-	TaskRef       *TaskID                       `json:"task,omitempty"`
-	WorkflowNode  *WorkflowNodeSpec             `json:"workflow,omitempty"`
-	InputBindings []*Binding                    `json:"inputBindings,omitempty"`
-	Config        *typesv1.ConfigMap            `json:"config,omitempty"`
-	RetryStrategy *RetryStrategy                `json:"retry,omitempty"`
-	OutputAliases []Alias                       `json:"outputAlias,omitempty"`
+	ID           NodeID                        `json:"id"`
+	Resources    *typesv1.ResourceRequirements `json:"resources,omitempty"`
+	Kind         NodeKind                      `json:"kind"`
+	BranchNode   *BranchNodeSpec               `json:"branch,omitempty"`
+	TaskRef      *TaskID                       `json:"task,omitempty"`
+	WorkflowNode *WorkflowNodeSpec             `json:"workflow,omitempty"`
+	// +listType=atomic
+	InputBindings []*Binding         `json:"inputBindings,omitempty"`
+	Config        *typesv1.ConfigMap `json:"config,omitempty"`
+	RetryStrategy *RetryStrategy     `json:"retry,omitempty"`
+	// +listType=atomic
+	OutputAliases []Alias `json:"outputAlias,omitempty"`
 
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// Optional: Defaults to empty.  See type description for default values of each field.
@@ -115,6 +117,7 @@ type NodeSpec struct {
 	// +optional
 	// +patchMergeKey=name
 	// +patchStrategy=merge
+	// +listType=atomic
 	ImagePullSecrets []typesv1.LocalObjectReference `json:"imagePullSecrets,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,15,rep,name=imagePullSecrets"`
 	// Specifies the hostname of the Pod
 	// If not specified, the pod's hostname will be set to a system-defined value.
@@ -133,6 +136,7 @@ type NodeSpec struct {
 	SchedulerName string `json:"schedulerName,omitempty" protobuf:"bytes,19,opt,name=schedulerName"`
 	// If specified, the pod's tolerations.
 	// +optional
+	// +listType=atomic
 	Tolerations []typesv1.Toleration `json:"tolerations,omitempty" protobuf:"bytes,22,opt,name=tolerations"`
 	// Node execution timeout
 	ExecutionDeadline *v1.Duration `json:"executionDeadline,omitempty"`

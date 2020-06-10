@@ -70,7 +70,8 @@ func (in *IfBlock) GetThenNode() *NodeID {
 }
 
 type BranchNodeSpec struct {
-	If       IfBlock    `json:"if"`
+	If IfBlock `json:"if"`
+	// +listType=atomic
 	ElseIf   []*IfBlock `json:"elseIf,omitempty"`
 	Else     *NodeID    `json:"else,omitempty"`
 	ElseFail *Error     `json:"elseFail,omitempty"`

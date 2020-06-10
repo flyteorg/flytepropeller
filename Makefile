@@ -11,21 +11,25 @@ update_boilerplate:
 linux_compile:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /artifacts/flytepropeller ./cmd/controller/main.go
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /artifacts/kubectl-flyte ./cmd/kubectl-flyte/main.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /artifacts/build-tool ./cmd/build-tool/main.go
 
 .PHONY: compile
 compile:
 	mkdir -p ./bin
 	go build -o bin/flytepropeller ./cmd/controller/main.go
 	go build -o bin/kubectl-flyte ./cmd/kubectl-flyte/main.go && cp bin/kubectl-flyte ${GOPATH}/bin
+	go build -o bin/build-tool ./cmd/build-tool/main.go && cp bin/build-tool ${GOPATH}/bin
 
 cross_compile:
 	@glide install
 	@mkdir -p ./bin/cross
 	GOOS=linux GOARCH=amd64 go build -o bin/cross/flytepropeller ./cmd/controller/main.go
 	GOOS=linux GOARCH=amd64 go build -o bin/cross/kubectl-flyte ./cmd/kubectl-flyte/main.go
+	GOOS=linux GOARCH=amd64 go build -o bin/cross/build-tool ./cmd/build-tool/main.go
 
 op_code_generate:
 	@RESOURCE_NAME=flyteworkflow OPERATOR_PKG=github.com/lyft/flytepropeller ./hack/update-codegen.sh
+	@openapi-gen -i github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1 -p github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1
 
 benchmark:
 	mkdir -p ./bin/benchmark
@@ -42,6 +46,7 @@ clean:
 # Generate golden files. Add test packages that generate golden files here.
 golden:
 	go test ./cmd/kubectl-flyte/cmd -update
+	go test ./cmd/build-tool/cmd -update
 	go test ./pkg/compiler/test -update
 
 .PHONY: generate
