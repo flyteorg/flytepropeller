@@ -386,6 +386,7 @@ type ExecutableSubWorkflow interface {
 	GetNodes() []NodeID
 	GetConnections() *Connections
 	GetOutputs() *OutputVarMap
+	//GetOnFailurePolicy() core.WorkflowMetadata_OnFailurePolicy
 }
 
 // Meta provides an interface to retrieve labels, annotations and other concepts that are declared only once
