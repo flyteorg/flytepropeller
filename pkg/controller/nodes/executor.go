@@ -545,22 +545,25 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, execContext executo
 
 		if state.HasFailed() || state.HasTimedOut() {
 			logger.Debugf(ctx, "Some downstream node has failed. Failed: [%v]. TimedOut: [%v]. Error: [%s]", state.HasFailed(), state.HasTimedOut(), state.Err)
-			if onFailurePolicy == core.WorkflowMetadata_FAIL_AFTER_EXECUTABLE_NODES_COMPLETE ||
-				onFailurePolicy == core.WorkflowMetadata_FAIL_AFTER_RUNNING_NODES_COMPLETE {
+			if onFailurePolicy == core.WorkflowMetadata_FAIL_AFTER_EXECUTABLE_NODES_COMPLETE {
 				// If the failure policy allows other nodes to continue running, do not exit the loop,
 				// Keep track of the last failed state in the loop since it'll be the one to return.
+				// TODO: If multiple nodes fail (which this mode allows), consolidate/summarize failure states in one.
 				stateOnComplete = state
 			} else {
 				return state, nil
 			}
-		}
-
-		if !state.IsComplete() {
+		} else if !state.IsComplete() {
+			// A Failed/Timedout node is implicitly considered "complete" this means none of the downstream nodes from
+			// that node will ever be allowed to run.
+			// This else block, therefore, deals with all other states. IsComplete will return true if and only if this
+			// node as well as all of its downstream nodes have finished executing with success statuses. Otherwise we
+			// mark this node's state as not completed to ensure we will visit it again later.
 			allCompleted = false
 		}
 
 		if state.PartiallyComplete() {
-			// This implies that one of the downstream nodes has completed and workflow is ready for propagation
+			// This implies that one of the downstream nodes has just succeeded and workflow is ready for propagation
 			// We do not propagate in current cycle to make it possible to store the state between transitions
 			partialNodeCompletion = true
 		}
