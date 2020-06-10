@@ -92,13 +92,19 @@ func buildFlyteWorkflowSpec(wf *core.CompiledWorkflow, tasks []*core.CompiledTas
 		outputs = &v1alpha1.OutputVarMap{VariableMap: &core.VariableMap{}}
 	}
 
+	failurePolicy := core.WorkflowMetadata_FAIL_IMMEDIATELY
+	if wf.Template != nil && wf.Template.Metadata != nil {
+		failurePolicy = wf.Template.Metadata.OnFailure
+	}
+
 	return &v1alpha1.WorkflowSpec{
-		ID:             WorkflowIDAsString(wf.Template.Id),
-		OnFailure:      failureN,
-		Nodes:          nodes,
-		Connections:    buildConnections(wf),
-		Outputs:        outputs,
-		OutputBindings: outputBindings,
+		ID:              WorkflowIDAsString(wf.Template.Id),
+		OnFailure:       failureN,
+		Nodes:           nodes,
+		Connections:     buildConnections(wf),
+		Outputs:         outputs,
+		OutputBindings:  outputBindings,
+		OnFailurePolicy: failurePolicy,
 	}
 }
 
