@@ -75,7 +75,7 @@ func TestResourceLevelMonitor_collect(t *testing.T) {
 		store: MyFakeStore{},
 	}
 
-	rm := NewResourceLevelMonitor(ctx, scope, myInformer, kinds[0])
+	rm := GetOrCreateResourceLevelMonitor(ctx, scope, myInformer, kinds[0])
 	rm.collect(ctx)
 
 	var expected = `
@@ -99,8 +99,8 @@ func TestResourceLevelMonitorSingletonness(t *testing.T) {
 		store: MyFakeStore{},
 	}
 
-	rm := NewResourceLevelMonitor(ctx, scope, myInformer, kinds[0])
-	rm2 := NewResourceLevelMonitor(ctx, scope, myInformer, kinds[0])
+	rm := GetOrCreateResourceLevelMonitor(ctx, scope, myInformer, kinds[0])
+	rm2 := GetOrCreateResourceLevelMonitor(ctx, scope, myInformer, kinds[0])
 
 	assert.Equal(t, rm, rm2)
 }

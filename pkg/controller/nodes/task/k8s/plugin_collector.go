@@ -47,7 +47,8 @@ type ResourceLevelMonitor struct {
 
 // The reason that we use namespace as the one and only thing to cut by is because it's the feature that we are sure that any
 // K8s resource created by a plugin will have (as yet, Flyte doesn't have any plugins that create cluster level resources and
-// it probably won't for a long time).
+// it probably won't for a long time). We can't assume that all the operators and CRDs that Flyte will ever work with will have
+// the exact same set of labels or annotations or owner references. The only thing we can really count on is namespace.
 func (r *ResourceLevelMonitor) countList(ctx context.Context, objects []interface{}) map[string]int {
 	// Map of namespace to counts
 	counts := map[string]int{}
@@ -125,7 +126,7 @@ var index monitorIndex
 var gauge *labeled.Gauge
 var collectorStopWatch *labeled.StopWatch
 
-func NewResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cache.SharedIndexInformer, gvk schema.GroupVersionKind) *ResourceLevelMonitor {
+func GetOrCreateResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cache.SharedIndexInformer, gvk schema.GroupVersionKind) *ResourceLevelMonitor {
 	logger.Infof(ctx, "Attempting to create K8s gauge emitter for kind %s/%s", gvk.Version, gvk.Kind)
 
 	index.lock.Lock()

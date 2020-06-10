@@ -509,5 +509,5 @@ func constructResourceLevelMonitor(ctx context.Context, iCtx pluginsCore.SetupCo
 		return nil, errors.Errorf(errors.PluginInitializationFailed, "wrong type. Actual: %v", reflect.TypeOf(i))
 	}
 
-	return NewResourceLevelMonitor(ctx, scope, si, gvk), nil
+	return GetOrCreateResourceLevelMonitor(ctx, scope, si, gvk), nil
 }
