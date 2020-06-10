@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 
@@ -372,8 +374,10 @@ func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecu
 	return nil
 }
 
-func NewPluginManagerWithBackOff(ctx context.Context, iCtx pluginsCore.SetupContext, entry k8s.PluginEntry, backOffController *backoff.Controller) (*PluginManager, error) {
-	mgr, err := NewPluginManager(ctx, iCtx, entry)
+func NewPluginManagerWithBackOff(ctx context.Context, iCtx pluginsCore.SetupContext, entry k8s.PluginEntry, backOffController *backoff.Controller,
+	monitorIndex *ResourceMonitorIndex) (*PluginManager, error) {
+
+	mgr, err := NewPluginManager(ctx, iCtx, entry, monitorIndex)
 	if err == nil {
 		mgr.backOffController = backOffController
 	}
@@ -381,7 +385,7 @@ func NewPluginManagerWithBackOff(ctx context.Context, iCtx pluginsCore.SetupCont
 }
 
 // Creates a K8s generic task executor. This provides an easier way to build task executors that create K8s resources.
-func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry k8s.PluginEntry) (*PluginManager, error) {
+func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry k8s.PluginEntry, monitorIndex *ResourceMonitorIndex) (*PluginManager, error) {
 	if iCtx.EnqueueOwner() == nil {
 		return nil, errors.Errorf(errors.PluginInitializationFailed, "Failed to initialize plugin, enqueue Owner cannot be nil or empty.")
 	}
@@ -472,14 +476,17 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	}
 
 	// Construct the collector that will emit a gauge indicating current levels of the resource that this K8s plugin operates on
-	var rm *ResourceLevelMonitor
-	rm, err = constructResourceLevelMonitor(ctx, iCtx, metricsScope, entry.ResourceToWatch)
+	gvk, err := getPluginGvk(entry.ResourceToWatch)
 	if err != nil {
-		logger.Errorf(ctx, "Error constructing the K8s resource gauge %s", err)
-	} else {
-		// Start the poller and gauge emitter
-		rm.RunCollectorOnce(ctx)
+		return nil, err
 	}
+	sharedInformer, err := getPluginSharedInformer(iCtx, entry.ResourceToWatch)
+	if err != nil {
+		return nil, err
+	}
+	rm := monitorIndex.GetOrCreateResourceLevelMonitor(ctx, metricsScope, sharedInformer, gvk)
+	// Start the poller and gauge emitter
+	rm.RunCollectorOnce(ctx)
 
 	return &PluginManager{
 		id:                   entry.ID,
@@ -491,14 +498,15 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	}, nil
 }
 
-func constructResourceLevelMonitor(ctx context.Context, iCtx pluginsCore.SetupContext, scope promutils.Scope, resourceToWatch runtime.Object) (*ResourceLevelMonitor, error) {
-	// Construct the collector that will emit a gauge indicating current levels of the resource that this K8s plugin operates on
+func getPluginGvk(resourceToWatch runtime.Object) (schema.GroupVersionKind, error) {
 	kinds, _, err := scheme.Scheme.ObjectKinds(resourceToWatch)
 	if err != nil && len(kinds) == 0 {
-		return nil, errors.Errorf(errors.PluginInitializationFailed, "No kind in schema for %v", resourceToWatch)
+		return schema.GroupVersionKind{}, errors.Errorf(errors.PluginInitializationFailed, "No kind in schema for %v", resourceToWatch)
 	}
-	gvk := kinds[0]
+	return kinds[0], nil
+}
 
+func getPluginSharedInformer(iCtx pluginsCore.SetupContext, resourceToWatch runtime.Object) (cache.SharedIndexInformer, error) {
 	i, err := iCtx.KubeClient().GetCache().GetInformer(resourceToWatch)
 	if err != nil {
 		return nil, errors.Wrapf(errors.PluginInitializationFailed, err, "Error getting informer for %s", reflect.TypeOf(i))
@@ -509,5 +517,5 @@ func constructResourceLevelMonitor(ctx context.Context, iCtx pluginsCore.SetupCo
 		return nil, errors.Errorf(errors.PluginInitializationFailed, "wrong type. Actual: %v", reflect.TypeOf(i))
 	}
 
-	return GetOrCreateResourceLevelMonitor(ctx, scope, si, gvk), nil
+	return si, nil
 }

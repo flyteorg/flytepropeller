@@ -113,28 +113,28 @@ func (r *ResourceLevelMonitor) RunCollectorOnce(ctx context.Context) {
 // anything, but it's a waste of compute cycles to compute counts multiple times. This can happen if multiple plugins create the same
 // underlying K8s resource type. If two plugins both created Pods (ie sidecar and container), without this we would launch two
 // ResourceLevelMonitor's, have two goroutines spinning, etc.
-type monitorIndex struct {
+type ResourceMonitorIndex struct {
 	lock     *sync.Mutex
 	monitors map[schema.GroupVersionKind]*ResourceLevelMonitor
+
+	// These are declared here because this constructor will be called more than once, by different K8s resource types (Pods, SparkApps, OtherCrd, etc.)
+	// and metric names have to be unique. It felt more reasonable at time of writing to have one metric and have each resource type just be a label
+	// rather than one metric per type, but can revisit this down the road.
+	gauges      map[promutils.Scope]*labeled.Gauge
+	stopwatches map[promutils.Scope]*labeled.StopWatch
 }
 
-var index monitorIndex
+func (r *ResourceMonitorIndex) GetOrCreateResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cache.SharedIndexInformer,
+	gvk schema.GroupVersionKind) *ResourceLevelMonitor {
 
-// These are declared here because this constructor will be called more than once, by different K8s resource types (Pods, SparkApps, OtherCrd, etc.)
-// and metric names have to be unique. It felt more reasonable at time of writing to have one metric and have each resource type just be a label
-// rather than one metric per type, but can revisit this down the road.
-var gauge *labeled.Gauge
-var collectorStopWatch *labeled.StopWatch
-
-func GetOrCreateResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cache.SharedIndexInformer, gvk schema.GroupVersionKind) *ResourceLevelMonitor {
 	logger.Infof(ctx, "Attempting to create K8s gauge emitter for kind %s/%s", gvk.Version, gvk.Kind)
 
-	index.lock.Lock()
-	defer index.lock.Unlock()
+	r.lock.Lock()
+	defer r.lock.Unlock()
 
-	if index.monitors[gvk] != nil {
+	if r.monitors[gvk] != nil {
 		logger.Infof(ctx, "Monitor for resource type %s already created, skipping...", gvk.Kind)
-		return index.monitors[gvk]
+		return r.monitors[gvk]
 	}
 	logger.Infof(ctx, "Creating monitor for resource type %s...", gvk.Kind)
 
@@ -142,32 +142,40 @@ func GetOrCreateResourceLevelMonitor(ctx context.Context, scope promutils.Scope,
 	additionalLabels := labeled.AdditionalLabelsOption{
 		Labels: []string{contextutils.NamespaceKey.String(), KindKey.String()},
 	}
-	if gauge == nil {
+	if r.gauges[scope] == nil {
 		x := labeled.NewGauge("k8s_resources", "Current levels of K8s objects as seen from their informer caches", scope, additionalLabels)
-		gauge = &x
+		r.gauges[scope] = &x
 	}
-	if collectorStopWatch == nil {
+	if r.stopwatches[scope] == nil {
 		x := labeled.NewStopWatch("k8s_collection_cycle", "Measures how long it takes to run a collection",
 			time.Millisecond, scope, additionalLabels)
-		collectorStopWatch = &x
+		r.stopwatches[scope] = &x
 	}
 
 	rm := &ResourceLevelMonitor{
 		Scope:          scope,
-		CollectorTimer: collectorStopWatch,
-		Levels:         gauge,
+		CollectorTimer: r.stopwatches[scope],
+		Levels:         r.gauges[scope],
 		sharedInformer: si,
 		gvk:            gvk,
 	}
-
-	index.monitors[gvk] = rm
+	r.monitors[gvk] = rm
 
 	return rm
 }
 
-func init() {
-	index = monitorIndex{
-		lock:     &sync.Mutex{},
-		monitors: make(map[schema.GroupVersionKind]*ResourceLevelMonitor),
+// This is a global variable to this file. At runtime, the NewResourceMonitorIndex() function should only be called once
+// but can be called multiple times in unit tests.
+var index *ResourceMonitorIndex
+
+func NewResourceMonitorIndex() *ResourceMonitorIndex {
+	if index == nil {
+		index = &ResourceMonitorIndex{
+			lock:        &sync.Mutex{},
+			monitors:    make(map[schema.GroupVersionKind]*ResourceLevelMonitor),
+			gauges:      make(map[promutils.Scope]*labeled.Gauge),
+			stopwatches: make(map[promutils.Scope]*labeled.StopWatch),
+		}
 	}
+	return index
 }
