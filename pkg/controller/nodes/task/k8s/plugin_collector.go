@@ -122,9 +122,7 @@ var index monitorIndex
 // These are declared here because this constructor will be called more than once, by different K8s resource types (Pods, SparkApps, OtherCrd, etc.)
 // and metric names have to be unique. It felt more reasonable at time of writing to have one metric and have each resource type just be a label
 // rather than one metric per type, but can revisit this down the road.
-var gauge = labeled.NewGauge("k8s_resources", "Current levels of K8s objects as seen from their informer caches", scope, labeled.AdditionalLabelsOption{
-		Labels: []string{contextutils.NamespaceKey.String(), KindKey.String()},
-	})
+var gauge *labeled.Gauge
 var collectorStopWatch *labeled.StopWatch
 
 func NewResourceLevelMonitor(ctx context.Context, scope promutils.Scope, si cache.SharedIndexInformer, gvk schema.GroupVersionKind) *ResourceLevelMonitor {
