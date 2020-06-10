@@ -77,8 +77,8 @@ func (c *CrdValidationOpts) generateValidation() error {
 	err := c.initConfig()
 	var generator *crd.FlyteWorkflowGenerator
 	if err != nil {
-		log.Println("Output will be written to Stdout")
-		generator = crd.NewFlyteWorkflowGeneratorStdout()
+		log.Println("Failed to initialize in when generating validation")
+		return err
 	} else {
 		crdValidationConfig := config.GetCrdValidationConfig()
 		generator = crd.NewFlyteWorkflowGenerator(crdValidationConfig.OutputDir)
