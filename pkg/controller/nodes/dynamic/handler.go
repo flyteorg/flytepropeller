@@ -156,14 +156,15 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 	case v1alpha1.DynamicNodePhaseFailing:
 		err = d.Abort(ctx, nCtx, ds.Reason)
 		if err != nil {
-			logger.Errorf(ctx, "Failing to abort dynamic workflow, reason [%s]", err)
+			logger.Errorf(ctx, "Failing to abort dynamic workflow")
 			return trns, err
 		}
 
+		// TODO: Use Execution Error for ds.Error type to propagate the recoverable flag and determine if the error is retryable.
 		if ds.Error != nil {
-			trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailureErr(ds.Error, nil))
+			trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailureErr(ds.Error, nil))
 		} else {
-			trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_UNKNOWN, "DynamicNodeFailing", ds.Reason, nil))
+			trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure(core.ExecutionError_UNKNOWN, "DynamicNodeFailing", ds.Reason, nil))
 		}
 	case v1alpha1.DynamicNodePhaseParentFinalizing:
 		if err := d.finalizeParentNode(ctx, nCtx); err != nil {
@@ -216,7 +217,7 @@ func (d dynamicNodeTaskNodeHandler) Abort(ctx context.Context, nCtx handler.Node
 func (d dynamicNodeTaskNodeHandler) finalizeParentNode(ctx context.Context, nCtx handler.NodeExecutionContext) error {
 	logger.Infof(ctx, "Finalizing Parent node RetryAttempt [%d]", nCtx.CurrentAttempt())
 	if err := d.TaskNodeHandler.Finalize(ctx, nCtx); err != nil {
-		logger.Errorf(ctx, "Failed to finalize DynamicNodes Parent, reason: [%s]", err)
+		logger.Errorf(ctx, "Failed to finalize Dynamic Nodes Parent.")
 		return err
 	}
 	return nil
