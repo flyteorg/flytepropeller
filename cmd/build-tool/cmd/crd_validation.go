@@ -5,8 +5,6 @@ import (
 
 	"github.com/spf13/viper"
 
-	compilerErrors "github.com/lyft/flytepropeller/pkg/compiler/errors"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -41,9 +39,7 @@ func NewCrdValidationCommand(opts *RootOptions) *cobra.Command {
 			if err := requiredFlags(cmd, baseCrdKey); err != nil {
 				return err
 			}
-
-			compilerErrors.SetIncludeSource()
-
+			
 			return crdValidationOpts.generateValidation()
 		},
 	}
