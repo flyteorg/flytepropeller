@@ -670,26 +670,23 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 		nodePhase == v1alpha1.NodePhaseSkipped {
 		return c.handleDownstream(ctx, execContext, dag, nl, currentNode)
 	} else if nodePhase == v1alpha1.NodePhaseFailed {
-		newState, err := c.handleDownstream(ctx, execContext, dag, nl, currentNode)
+		_, err := c.handleDownstream(ctx, execContext, dag, nl, currentNode)
 		if err != nil {
-			return newState, err
+			return executors.NodeStatusUndefined, err
 		}
 
-		if newState.IsComplete() {
-			return executors.NodeStatusFailed(nodeStatus.GetExecutionError()), nil
-		}
+		return executors.NodeStatusFailed(nodeStatus.GetExecutionError()), nil
 	} else if nodePhase == v1alpha1.NodePhaseTimedOut {
-		newState, err := c.handleDownstream(ctx, execContext, dag, nl, currentNode)
+		_, err := c.handleDownstream(ctx, execContext, dag, nl, currentNode)
 		if err != nil {
-			return newState, err
+			return executors.NodeStatusUndefined, err
 		}
 
-		if newState.IsComplete() {
-			return executors.NodeStatusTimedOut, nil
-		}
+		return executors.NodeStatusTimedOut, nil
 	}
 
-	return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, currentNode.GetID(), "Should never reach here. Current Phase: %v", nodePhase)
+	return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, currentNode.GetID(),
+		"Should never reach here. Current Phase: %v", nodePhase)
 }
 
 func (c *nodeExecutor) FinalizeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) error {
