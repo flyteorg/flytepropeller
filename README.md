@@ -171,12 +171,14 @@ Following dependencies need to be met
 Making changes to CRD
 =====================
 *Remember* changes to CRD should be carefully done, they should be backwards compatible or else you should use proper
-operator versioning system. Once you do the changes, remember to execute the following two steps, including:
+operator versioning system. Once you do the changes, remember to execute
 
 ```
     $make op_code_generate
 ```
-and then
+and then use the following make target to generate the new OpenAPI definition file
 ```
     $make validation_spec_generate
 ```
+
+Once that is done, run the `build-tool crd-validation` command to generate the new augmented YAML file again.
