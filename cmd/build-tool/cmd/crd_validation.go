@@ -39,7 +39,7 @@ func NewCrdValidationCommand(opts *RootOptions) *cobra.Command {
 			if err := requiredFlags(cmd, baseCrdKey); err != nil {
 				return err
 			}
-			
+
 			return crdValidationOpts.generateValidation()
 		},
 	}
