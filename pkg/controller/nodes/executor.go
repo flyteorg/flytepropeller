@@ -666,21 +666,30 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 		// TODO we can optimize skip state handling by iterating down the graph and marking all as skipped
 		// Currently we treat either Skip or Success the same way. In this approach only one node will be skipped
 		// at a time. As we iterate down, further nodes will be skipped
-	} else if nodePhase == v1alpha1.NodePhaseSucceeded || nodePhase == v1alpha1.NodePhaseSkipped {
+	} else if nodePhase == v1alpha1.NodePhaseSucceeded ||
+		nodePhase == v1alpha1.NodePhaseSkipped {
 		return c.handleDownstream(ctx, execContext, dag, nl, currentNode)
 	} else if nodePhase == v1alpha1.NodePhaseFailed {
-		// This should not happen
-		logger.Debugf(currentNodeCtx, "Node Failed")
-		return executors.NodeStatusFailed(&core.ExecutionError{
-			Code:    "InternalError",
-			Message: "Node failed",
-			Kind:    core.ExecutionError_SYSTEM,
-		}), nil
+		newState, err := c.handleDownstream(ctx, execContext, dag, nl, currentNode)
+		if err != nil {
+			return newState, err
+		}
+
+		if newState.IsComplete() {
+			return executors.NodeStatusFailed(nodeStatus.GetExecutionError()), nil
+		}
 	} else if nodePhase == v1alpha1.NodePhaseTimedOut {
-		logger.Debugf(currentNodeCtx, "Node Timed Out")
-		return executors.NodeStatusTimedOut, nil
+		newState, err := c.handleDownstream(ctx, execContext, dag, nl, currentNode)
+		if err != nil {
+			return newState, err
+		}
+
+		if newState.IsComplete() {
+			return executors.NodeStatusTimedOut, nil
+		}
 	}
-	return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, currentNode.GetID(), "Should never reach here")
+
+	return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, currentNode.GetID(), "Should never reach here. Current Phase: %v", nodePhase)
 }
 
 func (c *nodeExecutor) FinalizeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) error {
