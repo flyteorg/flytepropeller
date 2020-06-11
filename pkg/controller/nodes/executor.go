@@ -666,10 +666,11 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 		// TODO we can optimize skip state handling by iterating down the graph and marking all as skipped
 		// Currently we treat either Skip or Success the same way. In this approach only one node will be skipped
 		// at a time. As we iterate down, further nodes will be skipped
-	} else if nodePhase == v1alpha1.NodePhaseSucceeded ||
-		nodePhase == v1alpha1.NodePhaseSkipped {
+	} else if nodePhase == v1alpha1.NodePhaseSucceeded || nodePhase == v1alpha1.NodePhaseSkipped {
+		logger.Debugf(currentNodeCtx, "Node has [%v], traversing downstream.", nodePhase)
 		return c.handleDownstream(ctx, execContext, dag, nl, currentNode)
 	} else if nodePhase == v1alpha1.NodePhaseFailed {
+		logger.Debugf(currentNodeCtx, "Node has failed, traversing downstream.")
 		_, err := c.handleDownstream(ctx, execContext, dag, nl, currentNode)
 		if err != nil {
 			return executors.NodeStatusUndefined, err
@@ -677,6 +678,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 
 		return executors.NodeStatusFailed(nodeStatus.GetExecutionError()), nil
 	} else if nodePhase == v1alpha1.NodePhaseTimedOut {
+		logger.Debugf(currentNodeCtx, "Node has timed out, traversing downstream.")
 		_, err := c.handleDownstream(ctx, execContext, dag, nl, currentNode)
 		if err != nil {
 			return executors.NodeStatusUndefined, err
