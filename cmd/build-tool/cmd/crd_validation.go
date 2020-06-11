@@ -1,8 +1,9 @@
 package cmd
 
 import (
-	"github.com/spf13/viper"
 	"log"
+
+	"github.com/spf13/viper"
 
 	compilerErrors "github.com/lyft/flytepropeller/pkg/compiler/errors"
 
@@ -22,7 +23,6 @@ const crdValidationCmdName = "crd-validation"
 
 type CrdValidationOpts struct {
 	*RootOptions
-	configFile  string
 	baseCrdFile string
 	dryRun      bool
 }
@@ -66,9 +66,9 @@ func (c *CrdValidationOpts) initConfig() error {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err != nil {
 		return errors.Wrapf(err, "Failed to read config file.")
-	} else {
-		log.Println("Using config file:", viper.ConfigFileUsed())
 	}
+
+	log.Println("Using config file:", viper.ConfigFileUsed())
 	return nil
 }
 
@@ -76,13 +76,14 @@ func (c *CrdValidationOpts) generateValidation() error {
 
 	err := c.initConfig()
 	var generator *crd.FlyteWorkflowGenerator
+
 	if err != nil {
 		log.Println("Failed to initialize in when generating validation")
 		return err
-	} else {
-		crdValidationConfig := config.GetCrdValidationConfig()
-		generator = crd.NewFlyteWorkflowGenerator(crdValidationConfig.OutputDir)
 	}
+
+	crdValidationConfig := config.GetCrdValidationConfig()
+	generator = crd.NewFlyteWorkflowGenerator(crdValidationConfig.OutputDir)
 
 	original := config.NewCustomResourceDefinition(c.baseCrdFile)
 	final := generator.Generate(original)

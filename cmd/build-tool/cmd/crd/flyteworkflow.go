@@ -1,9 +1,10 @@
 package crd
 
 import (
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"log"
+
+	v1alpha1_generated "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/generated"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 
 	"github.com/kubeflow/crd-validation/pkg/crd/exporter"
 	"github.com/kubeflow/crd-validation/pkg/utils"
@@ -38,6 +39,6 @@ func NewFlyteWorkflowGeneratorStdout() *FlyteWorkflowGenerator {
 // Generate generates the crd.
 func (t FlyteWorkflowGenerator) Generate(original *apiextensions.CustomResourceDefinition) *apiextensions.CustomResourceDefinition {
 	log.Println("Generating validation")
-	original.Spec.Validation = utils.GetCustomResourceValidation(CRDNameFlyteWorkflow, v1alpha1.GetOpenAPIDefinitions)
+	original.Spec.Validation = utils.GetCustomResourceValidation(CRDNameFlyteWorkflow, v1alpha1_generated.GetOpenAPIDefinitions)
 	return original
 }
