@@ -31,7 +31,7 @@ op_code_generate:
 	@RESOURCE_NAME=flyteworkflow OPERATOR_PKG=github.com/lyft/flytepropeller ./hack/update-codegen.sh
 
 validation_spec_generate:
-	@openapi-gen -i github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1 -p github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1
+	@openapi-gen -i github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1 -p github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/generated
 
 benchmark:
 	mkdir -p ./bin/benchmark

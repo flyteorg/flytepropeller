@@ -6,6 +6,7 @@
 run:
   skip-dirs:
     - pkg/client
+    - generated  
 
 linters:
   disable-all: true
