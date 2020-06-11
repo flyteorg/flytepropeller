@@ -19,6 +19,7 @@ const (
 
 const crdValidationCmdName = "crd-validation"
 
+// The extra options needed by crd-validation command
 type CrdValidationOpts struct {
 	*RootOptions
 	baseCrdFile string

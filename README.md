@@ -49,6 +49,7 @@ Two ways to execute the command, either standalone *kubectl-flyte* or as a subco
       visualize   Get GraphViz dot-formatted output.
 ```
 
+
 Observing running workflows
 ---------------------------
 
@@ -90,6 +91,69 @@ To delete all completed workflows - they have to be either success/failed with a
    $ kubectl-flyte delete --namespace flytekit-development --all-completed
 ```
 
+build-tool 
+-------------
+build-tool is another command line tool binary that is built from the propeller repo. Currently it only supports 
+one command `crd-validation`, which is used to generate the validation spec for Flyteworkflow CRD.
+
+Install
+-------
+ build-tool can also be installed to `~/go/bin` via the following command
+ ```
+    $ make compile
+ ```
+
+Use
+___
+```
+    $ ./bin/build-tool --help
+    Flyte is a serverless workflow processing platform built for native execution on K8s.
+          It is extensible and flexible to allow adding new operators and comes with many operators built in
+    
+    Usage:
+      build-tool [flags]
+      build-tool [command]
+    
+    Available Commands:
+      crd-validation Augment a CRD YAML file with validation section based on a base CRD file
+      help           Help about any command    
+```
+
+Augment a Base CRD with Validation Spec
+--------------------------------------- 
+We can augment a base CRD yaml with the validation spec by using the `crd-validation` command in build-tool.
+
+```
+    $ ./bin/build-tool crd-validation --help
+    Augment a CRD YAML file with validation section based on a base CRD file
+    
+    Usage:
+      build-tool crd-validation [flags]
+    
+    Aliases:
+      crd-validation, validate
+    
+    Flags:
+      -b, --base-crd string      Path to base CRD file.
+      -c, --config-file string   Path of the config file for the execution of CRD validation
+      -d, --dry-run              Compiles and transforms, but does not create a workflow. OutputsRef ts to STDOUT.
+      -h, --help                 help for crd-validation
+```
+
+The `--config-file` specifies the configuration file that contains the setting like the output location of the augmented CRD 
+relative to pwd. The `--base-crd` specifies the YAML file containing the base CRD definition to be augmented. 
+
+Example:
+```
+    $ ./bin/build-tool crd-validation -c crd_validation_config.yaml -b base_wf_crd.yaml
+    2020/06/11 15:48:00 Using config file: crd_validation_config.yaml
+    2020/06/11 15:48:00 Using config file: crd_validation_config.yaml
+    2020/06/11 15:48:00 Reading base CRD from base_wf_crd.yaml
+    2020/06/11 15:48:00 Generating validation
+```
+
+
+
 Running propeller locally
 -------------------------
 use the config.yaml in root found `here <https://github.com/lyft/flytepropeller/blob/master/config.yaml>`. Cd into this folder and then run
@@ -103,11 +167,16 @@ Following dependencies need to be met
 2. Admin Service endpoint (can be forwarded) OR *Disable* events to admin and launchplans
 3. access to kubeconfig and kubeapi
 
+
 Making changes to CRD
 =====================
 *Remember* changes to CRD should be carefully done, they should be backwards compatible or else you should use proper
-operator versioning system. Once you do the changes, remember to execute
+operator versioning system. Once you do the changes, remember to execute the following two steps, including:
 
 ```
     $make op_code_generate
+```
+and then
+```
+    $make validation_spec_generate
 ```
