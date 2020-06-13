@@ -140,8 +140,8 @@ func (in *Inputs) DeepCopyInto(out *Inputs) {
 }
 
 type Connections struct {
-	DownstreamEdges map[NodeID][]NodeID `json:"downstreamEdges"`
-	UpstreamEdges   map[NodeID][]NodeID `json:"upstreamEdges"`
+	DownstreamEdges map[NodeID][]NodeID `json:"downstreamEdges,omitempty"`
+	UpstreamEdges   map[NodeID][]NodeID `json:"upstreamEdges,omitempty"`
 }
 
 func (in *Connections) UnmarshalJSON(b []byte) error {

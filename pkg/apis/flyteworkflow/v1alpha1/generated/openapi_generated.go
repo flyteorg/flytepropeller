@@ -235,7 +235,6 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_Connections(ref common.ReferenceCall
 						},
 					},
 				},
-				Required: []string{"downstreamEdges", "upstreamEdges"},
 			},
 		},
 	}
