@@ -176,9 +176,9 @@ operator versioning system. Once you do the changes, remember to execute
 ```
     $make op_code_generate
 ```
-and then use the following make target to generate the new OpenAPI definition file
+You also have to update the OpenAPI definition by running the following make target
 ```
-    $make validation_spec_generate
+    $make openapi_generate
 ```
 
-Once that is done, run the `build-tool crd-validation` command to generate the new augmented YAML file again.
+Once that is done, run the `build-tool crd-validation` command to generate the new augmented YAML file again. **Double check the YAML file to see if your changes are reflected**
