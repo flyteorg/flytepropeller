@@ -19,7 +19,9 @@ spec:
     openAPIV3Schema:
       description: 'FlyteWorkflow: represents one Execution Workflow object'
       properties:
-        acceptedAt: {}
+        acceptedAt:
+          description: Specifies the time when the workflow has been accepted into
+            the system.
         activeDeadlineSeconds:
           description: StartTime before the system will actively try to mark it failed
             and kill associated containers. Value must be a positive integer.
@@ -31,16 +33,8 @@ spec:
             internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
           type: string
         executionId:
-          properties:
-            WorkflowExecutionIdentifier: {}
-          required:
-          - WorkflowExecutionIdentifier
           type: object
         inputs:
-          properties:
-            LiteralMap: {}
-          required:
-          - LiteralMap
           type: object
         kind:
           description: 'Kind is a string value representing the REST resource this
@@ -64,32 +58,28 @@ spec:
           properties:
             connections:
               properties:
-                DownstreamEdges:
+                downstreamEdges:
                   additionalProperties:
                     items:
                       type: string
                     type: array
                   type: object
-                UpstreamEdges:
+                upstreamEdges:
                   additionalProperties:
                     items:
                       type: string
                     type: array
                   type: object
               required:
-              - DownstreamEdges
-              - UpstreamEdges
+              - downstreamEdges
+              - upstreamEdges
               type: object
             id:
               type: string
             nodes:
               additionalProperties:
                 properties:
-                  activeDeadline:
-                    description: StartTime before the system will actively try to
-                      mark it failed and kill associated containers. Value must be
-                      a positive integer. This includes time spent waiting in the
-                      queue.
+                  activeDeadline: {}
                   affinity: {}
                   branch:
                     properties:
@@ -107,10 +97,6 @@ spec:
                       if:
                         properties:
                           condition:
-                            properties:
-                              BooleanExpression: {}
-                            required:
-                            - BooleanExpression
                             type: object
                           then:
                             type: string
@@ -122,7 +108,8 @@ spec:
                     - if
                     type: object
                   config: {}
-                  executionDeadline: {}
+                  executionDeadline:
+                    description: Node execution timeout
                   hostname:
                     description: Specifies the hostname of the Pod If not specified,
                       the pod's hostname will be set to a system-defined value.
@@ -140,10 +127,6 @@ spec:
                     type: array
                   inputBindings:
                     items:
-                      properties:
-                        Binding: {}
-                      required:
-                      - Binding
                       type: object
                     type: array
                   interruptible:
@@ -155,9 +138,14 @@ spec:
                   outputAlias:
                     items:
                       properties:
-                        Alias: {}
-                      required:
-                      - Alias
+                        alias:
+                          description: A workflow-level unique alias that downstream
+                            nodes can refer to in their input.
+                          type: string
+                        var:
+                          description: Must match one of the output variable names
+                            on a node.
+                          type: string
                       type: object
                     type: array
                   resources: {}
@@ -196,10 +184,6 @@ spec:
                   workflow:
                     properties:
                       launchPlanRefId:
-                        properties:
-                          Identifier: {}
-                        required:
-                        - Identifier
                         type: object
                       subWorkflowRef:
                         description: 'We currently want the SubWorkflow to be completely
@@ -231,10 +215,6 @@ spec:
               items: {}
               type: array
             outputs:
-              properties:
-                VariableMap: {}
-              required:
-              - VariableMap
               type: object
           required:
           - id
@@ -246,13 +226,8 @@ spec:
             dataDir:
               type: string
             error:
-              description: Wrapper around core.Execution error. Execution Error has
-                a protobuf enum and hence needs to be wrapped by custom marshaller
-              properties:
-                ExecutionError: {}
-              required:
-              - ExecutionError
-              type: object
+              description: Stores the Error during the Execution of the Workflow.
+                It is optional and usually associated with Failing/Failed state only
             failedAttempts:
               description: Number of Attempts completed with rounds resulting in error.
                 this is used to cap out poison pill workflows that spin in an error
@@ -272,20 +247,15 @@ spec:
                     type: integer
                   branchStatus:
                     properties:
-                      MutableStruct:
-                        properties:
-                          isDirty:
-                            type: boolean
-                        required:
-                        - isDirty
-                        type: object
                       finalNodeId:
                         type: string
+                      isDirty:
+                        type: boolean
                       phase:
                         format: int32
                         type: integer
                     required:
-                    - MutableStruct
+                    - isDirty
                     - phase
                     - finalNodeId
                     type: object
@@ -293,8 +263,22 @@ spec:
                     type: boolean
                   dynamicNodeStatus:
                     properties:
-                      MutableStruct: {}
-                      error: {}
+                      MutableStruct:
+                        properties:
+                          isDirty:
+                            type: boolean
+                        required:
+                        - isDirty
+                        type: object
+                      error:
+                        description: Wrapper around core.Execution error. Execution
+                          Error has a protobuf enum and hence needs to be wrapped
+                          by custom marshaller
+                        properties:
+                          ExecutionError: {}
+                        required:
+                        - ExecutionError
+                        type: object
                       phase:
                         format: int32
                         type: integer
@@ -361,10 +345,6 @@ spec:
           type: object
         tasks:
           additionalProperties:
-            properties:
-              TaskTemplate: {}
-            required:
-            - TaskTemplate
             type: object
           type: object
       required:

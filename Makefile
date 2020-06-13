@@ -16,8 +16,8 @@ linux_compile:
 .PHONY: compile
 compile:
 	mkdir -p ./bin
-	go build -o bin/flytepropeller ./cmd/controller/main.go
-	go build -o bin/kubectl-flyte ./cmd/kubectl-flyte/main.go && cp bin/kubectl-flyte ${GOPATH}/bin
+	# go build -o bin/flytepropeller ./cmd/controller/main.go
+	# go build -o bin/kubectl-flyte ./cmd/kubectl-flyte/main.go && cp bin/kubectl-flyte ${GOPATH}/bin
 	go build -o bin/build-tool ./cmd/build-tool/main.go && cp bin/build-tool ${GOPATH}/bin
 
 cross_compile:
@@ -30,7 +30,7 @@ cross_compile:
 op_code_generate:
 	@RESOURCE_NAME=flyteworkflow OPERATOR_PKG=github.com/lyft/flytepropeller ./hack/update-codegen.sh
 
-validation_spec_generate:
+openapi_generate: compile
 	@openapi-gen -i github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1 -p github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/generated
 
 benchmark:

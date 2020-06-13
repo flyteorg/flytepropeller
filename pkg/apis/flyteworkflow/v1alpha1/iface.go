@@ -16,6 +16,7 @@ import (
 // this would help in ease of changes underneath without affecting the code.
 
 //go:generate mockery -all
+// +k8s:openapi-gen=true
 
 type CustomState map[string]interface{}
 type WorkflowID = string

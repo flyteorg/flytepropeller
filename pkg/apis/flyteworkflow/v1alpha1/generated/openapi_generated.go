@@ -67,17 +67,23 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_Alias(ref common.ReferenceCallback) 
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"Alias": {
+					"var": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.Alias"),
+							Description: "Must match one of the output variable names on a node.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"alias": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A workflow-level unique alias that downstream nodes can refer to in their input.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
-				Required: []string{"Alias"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.Alias"},
 	}
 }
 
@@ -86,18 +92,8 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_Binding(ref common.ReferenceCallback
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"Binding": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.Binding"),
-						},
-					},
-				},
-				Required: []string{"Binding"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.Binding"},
 	}
 }
 
@@ -106,18 +102,8 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_BooleanExpression(ref common.Referen
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"BooleanExpression": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.BooleanExpression"),
-						},
-					},
-				},
-				Required: []string{"BooleanExpression"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.BooleanExpression"},
 	}
 }
 
@@ -175,9 +161,10 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_BranchNodeStatus(ref common.Referenc
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"MutableStruct": {
+					"isDirty": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.MutableStruct"),
+							Type:   []string{"boolean"},
+							Format: "",
 						},
 					},
 					"phase": {
@@ -193,11 +180,9 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_BranchNodeStatus(ref common.Referenc
 						},
 					},
 				},
-				Required: []string{"MutableStruct", "phase", "finalNodeId"},
+				Required: []string{"isDirty", "phase", "finalNodeId"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.MutableStruct"},
 	}
 }
 
@@ -207,7 +192,7 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_Connections(ref common.ReferenceCall
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"DownstreamEdges": {
+					"downstreamEdges": {
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
@@ -228,7 +213,7 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_Connections(ref common.ReferenceCall
 							},
 						},
 					},
-					"UpstreamEdges": {
+					"upstreamEdges": {
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
@@ -250,7 +235,7 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_Connections(ref common.ReferenceCall
 						},
 					},
 				},
-				Required: []string{"DownstreamEdges", "UpstreamEdges"},
+				Required: []string{"downstreamEdges", "upstreamEdges"},
 			},
 		},
 	}
@@ -262,9 +247,10 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_DynamicNodeStatus(ref common.Referen
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"MutableStruct": {
+					"isDirty": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.MutableStruct"),
+							Type:   []string{"boolean"},
+							Format: "",
 						},
 					},
 					"phase": {
@@ -285,11 +271,11 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_DynamicNodeStatus(ref common.Referen
 						},
 					},
 				},
-				Required: []string{"MutableStruct", "phase"},
+				Required: []string{"isDirty", "phase"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.ExecutionError", "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.MutableStruct"},
+			"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.ExecutionError"},
 	}
 }
 
@@ -298,18 +284,8 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_Error(ref common.ReferenceCallback) 
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"Error": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.Error"),
-						},
-					},
-				},
-				Required: []string{"Error"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.Error"},
 	}
 }
 
@@ -319,18 +295,8 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_ExecutionError(ref common.ReferenceC
 			SchemaProps: spec.SchemaProps{
 				Description: "Wrapper around core.Execution error. Execution Error has a protobuf enum and hence needs to be wrapped by custom marshaller",
 				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"ExecutionError": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.ExecutionError"),
-						},
-					},
-				},
-				Required: []string{"ExecutionError"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.ExecutionError"},
 	}
 }
 
@@ -499,18 +465,8 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_Identifier(ref common.ReferenceCallb
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"Identifier": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.Identifier"),
-						},
-					},
-				},
-				Required: []string{"Identifier"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.Identifier"},
 	}
 }
 
@@ -545,18 +501,8 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_Inputs(ref common.ReferenceCallback)
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"LiteralMap": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.LiteralMap"),
-						},
-					},
-				},
-				Required: []string{"LiteralMap"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.LiteralMap"},
 	}
 }
 
@@ -604,17 +550,37 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_NodeMetadata(ref common.ReferenceCal
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"NodeMetadata": {
+					"name": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.NodeMetadata"),
+							Description: "A friendly name for the Node",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The overall timeout of a task.",
+							Ref:         ref("github.com/golang/protobuf/ptypes/duration.Duration"),
+						},
+					},
+					"retries": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Number of retries per task.",
+							Ref:         ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.RetryStrategy"),
+						},
+					},
+					"InterruptibleValue": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Identify whether node is interruptible\n\nTypes that are valid to be assigned to InterruptibleValue:\n\t*NodeMetadata_Interruptible",
+							Ref:         ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.isNodeMetadata_InterruptibleValue"),
 						},
 					},
 				},
-				Required: []string{"NodeMetadata"},
+				Required: []string{"InterruptibleValue"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.NodeMetadata"},
+			"github.com/golang/protobuf/ptypes/duration.Duration", "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.RetryStrategy", "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.isNodeMetadata_InterruptibleValue"},
 	}
 }
 
@@ -806,9 +772,10 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_NodeStatus(ref common.ReferenceCallb
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"MutableStruct": {
+					"isDirty": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.MutableStruct"),
+							Type:   []string{"boolean"},
+							Format: "",
 						},
 					},
 					"phase": {
@@ -908,11 +875,11 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_NodeStatus(ref common.ReferenceCallb
 						},
 					},
 				},
-				Required: []string{"MutableStruct", "phase", "attempts", "cached"},
+				Required: []string{"isDirty", "phase", "attempts", "cached"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.BranchNodeStatus", "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.DynamicNodeStatus", "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.ExecutionError", "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.MutableStruct", "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.NodeStatus", "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.WorkflowNodeStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.BranchNodeStatus", "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.DynamicNodeStatus", "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.ExecutionError", "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.NodeStatus", "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.WorkflowNodeStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -921,18 +888,8 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_OutputVarMap(ref common.ReferenceCal
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"VariableMap": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.VariableMap"),
-						},
-					},
-				},
-				Required: []string{"VariableMap"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.VariableMap"},
 	}
 }
 
@@ -962,18 +919,8 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_TaskExecutionIdentifier(ref common.R
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"TaskExecutionIdentifier": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.TaskExecutionIdentifier"),
-						},
-					},
-				},
-				Required: []string{"TaskExecutionIdentifier"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.TaskExecutionIdentifier"},
 	}
 }
 
@@ -983,9 +930,10 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_TaskNodeStatus(ref common.ReferenceC
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"MutableStruct": {
+					"isDirty": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.MutableStruct"),
+							Type:   []string{"boolean"},
+							Format: "",
 						},
 					},
 					"phase": {
@@ -1001,6 +949,11 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_TaskNodeStatus(ref common.ReferenceC
 						},
 					},
 					"pState": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
 							Format: "byte",
@@ -1025,11 +978,9 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_TaskNodeStatus(ref common.ReferenceC
 						},
 					},
 				},
-				Required: []string{"MutableStruct"},
+				Required: []string{"isDirty"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.MutableStruct"},
 	}
 }
 
@@ -1038,18 +989,8 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_TaskSpec(ref common.ReferenceCallbac
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"TaskTemplate": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.TaskTemplate"),
-						},
-					},
-				},
-				Required: []string{"TaskTemplate"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.TaskTemplate"},
 	}
 }
 
@@ -1058,18 +999,8 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_WorkflowExecutionIdentifier(ref comm
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"WorkflowExecutionIdentifier": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.WorkflowExecutionIdentifier"),
-						},
-					},
-				},
-				Required: []string{"WorkflowExecutionIdentifier"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.WorkflowExecutionIdentifier"},
 	}
 }
 
@@ -1106,9 +1037,10 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_WorkflowNodeStatus(ref common.Refere
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"MutableStruct": {
+					"isDirty": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.MutableStruct"),
+							Type:   []string{"boolean"},
+							Format: "",
 						},
 					},
 					"phase": {
@@ -1123,11 +1055,11 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_WorkflowNodeStatus(ref common.Refere
 						},
 					},
 				},
-				Required: []string{"MutableStruct", "phase", "executionError"},
+				Required: []string{"isDirty", "phase", "executionError"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.ExecutionError", "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1.MutableStruct"},
+			"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core.ExecutionError"},
 	}
 }
 

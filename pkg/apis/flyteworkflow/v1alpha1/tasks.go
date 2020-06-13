@@ -8,7 +8,7 @@ import (
 )
 
 type TaskSpec struct {
-	*core.TaskTemplate
+	*core.TaskTemplate `json:",inline"`
 }
 
 func (in *TaskSpec) TaskType() TaskType {

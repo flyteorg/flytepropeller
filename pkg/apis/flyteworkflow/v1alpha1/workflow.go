@@ -111,8 +111,9 @@ func (in *FlyteWorkflow) IsInterruptible() bool {
 	return in.NodeDefaults.Interruptible
 }
 
+// +k8s:openapi-gen=true
 type Inputs struct {
-	*core.LiteralMap
+	*core.LiteralMap `json:",inline"`
 }
 
 func (in *Inputs) UnmarshalJSON(b []byte) error {
@@ -139,8 +140,8 @@ func (in *Inputs) DeepCopyInto(out *Inputs) {
 }
 
 type Connections struct {
-	DownstreamEdges map[NodeID][]NodeID
-	UpstreamEdges   map[NodeID][]NodeID
+	DownstreamEdges map[NodeID][]NodeID `json:"downstreamEdges"`
+	UpstreamEdges   map[NodeID][]NodeID `json:"upstreamEdges"`
 }
 
 func (in *Connections) UnmarshalJSON(b []byte) error {

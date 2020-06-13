@@ -8,7 +8,7 @@ import (
 )
 
 type Error struct {
-	*core.Error
+	*core.Error `json:",inline"`
 }
 
 func (in Error) UnmarshalJSON(b []byte) error {
@@ -33,7 +33,7 @@ func (in *Error) DeepCopyInto(out *Error) {
 }
 
 type BooleanExpression struct {
-	*core.BooleanExpression
+	*core.BooleanExpression `json:",inline"`
 }
 
 func (in BooleanExpression) MarshalJSON() ([]byte, error) {

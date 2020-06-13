@@ -17,7 +17,7 @@ import (
 )
 
 type MutableStruct struct {
-	isDirty bool
+	isDirty bool `json:"isDirty"`
 }
 
 func (in *MutableStruct) SetDirty() {
@@ -34,7 +34,7 @@ func (in MutableStruct) IsDirty() bool {
 }
 
 type BranchNodeStatus struct {
-	MutableStruct
+	MutableStruct   `json:",inline"`
 	Phase           BranchNodePhase `json:"phase"`
 	FinalizedNodeID *NodeID         `json:"finalNodeId"`
 }
@@ -92,10 +92,10 @@ const (
 )
 
 type DynamicNodeStatus struct {
-	MutableStruct
-	Phase  DynamicNodePhase `json:"phase"`
-	Reason string           `json:"reason,omitempty"`
-	Error  *ExecutionError  `json:"error,omitempty"`
+	MutableStruct `json:",inline"`
+	Phase         DynamicNodePhase `json:"phase"`
+	Reason        string           `json:"reason,omitempty"`
+	Error         *ExecutionError  `json:"error,omitempty"`
 }
 
 func (in *DynamicNodeStatus) GetDynamicNodePhase() DynamicNodePhase {
@@ -154,7 +154,7 @@ const (
 )
 
 type WorkflowNodeStatus struct {
-	MutableStruct
+	MutableStruct  `json:",inline"`
 	Phase          WorkflowNodePhase    `json:"phase"`
 	ExecutionError *core.ExecutionError `json:"executionError"`
 }
@@ -182,7 +182,7 @@ func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
 }
 
 type NodeStatus struct {
-	MutableStruct
+	MutableStruct        `json:",inline"`
 	Phase                NodePhase     `json:"phase"`
 	QueuedAt             *metav1.Time  `json:"queuedAt,omitempty"`
 	StartedAt            *metav1.Time  `json:"startedAt,omitempty"`
@@ -698,9 +698,10 @@ func (in *CustomState) DeepCopy() *CustomState {
 }
 
 type TaskNodeStatus struct {
-	MutableStruct
-	Phase              int       `json:"phase,omitempty"`
-	PhaseVersion       uint32    `json:"phaseVersion,omitempty"`
+	MutableStruct `json:",inline"`
+	Phase         int    `json:"phase,omitempty"`
+	PhaseVersion  uint32 `json:"phaseVersion,omitempty"`
+	// +listType=atomic
 	PluginState        []byte    `json:"pState,omitempty"`
 	PluginStateVersion uint32    `json:"psv,omitempty"`
 	BarrierClockTick   uint32    `json:"tick,omitempty"`
