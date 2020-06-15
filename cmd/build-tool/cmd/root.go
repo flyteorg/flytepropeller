@@ -23,11 +23,7 @@ func init() {
 	}
 }
 
-type RootOptions struct {
-	// Without the nolint tag, golangci-lint will produce a false positive alert
-	// https://github.com/golangci/golangci-lint/issues/826
-	configFile string // nolint
-}
+type RootOptions struct{}
 
 func (r *RootOptions) executeRootCmd() error {
 	ctx := context.TODO()
