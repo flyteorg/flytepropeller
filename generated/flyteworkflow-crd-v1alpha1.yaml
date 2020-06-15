@@ -19,9 +19,7 @@ spec:
     openAPIV3Schema:
       description: 'FlyteWorkflow: represents one Execution Workflow object'
       properties:
-        acceptedAt:
-          description: Specifies the time when the workflow has been accepted into
-            the system.
+        acceptedAt: {}
         activeDeadlineSeconds:
           description: StartTime before the system will actively try to mark it failed
             and kill associated containers. Value must be a positive integer.
@@ -53,146 +51,34 @@ spec:
           description: 'ServiceAccountName is the name of the ServiceAccount to use
             to run this pod. More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/'
           type: string
-        spec: {}
-        status:
+        spec:
+          description: WorkflowSpec is the spec for the actual Flyte Workflow (DAG)
           properties:
-            dataDir:
+            connections:
+              properties:
+                downstreamEdges:
+                  additionalProperties:
+                    items:
+                      type: string
+                    type: array
+                  type: object
+                upstreamEdges:
+                  additionalProperties:
+                    items:
+                      type: string
+                    type: array
+                  type: object
+              type: object
+            id:
               type: string
-            error:
-              description: Stores the Error during the Execution of the Workflow.
-                It is optional and usually associated with Failing/Failed state only
-            failedAttempts:
-              description: Number of Attempts completed with rounds resulting in error.
-                this is used to cap out poison pill workflows that spin in an error
-                loop. The value should be set at the global level and will be enforced.
-                At the end of the retries the workflow will fail
-              format: int64
-              type: integer
-            lastUpdatedAt: {}
-            message:
-              type: string
-            nodeStatus:
+            nodes:
               additionalProperties:
                 properties:
-                  attempts:
-                    format: int64
-                    type: integer
-                  branchStatus:
-                    properties:
-                      finalNodeId:
-                        type: string
-                      isDirty:
-                        type: boolean
-                      phase:
-                        format: int32
-                        type: integer
-                    required:
-                    - isDirty
-                    - phase
-                    - finalNodeId
-                    type: object
-                  cached:
-                    type: boolean
-                  dynamicNodeStatus:
-                    properties:
-                      error:
-                        description: Wrapper around core.Execution error. Execution
-                          Error has a protobuf enum and hence needs to be wrapped
-                          by custom marshaller
-                        type: object
-                      isDirty:
-                        type: boolean
-                      phase:
-                        format: int32
-                        type: integer
-                      reason:
-                        type: string
-                    required:
-                    - isDirty
-                    - phase
-                    type: object
-                  error:
-                    description: In case of Failing/Failed Phase, an execution error
-                      can be optionally associated with the Node
-                  isDirty:
-                    type: boolean
-                  laStartedAt: {}
-                  lastUpdatedAt: {}
-                  message:
-                    type: string
-                  parentNode:
-                    description: This is useful only for branch nodes. If this is
-                      set, then it can be used to determine if execution can proceed
-                    type: string
-                  phase:
-                    format: int32
-                    type: integer
-                  queuedAt: {}
-                  startedAt: {}
-                  stoppedAt: {}
-                  subNodeStatus:
-                    additionalProperties: {}
-                    type: object
-                  systemFailures:
-                    format: int64
-                    type: integer
-                  workflowNodeStatus:
-                    properties:
-                      executionError: {}
-                      isDirty:
-                        type: boolean
-                      phase:
-                        format: int32
-                        type: integer
-                    required:
-                    - isDirty
-                    - phase
-                    - executionError
-                    type: object
-                required:
-                - isDirty
-                - phase
-                - attempts
-                - cached
-                type: object
-              type: object
-            outputRef:
-              type: string
-            phase:
-              format: int32
-              type: integer
-            startedAt: {}
-            stoppedAt: {}
-          required:
-          - phase
-          type: object
-        subWorkflows:
-          additionalProperties:
-            description: WorkflowSpec is the spec for the actual Flyte Workflow (DAG)
-            properties:
-              connections:
-                properties:
-                  downstreamEdges:
-                    additionalProperties:
-                      items:
-                        type: string
-                      type: array
-                    type: object
-                  upstreamEdges:
-                    additionalProperties:
-                      items:
-                        type: string
-                      type: array
-                    type: object
-                type: object
-              id:
-                type: string
-              nodes:
-                additionalProperties: {}
-                type: object
-              onFailure:
-                properties:
-                  activeDeadline: {}
+                  activeDeadline:
+                    description: StartTime before the system will actively try to
+                      mark it failed and kill associated containers. Value must be
+                      a positive integer. This includes time spent waiting in the
+                      queue.
                   affinity: {}
                   branch:
                     properties:
@@ -217,8 +103,7 @@ spec:
                     - if
                     type: object
                   config: {}
-                  executionDeadline:
-                    description: Node execution timeout
+                  executionDeadline: {}
                   hostname:
                     description: Specifies the hostname of the Pod If not specified,
                       the pod's hostname will be set to a system-defined value.
@@ -311,21 +196,124 @@ spec:
                 - id
                 - kind
                 type: object
-              outputBindings:
-                description: Defines the data links used to construct the final outputs
-                  of the workflow. Bindings will typically refer to specific outputs
-                  of a subset of the nodes executed in the Workflow. When executing
-                  the end-node, the execution engine will traverse these bindings
-                  and assemble the final set of outputs of the workflow.
-                items: {}
-                type: array
-              outputs:
+              type: object
+            onFailure:
+              description: Defines a single node to execute in case the system determined
+                the Workflow has failed.
+            outputBindings:
+              description: Defines the data links used to construct the final outputs
+                of the workflow. Bindings will typically refer to specific outputs
+                of a subset of the nodes executed in the Workflow. When executing
+                the end-node, the execution engine will traverse these bindings and
+                assemble the final set of outputs of the workflow.
+              items: {}
+              type: array
+            outputs:
+              type: object
+          required:
+          - id
+          - nodes
+          - connections
+          type: object
+        status:
+          properties:
+            dataDir:
+              type: string
+            error:
+              description: Wrapper around core.Execution error. Execution Error has
+                a protobuf enum and hence needs to be wrapped by custom marshaller
+              type: object
+            failedAttempts:
+              description: Number of Attempts completed with rounds resulting in error.
+                this is used to cap out poison pill workflows that spin in an error
+                loop. The value should be set at the global level and will be enforced.
+                At the end of the retries the workflow will fail
+              format: int64
+              type: integer
+            lastUpdatedAt: {}
+            message:
+              type: string
+            nodeStatus:
+              additionalProperties:
+                properties:
+                  attempts:
+                    format: int64
+                    type: integer
+                  branchStatus:
+                    properties:
+                      finalNodeId:
+                        type: string
+                      phase:
+                        format: int32
+                        type: integer
+                    required:
+                    - phase
+                    - finalNodeId
+                    type: object
+                  cached:
+                    type: boolean
+                  dynamicNodeStatus:
+                    properties:
+                      error: {}
+                      phase:
+                        format: int32
+                        type: integer
+                      reason:
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  error:
+                    description: In case of Failing/Failed Phase, an execution error
+                      can be optionally associated with the Node
+                  laStartedAt: {}
+                  lastUpdatedAt: {}
+                  message:
+                    type: string
+                  parentNode:
+                    description: This is useful only for branch nodes. If this is
+                      set, then it can be used to determine if execution can proceed
+                    type: string
+                  phase:
+                    format: int32
+                    type: integer
+                  queuedAt: {}
+                  startedAt: {}
+                  stoppedAt: {}
+                  subNodeStatus:
+                    additionalProperties: {}
+                    type: object
+                  systemFailures:
+                    format: int64
+                    type: integer
+                  workflowNodeStatus:
+                    properties:
+                      executionError: {}
+                      phase:
+                        format: int32
+                        type: integer
+                    required:
+                    - phase
+                    - executionError
+                    type: object
+                required:
+                - phase
+                - attempts
+                - cached
                 type: object
-            required:
-            - id
-            - nodes
-            - connections
-            type: object
+              type: object
+            outputRef:
+              type: string
+            phase:
+              format: int32
+              type: integer
+            startedAt: {}
+            stoppedAt: {}
+          required:
+          - phase
+          type: object
+        subWorkflows:
+          additionalProperties: {}
           type: object
         tasks:
           additionalProperties:

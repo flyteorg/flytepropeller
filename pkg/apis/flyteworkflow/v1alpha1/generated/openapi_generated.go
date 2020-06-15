@@ -161,12 +161,6 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_BranchNodeStatus(ref common.Referenc
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"isDirty": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"boolean"},
-							Format: "",
-						},
-					},
 					"phase": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -180,7 +174,7 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_BranchNodeStatus(ref common.Referenc
 						},
 					},
 				},
-				Required: []string{"isDirty", "phase", "finalNodeId"},
+				Required: []string{"phase", "finalNodeId"},
 			},
 		},
 	}
@@ -246,12 +240,6 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_DynamicNodeStatus(ref common.Referen
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"isDirty": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"boolean"},
-							Format: "",
-						},
-					},
 					"phase": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -270,7 +258,7 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_DynamicNodeStatus(ref common.Referen
 						},
 					},
 				},
-				Required: []string{"isDirty", "phase"},
+				Required: []string{"phase"},
 			},
 		},
 		Dependencies: []string{
@@ -771,12 +759,6 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_NodeStatus(ref common.ReferenceCallb
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"isDirty": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"boolean"},
-							Format: "",
-						},
-					},
 					"phase": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -874,7 +856,7 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_NodeStatus(ref common.ReferenceCallb
 						},
 					},
 				},
-				Required: []string{"isDirty", "phase", "attempts", "cached"},
+				Required: []string{"phase", "attempts", "cached"},
 			},
 		},
 		Dependencies: []string{
@@ -929,12 +911,6 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_TaskNodeStatus(ref common.ReferenceC
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"isDirty": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"boolean"},
-							Format: "",
-						},
-					},
 					"phase": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -977,7 +953,6 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_TaskNodeStatus(ref common.ReferenceC
 						},
 					},
 				},
-				Required: []string{"isDirty"},
 			},
 		},
 	}
@@ -1036,12 +1011,6 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_WorkflowNodeStatus(ref common.Refere
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"isDirty": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"boolean"},
-							Format: "",
-						},
-					},
 					"phase": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -1054,7 +1023,7 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_WorkflowNodeStatus(ref common.Refere
 						},
 					},
 				},
-				Required: []string{"isDirty", "phase", "executionError"},
+				Required: []string{"phase", "executionError"},
 			},
 		},
 		Dependencies: []string{
