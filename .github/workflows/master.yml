@@ -40,6 +40,15 @@ jobs:
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
           PROPELLER=${{ secrets.flytegithub_repo }}/operator:${{ github.sha }} make end2end_execute
+      - name: Push Docker Image to Dockerhub
+        uses: whoan/docker-build-with-cache-action@v5
+        with:
+          username: "${{ secrets.DOCKERHUB_USERNAME }}"
+          password: "${{ secrets.DOCKERHUB_PASSWORD }}"
+          image_name: ${{ secrets.DOCKERHUB_IMAGE_NAME }}
+          image_tag: latest,${{ github.sha }},${{ steps.bump-version.outputs.tag }}
+          push_git_tag: true
+          build_extra_args: "--compress=true"
   test:
     runs-on: ubuntu-latest
     steps:
