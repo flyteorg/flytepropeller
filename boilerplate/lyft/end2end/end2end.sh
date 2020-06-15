@@ -11,7 +11,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
 OUT="${DIR}/tmp"
 rm -rf ${OUT}
-git clone https://github.com/lyft/flyte.git -b retryable-dynamic "${OUT}"
+git clone https://github.com/lyft/flyte.git "${OUT}"
 
 # TODO: load all images
 echo "Loading github docker images into 'kind' cluster to workaround this issue: https://github.com/containerd/containerd/issues/3291#issuecomment-631746985"
