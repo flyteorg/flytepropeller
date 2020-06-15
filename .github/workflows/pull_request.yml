@@ -34,7 +34,7 @@ jobs:
           username: "${{ secrets.DOCKERHUB_USERNAME }}"
           password: "${{ secrets.DOCKERHUB_PASSWORD }}"
           image_name: ${{ secrets.DOCKERHUB_IMAGE_NAME }}
-          image_tag: latest,${{ github.sha }},${{ steps.bump-version.outputs.tag }}
+          image_tag: ${{ github.sha }}
           push_git_tag: true
           build_extra_args: "--compress=true"
   test:
