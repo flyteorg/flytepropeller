@@ -3,10 +3,7 @@
 package mocks
 
 import (
-	core "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-
 	mock "github.com/stretchr/testify/mock"
-
 	types "k8s.io/apimachinery/pkg/types"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -283,7 +280,7 @@ type ImmutableExecutionContext_GetOnFailurePolicy struct {
 	*mock.Call
 }
 
-func (_m ImmutableExecutionContext_GetOnFailurePolicy) Return(_a0 core.WorkflowMetadata_OnFailurePolicy) *ImmutableExecutionContext_GetOnFailurePolicy {
+func (_m ImmutableExecutionContext_GetOnFailurePolicy) Return(_a0 v1alpha1.WorkflowOnFailurePolicy) *ImmutableExecutionContext_GetOnFailurePolicy {
 	return &ImmutableExecutionContext_GetOnFailurePolicy{Call: _m.Call.Return(_a0)}
 }
 
@@ -298,14 +295,14 @@ func (_m *ImmutableExecutionContext) OnGetOnFailurePolicyMatch(matchers ...inter
 }
 
 // GetOnFailurePolicy provides a mock function with given fields:
-func (_m *ImmutableExecutionContext) GetOnFailurePolicy() core.WorkflowMetadata_OnFailurePolicy {
+func (_m *ImmutableExecutionContext) GetOnFailurePolicy() v1alpha1.WorkflowOnFailurePolicy {
 	ret := _m.Called()
 
-	var r0 core.WorkflowMetadata_OnFailurePolicy
-	if rf, ok := ret.Get(0).(func() core.WorkflowMetadata_OnFailurePolicy); ok {
+	var r0 v1alpha1.WorkflowOnFailurePolicy
+	if rf, ok := ret.Get(0).(func() v1alpha1.WorkflowOnFailurePolicy); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(core.WorkflowMetadata_OnFailurePolicy)
+		r0 = ret.Get(0).(v1alpha1.WorkflowOnFailurePolicy)
 	}
 
 	return r0

@@ -194,7 +194,7 @@ type WorkflowSpec struct {
 
 	// Defines the policy for handling failures whether it's to fail immediately, or let the nodes run
 	// to completion.
-	OnFailurePolicy core.WorkflowMetadata_OnFailurePolicy `json:"onFailurePolicy,omitempty"`
+	OnFailurePolicy WorkflowOnFailurePolicy `json:"onFailurePolicy,omitempty"`
 }
 
 func (in *WorkflowSpec) StartNode() ExecutableNode {
@@ -226,7 +226,7 @@ func (in *WorkflowSpec) FromNode(name NodeID) ([]NodeID, error) {
 	return downstreamNodes, nil
 }
 
-func (in *WorkflowSpec) GetOnFailurePolicy() core.WorkflowMetadata_OnFailurePolicy {
+func (in *WorkflowSpec) GetOnFailurePolicy() WorkflowOnFailurePolicy {
 	return in.OnFailurePolicy
 }
 

@@ -92,9 +92,9 @@ func buildFlyteWorkflowSpec(wf *core.CompiledWorkflow, tasks []*core.CompiledTas
 		outputs = &v1alpha1.OutputVarMap{VariableMap: &core.VariableMap{}}
 	}
 
-	failurePolicy := core.WorkflowMetadata_FAIL_IMMEDIATELY
+	failurePolicy := v1alpha1.WorkflowOnFailurePolicyFailImmediately
 	if wf.Template != nil && wf.Template.Metadata != nil {
-		failurePolicy = wf.Template.Metadata.OnFailure
+		failurePolicy = v1alpha1.WorkflowOnFailurePolicy(wf.Template.Metadata.OnFailure)
 	}
 
 	return &v1alpha1.WorkflowSpec{

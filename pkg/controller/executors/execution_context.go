@@ -1,7 +1,6 @@
 package executors
 
 import (
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
@@ -16,7 +15,7 @@ type SubWorkflowGetter interface {
 type ImmutableExecutionContext interface {
 	v1alpha1.Meta
 	GetID() v1alpha1.WorkflowID
-	GetOnFailurePolicy() core.WorkflowMetadata_OnFailurePolicy
+	GetOnFailurePolicy() v1alpha1.WorkflowOnFailurePolicy
 }
 
 type ExecutionContext interface {

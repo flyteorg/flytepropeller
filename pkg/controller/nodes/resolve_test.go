@@ -30,8 +30,8 @@ type dummyBaseWorkflow struct {
 	Interruptible  bool
 }
 
-func (d *dummyBaseWorkflow) GetOnFailurePolicy() core.WorkflowMetadata_OnFailurePolicy {
-	return core.WorkflowMetadata_FAIL_IMMEDIATELY
+func (d *dummyBaseWorkflow) GetOnFailurePolicy() v1alpha1.WorkflowOnFailurePolicy {
+	return v1alpha1.WorkflowOnFailurePolicyFailImmediately
 }
 
 func (d *dummyBaseWorkflow) ToNode(name v1alpha1.NodeID) ([]v1alpha1.NodeID, error) {

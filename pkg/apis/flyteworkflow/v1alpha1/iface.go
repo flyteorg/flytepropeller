@@ -153,6 +153,25 @@ func (b BranchNodePhase) String() string {
 	return "Undefined"
 }
 
+//go:generate enumer --type WorkflowOnFailurePolicy --json --yaml --trimprefix=WorkflowOnFailurePolicy
+
+// Failure Handling Policy
+type WorkflowOnFailurePolicy int32
+
+const (
+	// WorkflowOnFailurePolicyFailImmediately instructs the system to fail as soon as a node fails in the workflow. It'll automatically
+	// abort all currently running nodes and clean up resources before finally marking the workflow executions as
+	// failed.
+	WorkflowOnFailurePolicyFailImmediately = WorkflowOnFailurePolicy(core.WorkflowMetadata_FAIL_IMMEDIATELY)
+
+	// WorkflowOnFailurePolicyFailAfterExecutableNodesComplete instructs the system to make as much progress as it can. The system will
+	// not alter the dependencies of the execution graph so any node that depend on the failed node will not be run.
+	// Other nodes that will be executed to completion before cleaning up resources and marking the workflow
+	// execution as failed.
+	WorkflowOnFailurePolicyFailAfterExecutableNodesComplete = WorkflowOnFailurePolicy(
+		core.WorkflowMetadata_FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
+)
+
 // TaskType is a dynamic enumeration, that is defined by configuration
 type TaskType = string
 
@@ -386,7 +405,7 @@ type ExecutableSubWorkflow interface {
 	GetNodes() []NodeID
 	GetConnections() *Connections
 	GetOutputs() *OutputVarMap
-	GetOnFailurePolicy() core.WorkflowMetadata_OnFailurePolicy
+	GetOnFailurePolicy() WorkflowOnFailurePolicy
 }
 
 // Meta provides an interface to retrieve labels, annotations and other concepts that are declared only once
