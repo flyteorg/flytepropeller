@@ -545,7 +545,7 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, execContext executo
 
 		if state.HasFailed() || state.HasTimedOut() {
 			logger.Debugf(ctx, "Some downstream node has failed. Failed: [%v]. TimedOut: [%v]. Error: [%s]", state.HasFailed(), state.HasTimedOut(), state.Err)
-			if onFailurePolicy == v1alpha1.WorkflowOnFailurePolicyFailAfterExecutableNodesComplete {
+			if onFailurePolicy == v1alpha1.WorkflowOnFailurePolicy(core.WorkflowMetadata_FAIL_AFTER_EXECUTABLE_NODES_COMPLETE) {
 				// If the failure policy allows other nodes to continue running, do not exit the loop,
 				// Keep track of the last failed state in the loop since it'll be the one to return.
 				// TODO: If multiple nodes fail (which this mode allows), consolidate/summarize failure states in one.

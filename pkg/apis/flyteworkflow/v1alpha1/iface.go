@@ -2,7 +2,11 @@ package v1alpha1
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
+
+	"github.com/golang/protobuf/proto"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -153,24 +157,31 @@ func (b BranchNodePhase) String() string {
 	return "Undefined"
 }
 
-//go:generate enumer --type WorkflowOnFailurePolicy --json --yaml --trimprefix=WorkflowOnFailurePolicy
-
 // Failure Handling Policy
-type WorkflowOnFailurePolicy int32
+type WorkflowOnFailurePolicy core.WorkflowMetadata_OnFailurePolicy
 
-const (
-	// WorkflowOnFailurePolicyFailImmediately instructs the system to fail as soon as a node fails in the workflow. It'll automatically
-	// abort all currently running nodes and clean up resources before finally marking the workflow executions as
-	// failed.
-	WorkflowOnFailurePolicyFailImmediately = WorkflowOnFailurePolicy(core.WorkflowMetadata_FAIL_IMMEDIATELY)
+func (in WorkflowOnFailurePolicy) MarshalJSON() ([]byte, error) {
+	return json.Marshal(proto.EnumName(core.WorkflowMetadata_OnFailurePolicy_name, int32(in)))
+}
 
-	// WorkflowOnFailurePolicyFailAfterExecutableNodesComplete instructs the system to make as much progress as it can. The system will
-	// not alter the dependencies of the execution graph so any node that depend on the failed node will not be run.
-	// Other nodes that will be executed to completion before cleaning up resources and marking the workflow
-	// execution as failed.
-	WorkflowOnFailurePolicyFailAfterExecutableNodesComplete = WorkflowOnFailurePolicy(
-		core.WorkflowMetadata_FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
-)
+func (in *WorkflowOnFailurePolicy) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return fmt.Errorf("WorkflowOnFailurePolicy should be a string, got %s", data)
+	}
+
+	var err error
+	*in, err = WorkflowOnFailurePolicyString(s)
+	return err
+}
+
+func WorkflowOnFailurePolicyString(policy string) (WorkflowOnFailurePolicy, error) {
+	if val, found := core.WorkflowMetadata_OnFailurePolicy_value[policy]; found {
+		return WorkflowOnFailurePolicy(val), nil
+	}
+
+	return WorkflowOnFailurePolicy(0), fmt.Errorf("%s does not belong to WorkflowOnFailurePolicy values", policy)
+}
 
 // TaskType is a dynamic enumeration, that is defined by configuration
 type TaskType = string

@@ -31,7 +31,7 @@ type dummyBaseWorkflow struct {
 }
 
 func (d *dummyBaseWorkflow) GetOnFailurePolicy() v1alpha1.WorkflowOnFailurePolicy {
-	return v1alpha1.WorkflowOnFailurePolicyFailImmediately
+	return v1alpha1.WorkflowOnFailurePolicy(core.WorkflowMetadata_FAIL_IMMEDIATELY)
 }
 
 func (d *dummyBaseWorkflow) ToNode(name v1alpha1.NodeID) ([]v1alpha1.NodeID, error) {

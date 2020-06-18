@@ -598,7 +598,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockWf.OnGetTask(taskID).Return(tk, nil)
 			mockWf.OnGetLabels().Return(make(map[string]string))
 			mockWf.OnIsInterruptible().Return(false)
-			mockWf.OnGetOnFailurePolicy().Return(v1alpha1.WorkflowOnFailurePolicyFailImmediately)
+			mockWf.OnGetOnFailurePolicy().Return(v1alpha1.WorkflowOnFailurePolicy(core.WorkflowMetadata_FAIL_IMMEDIATELY))
 			mockWfStatus.OnGetDataDir().Return(storage.DataReference("x"))
 			mockWfStatus.OnConstructNodeDataDirMatch(mock.Anything, mock.Anything, mock.Anything).Return("x", nil)
 			return mockWf, mockN2Status
