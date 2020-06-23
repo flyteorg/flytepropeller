@@ -87,6 +87,7 @@ func (r *ResourceLevelMonitor) RunCollector(ctx context.Context) {
 	collectorCtx = context.WithValue(ctx, KindKey, strings.ToLower(r.gvk.Kind))
 
 	go func() {
+		defer ticker.Stop()
 		pprof.SetGoroutineLabels(collectorCtx)
 		r.sharedInformer.HasSynced()
 		logger.Infof(ctx, "K8s resource collector %s has synced", r.gvk.Kind)
