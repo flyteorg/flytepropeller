@@ -75,11 +75,7 @@ func getPluginMetricKey(pluginID, taskType string) string {
 func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference) {
 	p.ttype = handler.TransitionTypeEphemeral
 	p.pInfo = pluginCore.PhaseInfoSuccess(nil)
-	if p.execInfo.TaskNodeInfo == nil {
-		p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{}
-	}
-	p.execInfo.TaskNodeInfo.CacheHit = true
-	p.ObserveSuccess(outputPath)
+	p.ObserveSuccess(outputPath, &event.TaskNodeMetadata{CacheStatus: event.CatalogCacheStatus_CACHE_HIT, CatalogKey: &event.CatalogMetadata{}})
 }
 
 func (p *pluginRequestedTransition) ObservedTransitionAndState(trns pluginCore.Transition, pluginStateVersion uint32, pluginState []byte) {
@@ -113,8 +109,11 @@ func (p *pluginRequestedTransition) FinalTaskEvent(id *core.TaskExecutionIdentif
 	return ToTaskExecutionEvent(id, in, out, p.pInfo)
 }
 
-func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference) {
+func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference, taskMetadata *event.TaskNodeMetadata) {
 	p.execInfo.OutputInfo = &handler.OutputInfo{OutputURI: outputPath}
+	p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
+		TaskNodeMetadata: taskMetadata,
+	}
 }
 
 func (p *pluginRequestedTransition) FinalTransition(ctx context.Context) (handler.Transition, error) {

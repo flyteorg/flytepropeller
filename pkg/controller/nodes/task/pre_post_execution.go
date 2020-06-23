@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
@@ -135,6 +136,8 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 			}
 		}
 
+		// TODO do this
+		event.CatalogCacheStatus_CACHE_DISABLED
 		// ignores discovery write failures
 		if tk.Metadata.Discoverable {
 			p, err := t.ResolvePlugin(ctx, tk.Type)
