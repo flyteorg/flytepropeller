@@ -268,7 +268,7 @@ func NewResourceLevelMonitor(scope promutils.Scope, lister lister.FlyteWorkflowL
 	return &ResourceLevelMonitor{
 		Scope:          scope,
 		CollectorTimer: scope.MustNewStopWatch("collection_cycle", "Measures how long it takes to run a collection", time.Millisecond),
-		levels:         labeled.NewGauge("flyteworkflow", "Current FlyteWorkflow levels", scope),
+		levels:         labeled.NewGauge("flyteworkflow", "Current FlyteWorkflow levels per instance of propeller", scope),
 		lister:         lister,
 	}
 }
