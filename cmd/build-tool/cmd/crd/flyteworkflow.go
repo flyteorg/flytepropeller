@@ -40,5 +40,6 @@ func NewFlyteWorkflowGeneratorStdout() *FlyteWorkflowGenerator {
 func (t FlyteWorkflowGenerator) Generate(original *apiextensions.CustomResourceDefinition) *apiextensions.CustomResourceDefinition {
 	log.Println("Generating validation")
 	original.Spec.Validation = utils.GetCustomResourceValidation(CRDNameFlyteWorkflow, v1alpha1_generated.GetOpenAPIDefinitions)
+
 	return original
 }

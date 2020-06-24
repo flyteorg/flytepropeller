@@ -48,7 +48,7 @@ func NewCrdValidationCommand(opts *RootOptions) *cobra.Command {
 func (c *CrdValidationOpts) generateValidation() error {
 
 	var generator *crd.FlyteWorkflowGenerator
-	
+
 	generator = crd.NewFlyteWorkflowGeneratorStdout()
 
 	original := config.NewCustomResourceDefinition(c.baseCrdFile)
