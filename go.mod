@@ -24,7 +24,7 @@ require (
 	github.com/jmespath/go-jmespath v0.3.0 // indirect
 	github.com/lyft/datacatalog v0.2.1
 	github.com/lyft/flyteidl v0.17.35-0.20200625185757-b560a5755178
-	github.com/lyft/flyteplugins v0.3.36-0.20200626053539-d31d4d5afbe2
+	github.com/lyft/flyteplugins v0.3.36-0.20200626062820-942426ed28f7
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-colorable v0.1.6 // indirect
