@@ -20,6 +20,7 @@ var (
 	BuildTime = time.Now().String()
 )
 
+
 // Use this method to log the build information for the current app. The app name should be provided. To inject the build
 // and version information refer to the top-level comment in this file
 func LogBuildInformation(appName string) {
