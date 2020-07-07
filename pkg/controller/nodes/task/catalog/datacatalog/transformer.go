@@ -5,10 +5,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	datacatalog "github.com/lyft/datacatalog/protos/gen"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 
 	"github.com/lyft/flytepropeller/pkg/compiler/validators"
@@ -133,7 +135,7 @@ func GenerateArtifactTagName(ctx context.Context, inputs *core.LiteralMap) (stri
 
 // Get the DataSetID for a task.
 // NOTE: the version of the task is a combination of both the discoverable_version and the task signature.
-// This is because the interfact may of changed even if the discoverable_version hadn't.
+// This is because the interface may of changed even if the discoverable_version hadn't.
 func GenerateDatasetIDForTask(ctx context.Context, k catalog.Key) (*datacatalog.DatasetID, error) {
 	datasetVersion, err := generateDataSetVersionFromTask(ctx, k.TypedInterface, k.CacheVersion)
 	if err != nil {
@@ -147,4 +149,93 @@ func GenerateDatasetIDForTask(ctx context.Context, k catalog.Key) (*datacatalog.
 		Version: datasetVersion,
 	}
 	return datasetID, nil
+}
+
+func DatasetIDToIdentifier(id *datacatalog.DatasetID) *core.Identifier {
+	if id == nil {
+		return nil
+	}
+	return &core.Identifier{ResourceType: core.ResourceType_DATASET, Name: id.Name, Project: id.Project, Domain: id.Domain, Version: id.Version}
+}
+
+// With Node-Node relationship this is bound to change. So lets keep it extensible
+const (
+	taskVersionKey     = "task-version"
+	execNameKey        = "execution-name"
+	execDomainKey      = "exec-domain"
+	execProjectKey     = "exec-project"
+	execNodeIDKey      = "exec-node"
+	execTaskAttemptKey = "exec-attempt"
+)
+
+// Understanding Catalog Identifiers
+// DatasetID represents the ID of the dataset. For Flyte this represents the ID of the generating task and the version calculated as the hash of the interface & cache version. refer to `GenerateDatasetIDForTask`
+// TaskID is the same as the DatasetID + name: (DataSetID - namespace) + task version which is stored in the metadata
+// ExecutionID is stored only in the metadata (project and domain available after Jul-2020)
+// NodeExecID = Execution ID + Node ID (available after Jul-2020)
+// TaskExecID is the same as the NodeExecutionID + attempt (attempt is available in Metadata) after Jul-2020
+func GetMetadataForSource(taskExecutionID *core.TaskExecutionIdentifier) *datacatalog.Metadata {
+	return &datacatalog.Metadata{
+		KeyMap: map[string]string{
+			taskVersionKey:     taskExecutionID.TaskId.Version,
+			execProjectKey:     taskExecutionID.NodeExecutionId.GetExecutionId().GetProject(),
+			execDomainKey:      taskExecutionID.NodeExecutionId.GetExecutionId().GetDomain(),
+			execNameKey:        taskExecutionID.NodeExecutionId.GetExecutionId().GetName(),
+			execNodeIDKey:      taskExecutionID.NodeExecutionId.GetNodeId(),
+			execTaskAttemptKey: strconv.Itoa(int(taskExecutionID.GetRetryAttempt())),
+		},
+	}
+}
+
+func GetSourceFromMetadata(md *datacatalog.Metadata, currentID core.Identifier) *core.TaskExecutionIdentifier {
+	// Jul-06-2020 DataCatalog stores only wfExecutionKey & taskVersionKey So we will default the project / domain to the current dataset's project domain
+	attempt, err := strconv.Atoi(GetOrDefault(md.KeyMap, execTaskAttemptKey, "0"))
+	if err != nil {
+		// Ignore error
+	}
+	return &core.TaskExecutionIdentifier{
+		TaskId: &core.Identifier{
+			ResourceType: currentID.ResourceType,
+			Project:      currentID.Project,
+			Domain:       currentID.Domain,
+			Name:         currentID.Name,
+			Version:      GetOrDefault(md.KeyMap, taskVersionKey, "unknown"),
+		},
+		RetryAttempt: uint32(attempt),
+		NodeExecutionId: &core.NodeExecutionIdentifier{
+			NodeId: GetOrDefault(md.KeyMap, execNodeIDKey, "unknown"),
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: GetOrDefault(md.KeyMap, execProjectKey, currentID.GetProject()),
+				Domain:  GetOrDefault(md.KeyMap, execDomainKey, currentID.GetDomain()),
+				Name:    GetOrDefault(md.KeyMap, execNameKey, "unknown"),
+			},
+		},
+	}
+}
+
+func EventCatalogMetadata(datasetID *datacatalog.DatasetID, tag *datacatalog.Tag, sourceID *core.TaskExecutionIdentifier) *event.CatalogMetadata {
+	md := &event.CatalogMetadata{
+		DatasetId: DatasetIDToIdentifier(datasetID),
+	}
+
+	if tag != nil {
+		md.ArtifactTag = &event.CatalogArtifactTag{
+			ArtifactId: tag.ArtifactId,
+			Name: tag.Name,
+		}
+	}
+
+	if sourceID != nil {
+		md.SourceExecution = &event.CatalogMetadata_SourceTaskExecution{
+			SourceTaskExecution: sourceID,
+		}
+	}
+}
+
+func GetOrDefault(m map[string]string, key, defaultValue string) string {
+	v, ok := m[key]
+	if !ok {
+		return defaultValue
+	}
+	return v
 }
