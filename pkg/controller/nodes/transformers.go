@@ -97,7 +97,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler
 				nev.TargetMetadata = v
 			}
 		} else if eInfo.TaskNodeInfo != nil {
-			v := ToNodeExecWorkflowNodeMetadata(eInfo.WorkflowNodeInfo)
+			v := ToNodeExecTaskNodeMetadata(eInfo.TaskNodeInfo)
 			if v != nil {
 				nev.TargetMetadata = v
 			}

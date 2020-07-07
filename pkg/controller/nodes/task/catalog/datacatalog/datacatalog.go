@@ -8,7 +8,6 @@ import (
 	grpcRetry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	datacatalog "github.com/lyft/datacatalog/protos/gen"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
@@ -130,12 +129,12 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (catalog.Entry
 	outputs, err := GenerateTaskOutputsFromArtifact(key.Identifier, key.TypedInterface, artifact)
 	if err != nil {
 		logger.Errorf(ctx, "DataCatalog failed to get outputs from artifact %+v, err: %+v", artifact.Id, err)
-		return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil), catalog.NewStatus(event.CatalogCacheStatus_CACHE_MISS, md)), err
+		return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, md)), err
 	}
 
 
 	logger.Infof(ctx, "Retrieved %v outputs from artifact %v, tag: %v", len(outputs.Literals), artifact.Id, tag)
-	return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil), catalog.NewStatus(event.CatalogCacheStatus_CACHE_HIT, md)), nil
+	return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, md)), nil
 }
 
 func (m *CatalogClient) CreateDataset(ctx context.Context, key catalog.Key, metadata *datacatalog.Metadata) (*datacatalog.DatasetID, error) {
@@ -265,7 +264,7 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 		}
 	}
 
-	return catalog.NewStatus(event.CatalogCacheStatus_CACHE_POPULATED, EventCatalogMetadata(datasetID, tag, nil)), nil
+	return catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, EventCatalogMetadata(datasetID, tag, nil)), nil
 }
 
 // Create a new Datacatalog client for task execution caching

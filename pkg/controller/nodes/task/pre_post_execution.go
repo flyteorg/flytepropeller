@@ -160,7 +160,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 				TypedInterface: *tk.Interface,
 				InputReader:    i,
 			}
-			if err2 := t.catalog.Put(ctx, key, r, m); err2 != nil {
+			if status, err2 := t.catalog.Put(ctx, key, r, m); err2 != nil {
 				t.metrics.catalogPutFailureCount.Inc(ctx)
 				logger.Errorf(ctx, "Failed to write results to catalog for Task [%v]. Error: %v", tk.GetId(), err2)
 			} else {
