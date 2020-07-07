@@ -136,8 +136,6 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 			}
 		}
 
-		// TODO do this
-		event.CatalogCacheStatus_CACHE_DISABLED
 		// ignores discovery write failures
 		if tk.Metadata.Discoverable {
 			p, err := t.ResolvePlugin(ctx, tk.Type)
