@@ -1,3 +1,4 @@
+
 project_name: kubectl-flyte
 before:
   hooks:
@@ -52,7 +53,7 @@ scoop:
 
   # Your app's description.
   # Default is empty.
-  description: "Common Go utilities (Typed-Config, PFlags, Prometheus Metrics,... more)."
+  description: "kubectl-flyte is an command line tool that can be used as an extension to kubectl"
 
   # Your app's license
   # Default is empty.
