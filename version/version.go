@@ -9,7 +9,6 @@ import (
 // This module provides the ability to inject Build (git sha) and Version information at compile time.
 // To set these values invoke go build as follows
 // go build -ldflags “-X github.com/lyft/flytepropeller/version.Build=xyz -X github.com/lyft/flytepropeller/version.Version=1.2.3"
-// NOTE: If the version is set and server.StartProfilingServerWithDefaultHandlers are initialized then, `/version`
 // will provide the build and version information
 var (
 	// Specifies the GIT sha of the build
