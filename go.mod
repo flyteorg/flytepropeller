@@ -23,8 +23,8 @@ require (
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/jmespath/go-jmespath v0.3.0 // indirect
 	github.com/lyft/datacatalog v0.2.1
-	github.com/lyft/flyteidl v0.17.35-0.20200707003420-954dedb491fa
-	github.com/lyft/flyteplugins v0.3.34
+	github.com/lyft/flyteidl v0.17.37-0.20200721225522-b4751137e5ce
+	github.com/lyft/flyteplugins v0.3.38-0.20200724213302-8d841a7bfa4b
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-colorable v0.1.6 // indirect
@@ -64,7 +64,3 @@ replace (
 	k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
 	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
 )
-
-replace github.com/lyft/flyteplugins => ../flyteplugins/
-
-replace github.com/lyft/flyteidl => ../flyteidl/
