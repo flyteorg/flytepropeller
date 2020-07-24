@@ -179,7 +179,7 @@ func GetDatasetMetadataForSource(taskExecutionID *core.TaskExecutionIdentifier) 
 	}
 	return &datacatalog.Metadata{
 		KeyMap: map[string]string{
-			taskVersionKey:     taskExecutionID.TaskId.Version,
+			taskVersionKey: taskExecutionID.TaskId.Version,
 		},
 	}
 }
@@ -210,10 +210,7 @@ func GetSourceFromMetadata(datasetMd, artifactMd *datacatalog.Metadata, currentI
 		artifactMd = &datacatalog.Metadata{KeyMap: map[string]string{}}
 	}
 	// Jul-06-2020 DataCatalog stores only wfExecutionKey & taskVersionKey So we will default the project / domain to the current dataset's project domain
-	attempt, err := strconv.Atoi(GetOrDefault(artifactMd.KeyMap, execTaskAttemptKey, "0"))
-	if err != nil {
-		// Ignore error
-	}
+	attempt, _ := strconv.Atoi(GetOrDefault(artifactMd.KeyMap, execTaskAttemptKey, "0"))
 	return &core.TaskExecutionIdentifier{
 		TaskId: &core.Identifier{
 			ResourceType: currentID.ResourceType,
@@ -243,7 +240,7 @@ func EventCatalogMetadata(datasetID *datacatalog.DatasetID, tag *datacatalog.Tag
 	if tag != nil {
 		md.ArtifactTag = &core.CatalogArtifactTag{
 			ArtifactId: tag.ArtifactId,
-			Name: tag.Name,
+			Name:       tag.Name,
 		}
 	}
 

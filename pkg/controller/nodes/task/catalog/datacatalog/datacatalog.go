@@ -132,7 +132,6 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (catalog.Entry
 		return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, md)), err
 	}
 
-
 	logger.Infof(ctx, "Retrieved %v outputs from artifact %v, tag: %v", len(outputs.Literals), artifact.Id, tag)
 	return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, md)), nil
 }
