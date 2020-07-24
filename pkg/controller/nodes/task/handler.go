@@ -72,10 +72,18 @@ func getPluginMetricKey(pluginID, taskType string) string {
 	return taskType + "_" + pluginID
 }
 
-func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference) {
+func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference, entry catalog.Entry) {
 	p.ttype = handler.TransitionTypeEphemeral
 	p.pInfo = pluginCore.PhaseInfoSuccess(nil)
-	p.ObserveSuccess(outputPath, &event.TaskNodeMetadata{CacheStatus: event.CatalogCacheStatus_CACHE_HIT, CatalogKey: &event.CatalogMetadata{}})
+	p.ObserveSuccess(outputPath, &event.TaskNodeMetadata{CacheStatus: entry.GetStatus().GetCacheStatus(), CatalogKey: entry.GetStatus().GetMetadata()})
+}
+
+func (p *pluginRequestedTransition) PopulateCacheInfo(entry catalog.Entry) {
+	p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
+		TaskNodeMetadata: &event.TaskNodeMetadata{
+			CacheStatus: entry.GetStatus().GetCacheStatus(),
+			CatalogKey:  entry.GetStatus().GetMetadata()},
+	}
 }
 
 func (p *pluginRequestedTransition) ObservedTransitionAndState(trns pluginCore.Transition, pluginStateVersion uint32, pluginState []byte) {
@@ -367,7 +375,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		logger.Debugf(ctx, "Task success detected, calling on Task success")
 		outputCommitter := ioutils.NewRemoteFileOutputWriter(ctx, tCtx.DataStore(), tCtx.OutputWriter())
 		execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
-		ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.NodeID(), tCtx.InputReader(), tCtx.ow.GetReader(), outputCommitter, tCtx.tr, catalog.Metadata{
+		cacheStatus, ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.NodeID(), tCtx.InputReader(), tCtx.ow.GetReader(), outputCommitter, tCtx.tr, catalog.Metadata{
 			TaskExecutionIdentifier: &execID,
 		})
 		if err != nil {
@@ -376,7 +384,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		if ee != nil {
 			pluginTrns.ObservedExecutionError(ee)
 		} else {
-			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath())
+			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), &event.TaskNodeMetadata{CacheStatus: cacheStatus.GetCacheStatus(), CatalogKey: cacheStatus.GetMetadata()})
 		}
 	}
 
@@ -403,7 +411,9 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 	ts := nCtx.NodeStateReader().GetTaskNodeState()
 
-	var pluginTrns *pluginRequestedTransition
+	pluginTrns := &pluginRequestedTransition{}
+	// We will start with the assumption that catalog is disabled
+	pluginTrns.PopulateCacheInfo(catalog.NewFailedCatalogEntry(catalog.NewStatus(core.CatalogCacheStatus_CACHE_DISABLED, nil)))
 
 	// NOTE: Ideally we should use a taskExecution state for this handler. But, doing that will make it completely backwards incompatible
 	// So now we will derive this from the plugin phase
@@ -412,37 +422,40 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// STEP 1: Check Cache
 	if ts.PluginPhase == pluginCore.PhaseUndefined && checkCatalog {
 		// This is assumed to be first time. we will check catalog and call handle
-		if ok, err := t.CheckCatalogCache(ctx, tCtx.tr, nCtx.InputReader(), tCtx.ow); err != nil {
+		entry, err := t.CheckCatalogCache(ctx, tCtx.tr, nCtx.InputReader(), tCtx.ow)
+		if err != nil {
 			logger.Errorf(ctx, "failed to check catalog cache with error")
 			return handler.UnknownTransition, err
-		} else if ok {
+		}
+		if entry.GetStatus().GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
 			r := tCtx.ow.GetReader()
-			if r != nil {
-				// TODO @kumare this can be optimized, if we have paths then the reader could be pipelined to a sink
-				o, ee, err := r.Read(ctx)
-				if err != nil {
-					logger.Errorf(ctx, "failed to read from catalog, err: %s", err.Error())
-					return handler.UnknownTransition, err
-				}
-				if ee != nil {
-					logger.Errorf(ctx, "got execution error from catalog output reader? This should not happen, err: %s", ee.String())
-					return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
-				}
-				if err := nCtx.DataStore().WriteProtobuf(ctx, tCtx.ow.GetOutputPath(), storage.Options{}, o); err != nil {
-					logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
-					return handler.UnknownTransition, err
-				}
-				pluginTrns = &pluginRequestedTransition{}
-				pluginTrns.CacheHit(tCtx.ow.GetOutputPath())
-			} else {
-				logger.Errorf(ctx, "no output reader found after a catalog cache hit!")
+			if r == nil {
+				return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "failed to reader outputs from a CacheHIT. Unexpected!")
 			}
+			// TODO @kumare this can be optimized, if we have paths then the reader could be pipelined to a sink
+			o, ee, err := r.Read(ctx)
+			if err != nil {
+				logger.Errorf(ctx, "failed to read from catalog, err: %s", err.Error())
+				return handler.UnknownTransition, err
+			}
+			if ee != nil {
+				logger.Errorf(ctx, "got execution error from catalog output reader? This should not happen, err: %s", ee.String())
+				return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
+			}
+			if err := nCtx.DataStore().WriteProtobuf(ctx, tCtx.ow.GetOutputPath(), storage.Options{}, o); err != nil {
+				logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
+				return handler.UnknownTransition, err
+			}
+			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), entry)
+		} else {
+			logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
+			pluginTrns.PopulateCacheInfo(entry)
 		}
 	}
 
 	barrierTick := uint32(0)
 	// STEP 2: If no cache-hit, then lets invoke the plugin and wait for a transition out of undefined
-	if pluginTrns == nil {
+	if pluginTrns.execInfo.TaskNodeInfo == nil || pluginTrns.execInfo.TaskNodeInfo.TaskNodeMetadata.CacheStatus != core.CatalogCacheStatus_CACHE_HIT {
 		prevBarrier := t.barrierCache.GetPreviousBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
 		// Lets start with the current barrierTick (the value to be stored) same as the barrierTick in the cache
 		barrierTick = prevBarrier.BarrierClockTick

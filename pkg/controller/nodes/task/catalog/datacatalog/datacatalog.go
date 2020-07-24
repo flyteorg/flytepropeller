@@ -94,7 +94,7 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (catalog.Entry
 	dataset, err := m.GetDataset(ctx, key)
 	if err != nil {
 		logger.Debugf(ctx, "DataCatalog failed to get dataset for ID %s, err: %+v", key.Identifier.String(), err)
-		return nil, errors.Wrapf(err, "DataCatalog failed to get dataset for ID %s", key.Identifier.String())
+		return catalog.Entry{}, errors.Wrapf(err, "DataCatalog failed to get dataset for ID %s", key.Identifier.String())
 	}
 
 	inputs := &core.LiteralMap{}
@@ -124,7 +124,7 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (catalog.Entry
 		// TODO should we look through all the tags to find the relevant one?
 		relevantTag = artifact.GetTags()[0]
 	}
-	md := EventCatalogMetadata(dataset.GetId(), relevantTag, GetSourceFromMetadata(artifact.GetMetadata(), key.Identifier))
+	md := EventCatalogMetadata(dataset.GetId(), relevantTag, GetSourceFromMetadata(dataset.GetMetadata(), artifact.GetMetadata(), key.Identifier))
 
 	outputs, err := GenerateTaskOutputsFromArtifact(key.Identifier, key.TypedInterface, artifact)
 	if err != nil {
@@ -201,9 +201,7 @@ func (m *CatalogClient) CreateArtifact(ctx context.Context, datasetID *datacatal
 func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.OutputReader, metadata catalog.Metadata) (catalog.Status, error) {
 
 	// Populate Metadata for later recovery
-	md := GetMetadataForSource(metadata.TaskExecutionIdentifier)
-
-	datasetID, err := m.CreateDataset(ctx, key, md)
+	datasetID, err := m.CreateDataset(ctx, key, GetDatasetMetadataForSource(metadata.TaskExecutionIdentifier))
 	if err != nil {
 		return catalog.Status{}, err
 	}
@@ -235,7 +233,7 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 	}
 
 	// Create the artifact for the execution that belongs in the task
-	cachedArtifact, err := m.CreateArtifact(ctx, datasetID, outputs, md)
+	cachedArtifact, err := m.CreateArtifact(ctx, datasetID, outputs, GetArtifactMetadataForSource(metadata.TaskExecutionIdentifier))
 	if err != nil {
 		return catalog.Status{}, errors.Wrapf(err, "failed to create dataset for ID %s", key.Identifier.String())
 	}

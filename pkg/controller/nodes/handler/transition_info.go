@@ -87,6 +87,16 @@ func (p PhaseInfo) GetReason() string {
 	return p.reason
 }
 
+func (p PhaseInfo) WithInfo(i *ExecutionInfo) PhaseInfo {
+	return PhaseInfo{
+		p:          p.p,
+		occurredAt: p.occurredAt,
+		err:        p.err,
+		info:       i,
+		reason:     p.reason,
+	}
+}
+
 var PhaseInfoUndefined = PhaseInfo{p: EPhaseUndefined}
 
 func phaseInfo(p EPhase, err *core.ExecutionError, info *ExecutionInfo, reason string) PhaseInfo {

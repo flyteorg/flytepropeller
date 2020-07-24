@@ -10,7 +10,6 @@ import (
 
 	datacatalog "github.com/lyft/datacatalog/protos/gen"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 
 	"github.com/lyft/flytepropeller/pkg/compiler/validators"
@@ -174,10 +173,23 @@ const (
 // ExecutionID is stored only in the metadata (project and domain available after Jul-2020)
 // NodeExecID = Execution ID + Node ID (available after Jul-2020)
 // TaskExecID is the same as the NodeExecutionID + attempt (attempt is available in Metadata) after Jul-2020
-func GetMetadataForSource(taskExecutionID *core.TaskExecutionIdentifier) *datacatalog.Metadata {
+func GetDatasetMetadataForSource(taskExecutionID *core.TaskExecutionIdentifier) *datacatalog.Metadata {
+	if taskExecutionID == nil {
+		return &datacatalog.Metadata{}
+	}
 	return &datacatalog.Metadata{
 		KeyMap: map[string]string{
 			taskVersionKey:     taskExecutionID.TaskId.Version,
+		},
+	}
+}
+
+func GetArtifactMetadataForSource(taskExecutionID *core.TaskExecutionIdentifier) *datacatalog.Metadata {
+	if taskExecutionID == nil {
+		return &datacatalog.Metadata{}
+	}
+	return &datacatalog.Metadata{
+		KeyMap: map[string]string{
 			execProjectKey:     taskExecutionID.NodeExecutionId.GetExecutionId().GetProject(),
 			execDomainKey:      taskExecutionID.NodeExecutionId.GetExecutionId().GetDomain(),
 			execNameKey:        taskExecutionID.NodeExecutionId.GetExecutionId().GetName(),
@@ -187,9 +199,18 @@ func GetMetadataForSource(taskExecutionID *core.TaskExecutionIdentifier) *dataca
 	}
 }
 
-func GetSourceFromMetadata(md *datacatalog.Metadata, currentID core.Identifier) *core.TaskExecutionIdentifier {
+// Returns the Source TaskExecutionIdentifier from the catalog metadata
+// For all the information not available it returns Unknown. This is because as of July-2020 Catalog does not have all
+// the information. After the first deployment of this code, it will have this and the "unknown's" can be phased out
+func GetSourceFromMetadata(datasetMd, artifactMd *datacatalog.Metadata, currentID core.Identifier) *core.TaskExecutionIdentifier {
+	if datasetMd == nil || datasetMd.KeyMap == nil {
+		datasetMd = &datacatalog.Metadata{KeyMap: map[string]string{}}
+	}
+	if artifactMd == nil || artifactMd.KeyMap == nil {
+		artifactMd = &datacatalog.Metadata{KeyMap: map[string]string{}}
+	}
 	// Jul-06-2020 DataCatalog stores only wfExecutionKey & taskVersionKey So we will default the project / domain to the current dataset's project domain
-	attempt, err := strconv.Atoi(GetOrDefault(md.KeyMap, execTaskAttemptKey, "0"))
+	attempt, err := strconv.Atoi(GetOrDefault(artifactMd.KeyMap, execTaskAttemptKey, "0"))
 	if err != nil {
 		// Ignore error
 	}
@@ -199,39 +220,43 @@ func GetSourceFromMetadata(md *datacatalog.Metadata, currentID core.Identifier) 
 			Project:      currentID.Project,
 			Domain:       currentID.Domain,
 			Name:         currentID.Name,
-			Version:      GetOrDefault(md.KeyMap, taskVersionKey, "unknown"),
+			Version:      GetOrDefault(datasetMd.KeyMap, taskVersionKey, "unknown"),
 		},
 		RetryAttempt: uint32(attempt),
 		NodeExecutionId: &core.NodeExecutionIdentifier{
-			NodeId: GetOrDefault(md.KeyMap, execNodeIDKey, "unknown"),
+			NodeId: GetOrDefault(artifactMd.KeyMap, execNodeIDKey, "unknown"),
 			ExecutionId: &core.WorkflowExecutionIdentifier{
-				Project: GetOrDefault(md.KeyMap, execProjectKey, currentID.GetProject()),
-				Domain:  GetOrDefault(md.KeyMap, execDomainKey, currentID.GetDomain()),
-				Name:    GetOrDefault(md.KeyMap, execNameKey, "unknown"),
+				Project: GetOrDefault(artifactMd.KeyMap, execProjectKey, currentID.GetProject()),
+				Domain:  GetOrDefault(artifactMd.KeyMap, execDomainKey, currentID.GetDomain()),
+				Name:    GetOrDefault(artifactMd.KeyMap, execNameKey, "unknown"),
 			},
 		},
 	}
 }
 
-func EventCatalogMetadata(datasetID *datacatalog.DatasetID, tag *datacatalog.Tag, sourceID *core.TaskExecutionIdentifier) *event.CatalogMetadata {
-	md := &event.CatalogMetadata{
+// Given the Catalog Information (returned from a Catalog call), returns the CatalogMetadata that is populated in the event.
+func EventCatalogMetadata(datasetID *datacatalog.DatasetID, tag *datacatalog.Tag, sourceID *core.TaskExecutionIdentifier) *core.CatalogMetadata {
+	md := &core.CatalogMetadata{
 		DatasetId: DatasetIDToIdentifier(datasetID),
 	}
 
 	if tag != nil {
-		md.ArtifactTag = &event.CatalogArtifactTag{
+		md.ArtifactTag = &core.CatalogArtifactTag{
 			ArtifactId: tag.ArtifactId,
 			Name: tag.Name,
 		}
 	}
 
 	if sourceID != nil {
-		md.SourceExecution = &event.CatalogMetadata_SourceTaskExecution{
+		md.SourceExecution = &core.CatalogMetadata_SourceTaskExecution{
 			SourceTaskExecution: sourceID,
 		}
 	}
+
+	return md
 }
 
+// Returns a default value, if the given key is not found in the map, else returns the value in the map
 func GetOrDefault(m map[string]string, key, defaultValue string) string {
 	v, ok := m[key]
 	if !ok {
