@@ -24,7 +24,9 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
 		return catalog.Entry{}, err
 	}
+
 	if tk.Metadata.Discoverable {
+		logger.Infof(ctx, "Catalog CacheEnabled: Looking up catalog Cache.")
 		key := catalog.Key{
 			Identifier:     *tk.Id,
 			CacheVersion:   tk.Metadata.DiscoveryVersion,
@@ -37,26 +39,33 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 			causeErr := errors.Cause(err)
 			if taskStatus, ok := status.FromError(causeErr); ok && taskStatus.Code() == codes.NotFound {
 				t.metrics.catalogMissCount.Inc(ctx)
-				logger.Infof(ctx, "Artifact not found in Catalog. Executing Task.")
+				logger.Infof(ctx, "Catalog CacheMiss: Artifact not found in Catalog. Executing Task.")
 				return catalog.NewCatalogEntry(nil, catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, nil)), nil
 			}
 
 			t.metrics.catalogGetFailureCount.Inc(ctx)
-			logger.Errorf(ctx, "Catalog memoization check failed. err: %v", err.Error())
+			logger.Errorf(ctx, "Catalog Failure: memoization check failed. err: %v", err.Error())
 			return catalog.Entry{}, errors.Wrapf(err, "Failed to check Catalog for previous results")
 		}
 
-		if resp.GetStatus().GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
-			t.metrics.catalogHitCount.Inc(ctx)
-			if iface := tk.Interface; iface != nil && iface.Outputs != nil && len(iface.Outputs.Variables) > 0 {
-				if err := outputWriter.Put(ctx, resp.GetOutputs()); err != nil {
-					logger.Errorf(ctx, "failed to write data to Storage, err: %v", err.Error())
-					return catalog.Entry{}, errors.Wrapf(err, "failed to copy cached results for task.")
-				}
+		if resp.GetStatus().GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT {
+			logger.Errorf(ctx, "No CacheHIT and no Error received. Illegal state, Cache State: %s", resp.GetStatus().GetCacheStatus().String())
+			// TODO should this be an error?
+			return resp, nil
+		}
+
+		logger.Infof(ctx, "Catalog CacheHit: for task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
+		t.metrics.catalogHitCount.Inc(ctx)
+		if iface := tk.Interface; iface != nil && iface.Outputs != nil && len(iface.Outputs.Variables) > 0 {
+			if err := outputWriter.Put(ctx, resp.GetOutputs()); err != nil {
+				logger.Errorf(ctx, "failed to write data to Storage, err: %v", err.Error())
+				return catalog.Entry{}, errors.Wrapf(err, "failed to copy cached results for task.")
 			}
 		}
 		// SetCached.
 		return resp, nil
+	} else {
+		logger.Infof(ctx, "Catalog CacheDisabled: for Task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
 	}
 	return catalog.NewCatalogEntry(nil, cacheDisabled), nil
 }
@@ -148,7 +157,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 
 	if !tk.Metadata.Discoverable || !writeToCatalog {
 		if !writeToCatalog {
-			logger.Debug(ctx, "Node level caching is disabled. Skipping catalog write.")
+			logger.Infof(ctx, "Node level caching is disabled. Skipping catalog write.")
 		}
 		return cacheDisabled, nil, nil
 	}
@@ -165,6 +174,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 		InputReader:    i,
 	}
 
+	logger.Infof(ctx, "Catalog CacheEnabled. recording execution [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
 	// ignores discovery write failures
 	s, err2 := t.catalog.Put(ctx, key, r, m)
 	if err2 != nil {
@@ -173,6 +183,6 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 		return catalog.NewStatus(core.CatalogCacheStatus_CACHE_PUT_FAILURE, s.GetMetadata()), nil, nil
 	}
 	t.metrics.catalogPutSuccessCount.Inc(ctx)
-	logger.Debugf(ctx, "Successfully cached results to catalog - Task [%v]", tk.GetId())
+	logger.Infof(ctx, "Successfully cached results to catalog - Task [%v]", tk.GetId())
 	return s, nil, nil
 }

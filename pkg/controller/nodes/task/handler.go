@@ -401,7 +401,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 	checkCatalog := !p.GetProperties().DisableNodeLevelCaching
 	if !checkCatalog {
-		logger.Debug(ctx, "Node level caching is disabled. Skipping catalog read.")
+		logger.Infof(ctx, "Node level caching is disabled. Skipping catalog read.")
 	}
 
 	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p.GetID())
