@@ -338,7 +338,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 		})
 
 		tk := &core.TaskTemplate{
-			Id:   nil,
+			Id:   &core.Identifier{ResourceType: core.ResourceType_TASK, Project: "proj", Domain: "dom", Version: "ver"},
 			Type: "test",
 			Metadata: &core.TaskMetadata{
 				Discoverable: false,
