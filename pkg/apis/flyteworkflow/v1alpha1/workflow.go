@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -45,8 +46,16 @@ type FlyteWorkflow struct {
 	// Status is the only mutable section in the workflow. It holds all the execution information
 	Status WorkflowStatus `json:"status,omitempty"`
 
-	// non-Serialized fields
+	// non-Serialized fields (these will not get written to etcd)
+	// As of 2020-07, the only real implementation of this interface is a URLPathConstructor, which is just an empty
+	// struct. However, because this field is an interface, we create it once when the crd is hydrated from etcd,
+	// so that it can be used downstream without any confusion.
+	// This field is here because it's easier to put it here than pipe through a new object through all of propeller.
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
+
+	// When running against AWS, this should be something of the form s3://my-bucket, or s3://my-bucket/
+	// A sharding string will automatically be appended to this prefix before handing off to plugins/tasks.
+	RawOutputDataConfig admin.RawOutputDataConfig `json:"rawOutputDataPrefix,omitempty"`
 }
 
 type NodeDefaults struct {
@@ -107,6 +116,10 @@ func (in *FlyteWorkflow) GetServiceAccountName() string {
 }
 
 func (in *FlyteWorkflow) IsInterruptible() bool {
+	return in.NodeDefaults.Interruptible
+}
+
+func (in *FlyteWorkflow) GetRawOutputDataConfig() bool {
 	return in.NodeDefaults.Interruptible
 }
 
