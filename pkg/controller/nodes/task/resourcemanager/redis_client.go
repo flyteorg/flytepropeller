@@ -72,10 +72,10 @@ func NewRedisClient(ctx context.Context, config config.RedisConfig) (RedisClient
 
 	_, err := client.Ping()
 	if err != nil {
-		logger.Errorf(ctx, "Error creating Redis client at [%s]. Error: %v", config.HostPath, err)
+		logger.Errorf(ctx, "Error creating Redis client at [%+v]. Error: %v", config.HostPaths, err)
 		return nil, err
 	}
 
-	logger.Infof(ctx, "Created Redis client with host [%s]...", config.HostPath)
+	logger.Infof(ctx, "Created Redis client with host [%+v]...", config.HostPaths)
 	return client, nil
 }
