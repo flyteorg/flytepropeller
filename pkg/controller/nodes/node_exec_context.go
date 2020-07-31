@@ -203,16 +203,16 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		return nil
 	}
 
-	interrutible := executionContext.IsInterruptible()
+	interruptible := executionContext.IsInterruptible()
 	if n.IsInterruptible() != nil {
-		interrutible = *n.IsInterruptible()
+		interruptible = *n.IsInterruptible()
 	}
 
 	s := nl.GetNodeExecutionStatus(ctx, currentNodeID)
 
 	// a node is not considered interruptible if the system failures have exceeded the configured threshold
-	if interrutible && s.GetSystemFailures() >= c.interruptibleFailureThreshold {
-		interrutible = false
+	if interruptible && s.GetSystemFailures() >= c.interruptibleFailureThreshold {
+		interruptible = false
 		c.metrics.InterruptedThresholdHit.Inc(ctx)
 	}
 
@@ -234,7 +234,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 				),
 			),
 		),
-		interrutible,
+		interruptible,
 		c.maxDatasetSizeBytes,
 		&taskEventRecorder{TaskEventRecorder: c.taskRecorder},
 		tr,
