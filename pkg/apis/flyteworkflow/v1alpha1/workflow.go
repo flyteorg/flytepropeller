@@ -11,7 +11,6 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -53,9 +52,7 @@ type FlyteWorkflow struct {
 	// This field is here because it's easier to put it here than pipe through a new object through all of propeller.
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
 
-	// When running against AWS, this should be something of the form s3://my-bucket, or s3://my-bucket/
-	// A sharding string will automatically be appended to this prefix before handing off to plugins/tasks.
-	RawOutputDataConfig admin.RawOutputDataConfig `json:"rawOutputDataPrefix,omitempty"`
+	RawOutputDataConfig RawOutputDataConfig `json:"rawOutputDataConfig,omitempty"`
 }
 
 type NodeDefaults struct {
@@ -119,8 +116,8 @@ func (in *FlyteWorkflow) IsInterruptible() bool {
 	return in.NodeDefaults.Interruptible
 }
 
-func (in *FlyteWorkflow) GetRawOutputDataConfig() bool {
-	return in.NodeDefaults.Interruptible
+func (in *FlyteWorkflow) GetRawOutputDataConfig() RawOutputDataConfig {
+	return in.RawOutputDataConfig
 }
 
 type Inputs struct {
