@@ -217,7 +217,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 	}
 
 	rawOutputPrefix := c.defaultDataSandbox
-	if executionContext.GetRawOutputDataConfig().RawOutputDataConfig != nil && executionContext.GetRawOutputDataConfig().OutputLocationPrefix != "" {
+	if executionContext.GetRawOutputDataConfig().OutputLocationPrefix != "" {
 		rawOutputPrefix = storage.DataReference(executionContext.GetRawOutputDataConfig().OutputLocationPrefix)
 	}
 
