@@ -35,7 +35,7 @@ type Config struct {
 // Specific configs for Redis resource manager
 type RedisConfig struct {
 	HostPaths   []string `json:"hostPaths" pflag:",Redis hosts locations."`
-	PrimaryName string   `json:"primaryName" pflag:",Redis primary name."`
+	PrimaryName string   `json:"primaryName" pflag:",Redis primary name, fill in only if you are connecting to a redis sentinel cluster."`
 	// deprecated: Please use HostPaths instead
 	HostPath   string `json:"hostPath" pflag:",Redis host location"`
 	HostKey    string `json:"hostKey" pflag:",Key for local Redis access"`
