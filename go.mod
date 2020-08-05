@@ -15,7 +15,6 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/emicklei/go-restful v2.13.0+incompatible // indirect
 	github.com/fatih/color v1.9.0
-	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.9 // indirect
 	github.com/go-openapi/swag v0.19.9 // indirect
@@ -29,10 +28,9 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6 // indirect
 	github.com/imdario/mergo v0.3.10 // indirect
-	github.com/jmespath/go-jmespath v0.3.0 // indirect
 	github.com/lyft/datacatalog v0.2.1
 	github.com/lyft/flyteidl v0.18.1
-	github.com/lyft/flyteplugins v0.4.1
+	github.com/lyft/flyteplugins v0.4.2
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
 	github.com/mailru/easyjson v0.7.2 // indirect
@@ -69,7 +67,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20200727223308-4c7aaf529f79 // indirect
 	k8s.io/utils v0.0.0-20200731180307-f00132d28269 // indirect
 	sigs.k8s.io/controller-runtime v0.6.2
-	sigs.k8s.io/structured-merge-diff v1.0.1-0.20191108220359-b1b620dd3f06 // indirect
 )
 
 // Pin the version of client-go to something that's compatible with katrogan's fork of api and apimachinery
