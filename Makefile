@@ -3,6 +3,9 @@ include boilerplate/lyft/docker_build/Makefile
 include boilerplate/lyft/golang_test_targets/Makefile
 include boilerplate/lyft/end2end/Makefile
 
+PWD := $(shell pwd)
+GIT_HASH := $(shell git log -1 --pretty=format:"%H")
+
 .PHONY: update_boilerplate
 update_boilerplate:
 	@boilerplate/update.sh
@@ -47,3 +50,14 @@ golden:
 .PHONY: generate
 generate: download_tooling
 	@go generate ./...
+
+.PHONY: e2e-setup
+e2e-setup:
+	curl -Lo $(PWD)/kind https://kind.sigs.k8s.io/dl/v0.8.1/kind-linux-amd64
+	chmod a+x $(PWD)/kind
+	$(PWD)kind create cluster
+	@docker build -t lyft/flytepropeller/flytepropeller:$(GIT_HASH) .
+	$(PWD)kind load docker-image lyft/flytepropeller/flytepropeller:$(GIT_HASH)
+
+
+
