@@ -30,12 +30,12 @@ jobs:
           fetch-depth: '0'
       - name: End2End
         run:
-          - make e2e-setup
-          - kubectl cluster-info
-          - kubectl get pods -n kube-system
-          - echo "current-context:" $(kubectl config current-context)
-          - echo "environment-kubeconfig:" ${KUBECONFIG}
-          - PROPELLER=lyft/flytepropeller/flytepropeller:${{ github.sha }} make end2end_execute
+          make e2e-setup && \
+          kubectl cluster-info && \
+          kubectl get pods -n kube-system && \
+          echo "current-context:" $(kubectl config current-context) && \
+          echo "environment-kubeconfig:" ${KUBECONFIG} && \
+          PROPELLER=lyft/flytepropeller/flytepropeller:${{ github.sha }} make end2end_execute
   push-dockerhub:
     runs-on: ubuntu-latest
     needs: bump-version
