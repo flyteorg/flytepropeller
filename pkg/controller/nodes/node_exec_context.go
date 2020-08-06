@@ -136,9 +136,9 @@ func (e nodeExecContext) MaxDatasetSizeBytes() int64 {
 }
 
 func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup,
-		node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool,
-		maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager,
-		enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
+	node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool,
+	maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager,
+	enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
 
 	md := nodeExecMetadata{
 		Meta: execContext,
@@ -217,7 +217,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 	}
 
 	rawOutputPrefix := c.defaultDataSandbox
-	if executionContext.GetRawOutputDataConfig().OutputLocationPrefix != "" {
+	if len(executionContext.GetRawOutputDataConfig().OutputLocationPrefix) > 0 {
 		rawOutputPrefix = storage.DataReference(executionContext.GetRawOutputDataConfig().OutputLocationPrefix)
 	}
 
