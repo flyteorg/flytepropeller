@@ -51,13 +51,6 @@ golden:
 generate: download_tooling
 	@go generate ./...
 
-.PHONY: e2e-setup
-e2e-setup:
-	curl -Lo $(PWD)/kind https://kind.sigs.k8s.io/dl/v0.8.1/kind-linux-amd64
-	chmod a+x $(PWD)/kind
-	$(PWD)/kind create cluster
-	@docker build -t lyft/flytepropeller/flytepropeller:$(GIT_HASH) .
-	$(PWD)/kind load docker-image lyft/flytepropeller/flytepropeller:$(GIT_HASH)
 
 
 

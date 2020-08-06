@@ -13,10 +13,23 @@ OUT="${DIR}/tmp"
 rm -rf ${OUT}
 git clone https://github.com/lyft/flyte.git "${OUT}"
 
+# TODO: load all images
+echo "Loading github docker images into 'kind' cluster to workaround this issue: https://github.com/containerd/containerd/issues/3291#issuecomment-631746985"
+curl -Lo $(pwd)/kind https://kind.sigs.k8s.io/dl/v0.8.1/kind-linux-amd64
+chmod a+x $(pwd)/kind
+$(pwd)/kind create cluster
+$(pwd)/kind load docker-image docker.io/${PROPELLER}
+
+echo "Setup Kubectl"
+kubectl cluster-info
+kubectl get pods -n kube-system
+echo "current-context:" $(kubectl config current-context)
+echo "environment-kubeconfig:" ${KUBECONFIG}
+
 pushd ${OUT}
 # TODO: Only replace propeller if it's passed in
 # TODO: Support replacing other images too
-sed -i.bak -e "s_docker.io/lyft/flytepropeller:.*_docker.pkg.github.com/${PROPELLER}_g" ${OUT}/kustomize/base/propeller/deployment.yaml
+sed -i.bak -e "s_docker.io/lyft/flytepropeller:.*_docker.io/${PROPELLER}_g" ${OUT}/kustomize/base/propeller/deployment.yaml
 make kustomize
 make end2end_execute
 popd
