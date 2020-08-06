@@ -33,6 +33,7 @@ type Config struct {
 }
 
 // Specific configs for Redis resource manager
+// Ref: https://redis.io/topics/sentinel for information on how to fill in these fields.
 type RedisConfig struct {
 	HostPaths   []string `json:"hostPaths" pflag:",Redis hosts locations."`
 	PrimaryName string   `json:"primaryName" pflag:",Redis primary name, fill in only if you are connecting to a redis sentinel cluster."`
