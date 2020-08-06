@@ -49,7 +49,7 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 		if err != nil {
 			return nil, err
 		}
-		if 	nCtx.ExecutionContext().GetEventVersion() == v1alpha1.V0 {
+		if nCtx.ExecutionContext().GetEventVersion() == v1alpha1.V0 {
 			subNodeStatus, err = parentNodeStatus.GetNodeExecutionStatus(ctx, newID)
 			if err != nil {
 				return nil, err
@@ -84,7 +84,7 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 
 		subNodeStatus.SetDataDir(originalNodePath)
 		subNodeStatus.SetOutputDir(outputDir)
-		if 	nCtx.ExecutionContext().GetEventVersion() == v1alpha1.V0 {
+		if nCtx.ExecutionContext().GetEventVersion() == v1alpha1.V0 {
 			n.Id = newID
 		}
 	}
