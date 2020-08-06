@@ -16,6 +16,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const maxLengthUniqueIDStr = 20
+
 type MutableStruct struct {
 	isDirty bool
 }
@@ -196,6 +198,10 @@ type NodeStatus struct {
 	SystemFailures       uint32        `json:"systemFailures,omitempty"`
 	Cached               bool          `json:"cached"`
 
+	UniqueNodeID       *NodeID `json:"uniqueNodeId,omitempty"`
+	UniqueParentNodeID *NodeID `json:"uniqueParentNodeId,omitempty"`
+	ParentAttempts     uint32  `json:"parentAttempts"`
+
 	// This is useful only for branch nodes. If this is set, then it can be used to determine if execution can proceed
 	ParentNode    *NodeID                  `json:"parentNode,omitempty"`
 	ParentTask    *TaskExecutionIdentifier `json:"-"`
@@ -213,6 +219,42 @@ type NodeStatus struct {
 
 	// Not Persisted
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
+}
+
+func (in *NodeStatus) SetUniqueNodeID(uniqueNodeID *NodeID) {
+	if in.UniqueNodeID == nil || in.UniqueNodeID != uniqueNodeID {
+		in.UniqueNodeID = uniqueNodeID
+		in.SetDirty()
+	}
+}
+
+func (in *NodeStatus) GetParentAttempts() uint32 {
+	return in.ParentAttempts
+}
+
+func (in *NodeStatus) SetParentAttempts(attempt uint32) {
+	in.ParentAttempts = attempt
+}
+
+func (in *NodeStatus) SetUniqueParentNodeID(uniqueParentNodeID *NodeID) {
+	if in.UniqueParentNodeID == nil || in.UniqueParentNodeID != uniqueParentNodeID {
+		in.UniqueParentNodeID = uniqueParentNodeID
+		in.SetDirty()
+	}
+}
+
+func (in *NodeStatus) GetUniqueNodeID() *NodeID {
+	if in.UniqueNodeID != nil {
+		return in.UniqueNodeID
+	}
+	return nil
+}
+
+func (in *NodeStatus) GetUniqueParentNodeID() *NodeID {
+	if in.UniqueParentNodeID != nil {
+		return in.UniqueParentNodeID
+	}
+	return nil
 }
 
 func (in *NodeStatus) IsDirty() bool {
@@ -515,7 +557,7 @@ func (in NodeStatus) GetTaskNodeStatus() ExecutableTaskNodeStatus {
 	return in.TaskNodeStatus
 }
 
-func (in *NodeStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) ExecutableNodeStatus {
+func (in *NodeStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) (ExecutableNodeStatus, error) {
 	n, ok := in.SubNodeStatus[id]
 	if ok {
 		n.SetParentTaskID(in.GetParentTaskID())
@@ -524,7 +566,7 @@ func (in *NodeStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) Exe
 			dataDir, err := in.DataReferenceConstructor.ConstructReference(ctx, in.GetDataDir(), id)
 			if err != nil {
 				logger.Errorf(ctx, "Failed to construct data dir for node [%v]", id)
-				return n
+				return n, nil
 			}
 
 			n.SetDataDir(dataDir)
@@ -534,13 +576,13 @@ func (in *NodeStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) Exe
 			outputDir, err := in.DataReferenceConstructor.ConstructReference(ctx, n.GetDataDir(), strconv.FormatUint(uint64(in.Attempts), 10))
 			if err != nil {
 				logger.Errorf(ctx, "Failed to construct output dir for node [%v]", id)
-				return n
+				return n, nil
 			}
 
 			n.SetOutputDir(outputDir)
 		}
 
-		return n
+		return n, nil
 	}
 
 	if in.SubNodeStatus == nil {
@@ -550,18 +592,24 @@ func (in *NodeStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) Exe
 	newNodeStatus := &NodeStatus{
 		MutableStruct: MutableStruct{},
 	}
+	// By default when a new NodeStatus object is created, we assume that it does not have a parent.
+	// The uniqueID is updated when the parentID is set.
+	uniqueID, err := ComputeUniqueIDForNode(id, "", "")
+	if err != nil {
+		return nil, err
+	}
+	newNodeStatus.UniqueNodeID = &uniqueID
 	newNodeStatus.SetParentTaskID(in.GetParentTaskID())
-	newNodeStatus.SetParentNodeID(in.GetParentNodeID())
 	dataDir, err := in.DataReferenceConstructor.ConstructReference(ctx, in.GetDataDir(), id)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to construct data dir for node [%v]", id)
-		return n
+		return n, nil
 	}
 
 	outputDir, err := in.DataReferenceConstructor.ConstructReference(ctx, dataDir, "0")
 	if err != nil {
 		logger.Errorf(ctx, "Failed to construct output dir for node [%v]", id)
-		return n
+		return n, nil
 	}
 
 	newNodeStatus.SetDataDir(dataDir)
@@ -570,7 +618,7 @@ func (in *NodeStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) Exe
 
 	in.SubNodeStatus[id] = newNodeStatus
 	in.SetDirty()
-	return newNodeStatus
+	return newNodeStatus, nil
 }
 
 func (in *NodeStatus) IsTerminated() bool {
@@ -803,4 +851,8 @@ func (in *TaskNodeStatus) Equals(other *TaskNodeStatus) bool {
 		return false
 	}
 	return in.Phase == other.Phase && in.PhaseVersion == other.PhaseVersion && in.PluginStateVersion == other.PluginStateVersion && bytes.Equal(in.PluginState, other.PluginState) && in.BarrierClockTick == other.BarrierClockTick
+}
+
+func ComputeUniqueIDForNode(currentNodeId, uniqueParentId, attempt string) (string, error) {
+	return FixedLengthUniqueIDForParts(maxLengthUniqueIDStr, currentNodeId, uniqueParentId, attempt)
 }

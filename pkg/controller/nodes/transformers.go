@@ -3,6 +3,7 @@ package nodes
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -63,7 +64,12 @@ func ToNodeExecEventPhase(p handler.EPhase) core.NodeExecution_Phase {
 	}
 }
 
-func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler.PhaseInfo, reader io.InputReader, status v1alpha1.ExecutableNodeStatus) (*event.NodeExecutionEvent, error) {
+func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
+	info handler.PhaseInfo,
+	reader io.InputReader,
+	status v1alpha1.ExecutableNodeStatus,
+	eventVersion v1alpha1.EventVersion,
+	node v1alpha1.ExecutableNode) (*event.NodeExecutionEvent, error) {
 	if info.GetPhase() == handler.EPhaseNotReady {
 		return nil, nil
 	}
@@ -82,11 +88,22 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler
 		OccurredAt: occurredTime,
 	}
 
-	// TODO this should use node-node relationship instead of taskID
 	if status.GetParentTaskID() != nil {
 		nev.ParentTaskMetadata = &event.ParentTaskExecutionMetadata{
 			Id: status.GetParentTaskID(),
 		}
+	}
+	if eventVersion != v1alpha1.V0 {
+		nev.Id.NodeId = *status.GetUniqueNodeID()
+		parentUniqueID := status.GetUniqueParentNodeID()
+		if parentUniqueID != nil {
+			nev.ParentNodeMetadata = &event.ParentNodeExecutionMetadata{
+				NodeId: *parentUniqueID,
+			}
+			nev.RetryGroup = strconv.Itoa(int(status.GetParentAttempts()))
+		}
+		nev.SpecNodeId = nodeExecID.NodeId
+		nev.NodeName = node.GetName()
 	}
 
 	eInfo := info.GetInfo()

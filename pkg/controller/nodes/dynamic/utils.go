@@ -2,6 +2,7 @@ package dynamic
 
 import (
 	"context"
+	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -9,7 +10,6 @@ import (
 
 	"github.com/lyft/flytepropeller/pkg/compiler"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
 // Constructs the expected interface of a given node.
@@ -28,7 +28,7 @@ func underlyingInterface(ctx context.Context, taskReader handler.TaskReader) (*c
 }
 
 func hierarchicalNodeID(parentNodeID, retryAttempt, nodeID string) (string, error) {
-	return utils.FixedLengthUniqueIDForParts(20, parentNodeID, retryAttempt, nodeID)
+	return v1alpha1.FixedLengthUniqueIDForParts(20, parentNodeID, retryAttempt, nodeID)
 }
 
 func updateBindingNodeIDsWithLineage(parentNodeID, retryAttempt string, binding *core.BindingData) (err error) {

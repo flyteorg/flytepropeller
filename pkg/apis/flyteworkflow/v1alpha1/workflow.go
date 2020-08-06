@@ -26,6 +26,7 @@ type FlyteWorkflow struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	*WorkflowSpec     `json:"spec"`
+	WorkflowMeta      *WorkflowMeta                `json:"workflowMeta,omitempty"`
 	Inputs            *Inputs                      `json:"inputs,omitempty"`
 	ExecutionID       ExecutionID                  `json:"executionId"`
 	Tasks             map[TaskID]*TaskSpec         `json:"tasks"`
@@ -48,6 +49,24 @@ type FlyteWorkflow struct {
 	// non-Serialized fields
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
 }
+
+func (in *FlyteWorkflow) GetEventVersion() EventVersion {
+	if in.WorkflowMeta != nil {
+		return in.WorkflowMeta.EventVersion
+	}
+	return V0
+}
+
+type WorkflowMeta struct {
+	EventVersion EventVersion `json:"eventVersion,omitempty"`
+}
+
+type EventVersion int
+
+const (
+	V0 EventVersion = iota
+	V1
+)
 
 type NodeDefaults struct {
 	// Default behaviour for Interruptible for nodes unless explicitly set at the node level.
@@ -98,7 +117,7 @@ func (in *FlyteWorkflow) FindSubWorkflow(subID WorkflowID) ExecutableSubWorkflow
 	return s
 }
 
-func (in *FlyteWorkflow) GetNodeExecutionStatus(ctx context.Context, id NodeID) ExecutableNodeStatus {
+func (in *FlyteWorkflow) GetNodeExecutionStatus(ctx context.Context, id NodeID) (ExecutableNodeStatus, error) {
 	return in.GetExecutionStatus().GetNodeExecutionStatus(ctx, id)
 }
 

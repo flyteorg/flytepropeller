@@ -3,6 +3,7 @@ package task
 import (
 	"bytes"
 	"context"
+	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"strconv"
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/lyft/flytepropeller/pkg/utils"
 )
 
 var (
@@ -118,7 +118,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 
 	id := GetTaskExecutionIdentifier(nCtx)
 
-	uniqueID, err := utils.FixedLengthUniqueIDForParts(IDMaxLength, nCtx.NodeExecutionMetadata().GetOwnerID().Name, nCtx.NodeID(), strconv.Itoa(int(id.RetryAttempt)))
+	uniqueID, err := v1alpha1.FixedLengthUniqueIDForParts(IDMaxLength, nCtx.NodeExecutionMetadata().GetOwnerID().Name, nCtx.NodeID(), strconv.Itoa(int(id.RetryAttempt)))
 	if err != nil {
 		// SHOULD never really happen
 		return nil, err

@@ -40,7 +40,10 @@ type remoteFileOutputResolver struct {
 
 func (r remoteFileOutputResolver) ExtractOutput(ctx context.Context, nl executors.NodeLookup, n v1alpha1.ExecutableNode,
 	bindToVar VarName) (values *core.Literal, err error) {
-	nodeStatus := nl.GetNodeExecutionStatus(ctx, n.GetID())
+	nodeStatus, err := nl.GetNodeExecutionStatus(ctx, n.GetID())
+	if err != nil {
+		return nil, err
+	}
 	outputsFileRef := v1alpha1.GetOutputsFile(nodeStatus.GetOutputDir())
 
 	index, actualVar, err := ParseVarName(bindToVar)

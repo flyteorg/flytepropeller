@@ -67,11 +67,19 @@ func (b *branchHandler) HandleBranchNode(ctx context.Context, branchNode v1alpha
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.DownstreamNodeNotFoundError, errMsg, nil)), nil
 		}
 		i := nCtx.NodeID()
-		childNodeStatus := nl.GetNodeExecutionStatus(ctx, finalNode.GetID())
+		childNodeStatus, err := nl.GetNodeExecutionStatus(ctx, finalNode.GetID())
+		if err != nil {
+			logger.Errorf(ctx, "Unable to get node execution status, err :%s", err.Error())
+			return handler.UnknownTransition, err
+		}
 		childNodeStatus.SetParentNodeID(&i)
+		childNodeStatus.SetUniqueParentNodeID(nCtx.NodeStatus().GetUniqueNodeID())
 
-		logger.Debugf(ctx, "Recursively executing branchNode's chosen path")
-		nodeStatus := nl.GetNodeExecutionStatus(ctx, nCtx.NodeID())
+		nodeStatus, err := nl.GetNodeExecutionStatus(ctx, nCtx.NodeID())
+		if err != nil {
+			logger.Errorf(ctx, "Unable to get node execution status, err :%s", err.Error())
+			return handler.UnknownTransition, err
+		}
 		return b.recurseDownstream(ctx, nCtx, nodeStatus, finalNode)
 	}
 
@@ -96,7 +104,11 @@ func (b *branchHandler) HandleBranchNode(ctx context.Context, branchNode v1alpha
 	}
 
 	// Recurse downstream
-	nodeStatus := nl.GetNodeExecutionStatus(ctx, nCtx.NodeID())
+	nodeStatus, err := nl.GetNodeExecutionStatus(ctx, nCtx.NodeID())
+	if err != nil {
+		logger.Errorf(ctx, "Unable to get node execution status, err :%s", err.Error())
+		return handler.UnknownTransition, err
+	}
 	return b.recurseDownstream(ctx, nCtx, nodeStatus, branchTakenNode)
 }
 
@@ -124,7 +136,11 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 
 	if downstreamStatus.IsComplete() {
 		// For branch node we set the output node to be the same as the child nodes output
-		childNodeStatus := nCtx.ContextualNodeLookup().GetNodeExecutionStatus(ctx, branchTakenNode.GetID())
+		childNodeStatus, err := nCtx.ContextualNodeLookup().GetNodeExecutionStatus(ctx, branchTakenNode.GetID())
+		if err != nil {
+			logger.Errorf(ctx, "Unable to get node execution status, err :%s", err.Error())
+			return handler.UnknownTransition, err
+		}
 		nodeStatus.SetDataDir(childNodeStatus.GetDataDir())
 		nodeStatus.SetOutputDir(childNodeStatus.GetOutputDir())
 		phase := handler.PhaseInfoSuccess(&handler.ExecutionInfo{

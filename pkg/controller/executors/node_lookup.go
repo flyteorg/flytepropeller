@@ -11,7 +11,7 @@ import (
 // the nodes within the subworkflow are visible
 type NodeLookup interface {
 	GetNode(nodeID v1alpha1.NodeID) (v1alpha1.ExecutableNode, bool)
-	GetNodeExecutionStatus(ctx context.Context, id v1alpha1.NodeID) v1alpha1.ExecutableNodeStatus
+	GetNodeExecutionStatus(ctx context.Context, id v1alpha1.NodeID) (v1alpha1.ExecutableNodeStatus, error)
 }
 
 // Implements a contextual NodeLookup that can be composed of a disparate NodeGetter and a NodeStatusGetter
@@ -41,8 +41,8 @@ func (s staticNodeLookup) GetNode(nodeID v1alpha1.NodeID) (v1alpha1.ExecutableNo
 	return n, ok
 }
 
-func (s staticNodeLookup) GetNodeExecutionStatus(_ context.Context, id v1alpha1.NodeID) v1alpha1.ExecutableNodeStatus {
-	return s.status[id]
+func (s staticNodeLookup) GetNodeExecutionStatus(_ context.Context, id v1alpha1.NodeID) (v1alpha1.ExecutableNodeStatus, error) {
+	return s.status[id], nil
 }
 
 // Returns a new NodeLookup useful in Testing. Not recommended to be used in production

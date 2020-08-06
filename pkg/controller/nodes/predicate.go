@@ -45,7 +45,10 @@ func CanExecute(ctx context.Context, dag executors.DAGStructure, nl executors.No
 		return PredicatePhaseReady, nil
 	}
 
-	nodeStatus := nl.GetNodeExecutionStatus(ctx, nodeID)
+	nodeStatus, err := nl.GetNodeExecutionStatus(ctx, nodeID)
+	if err != nil {
+		return PredicatePhaseUndefined, errors.Errorf(errors.BadSpecificationError, nodeID, "Unable to create node execution status")
+	}
 	parentNodeID := nodeStatus.GetParentNodeID()
 	upstreamNodes, err := dag.ToNode(nodeID)
 	if err != nil {
@@ -54,8 +57,10 @@ func CanExecute(ctx context.Context, dag executors.DAGStructure, nl executors.No
 
 	skipped := false
 	for _, upstreamNodeID := range upstreamNodes {
-		upstreamNodeStatus := nl.GetNodeExecutionStatus(ctx, upstreamNodeID)
-
+		upstreamNodeStatus, err := nl.GetNodeExecutionStatus(ctx, upstreamNodeID)
+		if err != nil {
+			return PredicatePhaseUndefined, errors.Errorf(errors.BadSpecificationError, nodeID, "Unable to find upstream nodes for Node")
+		}
 		if upstreamNodeStatus.IsDirty() {
 			return PredicatePhaseNotReady, nil
 		}
@@ -99,7 +104,10 @@ func GetParentNodeMaxEndTime(ctx context.Context, dag executors.DAGStructure, nl
 		return zeroTime, nil
 	}
 
-	nodeStatus := nl.GetNodeExecutionStatus(ctx, node.GetID())
+	nodeStatus, err := nl.GetNodeExecutionStatus(ctx, node.GetID())
+	if err != nil {
+		return zeroTime, errors.Errorf(errors.BadSpecificationError, nodeID, "Unable to create node execution status")
+	}
 	parentNodeID := nodeStatus.GetParentNodeID()
 	upstreamNodes, err := dag.ToNode(nodeID)
 	if err != nil {
@@ -108,7 +116,10 @@ func GetParentNodeMaxEndTime(ctx context.Context, dag executors.DAGStructure, nl
 
 	var latest v1.Time
 	for _, upstreamNodeID := range upstreamNodes {
-		upstreamNodeStatus := nl.GetNodeExecutionStatus(ctx, upstreamNodeID)
+		upstreamNodeStatus, err := nl.GetNodeExecutionStatus(ctx, upstreamNodeID)
+		if err != nil {
+			return zeroTime, errors.Errorf(errors.BadSpecificationError, nodeID, "Unable to create node execution status")
+		}
 		if parentNodeID != nil && *parentNodeID == upstreamNodeID {
 			upstreamNode, ok := nl.GetNode(upstreamNodeID)
 			if !ok {

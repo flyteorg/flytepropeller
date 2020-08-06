@@ -203,8 +203,11 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		interrutible = *n.IsInterruptible()
 	}
 
-	s := nl.GetNodeExecutionStatus(ctx, currentNodeID)
+	s, err := nl.GetNodeExecutionStatus(ctx, currentNodeID)
 
+	if err != nil {
+		return nil, err
+	}
 	// a node is not considered interruptible if the system failures have exceeded the configured threshold
 	if interrutible && s.GetSystemFailures() >= c.interruptibleFailureThreshold {
 		interrutible = false

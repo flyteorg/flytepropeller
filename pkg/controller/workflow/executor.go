@@ -100,7 +100,13 @@ func (c *workflowExecutor) handleReadyWorkflow(ctx context.Context, w *v1alpha1.
 	}
 	// Before starting the subworkflow, lets set the inputs for the Workflow. The inputs for a SubWorkflow are essentially
 	// Copy of the inputs to the Node
-	nodeStatus := w.GetNodeExecutionStatus(ctx, startNode.GetID())
+	nodeStatus, err := w.GetNodeExecutionStatus(ctx, startNode.GetID())
+	if err != nil {
+		return StatusFailing(&core.ExecutionError{
+			Kind:    core.ExecutionError_SYSTEM,
+			Code:    "NodeStatusCreationFailure",
+			Message: err.Error()}), nil
+	}
 	dataDir, err := c.store.ConstructReference(ctx, ref, startNode.GetID(), "data")
 	if err != nil {
 		return StatusFailing(&core.ExecutionError{
@@ -220,15 +226,22 @@ func (c *workflowExecutor) handleFailingWorkflow(ctx context.Context, w *v1alpha
 	return StatusFailed(execErr), nil
 }
 
-func (c *workflowExecutor) handleSucceedingWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) Status {
+func (c *workflowExecutor) handleSucceedingWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow) (Status, error) {
 	logger.Infof(ctx, "Workflow completed successfully")
-	endNodeStatus := w.GetNodeExecutionStatus(ctx, v1alpha1.EndNodeID)
+	endNodeStatus, err := w.GetNodeExecutionStatus(ctx, v1alpha1.EndNodeID)
+	if err != nil {
+		return 	StatusFailed(&core.ExecutionError{
+			Code:    "GetNodeExecutionStatus failed",
+			Message: err.Error(),
+			Kind:    core.ExecutionError_SYSTEM,
+		}), err
+	}
 	if endNodeStatus.GetPhase() == v1alpha1.NodePhaseSucceeded {
 		if endNodeStatus.GetOutputDir() != "" {
 			w.Status.SetOutputReference(v1alpha1.GetOutputsFile(endNodeStatus.GetOutputDir()))
 		}
 	}
-	return StatusSuccess
+	return StatusSuccess, err
 }
 
 func convertToExecutionError(err *core.ExecutionError, alternateErr *core.ExecutionError) *event.WorkflowExecutionEvent_Error {
@@ -290,7 +303,10 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 			c.metrics.FailureDuration.Observe(ctx, wStatus.GetStartedAt().Time, wStatus.GetStoppedAt().Time)
 		case v1alpha1.WorkflowPhaseSucceeding:
 			wfEvent.Phase = core.WorkflowExecution_SUCCEEDING
-			endNodeStatus := wStatus.GetNodeExecutionStatus(ctx, v1alpha1.EndNodeID)
+			endNodeStatus, err := wStatus.GetNodeExecutionStatus(ctx, v1alpha1.EndNodeID)
+			if err != nil {
+				return err
+			}
 			// Workflow completion latency is recorded as the time it takes for the workflow to transition from end
 			// node started time to workflow success being sent to the control plane.
 			if endNodeStatus != nil && endNodeStatus.GetStartedAt() != nil {
@@ -381,8 +397,11 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 		}
 		return nil
 	case v1alpha1.WorkflowPhaseSucceeding:
-		newStatus := c.handleSucceedingWorkflow(ctx, w)
+		newStatus, err := c.handleSucceedingWorkflow(ctx, w)
 
+		if err != nil {
+			return err
+		}
 		if err := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, wStatus, newStatus); err != nil {
 			return err
 		}

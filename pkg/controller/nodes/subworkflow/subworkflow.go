@@ -3,6 +3,7 @@ package subworkflow
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/lyft/flytestdlib/logger"
 
@@ -80,7 +81,10 @@ func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler
 		// If the WF interface has outputs, validate that the outputs file was written.
 		var oInfo *handler.OutputInfo
 		if outputBindings := subworkflow.GetOutputBindings(); len(outputBindings) > 0 {
-			endNodeStatus := nl.GetNodeExecutionStatus(ctx, v1alpha1.EndNodeID)
+			endNodeStatus, err := nl.GetNodeExecutionStatus(ctx, v1alpha1.EndNodeID)
+			if err != nil {
+				return handler.UnknownTransition, err
+			}
 			store := nCtx.DataStore()
 			if endNodeStatus == nil {
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.SubWorkflowExecutionFailed, "No end node found in subworkflow.", nil)), err
@@ -164,7 +168,6 @@ func (s *subworkflowHandler) HandleFailingSubWorkflow(ctx context.Context, nCtx 
 	}
 
 	status := nCtx.NodeStatus()
-	status.GetWorkflowNodeStatus()
 	if subWorkflow.GetOnFailureNode() == nil {
 		logger.Infof(ctx, "Subworkflow has no failure nodes, failing immediately.")
 		return handler.DoTransition(handler.TransitionTypeEphemeral,
@@ -175,15 +178,39 @@ func (s *subworkflowHandler) HandleFailingSubWorkflow(ctx context.Context, nCtx 
 	return s.HandleFailureNodeOfSubWorkflow(ctx, nCtx, subWorkflow, nodeLookup)
 }
 
+func (s *subworkflowHandler) fetchNodeLookupForSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext, subWorkflow v1alpha1.ExecutableSubWorkflow) (executors.NodeLookup, error) {
+	status := nCtx.NodeStatus()
+	uniqueparentID := status.GetUniqueNodeID()
+	currentAttemptStr := strconv.Itoa(int(nCtx.CurrentAttempt()))
+
+	// We are only adding new fields here. Existing ones will remain as it is.
+	for _, n := range subWorkflow.GetNodes() {
+		subWorkflowNodeStatus, err := status.GetNodeExecutionStatus(ctx, n)
+		if err != nil {
+			return nil, err
+		}
+		newID, err := v1alpha1.ComputeUniqueIDForNode(n, *uniqueparentID, currentAttemptStr)
+		if err != nil {
+			return nil, err
+		}
+		subWorkflowNodeStatus.SetUniqueParentNodeID(status.GetUniqueNodeID())
+		subWorkflowNodeStatus.SetUniqueNodeID(&newID)
+		// This is used for grouping child nodes based on attempts
+		subWorkflowNodeStatus.SetParentAttempts(nCtx.CurrentAttempt())
+	}
+	return executors.NewNodeLookup(subWorkflow, status), nil
+}
+
 func (s *subworkflowHandler) StartSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
 	subWorkflow, err := GetSubWorkflow(ctx, nCtx)
 	if err != nil {
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.SubWorkflowExecutionFailed, err.Error(), nil)), nil
 	}
 
-	status := nCtx.NodeStatus()
-	nodeLookup := executors.NewNodeLookup(subWorkflow, status)
-
+	nodeLookup, err := s.fetchNodeLookupForSubWorkflow(ctx, nCtx, subWorkflow)
+	if err != nil {
+		return handler.UnknownTransition, err
+	}
 	// assert startStatus.IsComplete() == true
 	return s.startAndHandleSubWorkflow(ctx, nCtx, subWorkflow, nodeLookup)
 }
@@ -194,8 +221,10 @@ func (s *subworkflowHandler) CheckSubWorkflowStatus(ctx context.Context, nCtx ha
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.SubWorkflowExecutionFailed, err.Error(), nil)), nil
 	}
 
-	status := nCtx.NodeStatus()
-	nodeLookup := executors.NewNodeLookup(subWorkflow, status)
+	nodeLookup, err := s.fetchNodeLookupForSubWorkflow(ctx, nCtx, subWorkflow)
+	if err != nil {
+		return handler.UnknownTransition, err
+	}
 	return s.startAndHandleSubWorkflow(ctx, nCtx, subWorkflow, nodeLookup)
 }
 

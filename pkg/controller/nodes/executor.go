@@ -300,7 +300,7 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 	if np != nodeStatus.GetPhase() {
 		// assert np == Queued!
 		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s]", nodeStatus.GetPhase().String(), np.String())
-		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(), p, nCtx.InputReader(), nodeStatus)
+		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(), p, nCtx.InputReader(), nodeStatus, nCtx.ExecutionContext().GetEventVersion(), nCtx.node)
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "could not convert phase info to event")
 		}
@@ -407,7 +407,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 	if np != nodeStatus.GetPhase() && np != v1alpha1.NodePhaseRetryableFailure {
 		// assert np == skipped, succeeding or failing
 		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s], (handler phase [%s])", nodeStatus.GetPhase().String(), np.String(), p.GetPhase().String())
-		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(), p, nCtx.InputReader(), nCtx.NodeStatus())
+		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(), p, nCtx.InputReader(), nCtx.NodeStatus(), nCtx.ExecutionContext().GetEventVersion(), nCtx.node)
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "could not convert phase info to event")
 		}
@@ -604,7 +604,10 @@ func (c *nodeExecutor) SetInputsForStartNode(ctx context.Context, execContext ex
 	}
 
 	// StartNode is special. It does not have any processing step. It just takes the workflow (or subworkflow) inputs and converts to its own outputs
-	nodeStatus := nl.GetNodeExecutionStatus(ctx, startNode.GetID())
+	nodeStatus, err := nl.GetNodeExecutionStatus(ctx, startNode.GetID())
+	if err != nil {
+		return executors.NodeStatusUndefined, err
+	}
 
 	if len(nodeStatus.GetDataDir()) == 0 {
 		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, startNode.GetID(), "no data-dir set, cannot store inputs")
@@ -635,7 +638,10 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 	executors.NodeStatus, error) {
 
 	currentNodeCtx := contextutils.WithNodeID(ctx, currentNode.GetID())
-	nodeStatus := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
+	nodeStatus, err := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
+	if err != nil {
+		return executors.NodeStatusUndefined, err
+	}
 	nodePhase := nodeStatus.GetPhase()
 
 	if canHandleNode(nodePhase) {
@@ -653,7 +659,10 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 
 		// This is an optimization to avoid creating the nodeContext object in case the node has already been looked at.
 		// If the overhead was zero, we would just do the isDirtyCheck after the nodeContext is created
-		nodeStatus := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
+		nodeStatus, err := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
+		if err != nil {
+			return executors.NodeStatusUndefined, err
+		}
 		if nodeStatus.IsDirty() {
 			return executors.NodeStatusRunning, nil
 		}
@@ -706,7 +715,10 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 }
 
 func (c *nodeExecutor) FinalizeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) error {
-	nodeStatus := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
+	nodeStatus, err := nl.GetNodeExecutionStatus(ctx, currentNode.GetID())
+	if err != nil {
+		return err
+	}
 	nodePhase := nodeStatus.GetPhase()
 
 	if nodePhase == v1alpha1.NodePhaseNotYetStarted {

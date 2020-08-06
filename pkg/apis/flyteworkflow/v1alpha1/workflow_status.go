@@ -105,7 +105,7 @@ func (in *WorkflowStatus) GetMessage() string {
 	return in.Message
 }
 
-func (in *WorkflowStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) ExecutableNodeStatus {
+func (in *WorkflowStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) (ExecutableNodeStatus, error) {
 	n, ok := in.NodeStatus[id]
 	if ok {
 		n.DataReferenceConstructor = in.DataReferenceConstructor
@@ -113,7 +113,7 @@ func (in *WorkflowStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID)
 			dataDir, err := in.ConstructNodeDataDir(ctx, id)
 			if err != nil {
 				logger.Errorf(ctx, "Failed to construct data dir for node [%v]", id)
-				return n
+				return n, nil
 			}
 
 			n.SetDataDir(dataDir)
@@ -122,11 +122,11 @@ func (in *WorkflowStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID)
 		outputDir, err := in.DataReferenceConstructor.ConstructReference(ctx, n.GetDataDir(), strconv.FormatUint(uint64(n.Attempts), 10))
 		if err != nil {
 			logger.Errorf(ctx, "Failed to construct output dir for node [%v]", id)
-			return n
+			return n, nil
 		}
 		n.SetOutputDir(outputDir)
 
-		return n
+		return n, nil
 	}
 
 	if in.NodeStatus == nil {
@@ -136,17 +136,23 @@ func (in *WorkflowStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID)
 	newNodeStatus := &NodeStatus{
 		MutableStruct: MutableStruct{},
 	}
-
+	// By default when a new NodeStatus object is created, we assume that it does not have a parent.
+	// The uniqueID is updated when the parentID is set.
+	uniqueID, err := ComputeUniqueIDForNode(id, "", "")
+	if err != nil {
+		return nil, err
+	}
+	newNodeStatus.UniqueNodeID = &uniqueID
 	dataDir, err := in.ConstructNodeDataDir(ctx, id)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to construct data dir for node [%v], exec id [%v]", id)
-		return n
+		return n, nil
 	}
 
 	outputDir, err := in.DataReferenceConstructor.ConstructReference(ctx, dataDir, "0")
 	if err != nil {
 		logger.Errorf(ctx, "Failed to construct output dir for node [%v]", id)
-		return n
+		return n, nil
 	}
 
 	newNodeStatus.SetDataDir(dataDir)
@@ -154,7 +160,7 @@ func (in *WorkflowStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID)
 	newNodeStatus.DataReferenceConstructor = in.DataReferenceConstructor
 
 	in.NodeStatus[id] = newNodeStatus
-	return newNodeStatus
+	return newNodeStatus, nil
 }
 
 func (in *WorkflowStatus) ConstructNodeDataDir(ctx context.Context, name NodeID) (storage.DataReference, error) {
