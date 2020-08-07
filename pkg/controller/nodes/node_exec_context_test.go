@@ -2,9 +2,10 @@ package nodes
 
 import (
 	"context"
+	"testing"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	mocks2 "github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
-	"testing"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
