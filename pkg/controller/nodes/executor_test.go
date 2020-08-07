@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flytestdlib/promutils/labeled"
