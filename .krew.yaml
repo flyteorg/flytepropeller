@@ -1,10 +1,10 @@
 apiVersion: krew.googlecontainertools.github.com/v1alpha2
 kind: Plugin
 metadata:
-  name: kubectl-flyte
+  name: flyte
 spec:
   version: "{{ .TagName }}"
-  homepage: https://github.com/lyft/flytepropeller
+  homepage: https://github.com/lyft/flyt
   shortDescription: >-
   description: |+2
       kubectl-flyte is an command line tool that can be used as an extension to kubectl.
@@ -16,10 +16,10 @@ spec:
       {{addURIAndSha "https://github.com/lyft/flytepropeller/releases/download/{{ .TagName }}/kubectl-flyte_darwin_x86_64.tar.gz" .TagName | indent 6}}
       files:
         - from: kubectl-flyte
-          to: .
+          to: ./flyte
         - from: LICENSE
           to: .
-      bin: kubectl-flyte
+      bin: flyte
     - selector:
         matchLabels:
           os: linux
@@ -27,10 +27,10 @@ spec:
       {{addURIAndSha "https://github.com/lyft/flytepropeller/releases/download/{{ .TagName }}/kubectl-flyte_linux_x86_64.tar.gz" .TagName | indent 6}}
       files:
         - from: kubectl-flyte
-          to: .
+          to: ./flyte
         - from: LICENSE
           to: .
-      bin: kubectl-flyte
+      bin: flyte
     - selector:
         matchLabels:
           os: windows
@@ -38,7 +38,7 @@ spec:
       {{addURIAndSha "https://github.com/lyft/flytepropeller/releases/download/{{ .TagName }}/kubectl-flyte_windows_x86_64.zip" .TagName | indent 6}}
       files:
         - from: kubectl-flyte.exe
-          to: .
+          to: ./flyte
         - from: LICENSE
           to: .
-      bin: kubectl-flyte.exe
+      bin: flyte.exe
