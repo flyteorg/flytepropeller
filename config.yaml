@@ -61,7 +61,7 @@ plugins:
     roleArn: "arn:aws:iam::123456789012:role/test-development"
     region: "us-east-1"
     prebuiltAlgorithms:
-      - name: xgboost
+      - name: "XGBOOST"
         regionalConfigs:
           - region: "us-east-1"
             versionConfigs:
