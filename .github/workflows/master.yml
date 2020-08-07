@@ -41,12 +41,12 @@ jobs:
       - uses: engineerd/setup-kind@v0.4.0
       - name: End2End
         run: |
-          docker build -t docker.pkg.github.com/lyft/flytepropeller/flytepropeller:${{ github.sha }} .
+          docker build -t lyft/flytepropeller:${{ github.sha }} .
           kubectl cluster-info
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
-          PROPELLER=lyft/flytepropeller/flytepropeller:${{ github.sha }} make end2end_execute
+          PROPELLER=lyft/flytepropeller:${{ github.sha }} make end2end_execute
   push-dockerhub:
     runs-on: ubuntu-latest
     needs: bump-version
