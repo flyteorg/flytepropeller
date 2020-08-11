@@ -128,6 +128,8 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		})
 		nCtx.OnNodeStateReader().Return(r)
 		execContext := &mocks4.ExecutionContext{}
+		execContext.OnGetParentInfo().Return(nil)
+		execContext.OnGetEventVersion().Return(v1alpha1.V0)
 		nCtx.OnExecutionContext().Return(execContext)
 		return nCtx
 	}

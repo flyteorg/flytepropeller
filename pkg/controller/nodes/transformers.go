@@ -3,6 +3,9 @@ package nodes
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/common"
+	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -63,7 +66,13 @@ func ToNodeExecEventPhase(p handler.EPhase) core.NodeExecution_Phase {
 	}
 }
 
-func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler.PhaseInfo, reader io.InputReader, status v1alpha1.ExecutableNodeStatus) (*event.NodeExecutionEvent, error) {
+func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
+	info handler.PhaseInfo,
+	reader io.InputReader,
+	status v1alpha1.ExecutableNodeStatus,
+	eventVersion v1alpha1.EventVersion,
+	parentInfo executors.ImmutableParentInfo,
+	node v1alpha1.ExecutableNode) (*event.NodeExecutionEvent, error) {
 	if info.GetPhase() == handler.EPhaseNotReady {
 		return nil, nil
 	}
@@ -82,11 +91,26 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler
 		OccurredAt: occurredTime,
 	}
 
-	// TODO this should use node-node relationship instead of taskID
-	if status.GetParentTaskID() != nil {
+	if eventVersion == v1alpha1.V0 && status.GetParentTaskID() != nil {
 		nev.ParentTaskMetadata = &event.ParentTaskExecutionMetadata{
 			Id: status.GetParentTaskID(),
 		}
+	}
+
+	if eventVersion != v1alpha1.V0 {
+		currentNodeUniqueID, err := common.GenerateUniqueId(parentInfo, nev.Id.NodeId)
+		if err != nil {
+			return nil, err
+		}
+		if parentInfo != nil {
+			nev.ParentNodeMetadata = &event.ParentNodeExecutionMetadata{
+				NodeId: parentInfo.GetUniqueID(),
+			}
+			nev.RetryGroup = strconv.Itoa(int(parentInfo.CurrentAttempt()))
+		}
+		nev.Id.NodeId = currentNodeUniqueID
+		nev.SpecNodeId = nodeExecID.NodeId
+		nev.NodeName = node.GetName()
 	}
 
 	eInfo := info.GetInfo()
