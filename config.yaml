@@ -7,7 +7,7 @@ propeller:
   workflow-reeval-duration: 10s
   downstream-eval-duration: 5s
   limit-namespace: "all"
-  prof-port: 11255
+  prof-port: 11254
   metrics-prefix: flyte
   enable-admin-launcher: true
   max-ttl-hours: 1
@@ -79,7 +79,7 @@ storage:
     access-key: minio
     auth-type: accesskey
     disable-ssl: true
-    endpoint: http://localhost:9000
+    endpoint: http://localhost:30084
     region: us-east-1
     secret-key: miniostorage
   type: minio
@@ -89,7 +89,7 @@ event:
   rate: 500
   capacity: 1000
 admin:
-  endpoint: localhost:8089
+  endpoint: localhost:30081
   insecure: true
 catalog-cache:
   type: noop
