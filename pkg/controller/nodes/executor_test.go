@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	mocks3 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	mocks3 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flytestdlib/promutils/labeled"
@@ -388,18 +388,14 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 					},
 				},
 				DataReferenceConstructor: store,
-<<<<<<< HEAD
-			}
-			executionContext := executors.NewExecutionContext(w, nil, nil, nil)
-			return w, executionContext, n, ns
-=======
 				RawOutputDataConfig: v1alpha1.RawOutputDataConfig{
 					RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
 				},
-			}, n, ns
-
->>>>>>> aa-master
+			}
+			executionContext := executors.NewExecutionContext(w, nil, nil, nil)
+			return w, executionContext, n, ns
 		}
+
 		tests := []struct {
 			name              string
 			currentNodePhase  v1alpha1.NodePhase
@@ -1250,14 +1246,11 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 				eCtx.OnIsInterruptible().Return(true)
 				eCtx.OnGetExecutionID().Return(v1alpha1.WorkflowExecutionIdentifier{WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{}})
 				eCtx.OnGetLabels().Return(nil)
-<<<<<<< HEAD
 				eCtx.OnGetEventVersion().Return(v1alpha1.V0)
 				eCtx.OnGetParentInfo().Return(nil)
-=======
 				eCtx.OnGetRawOutputDataConfig().Return(v1alpha1.RawOutputDataConfig{
 					RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
 				})
->>>>>>> aa-master
 
 				branchTakenNodeID := "branchTakenNode"
 				branchTakenNode := &mocks.ExecutableNode{}

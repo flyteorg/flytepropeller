@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	mocks2 "github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -110,13 +110,14 @@ func Test_NodeContextDefault(t *testing.T) {
 		shardSelector:                 ioutils.NewConstantShardSelector([]string{"x"}),
 		enqueueWorkflow:               func(workflowID v1alpha1.WorkflowID) {},
 	}
-
-	nodeExecContext, err := nodeExecutor.newNodeExecContextDefault(context.Background(), "node-a", w1, nodeLookup)
+	p := parentInfo{}
+	execContext := executors.NewExecutionContext(w1, w1, w1, p)
+	nodeExecContext, err := nodeExecutor.newNodeExecContextDefault(context.Background(), "node-a", execContext, nodeLookup)
 	assert.NoError(t, err)
 	assert.Equal(t, "s3://bucket-a", nodeExecContext.rawOutputPrefix.String())
 
 	w1.RawOutputDataConfig.OutputLocationPrefix = "s3://bucket-b"
-	nodeExecContext, err = nodeExecutor.newNodeExecContextDefault(context.Background(), "node-a", w1, nodeLookup)
+	nodeExecContext, err = nodeExecutor.newNodeExecContextDefault(context.Background(), "node-a", execContext, nodeLookup)
 	assert.NoError(t, err)
 	assert.Equal(t, "s3://bucket-b", nodeExecContext.rawOutputPrefix.String())
 }
