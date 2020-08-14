@@ -434,6 +434,7 @@ type Meta interface {
 	GetServiceAccountName() string
 	IsInterruptible() bool
 	GetEventVersion() EventVersion
+	GetRawOutputDataConfig() RawOutputDataConfig
 }
 
 type TaskDetailsGetter interface {

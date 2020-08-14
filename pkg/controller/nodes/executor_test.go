@@ -9,6 +9,7 @@ import (
 	"time"
 
 	mocks3 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flytestdlib/promutils/labeled"
@@ -195,6 +196,9 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 				},
 			},
 			DataReferenceConstructor: store,
+			RawOutputDataConfig: v1alpha1.RawOutputDataConfig{
+				RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
+			},
 		}, startNode, startNodeStatus
 
 	}
@@ -295,6 +299,9 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 					},
 				},
 				DataReferenceConstructor: store,
+				RawOutputDataConfig: v1alpha1.RawOutputDataConfig{
+					RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
+				},
 			}, n, ns
 
 		}
@@ -381,9 +388,17 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 					},
 				},
 				DataReferenceConstructor: store,
+<<<<<<< HEAD
 			}
 			executionContext := executors.NewExecutionContext(w, nil, nil, nil)
 			return w, executionContext, n, ns
+=======
+				RawOutputDataConfig: v1alpha1.RawOutputDataConfig{
+					RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
+				},
+			}, n, ns
+
+>>>>>>> aa-master
 		}
 		tests := []struct {
 			name              string
@@ -512,6 +527,9 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				},
 			},
 			DataReferenceConstructor: store,
+			RawOutputDataConfig: v1alpha1.RawOutputDataConfig{
+				RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
+			},
 		}, n, ns
 
 	}
@@ -607,6 +625,9 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockWf.OnIsInterruptible().Return(false)
 			mockWf.OnGetEventVersion().Return(v1alpha1.V0)
 			mockWf.OnGetOnFailurePolicy().Return(v1alpha1.WorkflowOnFailurePolicy(core.WorkflowMetadata_FAIL_IMMEDIATELY))
+			mockWf.OnGetRawOutputDataConfig().Return(v1alpha1.RawOutputDataConfig{
+				RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
+			})
 			mockWfStatus.OnGetDataDir().Return(storage.DataReference("x"))
 			mockWfStatus.OnConstructNodeDataDirMatch(mock.Anything, mock.Anything, mock.Anything).Return("x", nil)
 			return mockWf, mockN2Status
@@ -1113,6 +1134,9 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 				},
 			},
 			DataReferenceConstructor: store,
+			RawOutputDataConfig: v1alpha1.RawOutputDataConfig{
+				RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
+			},
 		}, n, ns
 
 	}
@@ -1226,8 +1250,14 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 				eCtx.OnIsInterruptible().Return(true)
 				eCtx.OnGetExecutionID().Return(v1alpha1.WorkflowExecutionIdentifier{WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{}})
 				eCtx.OnGetLabels().Return(nil)
+<<<<<<< HEAD
 				eCtx.OnGetEventVersion().Return(v1alpha1.V0)
 				eCtx.OnGetParentInfo().Return(nil)
+=======
+				eCtx.OnGetRawOutputDataConfig().Return(v1alpha1.RawOutputDataConfig{
+					RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
+				})
+>>>>>>> aa-master
 
 				branchTakenNodeID := "branchTakenNode"
 				branchTakenNode := &mocks.ExecutableNode{}
