@@ -3,6 +3,7 @@ package branch
 import (
 	"context"
 	"fmt"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/common"
 	stdErrors "github.com/lyft/flytestdlib/errors"
@@ -113,7 +114,7 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 }
 
 func (b *branchHandler) getExecutionContextForDownstream(nCtx handler.NodeExecutionContext) (executors.ExecutionContext, error) {
-	newParentInfo, err  := common.GetParentInfo(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID(), nCtx.CurrentAttempt())
+	newParentInfo, err := common.CreateParentInfo(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID(), nCtx.CurrentAttempt())
 	if err != nil {
 		return nil, err
 	}

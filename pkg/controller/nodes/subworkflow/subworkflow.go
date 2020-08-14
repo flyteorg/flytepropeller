@@ -3,6 +3,7 @@ package subworkflow
 import (
 	"context"
 	"fmt"
+
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/common"
 	"github.com/lyft/flytestdlib/logger"
 
@@ -60,9 +61,9 @@ func (s *subworkflowHandler) startAndHandleSubWorkflow(ctx context.Context, nCtx
 
 // Calls the recursive node executor to handle the SubWorkflow and translates the results after the success
 func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext, subworkflow v1alpha1.ExecutableSubWorkflow, nl executors.NodeLookup) (handler.Transition, error) {
-	// The current node would end up becoming the parent for the sun workflow nodes.
-	// This is done to track the lineage. For level zero, the GetParentInfo will return nil
-	newParentInfo, err := common.GetParentInfo(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID(), nCtx.CurrentAttempt())
+	// The current node would end up becoming the parent for the sub workflow nodes.
+	// This is done to track the lineage. For level zero, the CreateParentInfo will return nil
+	newParentInfo, err := common.CreateParentInfo(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID(), nCtx.CurrentAttempt())
 	if err != nil {
 		return handler.UnknownTransition, err
 	}
@@ -130,7 +131,7 @@ func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler
 }
 
 func (s *subworkflowHandler) getExecutionContextForDownstream(nCtx handler.NodeExecutionContext) (executors.ExecutionContext, error) {
-	newParentInfo, err  := common.GetParentInfo(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID(), nCtx.CurrentAttempt())
+	newParentInfo, err := common.CreateParentInfo(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID(), nCtx.CurrentAttempt())
 	if err != nil {
 		return nil, err
 	}

@@ -51,7 +51,7 @@ type parentExecutionInfo struct {
 }
 
 func (p *parentExecutionInfo) GetUniqueID() v1alpha1.NodeID {
-	return p.GetUniqueID()
+	return p.uniqueID
 }
 
 func (p *parentExecutionInfo) CurrentAttempt() uint32 {
@@ -69,7 +69,6 @@ func NewExecutionContextWithWorkflowGetter(prevExecContext ExecutionContext, get
 func NewExecutionContextWithParentInfo(prevExecContext ExecutionContext, parentInfo ImmutableParentInfo) ExecutionContext {
 	return NewExecutionContext(prevExecContext, prevExecContext, prevExecContext, parentInfo)
 }
-
 
 func NewExecutionContext(immExecContext ImmutableExecutionContext, tasksGetter TaskDetailsGetter, workflowGetter SubWorkflowGetter, parentInfo ImmutableParentInfo) ExecutionContext {
 	return execContext{

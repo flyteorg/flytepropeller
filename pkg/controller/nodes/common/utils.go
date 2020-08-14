@@ -1,26 +1,33 @@
 package common
 
 import (
+	"strconv"
+
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"github.com/lyft/flytepropeller/pkg/utils"
-	"strconv"
 )
 
-func GenerateUniqueId(parentInfo executors.ImmutableParentInfo, nodeID string) (string, error) {
-	var parentUniqueId v1alpha1.NodeID
+const maxUniqueIDLength = 20
+
+// The UniqueId of a node is unique within a given workflow execution.
+// In order to achieve that we track the lineage of the node.
+// To compute the uniqueID of a node, we use the uniqueID and retry attempt of the parent node
+// For nodes in level 0, there is no parent, and parentInfo is nil
+func GenerateUniqueID(parentInfo executors.ImmutableParentInfo, nodeID string) (string, error) {
+	var parentUniqueID v1alpha1.NodeID
 	var parentRetryAttempt string
 
 	if parentInfo != nil {
-		parentUniqueId = parentInfo.GetUniqueID()
+		parentUniqueID = parentInfo.GetUniqueID()
 		parentRetryAttempt = strconv.Itoa(int(parentInfo.CurrentAttempt()))
 	}
 
-	return utils.FixedLengthUniqueIDForParts(20, parentUniqueId, parentRetryAttempt, nodeID)
+	return utils.FixedLengthUniqueIDForParts(maxUniqueIDLength, parentUniqueID, parentRetryAttempt, nodeID)
 }
 
-func GetParentInfo(grandParentInfo executors.ImmutableParentInfo, nodeID string, parentAttempt uint32) (executors.ImmutableParentInfo, error){
-	uniqueID, err := GenerateUniqueId(grandParentInfo, nodeID)
+func CreateParentInfo(grandParentInfo executors.ImmutableParentInfo, nodeID string, parentAttempt uint32) (executors.ImmutableParentInfo, error) {
+	uniqueID, err := GenerateUniqueID(grandParentInfo, nodeID)
 	if err != nil {
 		return nil, err
 	}

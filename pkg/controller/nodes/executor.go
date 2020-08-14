@@ -3,8 +3,9 @@ package nodes
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/common"
 	"time"
+
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/common"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	errors2 "github.com/lyft/flytestdlib/errors"
@@ -797,20 +798,20 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, execContext executors.E
 		if err != nil {
 			return err
 		}
-		nodeExecutionId := &core.NodeExecutionIdentifier{
+		nodeExecutionID := &core.NodeExecutionIdentifier{
 			ExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID().ExecutionId,
-			NodeId: nCtx.NodeExecutionMetadata().GetNodeExecutionID().NodeId,
+			NodeId:      nCtx.NodeExecutionMetadata().GetNodeExecutionID().NodeId,
 		}
 		if nCtx.ExecutionContext().GetEventVersion() != v1alpha1.V0 {
-			currentNodeUniqueID, err := common.GenerateUniqueId(nCtx.ExecutionContext().GetParentInfo(), nodeExecutionId.NodeId)
+			currentNodeUniqueID, err := common.GenerateUniqueID(nCtx.ExecutionContext().GetParentInfo(), nodeExecutionID.NodeId)
 			if err != nil {
 				return err
 			}
-			nodeExecutionId.NodeId = currentNodeUniqueID
+			nodeExecutionID.NodeId = currentNodeUniqueID
 		}
 
 		err = c.IdempotentRecordEvent(ctx, &event.NodeExecutionEvent{
-			Id:         nodeExecutionId,
+			Id:         nodeExecutionID,
 			Phase:      core.NodeExecution_ABORTED,
 			OccurredAt: ptypes.TimestampNow(),
 			OutputResult: &event.NodeExecutionEvent_Error{

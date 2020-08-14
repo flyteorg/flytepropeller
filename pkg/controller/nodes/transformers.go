@@ -3,10 +3,11 @@ package nodes
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flytepropeller/pkg/controller/executors"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/common"
 	"strconv"
 	"time"
+
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/common"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -98,7 +99,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	}
 
 	if eventVersion != v1alpha1.V0 {
-		currentNodeUniqueID, err := common.GenerateUniqueId(parentInfo, nev.Id.NodeId)
+		currentNodeUniqueID, err := common.GenerateUniqueID(parentInfo, nev.Id.NodeId)
 		if err != nil {
 			return nil, err
 		}
@@ -108,8 +109,8 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 			}
 			nev.RetryGroup = strconv.Itoa(int(parentInfo.CurrentAttempt()))
 		}
+		nev.SpecNodeId = node.GetID()
 		nev.Id.NodeId = currentNodeUniqueID
-		nev.SpecNodeId = nodeExecID.NodeId
 		nev.NodeName = node.GetName()
 	}
 

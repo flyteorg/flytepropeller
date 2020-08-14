@@ -2,8 +2,9 @@ package nodes
 
 import (
 	"context"
-	"github.com/lyft/flytepropeller/pkg/controller/executors"
 	"testing"
+
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
