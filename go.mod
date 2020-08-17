@@ -23,7 +23,7 @@ require (
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/lyft/datacatalog v0.2.1
 	github.com/lyft/flyteidl v0.18.1
-	github.com/lyft/flyteplugins v0.4.4
+	github.com/lyft/flyteplugins v0.4.5-0.20200817083619-c9d9c8bb5381
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-colorable v0.1.6 // indirect
@@ -55,7 +55,6 @@ require (
 // and it will be replaced with the 'sha' variant of the version
 
 replace (
-	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.3
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
 	gopkg.in/fsnotify.v1 => github.com/fsnotify/fsnotify v1.4.7
 	k8s.io/api => github.com/lyft/api v0.0.0-20191031200350-b49a72c274e0
