@@ -619,7 +619,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockWf.OnGetTask(taskID).Return(tk, nil)
 			mockWf.OnGetLabels().Return(make(map[string]string))
 			mockWf.OnIsInterruptible().Return(false)
-			mockWf.OnGetEventVersion().Return(v1alpha1.V0)
+			mockWf.OnGetEventVersion().Return(v1alpha1.EventVersion0)
 			mockWf.OnGetOnFailurePolicy().Return(v1alpha1.WorkflowOnFailurePolicy(core.WorkflowMetadata_FAIL_IMMEDIATELY))
 			mockWf.OnGetRawOutputDataConfig().Return(v1alpha1.RawOutputDataConfig{
 				RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
@@ -1246,7 +1246,7 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 				eCtx.OnIsInterruptible().Return(true)
 				eCtx.OnGetExecutionID().Return(v1alpha1.WorkflowExecutionIdentifier{WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{}})
 				eCtx.OnGetLabels().Return(nil)
-				eCtx.OnGetEventVersion().Return(v1alpha1.V0)
+				eCtx.OnGetEventVersion().Return(v1alpha1.EventVersion0)
 				eCtx.OnGetParentInfo().Return(nil)
 				eCtx.OnGetRawOutputDataConfig().Return(v1alpha1.RawOutputDataConfig{
 					RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
@@ -1633,7 +1633,7 @@ func TestNodeExecutionEventV0(t *testing.T) {
 	ns.OnGetPhase().Return(v1alpha1.NodePhaseNotYetStarted)
 	nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
 	ns.OnGetParentTaskID().Return(tID)
-	event, err := ToNodeExecutionEvent(nID, p, inputReader, ns, v1alpha1.V0, parentInfo, n)
+	event, err := ToNodeExecutionEvent(nID, p, inputReader, ns, v1alpha1.EventVersion0, parentInfo, n)
 	assert.NoError(t, err)
 	assert.Equal(t, "n1", event.Id.NodeId)
 	assert.Equal(t, execID, event.Id.ExecutionId)
@@ -1673,7 +1673,7 @@ func TestNodeExecutionEventV1(t *testing.T) {
 	ns.OnGetPhase().Return(v1alpha1.NodePhaseNotYetStarted)
 	nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
 	ns.OnGetParentTaskID().Return(tID)
-	eventOpt, err := ToNodeExecutionEvent(nID, p, inputReader, ns, v1alpha1.V1, parentInfo, n)
+	eventOpt, err := ToNodeExecutionEvent(nID, p, inputReader, ns, v1alpha1.EventVersion1, parentInfo, n)
 	assert.NoError(t, err)
 	assert.Equal(t, "np1-2-n1", eventOpt.Id.NodeId)
 	assert.Equal(t, execID, eventOpt.Id.ExecutionId)

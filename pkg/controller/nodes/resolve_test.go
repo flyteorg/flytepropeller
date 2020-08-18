@@ -37,7 +37,7 @@ func (d *dummyBaseWorkflow) GetParentInfo() executors.ImmutableParentInfo {
 }
 
 func (d *dummyBaseWorkflow) GetEventVersion() v1alpha1.EventVersion {
-	return v1alpha1.V0
+	return v1alpha1.EventVersion0
 }
 
 func (d *dummyBaseWorkflow) GetOnFailurePolicy() v1alpha1.WorkflowOnFailurePolicy {

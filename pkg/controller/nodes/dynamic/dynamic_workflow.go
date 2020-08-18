@@ -46,7 +46,7 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 	for _, node := range djSpec.Nodes {
 		nodeID := node.Id
 		var subNodeStatus v1alpha1.ExecutableNodeStatus
-		if nCtx.ExecutionContext().GetEventVersion() == v1alpha1.V0 {
+		if nCtx.ExecutionContext().GetEventVersion() == v1alpha1.EventVersion0 {
 			newID, err := hierarchicalNodeID(parentNodeID, currentAttemptStr, node.Id)
 			if err != nil {
 				return nil, err
@@ -95,7 +95,7 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 		}
 	}
 
-	if nCtx.ExecutionContext().GetEventVersion() == v1alpha1.V0 {
+	if nCtx.ExecutionContext().GetEventVersion() == v1alpha1.EventVersion0 {
 		for _, o := range djSpec.Outputs {
 			err = updateBindingNodeIDsWithLineage(parentNodeID, currentAttemptStr, o.Binding)
 			if err != nil {

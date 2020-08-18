@@ -802,7 +802,7 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, execContext executors.E
 			ExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID().ExecutionId,
 			NodeId:      nCtx.NodeExecutionMetadata().GetNodeExecutionID().NodeId,
 		}
-		if nCtx.ExecutionContext().GetEventVersion() != v1alpha1.V0 {
+		if nCtx.ExecutionContext().GetEventVersion() != v1alpha1.EventVersion0 {
 			currentNodeUniqueID, err := common.GenerateUniqueID(nCtx.ExecutionContext().GetParentInfo(), nodeExecutionID.NodeId)
 			if err != nil {
 				return err

@@ -60,7 +60,7 @@ func (in *FlyteWorkflow) GetEventVersion() EventVersion {
 	if in.WorkflowMeta != nil {
 		return in.WorkflowMeta.EventVersion
 	}
-	return V0
+	return EventVersion0
 }
 
 type WorkflowMeta struct {
@@ -70,8 +70,8 @@ type WorkflowMeta struct {
 type EventVersion int
 
 const (
-	V0 EventVersion = iota
-	V1
+	EventVersion0 EventVersion = iota
+	EventVersion1
 )
 
 type NodeDefaults struct {

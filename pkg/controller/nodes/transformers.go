@@ -92,13 +92,13 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 		OccurredAt: occurredTime,
 	}
 
-	if eventVersion == v1alpha1.V0 && status.GetParentTaskID() != nil {
+	if eventVersion == v1alpha1.EventVersion0 && status.GetParentTaskID() != nil {
 		nev.ParentTaskMetadata = &event.ParentTaskExecutionMetadata{
 			Id: status.GetParentTaskID(),
 		}
 	}
 
-	if eventVersion != v1alpha1.V0 {
+	if eventVersion != v1alpha1.EventVersion0 {
 		currentNodeUniqueID, err := common.GenerateUniqueID(parentInfo, nev.Id.NodeId)
 		if err != nil {
 			return nil, err
