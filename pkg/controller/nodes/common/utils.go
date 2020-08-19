@@ -26,6 +26,7 @@ func GenerateUniqueID(parentInfo executors.ImmutableParentInfo, nodeID string) (
 	return utils.FixedLengthUniqueIDForParts(maxUniqueIDLength, parentUniqueID, parentRetryAttempt, nodeID)
 }
 
+// When creating parentInfo, the unique id of parent is dependent on the unique id and the current attempt of the grand parent to track the lineage.
 func CreateParentInfo(grandParentInfo executors.ImmutableParentInfo, nodeID string, parentAttempt uint32) (executors.ImmutableParentInfo, error) {
 	uniqueID, err := GenerateUniqueID(grandParentInfo, nodeID)
 	if err != nil {
