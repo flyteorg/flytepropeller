@@ -3,8 +3,6 @@ include boilerplate/lyft/docker_build/Makefile
 include boilerplate/lyft/golang_test_targets/Makefile
 include boilerplate/lyft/end2end/Makefile
 
-PWD := $(shell pwd)
-GIT_HASH := $(shell git log -1 --pretty=format:"%H")
 
 .PHONY: update_boilerplate
 update_boilerplate:
