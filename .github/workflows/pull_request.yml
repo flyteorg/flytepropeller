@@ -9,11 +9,20 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         name: "Checkout"
-
+      - name: Push Docker Image to Github Registry
+        uses: whoan/docker-build-with-cache-action@v5
+        with:
+          username: "${{ github.actor }}"
+          password: "${{ secrets.GITHUB_TOKEN }}"
+          image_name: lyft/flytepropeller
+          image_tag: latest,${{ github.sha }},${{ needs.bump-version.outputs.version }}
+          push_git_tag: false
+          registry: docker.pkg.github.com
+          build_extra_args: "--compress=true"
+          push_image_and_stages : false
       - uses: engineerd/setup-kind@v0.4.0
       - name: End2End
         run: |
-          docker build -t lyft/flytepropeller:${{ github.sha }} .
           kubectl cluster-info
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
