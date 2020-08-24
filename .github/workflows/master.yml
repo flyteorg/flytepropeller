@@ -41,7 +41,6 @@ jobs:
       - uses: engineerd/setup-kind@v0.4.0
       - name: End2End
         run: |
-          docker build -t lyft/flytepropeller:${{ github.sha }} .
           kubectl cluster-info
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
