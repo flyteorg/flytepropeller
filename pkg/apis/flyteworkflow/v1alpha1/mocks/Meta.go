@@ -82,6 +82,38 @@ func (_m *Meta) GetCreationTimestamp() v1.Time {
 	return r0
 }
 
+type Meta_GetEventVersion struct {
+	*mock.Call
+}
+
+func (_m Meta_GetEventVersion) Return(_a0 v1alpha1.EventVersion) *Meta_GetEventVersion {
+	return &Meta_GetEventVersion{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Meta) OnGetEventVersion() *Meta_GetEventVersion {
+	c := _m.On("GetEventVersion")
+	return &Meta_GetEventVersion{Call: c}
+}
+
+func (_m *Meta) OnGetEventVersionMatch(matchers ...interface{}) *Meta_GetEventVersion {
+	c := _m.On("GetEventVersion", matchers...)
+	return &Meta_GetEventVersion{Call: c}
+}
+
+// GetEventVersion provides a mock function with given fields:
+func (_m *Meta) GetEventVersion() v1alpha1.EventVersion {
+	ret := _m.Called()
+
+	var r0 v1alpha1.EventVersion
+	if rf, ok := ret.Get(0).(func() v1alpha1.EventVersion); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(v1alpha1.EventVersion)
+	}
+
+	return r0
+}
+
 type Meta_GetExecutionID struct {
 	*mock.Call
 }
@@ -271,6 +303,38 @@ func (_m *Meta) GetOwnerReference() v1.OwnerReference {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(v1.OwnerReference)
+	}
+
+	return r0
+}
+
+type Meta_GetRawOutputDataConfig struct {
+	*mock.Call
+}
+
+func (_m Meta_GetRawOutputDataConfig) Return(_a0 v1alpha1.RawOutputDataConfig) *Meta_GetRawOutputDataConfig {
+	return &Meta_GetRawOutputDataConfig{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Meta) OnGetRawOutputDataConfig() *Meta_GetRawOutputDataConfig {
+	c := _m.On("GetRawOutputDataConfig")
+	return &Meta_GetRawOutputDataConfig{Call: c}
+}
+
+func (_m *Meta) OnGetRawOutputDataConfigMatch(matchers ...interface{}) *Meta_GetRawOutputDataConfig {
+	c := _m.On("GetRawOutputDataConfig", matchers...)
+	return &Meta_GetRawOutputDataConfig{Call: c}
+}
+
+// GetRawOutputDataConfig provides a mock function with given fields:
+func (_m *Meta) GetRawOutputDataConfig() v1alpha1.RawOutputDataConfig {
+	ret := _m.Called()
+
+	var r0 v1alpha1.RawOutputDataConfig
+	if rf, ok := ret.Get(0).(func() v1alpha1.RawOutputDataConfig); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(v1alpha1.RawOutputDataConfig)
 	}
 
 	return r0
