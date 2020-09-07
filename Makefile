@@ -48,7 +48,3 @@ golden:
 .PHONY: generate
 generate: download_tooling
 	@go generate ./...
-
-
-
-
