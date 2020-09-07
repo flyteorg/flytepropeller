@@ -37,7 +37,7 @@ jobs:
       - uses: engineerd/setup-kind@v0.4.0
       - name: End2End
         run: |
-          docker load /docker_cache/latest.tar && echo "File Exist!" || touch /docker_cache/latest.tar 
+          docker load -i /docker_cache/latest.tar && echo "File Exist" || (mkdir /docker_cache/ && touch /docker_cache/latest.tar)
           docker build -t lyft/flytepropeller:${{ github.sha }} .
           docker save lyft/flytepropeller:${{ github.sha }} $(docker history -q lyft/flytepropeller) > /docker_cache/latest.tar
           kubectl cluster-info
