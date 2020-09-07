@@ -9,9 +9,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         name: "Checkout"
-      - uses: github/cache
-        key: "latest"
-        path: "/docker_cache"
+      - name: Cache Primes
+        id: cache-primes
+        uses: actions/cache@v2
+        with:
+          path: /docker_cache
+          key: latest
       - uses: engineerd/setup-kind@v0.4.0
       - name: End2End
         run: |
