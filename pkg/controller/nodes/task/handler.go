@@ -196,10 +196,10 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	}
 
 	// Create the resource negotiator here
-	// and then convert it to proxies later and pass them to defaultPlugins
+	// and then convert it to proxies later and pass them to plugins
 	enabledPlugins, err := WranglePluginsAndGenerateFinalList(ctx, &t.cfg.TaskPlugins, t.pluginRegistry)
 	if err != nil {
-		logger.Errorf(ctx, "Failed to finalize enabled defaultPlugins. Error: %s", err)
+		logger.Errorf(ctx, "Failed to finalize enabled plugins. Error: %s", err)
 		return err
 	}
 
@@ -246,23 +246,26 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 func (t Handler) ResolvePlugin(ctx context.Context, ttype string, executionConfig v1alpha1.ExecutionConfig) (pluginCore.Plugin, error) {
 	// If the workflow specifies plugin overrides, check to see if any of the specified plugins for that type are
 	// registered in this deployment of flytepropeller.
-	if len(executionConfig.TaskPluginImpls) > 0 && len(t.pluginsForType) > 0 && len(t.pluginsForType[ttype]) > 0 {
-		taskPluginImpls, ok := executionConfig.TaskPluginImpls[ttype]
-		if ok {
-			pluginsForType := t.pluginsForType[ttype]
-			for _, pluginImplID := range taskPluginImpls {
-				pluginImpl := pluginsForType[pluginImplID]
-				if ok {
-					logger.Debugf(ctx, "Plugin [%s] resolved for Handler type [%s]", pluginImpl.GetID(), ttype)
-					return pluginImpl, nil
+	if len(executionConfig.TaskPluginImpls) > 0 && len(executionConfig.TaskPluginImpls[ttype]) > 0 {
+		if len(t.pluginsForType) > 0 && len(t.pluginsForType[ttype]) > 0 {
+			taskPluginImpls, ok := executionConfig.TaskPluginImpls[ttype]
+			if ok {
+				pluginsForType := t.pluginsForType[ttype]
+				for _, pluginImplID := range taskPluginImpls {
+					pluginImpl := pluginsForType[pluginImplID]
+					if ok {
+						logger.Debugf(ctx, "Plugin [%s] resolved for Handler type [%s]", pluginImpl.GetID(), ttype)
+						return pluginImpl, nil
+					}
 				}
 			}
 		}
-	}
 
-	if len(executionConfig.TaskPluginImpls) > 0 && len(executionConfig.TaskPluginImpls[ttype]) > 0 &&
-		executionConfig.TaskPluginOverrideMode == admin.PluginOverride_FAIL {
-		return nil, fmt.Errorf("no matching plugin overrides defined for Handler type [%s]. Ignoring any defaultPlugins configured", ttype)
+		// If we've exhausted the list of overridable plugins and no single implementation is found, fail fast if the
+		// task plugin overrides specify so.
+		if executionConfig.TaskPluginOverrideMode == admin.PluginOverride_FAIL {
+			return nil, fmt.Errorf("no matching plugin overrides defined for Handler type [%s]. Ignoring any defaultPlugins configured", ttype)
+		}
 	}
 
 	p, ok := t.defaultPlugins[ttype]
