@@ -6,6 +6,9 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+
 	"github.com/lyft/flytepropeller/pkg/utils"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
@@ -149,10 +152,13 @@ type PluginRegistryIface interface {
 	GetK8sPlugins() []pluginK8s.PluginEntry
 }
 
+type pluginID = string
+
 type Handler struct {
 	catalog         catalog.Client
 	asyncCatalog    catalog.AsyncClient
-	plugins         map[pluginCore.TaskType]pluginCore.Plugin
+	defaultPlugins  map[pluginCore.TaskType]pluginCore.Plugin
+	pluginsForType  map[pluginCore.TaskType]map[pluginID]pluginCore.Plugin
 	taskMetricsMap  map[MetricKey]*taskMetrics
 	defaultPlugin   pluginCore.Plugin
 	metrics         *metrics
@@ -190,13 +196,14 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	}
 
 	// Create the resource negotiator here
-	// and then convert it to proxies later and pass them to plugins
+	// and then convert it to proxies later and pass them to defaultPlugins
 	enabledPlugins, err := WranglePluginsAndGenerateFinalList(ctx, &t.cfg.TaskPlugins, t.pluginRegistry)
 	if err != nil {
-		logger.Errorf(ctx, "Failed to finalize enabled plugins. Error: %s", err)
+		logger.Errorf(ctx, "Failed to finalize enabled defaultPlugins. Error: %s", err)
 		return err
 	}
 
+	t.pluginsForType = make(map[pluginCore.TaskType]map[pluginID]pluginCore.Plugin)
 	for _, p := range enabledPlugins {
 		// create a new resource registrar proxy for each plugin, and pass it into the plugin's LoadPlugin() via a setup context
 		pluginResourceNamespacePrefix := pluginCore.ResourceNamespace(newResourceManagerBuilder.GetID()).CreateSubNamespace(pluginCore.ResourceNamespace(p.ID))
@@ -210,7 +217,14 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		}
 		for _, tt := range p.RegisteredTaskTypes {
 			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cp.GetID(), tt)
-			t.plugins[tt] = cp
+			t.defaultPlugins[tt] = cp
+
+			pluginsForTaskType, ok := t.pluginsForType[tt]
+			if !ok {
+				pluginsForTaskType = make(map[pluginID]pluginCore.Plugin)
+			}
+			pluginsForTaskType[cp.GetID()] = cp
+			t.pluginsForType[tt] = pluginsForTaskType
 		}
 		if p.IsDefault {
 			if err := t.setDefault(ctx, cp); err != nil {
@@ -230,8 +244,28 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	return nil
 }
 
-func (t Handler) ResolvePlugin(ctx context.Context, ttype string) (pluginCore.Plugin, error) {
-	p, ok := t.plugins[ttype]
+func (t Handler) ResolvePlugin(ctx context.Context, ttype string, executionConfig v1alpha1.ExecutionConfig) (pluginCore.Plugin, error) {
+	// If the workflow specifies plugin overrides, check to see if any of the specified plugins for that type are
+	// registered in this deployment of flytepropeller.
+	if len(executionConfig.TaskPluginImpls) > 0 && len(t.pluginsForType) > 0 && len(t.pluginsForType[ttype]) > 0 {
+		taskPluginImpls, ok := executionConfig.TaskPluginImpls[ttype]
+		if ok {
+			pluginsForType := t.pluginsForType[ttype]
+			for _, pluginImplID := range taskPluginImpls {
+				pluginImpl := pluginsForType[pluginImplID]
+				if ok {
+					logger.Debugf(ctx, "Plugin [%s] resolved for Handler type [%s]", pluginImpl.GetID(), ttype)
+					return pluginImpl, nil
+				}
+			}
+		}
+	}
+
+	if len(executionConfig.TaskPluginImpls) > 0 && executionConfig.TaskPluginOverrideMode == admin.PluginOverride_FAIL {
+		return nil, fmt.Errorf("no matching plugin overrides defined for Handler type [%s]. Ignoring any defaultPlugins configured", ttype)
+	}
+
+	p, ok := t.defaultPlugins[ttype]
 	if ok {
 		logger.Debugf(ctx, "Plugin [%s] resolved for Handler type [%s]", p.GetID(), ttype)
 		return p, nil
@@ -375,9 +409,10 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		logger.Debugf(ctx, "Task success detected, calling on Task success")
 		outputCommitter := ioutils.NewRemoteFileOutputWriter(ctx, tCtx.DataStore(), tCtx.OutputWriter())
 		execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
-		cacheStatus, ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.NodeID(), tCtx.InputReader(), tCtx.ow.GetReader(), outputCommitter, tCtx.tr, catalog.Metadata{
-			TaskExecutionIdentifier: &execID,
-		})
+		cacheStatus, ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.NodeID(), tCtx.InputReader(), tCtx.ow.GetReader(),
+			outputCommitter, tCtx.ExecutionContext().GetExecutionConfig(), tCtx.tr, catalog.Metadata{
+				TaskExecutionIdentifier: &execID,
+			})
 		if err != nil {
 			return nil, err
 		}
@@ -394,7 +429,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
 	ttype := nCtx.TaskReader().GetTaskType()
 	ctx = contextutils.WithTaskType(ctx, ttype)
-	p, err := t.ResolvePlugin(ctx, ttype)
+	p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
 	if err != nil {
 		return handler.UnknownTransition, errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
 	}
@@ -563,7 +598,7 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 	}
 
 	ttype := nCtx.TaskReader().GetTaskType()
-	p, err := t.ResolvePlugin(ctx, ttype)
+	p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
 	if err != nil {
 		return errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
 	}
@@ -615,7 +650,7 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
 	logger.Debugf(ctx, "Finalize invoked.")
 	ttype := nCtx.TaskReader().GetTaskType()
-	p, err := t.ResolvePlugin(ctx, ttype)
+	p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
 	if err != nil {
 		return errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
 	}
@@ -654,7 +689,7 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 	cfg := config.GetConfig()
 	return &Handler{
 		pluginRegistry: pluginMachinery.PluginRegistry(),
-		plugins:        make(map[pluginCore.TaskType]pluginCore.Plugin),
+		defaultPlugins: make(map[pluginCore.TaskType]pluginCore.Plugin),
 		taskMetricsMap: make(map[MetricKey]*taskMetrics),
 		metrics: &metrics{
 			pluginPanics:           labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),

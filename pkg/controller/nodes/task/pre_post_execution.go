@@ -69,8 +69,9 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 	return catalog.NewCatalogEntry(nil, cacheDisabled), nil
 }
 
-func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader, r io.OutputReader,
-	outputCommitter io.OutputWriter, tr pluginCore.TaskReader, m catalog.Metadata) (catalog.Status, *io.ExecutionError, error) {
+func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader,
+	r io.OutputReader, outputCommitter io.OutputWriter, executionConfig v1alpha1.ExecutionConfig,
+	tr pluginCore.TaskReader, m catalog.Metadata) (catalog.Status, *io.ExecutionError, error) {
 
 	tk, err := tr.Read(ctx)
 	if err != nil {
@@ -109,7 +110,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 		if taskErr.ExecutionError == nil {
 			taskErr.ExecutionError = &core.ExecutionError{Kind: core.ExecutionError_UNKNOWN, Code: "Unknown", Message: "Unknown"}
 		}
-		// Errors can be arbitrary long since they are written by containers/potentially 3rd party plugins. This ensures
+		// Errors can be arbitrary long since they are written by containers/potentially 3rd party defaultPlugins. This ensures
 		// the error message length will never be big enough to cause write failures to Etcd. or spam Admin DB with huge
 		// objects.
 		taskErr.Message = trimErrorMessage(taskErr.Message, t.cfg.MaxErrorMessageLength)
@@ -148,7 +149,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 		}
 	}
 
-	p, err := t.ResolvePlugin(ctx, tk.Type)
+	p, err := t.ResolvePlugin(ctx, tk.Type, executionConfig)
 	if err != nil {
 		return cacheDisabled, nil, errors2.Wrapf(errors2.UnsupportedTaskTypeError, nodeID, err, "unable to resolve plugin")
 	}
