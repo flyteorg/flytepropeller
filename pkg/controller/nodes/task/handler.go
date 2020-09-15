@@ -203,7 +203,6 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		return err
 	}
 
-	t.pluginsForType = make(map[pluginCore.TaskType]map[pluginID]pluginCore.Plugin)
 	for _, p := range enabledPlugins {
 		// create a new resource registrar proxy for each plugin, and pass it into the plugin's LoadPlugin() via a setup context
 		pluginResourceNamespacePrefix := pluginCore.ResourceNamespace(newResourceManagerBuilder.GetID()).CreateSubNamespace(pluginCore.ResourceNamespace(p.ID))
@@ -261,7 +260,8 @@ func (t Handler) ResolvePlugin(ctx context.Context, ttype string, executionConfi
 		}
 	}
 
-	if len(executionConfig.TaskPluginImpls) > 0 && executionConfig.TaskPluginOverrideMode == admin.PluginOverride_FAIL {
+	if len(executionConfig.TaskPluginImpls) > 0 && len(executionConfig.TaskPluginImpls[ttype]) > 0 &&
+		executionConfig.TaskPluginOverrideMode == admin.PluginOverride_FAIL {
 		return nil, fmt.Errorf("no matching plugin overrides defined for Handler type [%s]. Ignoring any defaultPlugins configured", ttype)
 	}
 
@@ -690,6 +690,7 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 	return &Handler{
 		pluginRegistry: pluginMachinery.PluginRegistry(),
 		defaultPlugins: make(map[pluginCore.TaskType]pluginCore.Plugin),
+		pluginsForType: make(map[pluginCore.TaskType]map[pluginID]pluginCore.Plugin),
 		taskMetricsMap: make(map[MetricKey]*taskMetrics),
 		metrics: &metrics{
 			pluginPanics:           labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),

@@ -155,7 +155,7 @@ func Test_task_Setup(t *testing.T) {
 		fields   wantFields
 		wantErr  bool
 	}{
-		{"no-defaultPlugins", testPluginRegistry{}, wantFields{}, false},
+		{"no-plugins", testPluginRegistry{}, wantFields{}, false},
 		{"no-default-only-core", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry}, k8s: []pluginK8s.PluginEntry{},
 		}, wantFields{
@@ -249,7 +249,7 @@ func Test_task_ResolvePlugin(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{"no-defaultPlugins", fields{}, args{}, "", true},
+		{"no-plugins", fields{}, args{}, "", true},
 		{"default",
 			fields{
 				defaultPlugin: defaultPlugin,

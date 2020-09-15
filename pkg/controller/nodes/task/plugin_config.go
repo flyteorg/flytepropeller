@@ -25,22 +25,22 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 	}
 
 	var finalizedPlugins []core.PluginEntry
-	logger.Infof(ctx, "Enabled defaultPlugins: %v", enabledPlugins.List())
-	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all defaultPlugins enabled: %v]", allPluginsEnabled)
+	logger.Infof(ctx, "Enabled plugins: %v", enabledPlugins.List())
+	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all plugins enabled: %v]", allPluginsEnabled)
 	for _, cpe := range pr.GetCorePlugins() {
 		id := strings.ToLower(cpe.ID)
 		if !allPluginsEnabled && !enabledPlugins.Has(id) {
-			logger.Infof(ctx, "Plugin [%s] is DISABLED (not found in enabled defaultPlugins list).", id)
+			logger.Infof(ctx, "Plugin [%s] is DISABLED (not found in enabled plugins list).", id)
 		} else {
 			logger.Infof(ctx, "Plugin [%s] ENABLED", id)
 			finalizedPlugins = append(finalizedPlugins, cpe)
 		}
 	}
 
-	// Create a single backOffManager for all the defaultPlugins
+	// Create a single backOffManager for all the plugins
 	backOffController := backoff.NewController(ctx)
 
-	// Create a single resource monitor object for all defaultPlugins to use
+	// Create a single resource monitor object for all plugins to use
 	monitorIndex := k8s.NewResourceMonitorIndex()
 
 	k8sPlugins := pr.GetK8sPlugins()
@@ -48,7 +48,7 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 		kpe := k8sPlugins[i]
 		id := strings.ToLower(kpe.ID)
 		if !allPluginsEnabled && !enabledPlugins.Has(id) {
-			logger.Infof(ctx, "K8s Plugin [%s] is DISABLED (not found in enabled defaultPlugins list).", id)
+			logger.Infof(ctx, "K8s Plugin [%s] is DISABLED (not found in enabled plugins list).", id)
 		} else {
 			logger.Infof(ctx, "K8s Plugin [%s] is ENABLED.", id)
 			finalizedPlugins = append(finalizedPlugins, core.PluginEntry{
