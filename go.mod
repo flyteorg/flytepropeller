@@ -7,6 +7,8 @@ require (
 	github.com/Azure/azure-sdk-for-go v40.3.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.10.0 // indirect
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295
+	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20200410212604-780c48ecb21a // indirect
 	github.com/aws/aws-sdk-go v1.29.23 // indirect
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
@@ -21,12 +23,15 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.14.3 // indirect
 	github.com/imdario/mergo v0.3.8 // indirect
+	github.com/kubeflow/pytorch-operator v0.6.0 // indirect
+	github.com/kubeflow/tf-operator v0.5.3 // indirect
 	github.com/lyft/datacatalog v0.2.1
 	github.com/lyft/flyteidl v0.18.1
-	github.com/lyft/flyteplugins v0.5.1
+	github.com/lyft/flyteplugins v0.3.22-0.20200916064034-726c37b83f80
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-colorable v0.1.6 // indirect
+	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/ncw/swift v1.0.50 // indirect
 	github.com/pkg/errors v0.9.1
@@ -42,6 +47,7 @@ require (
 	google.golang.org/genproto v0.0.0-20200312145019-da6875a35672 // indirect
 	google.golang.org/grpc v1.28.0
 	gopkg.in/ini.v1 v1.54.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20200605160147-a5ece683394c // indirect
 	k8s.io/api v0.17.3
 	k8s.io/apimachinery v0.17.3
 	k8s.io/client-go v11.0.1-0.20190918222721-c0e3722d5cf0+incompatible
