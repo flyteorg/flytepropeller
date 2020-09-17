@@ -247,7 +247,7 @@ func (t Handler) ResolvePlugin(ctx context.Context, ttype string, executionConfi
 	// If the workflow specifies plugin overrides, check to see if any of the specified plugins for that type are
 	// registered in this deployment of flytepropeller.
 	if len(executionConfig.TaskPluginImpls[ttype].PluginIDs) > 0 {
-		if len(t.pluginsForType) > 0 && len(t.pluginsForType[ttype]) > 0 {
+		if len(t.pluginsForType[ttype]) > 0 {
 			pluginsForType := t.pluginsForType[ttype]
 			for _, pluginImplID := range executionConfig.TaskPluginImpls[ttype].PluginIDs {
 				pluginImpl := pluginsForType[pluginImplID]
