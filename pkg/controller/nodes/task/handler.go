@@ -256,7 +256,6 @@ func (t Handler) ResolvePlugin(ctx context.Context, ttype string, executionConfi
 						logger.Debugf(ctx, "Plugin [%s] resolved for Handler type [%s]", pluginImpl.GetID(), ttype)
 						return pluginImpl, nil
 					}
-				}
 			}
 		}
 
