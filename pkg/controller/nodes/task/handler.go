@@ -248,8 +248,6 @@ func (t Handler) ResolvePlugin(ctx context.Context, ttype string, executionConfi
 	// registered in this deployment of flytepropeller.
 	if len(executionConfig.TaskPluginImpls) > 0 && len(executionConfig.TaskPluginImpls[ttype]) > 0 {
 		if len(t.pluginsForType) > 0 && len(t.pluginsForType[ttype]) > 0 {
-			taskPluginImpls, ok := executionConfig.TaskPluginImpls[ttype]
-			if ok {
 				pluginsForType := t.pluginsForType[ttype]
 				for _, pluginImplID := range taskPluginImpls {
 					pluginImpl := pluginsForType[pluginImplID]
@@ -257,7 +255,6 @@ func (t Handler) ResolvePlugin(ctx context.Context, ttype string, executionConfi
 						logger.Debugf(ctx, "Plugin [%s] resolved for Handler type [%s]", pluginImpl.GetID(), ttype)
 						return pluginImpl, nil
 					}
-				}
 			}
 		}
 
