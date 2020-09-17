@@ -313,6 +313,6 @@ type ExecutionConfig struct {
 }
 
 type TaskPluginOverride struct {
-	PluginIDs []string
+	PluginIDs             []string
 	MissingPluginBehavior admin.PluginOverride_MissingPluginBehavior
 }

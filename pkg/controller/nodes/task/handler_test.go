@@ -271,12 +271,12 @@ func Test_task_ResolvePlugin(t *testing.T) {
 					},
 				},
 			}, args{ttype: someID, executionConfig: v1alpha1.ExecutionConfig{
-				TaskPluginImpls: map[string][]string{
+				TaskPluginImpls: map[string]v1alpha1.TaskPluginOverride{
 					someID: {
-						someID,
+						PluginIDs:             []string{someID},
+						MissingPluginBehavior: admin.PluginOverride_FAIL,
 					},
 				},
-				TaskPluginOverrideMode: admin.PluginOverride_FAIL,
 			}}, someID, false},
 	}
 	for _, tt := range tests {
