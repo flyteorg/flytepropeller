@@ -3,7 +3,11 @@ package nodes
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
+
+	"github.com/lyft/flytepropeller/pkg/controller/executors"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/common"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -26,7 +30,7 @@ func ToNodeExecOutput(info *handler.OutputInfo) *event.NodeExecutionEvent_Output
 	}
 }
 
-func ToNodeExecTargetMetadata(info *handler.WorkflowNodeInfo) *event.NodeExecutionEvent_WorkflowNodeMetadata {
+func ToNodeExecWorkflowNodeMetadata(info *handler.WorkflowNodeInfo) *event.NodeExecutionEvent_WorkflowNodeMetadata {
 	if info == nil || info.LaunchedWorkflowID == nil {
 		return nil
 	}
@@ -34,6 +38,15 @@ func ToNodeExecTargetMetadata(info *handler.WorkflowNodeInfo) *event.NodeExecuti
 		WorkflowNodeMetadata: &event.WorkflowNodeMetadata{
 			ExecutionId: info.LaunchedWorkflowID,
 		},
+	}
+}
+
+func ToNodeExecTaskNodeMetadata(info *handler.TaskNodeInfo) *event.NodeExecutionEvent_TaskNodeMetadata {
+	if info == nil || info.TaskNodeMetadata == nil {
+		return nil
+	}
+	return &event.NodeExecutionEvent_TaskNodeMetadata{
+		TaskNodeMetadata: info.TaskNodeMetadata,
 	}
 }
 
@@ -54,7 +67,13 @@ func ToNodeExecEventPhase(p handler.EPhase) core.NodeExecution_Phase {
 	}
 }
 
-func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler.PhaseInfo, reader io.InputReader, status v1alpha1.ExecutableNodeStatus) (*event.NodeExecutionEvent, error) {
+func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
+	info handler.PhaseInfo,
+	reader io.InputReader,
+	status v1alpha1.ExecutableNodeStatus,
+	eventVersion v1alpha1.EventVersion,
+	parentInfo executors.ImmutableParentInfo,
+	node v1alpha1.ExecutableNode) (*event.NodeExecutionEvent, error) {
 	if info.GetPhase() == handler.EPhaseNotReady {
 		return nil, nil
 	}
@@ -73,18 +92,40 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier, info handler
 		OccurredAt: occurredTime,
 	}
 
-	// TODO this should use node-node relationship instead of taskID
-	if status.GetParentTaskID() != nil {
+	if eventVersion == v1alpha1.EventVersion0 && status.GetParentTaskID() != nil {
 		nev.ParentTaskMetadata = &event.ParentTaskExecutionMetadata{
 			Id: status.GetParentTaskID(),
 		}
 	}
 
+	if eventVersion != v1alpha1.EventVersion0 {
+		currentNodeUniqueID, err := common.GenerateUniqueID(parentInfo, nev.Id.NodeId)
+		if err != nil {
+			return nil, err
+		}
+		if parentInfo != nil {
+			nev.ParentNodeMetadata = &event.ParentNodeExecutionMetadata{
+				NodeId: parentInfo.GetUniqueID(),
+			}
+			nev.RetryGroup = strconv.Itoa(int(parentInfo.CurrentAttempt()))
+		}
+		nev.SpecNodeId = node.GetID()
+		nev.Id.NodeId = currentNodeUniqueID
+		nev.NodeName = node.GetName()
+	}
+
 	eInfo := info.GetInfo()
 	if eInfo != nil {
-		v := ToNodeExecTargetMetadata(eInfo.WorkflowNodeInfo)
-		if v != nil {
-			nev.TargetMetadata = v
+		if eInfo.WorkflowNodeInfo != nil {
+			v := ToNodeExecWorkflowNodeMetadata(eInfo.WorkflowNodeInfo)
+			if v != nil {
+				nev.TargetMetadata = v
+			}
+		} else if eInfo.TaskNodeInfo != nil {
+			v := ToNodeExecTaskNodeMetadata(eInfo.TaskNodeInfo)
+			if v != nil {
+				nev.TargetMetadata = v
+			}
 		}
 	}
 	if eInfo != nil && eInfo.OutputInfo != nil {

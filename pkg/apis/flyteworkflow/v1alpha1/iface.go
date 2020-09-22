@@ -368,6 +368,7 @@ type ExecutableNode interface {
 	GetExecutionDeadline() *time.Duration
 	GetActiveDeadline() *time.Duration
 	IsInterruptible() *bool
+	GetName() string
 }
 
 // Interface for the Workflow p. This is the mutable portion for a Workflow
@@ -432,6 +433,8 @@ type Meta interface {
 	GetName() string
 	GetServiceAccountName() string
 	IsInterruptible() bool
+	GetEventVersion() EventVersion
+	GetRawOutputDataConfig() RawOutputDataConfig
 }
 
 type TaskDetailsGetter interface {
@@ -454,6 +457,7 @@ type ExecutableWorkflow interface {
 	ExecutableSubWorkflow
 	MetaExtended
 	NodeStatusGetter
+	GetExecutionConfig() ExecutionConfig
 }
 
 type NodeStatusGetter interface {
