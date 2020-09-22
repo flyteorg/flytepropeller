@@ -216,6 +216,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		}
 		for _, tt := range p.RegisteredTaskTypes {
 			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cp.GetID(), tt)
+			// TODO(katrogan): Make the default task plugin assignment more explicit (https://github.com/lyft/flyte/issues/516)
 			t.defaultPlugins[tt] = cp
 
 			pluginsForTaskType, ok := t.pluginsForType[tt]
