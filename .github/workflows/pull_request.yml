@@ -14,11 +14,13 @@ jobs:
         with:
           path: /tmp/docker-save
           key: docker-save-${{ hashFiles('Dockerfile') }}
-      - run: docker load -i /tmp/docker-save/snapshot.tar || true
+      - run: |
+          docker load -i /tmp/docker-save/snapshot.tar || true
+          docker build -t lyft/flytepropeller:${{ github.sha }} . --cache-from=flytepropeller-cache
         if: steps.cache-docker.outputs.cache-hit == 'true'
-      - run: docker build -t lyft/flytepropeller:${{ github.sha }} . --cache-from=flytepropeller-cache
-        name: "docker build"
-      - run: docker tag lyft/flytepropeller:${{ github.sha }} flytepropeller-cache && mkdir -p /tmp/docker-save && docker save flytepropeller-cache -o /tmp/docker-save/snapshot.tar && ls -lh /tmp/docker-save || true
+      - run: |
+          docker build -t lyft/flytepropeller:${{ github.sha }} . --cache-from=flytepropeller-cache
+          docker tag lyft/flytepropeller:${{ github.sha }} flytepropeller-cache && mkdir -p /tmp/docker-save && docker save flytepropeller-cache -o /tmp/docker-save/snapshot.tar && ls -lh /tmp/docker-save || true
         if: always() && steps.cache-docker.outputs.cache-hit != 'true'
       - uses: engineerd/setup-kind@v0.4.0
       - name: End2End
