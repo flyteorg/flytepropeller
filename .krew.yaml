@@ -13,7 +13,7 @@ spec:
         matchLabels:
           os: darwin
           arch: amd64
-      {{addURIAndSha "https://github.com/lyft/flytepropeller/releases/download/{{ .TagName }}/kubectl-flyte_darwin_x86_64.tar.gz" .TagName | indent 6}}
+      {{addURIAndSha "https://github.com/lyft/flytepropeller/releases/download/{{ .TagName }}/kubectl-flyte_{{ .TagName }}_darwin_x86_64.tar.gz" .TagName | indent 6}}
       files:
         - from: kubectl-flyte
           to: ./flyte
@@ -24,21 +24,11 @@ spec:
         matchLabels:
           os: linux
           arch: amd64
-      {{addURIAndSha "https://github.com/lyft/flytepropeller/releases/download/{{ .TagName }}/kubectl-flyte_linux_x86_64.tar.gz" .TagName | indent 6}}
+      {{addURIAndSha "https://github.com/lyft/flytepropeller/releases/download/{{ .TagName }}/kubectl-flyte_{{ .TagName }}_linux_x86_64.tar.gz" .TagName | indent 6}}
       files:
         - from: kubectl-flyte
           to: ./flyte
         - from: LICENSE
           to: .
       bin: flyte
-    - selector:
-        matchLabels:
-          os: windows
-          arch: amd64
-      {{addURIAndSha "https://github.com/lyft/flytepropeller/releases/download/{{ .TagName }}/kubectl-flyte_windows_x86_64.zip" .TagName | indent 6}}
-      files:
-        - from: kubectl-flyte.exe
-          to: ./flyte
-        - from: LICENSE
-          to: .
-      bin: flyte.exe
+
