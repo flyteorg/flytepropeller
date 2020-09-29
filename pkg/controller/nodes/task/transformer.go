@@ -92,9 +92,9 @@ func ToTaskExecutionEvent(taskExecID *core.TaskExecutionIdentifier, in io.InputF
 	}
 
 	if nodeExecutionMetadata.IsInterruptible() {
-		tev.Metadata = &event.TaskExecutionMetadata{InstanceType: event.TaskExecutionMetadata_INTERRUPTIBLE}
+		tev.Metadata = &event.TaskExecutionMetadata{InstanceClass: event.TaskExecutionMetadata_INTERRUPTIBLE}
 	} else {
-		tev.Metadata = &event.TaskExecutionMetadata{InstanceType: event.TaskExecutionMetadata_DEFAULT}
+		tev.Metadata = &event.TaskExecutionMetadata{InstanceClass: event.TaskExecutionMetadata_DEFAULT}
 	}
 
 	return tev, nil

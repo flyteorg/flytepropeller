@@ -84,7 +84,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, nodeID, tev.ParentNodeExecutionId)
 	assert.Equal(t, inputPath, tev.InputUri)
 	assert.Nil(t, tev.OutputResult)
-	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceType)
+	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceClass)
 
 	l := []*core.TaskLog{
 		{Uri: "x", Name: "y", MessageFormat: core.TaskLog_JSON},
@@ -105,7 +105,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, nodeID, tev.ParentNodeExecutionId)
 	assert.Equal(t, inputPath, tev.InputUri)
 	assert.Nil(t, tev.OutputResult)
-	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceType)
+	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceClass)
 
 	defaultNodeExecutionMetadata := handlerMocks.NodeExecutionMetadata{}
 	defaultNodeExecutionMetadata.OnIsInterruptible().Return(false)
@@ -126,7 +126,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.NotNil(t, tev.OutputResult)
 	assert.Equal(t, inputPath, tev.InputUri)
 	assert.Equal(t, outputPath, tev.GetOutputUri())
-	assert.Empty(t, event.TaskExecutionMetadata_DEFAULT, tev.Metadata.InstanceType)
+	assert.Empty(t, event.TaskExecutionMetadata_DEFAULT, tev.Metadata.InstanceClass)
 }
 
 func TestToTransitionType(t *testing.T) {
