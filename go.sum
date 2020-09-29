@@ -401,6 +401,8 @@ github.com/lyft/flyteplugins v0.5.3-0.20200917224056-089f9ba64c45 h1:RGa5pnG4u12
 github.com/lyft/flyteplugins v0.5.3-0.20200917224056-089f9ba64c45/go.mod h1:8zhqFG9BzbHNQGEXzGYltTJLD+KTmQZkanxXgeFI25c=
 github.com/lyft/flyteplugins v0.5.3-0.20200929003450-0b5580a3f9e8 h1:fnFPPdf8aXQRN5WeqKJM5or7Ks3PlO7ZwYvffe9s+IA=
 github.com/lyft/flyteplugins v0.5.3-0.20200929003450-0b5580a3f9e8/go.mod h1:8zhqFG9BzbHNQGEXzGYltTJLD+KTmQZkanxXgeFI25c=
+github.com/lyft/flyteplugins v0.5.3-0.20200929221939-f616f34b96c7 h1:TbrfXUhviq/JCMCttzWOzmRJno+83pvr/7IAaocSn2M=
+github.com/lyft/flyteplugins v0.5.3-0.20200929221939-f616f34b96c7/go.mod h1:8zhqFG9BzbHNQGEXzGYltTJLD+KTmQZkanxXgeFI25c=
 github.com/lyft/flytestdlib v0.3.0/go.mod h1:LJPPJlkFj+wwVWMrQT3K5JZgNhZi2mULsCG4ZYhinhU=
 github.com/lyft/flytestdlib v0.3.9 h1:NaKp9xkeWWwhVvqTOcR/FqlASy1N2gu/kN7PVe4S7YI=
 github.com/lyft/flytestdlib v0.3.9/go.mod h1:LJPPJlkFj+wwVWMrQT3K5JZgNhZi2mULsCG4ZYhinhU=
