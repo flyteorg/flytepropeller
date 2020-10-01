@@ -71,7 +71,8 @@ func (in *FlyteWorkflow) GetExecutionConfig() ExecutionConfig {
 }
 
 type WorkflowMeta struct {
-	EventVersion EventVersion `json:"eventVersion,omitempty"`
+	EventVersion  EventVersion      `json:"eventVersion,omitempty"`
+	ProjectLabels map[string]string `json:"projectLabels,omitempty"`
 }
 
 type EventVersion int
