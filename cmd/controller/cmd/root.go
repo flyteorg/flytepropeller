@@ -99,7 +99,7 @@ func init() {
 
 func initConfig(cmd *cobra.Command, _ []string) error {
 	configAccessor = viper.NewAccessor(config.Options{
-		StrictMode:  false,
+		StrictMode:  true,
 		SearchPaths: []string{cfgFile},
 	})
 
