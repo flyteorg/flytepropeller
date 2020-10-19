@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/lyft/flytestdlib/config"
-	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 //go:generate pflags Config --default-var defaultConfig
@@ -14,7 +13,7 @@ const SectionKey = "tasks"
 
 var (
 	defaultConfig = &Config{
-		TaskPlugins:            TaskPluginConfig{EnabledPlugins: []string{}},
+		TaskPlugins:            TaskPluginConfig{EnabledPlugins: map[string]EnabledPlugins{}},
 		MaxPluginPhaseVersions: 100000,
 		BarrierConfig: BarrierConfig{
 			Enabled:   true,
@@ -45,8 +44,12 @@ type BarrierConfig struct {
 	CacheTTL  config.Duration `json:"cache-ttl" pflag:", Max duration that a barrier would be respected if the process is not restarted. This should account for time required to store the record into persistent storage (across multiple rounds."`
 }
 
+type EnabledPlugins struct {
+	DefaultPluginTasks []string `json:"default-plugins-tasks" pflag:",Tasks for which this plugin is the default implementation"`
+}
+
 type TaskPluginConfig struct {
-	EnabledPlugins []string `json:"enabled-plugins" pflag:",Plugins enabled currently"`
+	EnabledPlugins map[string]EnabledPlugins `json:"enabled-plugins" pflag:",Plugins enabled currently"`
 }
 
 type BackOffConfig struct {
@@ -54,14 +57,25 @@ type BackOffConfig struct {
 	MaxDuration config.Duration `json:"max-duration" pflag:",The cap of the backoff duration"`
 }
 
-func (p TaskPluginConfig) GetEnabledPluginsSet() sets.String {
-	s := sets.NewString()
-	for _, e := range p.EnabledPlugins {
-		cleanedPluginName := strings.Trim(e, " ")
-		cleanedPluginName = strings.ToLower(cleanedPluginName)
-		s.Insert(cleanedPluginName)
+func cleanString(source string) string {
+	cleaned := strings.Trim(source, " ")
+	cleaned = strings.ToLower(cleaned)
+	return cleaned
+}
+
+func (p TaskPluginConfig) GetEnabledPlugins() map[string]EnabledPlugins {
+	enabledPlugins := make(map[string]EnabledPlugins)
+	for pluginName, info := range p.EnabledPlugins {
+		cleanedDefaultTasks := make([]string, 0, len(info.DefaultPluginTasks))
+		for _, taskName := range info.DefaultPluginTasks {
+			cleanedDefaultTasks = append(cleanedDefaultTasks, cleanString(taskName))
+		}
+		cleanedPluginName := cleanString(pluginName)
+		enabledPlugins[cleanedPluginName] = EnabledPlugins{
+			DefaultPluginTasks: cleanedDefaultTasks,
+		}
 	}
-	return s
+	return enabledPlugins
 }
 
 func GetConfig() *Config {

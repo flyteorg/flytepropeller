@@ -215,10 +215,19 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		if err != nil {
 			return regErrors.Wrapf(err, "failed to load plugin - %s", p.ID)
 		}
+		println(fmt.Sprintf("for plugin [%s], registered task types: [%+v] and default task types [%+v]",
+			p.ID, p.RegisteredTaskTypes, p.DefaultForTaskTypes))
 		for _, tt := range p.RegisteredTaskTypes {
-			logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cp.GetID(), tt)
-			// TODO(katrogan): Make the default task plugin assignment more explicit (https://github.com/lyft/flyte/issues/516)
-			t.defaultPlugins[tt] = cp
+			for _, defaultTaskType := range p.DefaultForTaskTypes {
+				if defaultTaskType == tt {
+					if existingHandler, alreadyDefaulted := t.defaultPlugins[tt]; alreadyDefaulted {
+						logger.Warnf(ctx, "TaskType [%s] has multiple default handlers specified: [%s] and [%s]",
+							tt, existingHandler.GetID(), cp.GetID())
+					}
+					logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cp.GetID(), tt)
+					t.defaultPlugins[tt] = cp
+				}
+			}
 
 			pluginsForTaskType, ok := t.pluginsForType[tt]
 			if !ok {
