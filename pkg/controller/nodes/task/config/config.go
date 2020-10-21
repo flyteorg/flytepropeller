@@ -44,7 +44,7 @@ type BarrierConfig struct {
 	CacheTTL  config.Duration `json:"cache-ttl" pflag:", Max duration that a barrier would be respected if the process is not restarted. This should account for time required to store the record into persistent storage (across multiple rounds."`
 }
 
-type EnabledPlugins struct {
+type PluginConfig struct {
 	DefaultForTaskTypes []string `json:"default-for-task-types" pflag:",Task types for which this plugin is the default handler."`
 }
 
