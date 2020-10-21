@@ -45,7 +45,7 @@ type BarrierConfig struct {
 }
 
 type EnabledPlugins struct {
-	DefaultPluginTasks []string `json:"default-plugins-tasks" pflag:",Tasks for which this plugin is the default implementation"`
+	DefaultForTaskTypes []string `json:"default-for-task-types" pflag:",Task types for which this plugin is the default handler."`
 }
 
 type TaskPluginConfig struct {
