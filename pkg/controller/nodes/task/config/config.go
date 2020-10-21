@@ -49,7 +49,7 @@ type PluginConfig struct {
 }
 
 type TaskPluginConfig struct {
-	EnabledPlugins map[string]PluginConfig `pflag:"-,"`
+	EnabledPlugins map[string]PluginConfig `json:"enabled-plugins" pflag:"-,"`
 }
 
 type BackOffConfig struct {

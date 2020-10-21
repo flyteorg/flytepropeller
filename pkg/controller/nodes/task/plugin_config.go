@@ -31,6 +31,10 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 		pluginCfg, pluginEnabled := enabledPlugins[id]
 		if !allPluginsEnabled && !pluginEnabled {
 			logger.Infof(ctx, "Plugin [%s] is DISABLED (not found in enabled plugins list).", id)
+		} else if allPluginsEnabled {
+			logger.Infof(ctx, "Plugin [%s] ENABLED", id)
+			cpe.DefaultForTaskTypes = cpe.RegisteredTaskTypes
+			finalizedPlugins = append(finalizedPlugins, cpe)
 		} else {
 			logger.Infof(ctx, "Plugin [%s] ENABLED", id)
 			cpe.DefaultForTaskTypes = pluginCfg.DefaultForTaskTypes
@@ -53,7 +57,7 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 			logger.Infof(ctx, "K8s Plugin [%s] is DISABLED (not found in enabled plugins list).", id)
 		} else {
 			logger.Infof(ctx, "K8s Plugin [%s] is ENABLED.", id)
-			finalizedPlugins = append(finalizedPlugins, core.PluginEntry{
+			plugin := core.PluginEntry{
 				ID:                  id,
 				RegisteredTaskTypes: kpe.RegisteredTaskTypes,
 				LoadPlugin: func(ctx context.Context, iCtx core.SetupContext) (plugin core.Plugin, e error) {
@@ -61,7 +65,11 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 				},
 				IsDefault:           kpe.IsDefault,
 				DefaultForTaskTypes: pluginConfig.DefaultForTaskTypes,
-			})
+			}
+			if allPluginsEnabled {
+				plugin.DefaultForTaskTypes = plugin.RegisteredTaskTypes
+			}
+			finalizedPlugins = append(finalizedPlugins, plugin)
 		}
 	}
 	return finalizedPlugins, nil
