@@ -153,57 +153,57 @@ func Test_task_Setup(t *testing.T) {
 	tests := []struct {
 		name                 string
 		registry             PluginRegistryIface
-		enabledPluginsConfig map[string]config.EnabledPlugins
+		enabledPluginsConfig map[string]config.PluginConfig
 		fields               wantFields
 		wantErr              bool
 	}{
-		{"no-plugins", testPluginRegistry{}, map[string]config.EnabledPlugins{}, wantFields{}, false},
+		{"no-plugins", testPluginRegistry{}, map[string]config.PluginConfig{}, wantFields{}, false},
 		{"no-default-only-core", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry}, k8s: []pluginK8s.PluginEntry{},
-		}, map[string]config.EnabledPlugins{
-			corePluginType: {DefaultPluginTasks: []string{corePluginType}},
+		}, map[string]config.PluginConfig{
+			corePluginType: {DefaultForTaskTypes: []string{corePluginType}},
 		}, wantFields{
 			pluginIDs: map[pluginCore.TaskType]string{corePluginType: corePluginType},
 		}, false},
 		{"no-default-only-k8s", testPluginRegistry{
 			core: []pluginCore.PluginEntry{}, k8s: []pluginK8s.PluginEntry{k8sPluginEntry},
-		}, map[string]config.EnabledPlugins{
-			k8sPluginType: {DefaultPluginTasks: []string{k8sPluginType}},
+		}, map[string]config.PluginConfig{
+			k8sPluginType: {DefaultForTaskTypes: []string{k8sPluginType}},
 		}, wantFields{
 			pluginIDs: map[pluginCore.TaskType]string{k8sPluginType: k8sPluginType},
 		}, false},
-		{"no-default", testPluginRegistry{}, map[string]config.EnabledPlugins{
-			corePluginType: {DefaultPluginTasks: []string{corePluginType}},
-			k8sPluginType:  {DefaultPluginTasks: []string{k8sPluginType}},
+		{"no-default", testPluginRegistry{}, map[string]config.PluginConfig{
+			corePluginType: {DefaultForTaskTypes: []string{corePluginType}},
+			k8sPluginType:  {DefaultForTaskTypes: []string{k8sPluginType}},
 		}, wantFields{
 			pluginIDs: map[pluginCore.TaskType]string{},
 		}, false},
 		{"only-default-core", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry, corePluginEntryDefault}, k8s: []pluginK8s.PluginEntry{k8sPluginEntry},
-		}, map[string]config.EnabledPlugins{
-			corePluginType:        {DefaultPluginTasks: []string{corePluginType}},
-			corePluginDefaultType: {DefaultPluginTasks: []string{corePluginDefaultType}},
-			k8sPluginType:         {DefaultPluginTasks: []string{k8sPluginType}},
+		}, map[string]config.PluginConfig{
+			corePluginType:        {DefaultForTaskTypes: []string{corePluginType}},
+			corePluginDefaultType: {DefaultForTaskTypes: []string{corePluginDefaultType}},
+			k8sPluginType:         {DefaultForTaskTypes: []string{k8sPluginType}},
 		}, wantFields{
 			pluginIDs:       map[pluginCore.TaskType]string{corePluginType: corePluginType, corePluginDefaultType: corePluginDefaultType, k8sPluginType: k8sPluginType},
 			defaultPluginID: corePluginDefaultType,
 		}, false},
 		{"only-default-k8s", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry}, k8s: []pluginK8s.PluginEntry{k8sPluginEntryDefault},
-		}, map[string]config.EnabledPlugins{
-			corePluginType:       {DefaultPluginTasks: []string{corePluginType}},
-			k8sPluginDefaultType: {DefaultPluginTasks: []string{k8sPluginDefaultType}},
+		}, map[string]config.PluginConfig{
+			corePluginType:       {DefaultForTaskTypes: []string{corePluginType}},
+			k8sPluginDefaultType: {DefaultForTaskTypes: []string{k8sPluginDefaultType}},
 		}, wantFields{
 			pluginIDs:       map[pluginCore.TaskType]string{corePluginType: corePluginType, k8sPluginDefaultType: k8sPluginDefaultType},
 			defaultPluginID: k8sPluginDefaultType,
 		}, false},
 		{"default-both", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry, corePluginEntryDefault}, k8s: []pluginK8s.PluginEntry{k8sPluginEntry, k8sPluginEntryDefault},
-		}, map[string]config.EnabledPlugins{
-			corePluginType:        {DefaultPluginTasks: []string{corePluginType}},
-			corePluginDefaultType: {DefaultPluginTasks: []string{corePluginDefaultType}},
-			k8sPluginType:         {DefaultPluginTasks: []string{k8sPluginType}},
-			k8sPluginDefaultType:  {DefaultPluginTasks: []string{k8sPluginDefaultType}},
+		}, map[string]config.PluginConfig{
+			corePluginType:        {DefaultForTaskTypes: []string{corePluginType}},
+			corePluginDefaultType: {DefaultForTaskTypes: []string{corePluginDefaultType}},
+			k8sPluginType:         {DefaultForTaskTypes: []string{k8sPluginType}},
+			k8sPluginDefaultType:  {DefaultForTaskTypes: []string{k8sPluginDefaultType}},
 		}, wantFields{
 			pluginIDs:       map[pluginCore.TaskType]string{corePluginType: corePluginType, corePluginDefaultType: corePluginDefaultType, k8sPluginType: k8sPluginType, k8sPluginDefaultType: k8sPluginDefaultType},
 			defaultPluginID: corePluginDefaultType,

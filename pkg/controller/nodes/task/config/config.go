@@ -13,7 +13,7 @@ const SectionKey = "tasks"
 
 var (
 	defaultConfig = &Config{
-		TaskPlugins:            TaskPluginConfig{EnabledPlugins: map[string]EnabledPlugins{}},
+		TaskPlugins:            TaskPluginConfig{EnabledPlugins: map[string]PluginConfig{}},
 		MaxPluginPhaseVersions: 100000,
 		BarrierConfig: BarrierConfig{
 			Enabled:   true,
@@ -49,7 +49,7 @@ type PluginConfig struct {
 }
 
 type TaskPluginConfig struct {
-	EnabledPlugins map[string]EnabledPlugins `json:"enabled-plugins" pflag:",Plugins enabled currently"`
+	EnabledPlugins map[string]PluginConfig `pflag:"-,"`
 }
 
 type BackOffConfig struct {
@@ -63,16 +63,16 @@ func cleanString(source string) string {
 	return cleaned
 }
 
-func (p TaskPluginConfig) GetEnabledPlugins() map[string]EnabledPlugins {
-	enabledPlugins := make(map[string]EnabledPlugins)
+func (p TaskPluginConfig) GetEnabledPlugins() map[string]PluginConfig {
+	enabledPlugins := make(map[string]PluginConfig)
 	for pluginName, info := range p.EnabledPlugins {
-		cleanedDefaultTasks := make([]string, 0, len(info.DefaultPluginTasks))
-		for _, taskName := range info.DefaultPluginTasks {
+		cleanedDefaultTasks := make([]string, 0, len(info.DefaultForTaskTypes))
+		for _, taskName := range info.DefaultForTaskTypes {
 			cleanedDefaultTasks = append(cleanedDefaultTasks, cleanString(taskName))
 		}
 		cleanedPluginName := cleanString(pluginName)
-		enabledPlugins[cleanedPluginName] = EnabledPlugins{
-			DefaultPluginTasks: cleanedDefaultTasks,
+		enabledPlugins[cleanedPluginName] = PluginConfig{
+			DefaultForTaskTypes: cleanedDefaultTasks,
 		}
 	}
 	return enabledPlugins

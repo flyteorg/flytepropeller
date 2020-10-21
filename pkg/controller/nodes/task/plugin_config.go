@@ -15,7 +15,7 @@ import (
 
 func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPluginConfig, pr PluginRegistryIface) ([]core.PluginEntry, error) {
 	allPluginsEnabled := false
-	enabledPlugins := make(map[string]config.EnabledPlugins)
+	enabledPlugins := make(map[string]config.PluginConfig)
 	if cfg != nil {
 		enabledPlugins = cfg.GetEnabledPlugins()
 	}
@@ -33,7 +33,7 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 			logger.Infof(ctx, "Plugin [%s] is DISABLED (not found in enabled plugins list).", id)
 		} else {
 			logger.Infof(ctx, "Plugin [%s] ENABLED", id)
-			cpe.DefaultForTaskTypes = pluginCfg.DefaultPluginTasks
+			cpe.DefaultForTaskTypes = pluginCfg.DefaultForTaskTypes
 			finalizedPlugins = append(finalizedPlugins, cpe)
 		}
 	}
@@ -60,7 +60,7 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 					return k8s.NewPluginManagerWithBackOff(ctx, iCtx, kpe, backOffController, monitorIndex)
 				},
 				IsDefault:           kpe.IsDefault,
-				DefaultForTaskTypes: pluginConfig.DefaultPluginTasks,
+				DefaultForTaskTypes: pluginConfig.DefaultForTaskTypes,
 			})
 		}
 	}
