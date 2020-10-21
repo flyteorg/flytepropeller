@@ -30,14 +30,14 @@ tasks:
   task-plugins:
     enabled-plugins:
       - container:
-          - "default-for-task-types":
-              - "container"
+          default-for-task-types:
+            - "container"
       - K8S-ARRAY:
-          - "default-for-task-types":
-              - "K8S-ARRAY"
+          default-for-task-types:
+            - "K8S-ARRAY"
       - qubole-hive-executor:
-          - "default-for-task-types":
-              - "qubole-hive-executor"
+          default-for-task-types:
+            - "qubole-hive-executor"
 # Uncomment to enable sagemaker plugin
 #      - sagemaker_training
 #      - sagemaker_hyperparameter_tuning
