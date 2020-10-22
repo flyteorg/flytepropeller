@@ -49,7 +49,8 @@ type PluginConfig struct {
 }
 
 type TaskPluginConfig struct {
-	EnabledPlugins []string                `json:"enabled-plugins" pflag:",Plugins enabled currently"`
+	// DEPRECATED. Use PluginConfigs instead.
+	EnabledPlugins []string                `json:"enabled-plugins" pflag:",deprecated"`
 	PluginConfigs  map[string]PluginConfig `json:"plugins-config" pflag:"-,"`
 }
 
