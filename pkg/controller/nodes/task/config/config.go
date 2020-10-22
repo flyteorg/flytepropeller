@@ -13,7 +13,7 @@ const SectionKey = "tasks"
 
 var (
 	defaultConfig = &Config{
-		TaskPlugins:            TaskPluginConfig{EnabledPlugins: map[string]PluginConfig{}},
+		TaskPlugins:            TaskPluginConfig{PluginConfigs: map[string]PluginConfig{}},
 		MaxPluginPhaseVersions: 100000,
 		BarrierConfig: BarrierConfig{
 			Enabled:   true,
@@ -49,7 +49,8 @@ type PluginConfig struct {
 }
 
 type TaskPluginConfig struct {
-	EnabledPlugins map[string]PluginConfig `json:"enabled-plugins" pflag:"-,"`
+	EnabledPlugins []string                `json:"enabled-plugins" pflag:",Plugins enabled currently"`
+	PluginConfigs  map[string]PluginConfig `json:"plugins-config" pflag:"-,"`
 }
 
 type BackOffConfig struct {
@@ -65,7 +66,7 @@ func cleanString(source string) string {
 
 func (p TaskPluginConfig) GetEnabledPlugins() map[string]PluginConfig {
 	enabledPlugins := make(map[string]PluginConfig)
-	for pluginName, info := range p.EnabledPlugins {
+	for pluginName, info := range p.PluginConfigs {
 		cleanedDefaultTasks := make([]string, 0, len(info.DefaultForTaskTypes))
 		for _, taskName := range info.DefaultForTaskTypes {
 			cleanedDefaultTasks = append(cleanedDefaultTasks, cleanString(taskName))

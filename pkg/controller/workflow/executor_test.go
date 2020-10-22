@@ -155,7 +155,6 @@ func createHappyPathTaskExecutor(t assert.TestingT, enableAsserts bool) pluginCo
 		RegisteredTaskTypes: []string{"7"},
 		LoadPlugin:          f,
 		IsDefault:           true,
-		DefaultForTaskTypes: []string{"7"},
 	}
 }
 
@@ -185,7 +184,6 @@ func createFailingTaskExecutor(t assert.TestingT) pluginCore.PluginEntry {
 		RegisteredTaskTypes: []string{"7"},
 		LoadPlugin:          f,
 		IsDefault:           true,
-		DefaultForTaskTypes: []string{"7"},
 	}
 }
 
@@ -215,7 +213,6 @@ func createTaskExecutorErrorInCheck(t assert.TestingT) pluginCore.PluginEntry {
 		RegisteredTaskTypes: []string{"7"},
 		LoadPlugin:          f,
 		IsDefault:           true,
-		DefaultForTaskTypes: []string{"7"},
 	}
 }
 

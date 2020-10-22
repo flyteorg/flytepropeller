@@ -99,6 +99,28 @@ func TestConfig_SetFlags(t *testing.T) {
 	cmdFlags := actual.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 
+	t.Run("Test_task-plugins.enabled-plugins", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vStringSlice, err := cmdFlags.GetStringSlice("task-plugins.enabled-plugins"); err == nil {
+				assert.Equal(t, []string([]string{}), vStringSlice)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := join_Config("1,1", ",")
+
+			cmdFlags.Set("task-plugins.enabled-plugins", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("task-plugins.enabled-plugins"); err == nil {
+				testDecodeSlice_Config(t, join_Config(vStringSlice, ","), &actual.TaskPlugins.EnabledPlugins)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 	t.Run("Test_max-plugin-phase-versions", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly

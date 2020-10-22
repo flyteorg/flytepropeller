@@ -151,11 +151,11 @@ func Test_task_Setup(t *testing.T) {
 		defaultPluginID string
 	}
 	tests := []struct {
-		name                 string
-		registry             PluginRegistryIface
-		enabledPluginsConfig map[string]config.PluginConfig
-		fields               wantFields
-		wantErr              bool
+		name          string
+		registry      PluginRegistryIface
+		pluginsConfig map[string]config.PluginConfig
+		fields        wantFields
+		wantErr       bool
 	}{
 		{"no-plugins", testPluginRegistry{}, map[string]config.PluginConfig{}, wantFields{}, false},
 		{"no-default-only-core", testPluginRegistry{
@@ -219,7 +219,7 @@ func Test_task_Setup(t *testing.T) {
 			sCtx.On("MetricsScope").Return(promutils.NewTestScope())
 
 			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
-			tk.cfg.TaskPlugins.EnabledPlugins = tt.enabledPluginsConfig
+			tk.cfg.TaskPlugins.PluginConfigs = tt.pluginsConfig
 			assert.NoError(t, err)
 			tk.pluginRegistry = tt.registry
 			if err := tk.Setup(context.TODO(), sCtx); err != nil {

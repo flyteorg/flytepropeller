@@ -28,7 +28,7 @@ propeller:
     policy: "ResourceVersionCache"
 tasks:
   task-plugins:
-    enabled-plugins:
+    plugins-config:
       - container:
           default-for-task-types:
             - "container"
