@@ -215,8 +215,6 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		if err != nil {
 			return regErrors.Wrapf(err, "failed to load plugin - %s", p.ID)
 		}
-		println(fmt.Sprintf("for plugin [%s], registered task types: [%+v] and default task types [%+v]",
-			p.ID, p.RegisteredTaskTypes, p.DefaultForTaskTypes))
 		for _, tt := range p.RegisteredTaskTypes {
 			for _, defaultTaskType := range p.DefaultForTaskTypes {
 				if defaultTaskType == tt {
