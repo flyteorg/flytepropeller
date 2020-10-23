@@ -28,16 +28,13 @@ propeller:
     policy: "ResourceVersionCache"
 tasks:
   task-plugins:
-    plugins-config:
-      - container:
-          default-for-task-types:
-            - "container"
-      - K8S-ARRAY:
-          default-for-task-types:
-            - "K8S-ARRAY"
-      - qubole-hive-executor:
-          default-for-task-types:
-            - "qubole-hive-executor"
+    enabled-plugins:
+      - container
+      - K8S-ARRAY
+      - qubole-hive-executor
+    default-for-task-type:
+      - container-array: k8s-array
+      - presto: my-presto
 # Uncomment to enable sagemaker plugin
 #      - sagemaker_training
 #      - sagemaker_hyperparameter_tuning

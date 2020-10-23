@@ -151,59 +151,60 @@ func Test_task_Setup(t *testing.T) {
 		defaultPluginID string
 	}
 	tests := []struct {
-		name          string
-		registry      PluginRegistryIface
-		pluginsConfig map[string]config.PluginConfig
-		fields        wantFields
-		wantErr       bool
+		name                string
+		registry            PluginRegistryIface
+		enabledPlugins      []string
+		defaultForTaskTypes map[string]string
+		fields              wantFields
+		wantErr             bool
 	}{
-		{"no-plugins", testPluginRegistry{}, map[string]config.PluginConfig{}, wantFields{}, false},
+		{"no-plugins", testPluginRegistry{}, []string{}, map[string]string{}, wantFields{}, false},
 		{"no-default-only-core", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry}, k8s: []pluginK8s.PluginEntry{},
-		}, map[string]config.PluginConfig{
-			corePluginType: {DefaultForTaskTypes: []string{corePluginType}},
-		}, wantFields{
-			pluginIDs: map[pluginCore.TaskType]string{corePluginType: corePluginType},
-		}, false},
+		}, []string{corePluginType}, map[string]string{
+			corePluginType: corePluginType},
+			wantFields{
+				pluginIDs: map[pluginCore.TaskType]string{corePluginType: corePluginType},
+			}, false},
 		{"no-default-only-k8s", testPluginRegistry{
 			core: []pluginCore.PluginEntry{}, k8s: []pluginK8s.PluginEntry{k8sPluginEntry},
-		}, map[string]config.PluginConfig{
-			k8sPluginType: {DefaultForTaskTypes: []string{k8sPluginType}},
-		}, wantFields{
-			pluginIDs: map[pluginCore.TaskType]string{k8sPluginType: k8sPluginType},
-		}, false},
-		{"no-default", testPluginRegistry{}, map[string]config.PluginConfig{
-			corePluginType: {DefaultForTaskTypes: []string{corePluginType}},
-			k8sPluginType:  {DefaultForTaskTypes: []string{k8sPluginType}},
+		}, []string{k8sPluginType}, map[string]string{
+			k8sPluginType: k8sPluginType},
+			wantFields{
+				pluginIDs: map[pluginCore.TaskType]string{k8sPluginType: k8sPluginType},
+			}, false},
+		{"no-default", testPluginRegistry{}, []string{corePluginType, k8sPluginType}, map[string]string{
+			corePluginType: corePluginType,
+			k8sPluginType:  k8sPluginType,
 		}, wantFields{
 			pluginIDs: map[pluginCore.TaskType]string{},
 		}, false},
 		{"only-default-core", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry, corePluginEntryDefault}, k8s: []pluginK8s.PluginEntry{k8sPluginEntry},
-		}, map[string]config.PluginConfig{
-			corePluginType:        {DefaultForTaskTypes: []string{corePluginType}},
-			corePluginDefaultType: {DefaultForTaskTypes: []string{corePluginDefaultType}},
-			k8sPluginType:         {DefaultForTaskTypes: []string{k8sPluginType}},
+		}, []string{corePluginType, corePluginDefaultType, k8sPluginType}, map[string]string{
+			corePluginType:        corePluginType,
+			corePluginDefaultType: corePluginDefaultType,
+			k8sPluginType:         k8sPluginType,
 		}, wantFields{
 			pluginIDs:       map[pluginCore.TaskType]string{corePluginType: corePluginType, corePluginDefaultType: corePluginDefaultType, k8sPluginType: k8sPluginType},
 			defaultPluginID: corePluginDefaultType,
 		}, false},
 		{"only-default-k8s", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry}, k8s: []pluginK8s.PluginEntry{k8sPluginEntryDefault},
-		}, map[string]config.PluginConfig{
-			corePluginType:       {DefaultForTaskTypes: []string{corePluginType}},
-			k8sPluginDefaultType: {DefaultForTaskTypes: []string{k8sPluginDefaultType}},
+		}, []string{corePluginType, k8sPluginDefaultType}, map[string]string{
+			corePluginType:       corePluginType,
+			k8sPluginDefaultType: k8sPluginDefaultType,
 		}, wantFields{
 			pluginIDs:       map[pluginCore.TaskType]string{corePluginType: corePluginType, k8sPluginDefaultType: k8sPluginDefaultType},
 			defaultPluginID: k8sPluginDefaultType,
 		}, false},
 		{"default-both", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry, corePluginEntryDefault}, k8s: []pluginK8s.PluginEntry{k8sPluginEntry, k8sPluginEntryDefault},
-		}, map[string]config.PluginConfig{
-			corePluginType:        {DefaultForTaskTypes: []string{corePluginType}},
-			corePluginDefaultType: {DefaultForTaskTypes: []string{corePluginDefaultType}},
-			k8sPluginType:         {DefaultForTaskTypes: []string{k8sPluginType}},
-			k8sPluginDefaultType:  {DefaultForTaskTypes: []string{k8sPluginDefaultType}},
+		}, []string{corePluginType, corePluginDefaultType, k8sPluginType, k8sPluginDefaultType}, map[string]string{
+			corePluginType:        corePluginType,
+			corePluginDefaultType: corePluginDefaultType,
+			k8sPluginType:         k8sPluginType,
+			k8sPluginDefaultType:  k8sPluginDefaultType,
 		}, wantFields{
 			pluginIDs:       map[pluginCore.TaskType]string{corePluginType: corePluginType, corePluginDefaultType: corePluginDefaultType, k8sPluginType: k8sPluginType, k8sPluginDefaultType: k8sPluginDefaultType},
 			defaultPluginID: corePluginDefaultType,
@@ -219,7 +220,8 @@ func Test_task_Setup(t *testing.T) {
 			sCtx.On("MetricsScope").Return(promutils.NewTestScope())
 
 			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
-			tk.cfg.TaskPlugins.PluginConfigs = tt.pluginsConfig
+			tk.cfg.TaskPlugins.EnabledPlugins = tt.enabledPlugins
+			tk.cfg.TaskPlugins.DefaultForTaskTypes = tt.defaultForTaskTypes
 			assert.NoError(t, err)
 			tk.pluginRegistry = tt.registry
 			if err := tk.Setup(context.TODO(), sCtx); err != nil {

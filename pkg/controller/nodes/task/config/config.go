@@ -13,7 +13,7 @@ const SectionKey = "tasks"
 
 var (
 	defaultConfig = &Config{
-		TaskPlugins:            TaskPluginConfig{PluginConfigs: map[string]PluginConfig{}},
+		TaskPlugins:            TaskPluginConfig{EnabledPlugins: []string{}, DefaultForTaskTypes: map[string]string{}},
 		MaxPluginPhaseVersions: 100000,
 		BarrierConfig: BarrierConfig{
 			Enabled:   true,
@@ -44,19 +44,19 @@ type BarrierConfig struct {
 	CacheTTL  config.Duration `json:"cache-ttl" pflag:", Max duration that a barrier would be respected if the process is not restarted. This should account for time required to store the record into persistent storage (across multiple rounds."`
 }
 
-type PluginConfig struct {
-	DefaultForTaskTypes []string `json:"default-for-task-types" pflag:",Task types for which this plugin is the default handler."`
-}
-
 type TaskPluginConfig struct {
-	// DEPRECATED. Use PluginConfigs instead.
-	EnabledPlugins []string                `json:"enabled-plugins" pflag:",deprecated"`
-	PluginConfigs  map[string]PluginConfig `json:"plugins-config" pflag:"-,"`
+	EnabledPlugins []string `json:"enabled-plugins" pflag:",deprecated"`
+	// Maps task types to their plugin handler (by ID).
+	DefaultForTaskTypes map[string]string `json:"default-for-task-types" pflag:"-,"`
 }
 
 type BackOffConfig struct {
 	BaseSecond  int             `json:"base-second" pflag:",The number of seconds representing the base duration of the exponential backoff"`
 	MaxDuration config.Duration `json:"max-duration" pflag:",The cap of the backoff duration"`
+}
+
+type PluginConfig struct {
+	DefaultForTaskTypes []string
 }
 
 func cleanString(source string) string {
@@ -67,10 +67,12 @@ func cleanString(source string) string {
 
 func (p TaskPluginConfig) GetEnabledPlugins() map[string]PluginConfig {
 	enabledPlugins := make(map[string]PluginConfig)
-	for pluginName, info := range p.PluginConfigs {
-		cleanedDefaultTasks := make([]string, 0, len(info.DefaultForTaskTypes))
-		for _, taskName := range info.DefaultForTaskTypes {
-			cleanedDefaultTasks = append(cleanedDefaultTasks, cleanString(taskName))
+	for _, pluginName := range p.EnabledPlugins {
+		cleanedDefaultTasks := make([]string, 0)
+		for taskName, taskPluginName := range p.DefaultForTaskTypes {
+			if taskPluginName == pluginName {
+				cleanedDefaultTasks = append(cleanedDefaultTasks, cleanString(taskName))
+			}
 		}
 		cleanedPluginName := cleanString(pluginName)
 		enabledPlugins[cleanedPluginName] = PluginConfig{

@@ -220,8 +220,8 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		for _, tt := range p.RegisteredTaskTypes {
 			for _, defaultTaskType := range p.DefaultForTaskTypes {
 				if defaultTaskType == tt {
-					if existingHandler, alreadyDefaulted := t.defaultPlugins[tt]; alreadyDefaulted {
-						logger.Warnf(ctx, "TaskType [%s] has multiple default handlers specified: [%s] and [%s]",
+					if existingHandler, alreadyDefaulted := t.defaultPlugins[tt]; alreadyDefaulted && existingHandler.GetID() != cp.GetID() {
+						logger.Panicf(ctx, "TaskType [%s] has multiple default handlers specified: [%s] and [%s]",
 							tt, existingHandler.GetID(), cp.GetID())
 					}
 					logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cp.GetID(), tt)
