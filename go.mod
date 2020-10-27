@@ -25,7 +25,7 @@ require (
 	github.com/lyft/flyteidl v0.18.9
 	github.com/lyft/flyteplugins v0.5.15-0.20201027073144-63f1120b94af
 	github.com/lyft/flytestdlib v0.3.9
-	github.com/lyft/spark-on-k8s-operator v0.1.4-0.20201027003055-c76b67e3b6d0 // indirect
+	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.0.0-20200210170106-c8ae9e352035
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
