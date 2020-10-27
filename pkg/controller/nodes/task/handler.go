@@ -204,6 +204,10 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		return err
 	}
 
+	// Not every task type will have a default plugin specified in the flytepropeller config.
+	// That's fine, we resort to using the plugins' static RegisteredTaskTypes as a fallback.
+	fallbackTaskHandlerMap := make(map[string]map[string]pluginCore.Plugin)
+
 	for _, p := range enabledPlugins {
 		// create a new resource registrar proxy for each plugin, and pass it into the plugin's LoadPlugin() via a setup context
 		pluginResourceNamespacePrefix := pluginCore.ResourceNamespace(newResourceManagerBuilder.GetID()).CreateSubNamespace(pluginCore.ResourceNamespace(p.ID))
@@ -233,11 +237,31 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 			}
 			pluginsForTaskType[cp.GetID()] = cp
 			t.pluginsForType[tt] = pluginsForTaskType
+
+			fallbackMap, ok := fallbackTaskHandlerMap[tt]
+			if !ok {
+				fallbackMap = make(map[string]pluginCore.Plugin)
+			}
+			fallbackMap[cp.GetID()] = cp
+			fallbackTaskHandlerMap[tt] = fallbackMap
 		}
 		if p.IsDefault {
 			if err := t.setDefault(ctx, cp); err != nil {
 				return err
 			}
+		}
+	}
+
+	// Read from the fallback task handler map for any remaining tasks without a defaultPlugins registered handler.
+	for taskType, registeredPlugins := range fallbackTaskHandlerMap {
+		if _, ok := t.defaultPlugins[taskType]; ok {
+			break
+		}
+		if len(registeredPlugins) != 1 {
+			logger.Panicf(ctx, "Multiple plugins registered to handle task type: %s. ([%+v])", taskType, registeredPlugins)
+		}
+		for _, plugin := range registeredPlugins {
+			t.defaultPlugins[taskType] = plugin
 		}
 	}
 
