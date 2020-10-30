@@ -71,7 +71,12 @@ func (p TaskPluginConfig) GetEnabledPlugins() map[string]PluginConfig {
 	// Reverse the map. Having the config use task type as a key guarantees only one default plugin can be specified per
 	// task type but now we need to sort for which tasks a plugin needs to be the default.
 	for taskName, pluginName := range p.DefaultForTaskTypes {
-		pluginDefaultForTaskType[pluginName] = append(pluginDefaultForTaskType[pluginName], cleanString(taskName))
+                existing, found := pluginDefaultForTaskType[pluginName]
+                if !found {
+                    existing = make([]string, 0, 1)
+                 }
+                  
+		pluginDefaultForTaskType[pluginName] = append(existing, cleanString(taskName))
 	}
 	for _, pluginName := range p.EnabledPlugins {
 		cleanedPluginName := cleanString(pluginName)
