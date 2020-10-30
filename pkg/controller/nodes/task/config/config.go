@@ -70,7 +70,9 @@ func cleanString(source string) string {
 	return cleaned
 }
 
-func (p TaskPluginConfig) GetEnabledPlugins() (map[string]PluginConfig, error) {
+type PluginID = string
+type TaskType = string
+func (p TaskPluginConfig) GetEnabledPlugins() (map[PluginID]PluginConfig, error) {
 	enabledPlugins := make(map[string]PluginConfig)
 	pluginDefaultForTaskType := map[string][]string{}
 	// Reverse the DefaultForTaskTypes map. Having the config use task type as a key guarantees only one default plugin can be specified per
