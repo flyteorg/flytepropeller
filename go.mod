@@ -7,6 +7,7 @@ require (
 	github.com/Azure/azure-sdk-for-go v40.3.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.10.0 // indirect
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295
+	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.0.0-20200210170106-c8ae9e352035
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/coreos/etcd v3.3.15+incompatible // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
@@ -23,9 +24,8 @@ require (
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/lyft/datacatalog v0.2.1
 	github.com/lyft/flyteidl v0.18.9
-	github.com/lyft/flyteplugins v0.5.15-0.20201027073144-63f1120b94af
+	github.com/lyft/flyteplugins v0.5.16
 	github.com/lyft/flytestdlib v0.3.9
-	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.0.0-20200210170106-c8ae9e352035
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
