@@ -60,8 +60,14 @@ type BackOffConfig struct {
 	MaxDuration config.Duration `json:"max-duration" pflag:",The cap of the backoff duration"`
 }
 
-type PluginConfig struct {
-	DefaultForTaskTypes []string
+type PluginID = string
+type TaskType = string
+
+// Contains the set of enabled plugins for this flytepropeller deployment along with default plugin handlers
+// for specific task types.
+type PluginsConfigMeta struct {
+	EnabledPlugins         sets.String
+	AllDefaultForTaskTypes map[PluginID][]TaskType
 }
 
 func cleanString(source string) string {
@@ -70,11 +76,14 @@ func cleanString(source string) string {
 	return cleaned
 }
 
-type PluginID = string
-type TaskType = string
-func (p TaskPluginConfig) GetEnabledPlugins() (map[PluginID]PluginConfig, error) {
-	enabledPlugins := make(map[string]PluginConfig)
-	pluginDefaultForTaskType := map[string][]string{}
+func (p TaskPluginConfig) GetEnabledPlugins() (PluginsConfigMeta, error) {
+	enabledPluginsNames := sets.NewString()
+	for _, pluginName := range p.EnabledPlugins {
+		cleanedPluginName := cleanString(pluginName)
+		enabledPluginsNames.Insert(cleanedPluginName)
+	}
+
+	pluginDefaultForTaskType := make(map[PluginID][]TaskType)
 	// Reverse the DefaultForTaskTypes map. Having the config use task type as a key guarantees only one default plugin can be specified per
 	// task type but now we need to sort for which tasks a plugin needs to be the default.
 	for taskName, pluginName := range p.DefaultForTaskTypes {
@@ -85,18 +94,12 @@ func (p TaskPluginConfig) GetEnabledPlugins() (map[PluginID]PluginConfig, error)
 		pluginDefaultForTaskType[cleanString(pluginName)] = append(existing, cleanString(taskName))
 	}
 
-	enabledPluginsNames := sets.NewString()
-	for _, pluginName := range p.EnabledPlugins {
-		cleanedPluginName := cleanString(pluginName)
-		enabledPlugins[cleanedPluginName] = PluginConfig{
-			DefaultForTaskTypes: pluginDefaultForTaskType[pluginName],
-		}
-		enabledPluginsNames.Insert(cleanedPluginName)
-	}
-
 	// All plugins are enabled, nothing further to validate here.
-	if len(enabledPlugins) == 0 {
-		return enabledPlugins, nil
+	if enabledPluginsNames.Len() == 0 {
+		return PluginsConfigMeta{
+			EnabledPlugins:         enabledPluginsNames,
+			AllDefaultForTaskTypes: pluginDefaultForTaskType,
+		}, nil
 	}
 
 	// Finally, validate that default plugins for task types only reference enabled plugins
@@ -104,11 +107,14 @@ func (p TaskPluginConfig) GetEnabledPlugins() (map[PluginID]PluginConfig, error)
 		if !enabledPluginsNames.Has(pluginName) {
 			logger.Errorf(context.TODO(), "Cannot set default plugin [%s] for task types [%+v] when it is not "+
 				"configured to be an enabled plugin. Please double check the flytepropeller config.", pluginName, taskTypes)
-			return nil, fmt.Errorf("cannot set default plugin [%s] for task types [%+v] when it is not "+
+			return PluginsConfigMeta{}, fmt.Errorf("cannot set default plugin [%s] for task types [%+v] when it is not "+
 				"configured to be an enabled plugin", pluginName, taskTypes)
 		}
 	}
-	return enabledPlugins, nil
+	return PluginsConfigMeta{
+		EnabledPlugins:         enabledPluginsNames,
+		AllDefaultForTaskTypes: pluginDefaultForTaskType,
+	}, nil
 }
 
 func GetConfig() *Config {

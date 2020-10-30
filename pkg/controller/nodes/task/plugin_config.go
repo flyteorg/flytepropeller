@@ -15,29 +15,28 @@ import (
 
 func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPluginConfig, pr PluginRegistryIface) ([]core.PluginEntry, error) {
 	allPluginsEnabled := false
-	enabledPlugins := make(map[string]config.PluginConfig)
+	pluginsConfigMeta := config.PluginsConfigMeta{}
 	var err error
 	if cfg != nil {
-		enabledPlugins, err = cfg.GetEnabledPlugins()
+		pluginsConfigMeta, err = cfg.GetEnabledPlugins()
 		if err != nil {
 			return nil, err
 		}
 	}
-	if len(enabledPlugins) == 0 {
+	if pluginsConfigMeta.EnabledPlugins.Len() == 0 {
 		allPluginsEnabled = true
 	}
 
 	var finalizedPlugins []core.PluginEntry
-	logger.Infof(ctx, "Enabled plugins: %+v", enabledPlugins)
+	logger.Infof(ctx, "Enabled plugins: %v", pluginsConfigMeta.EnabledPlugins.List())
 	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all plugins enabled: %v]", allPluginsEnabled)
 	for _, cpe := range pr.GetCorePlugins() {
 		id := strings.ToLower(cpe.ID)
-		pluginCfg, pluginEnabled := enabledPlugins[id]
-		if !allPluginsEnabled && !pluginEnabled {
+		if !allPluginsEnabled && !pluginsConfigMeta.EnabledPlugins.Has(id) {
 			logger.Infof(ctx, "Plugin [%s] is DISABLED (not found in enabled plugins list).", id)
 		} else {
 			logger.Infof(ctx, "Plugin [%s] ENABLED", id)
-			cpe.DefaultForTaskTypes = pluginCfg.DefaultForTaskTypes
+			cpe.DefaultForTaskTypes = pluginsConfigMeta.AllDefaultForTaskTypes[id]
 			finalizedPlugins = append(finalizedPlugins, cpe)
 		}
 	}
@@ -52,8 +51,7 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 	for i := range k8sPlugins {
 		kpe := k8sPlugins[i]
 		id := strings.ToLower(kpe.ID)
-		pluginConfig, pluginEnabled := enabledPlugins[id]
-		if !allPluginsEnabled && !pluginEnabled {
+		if !allPluginsEnabled && !pluginsConfigMeta.EnabledPlugins.Has(id) {
 			logger.Infof(ctx, "K8s Plugin [%s] is DISABLED (not found in enabled plugins list).", id)
 		} else {
 			logger.Infof(ctx, "K8s Plugin [%s] is ENABLED.", id)
@@ -64,7 +62,7 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 					return k8s.NewPluginManagerWithBackOff(ctx, iCtx, kpe, backOffController, monitorIndex)
 				},
 				IsDefault:           kpe.IsDefault,
-				DefaultForTaskTypes: pluginConfig.DefaultForTaskTypes,
+				DefaultForTaskTypes: pluginsConfigMeta.AllDefaultForTaskTypes[id],
 			}
 			finalizedPlugins = append(finalizedPlugins, plugin)
 		}
