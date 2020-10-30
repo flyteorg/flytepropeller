@@ -1,8 +1,13 @@
 package config
 
 import (
+	"context"
+	"fmt"
 	"strings"
 	"time"
+
+	"github.com/lyft/flytestdlib/logger"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/lyft/flytestdlib/config"
 )
@@ -65,26 +70,43 @@ func cleanString(source string) string {
 	return cleaned
 }
 
-func (p TaskPluginConfig) GetEnabledPlugins() map[string]PluginConfig {
+func (p TaskPluginConfig) GetEnabledPlugins() (map[string]PluginConfig, error) {
 	enabledPlugins := make(map[string]PluginConfig)
 	pluginDefaultForTaskType := map[string][]string{}
-	// Reverse the map. Having the config use task type as a key guarantees only one default plugin can be specified per
+	// Reverse the DefaultForTaskTypes map. Having the config use task type as a key guarantees only one default plugin can be specified per
 	// task type but now we need to sort for which tasks a plugin needs to be the default.
 	for taskName, pluginName := range p.DefaultForTaskTypes {
-                existing, found := pluginDefaultForTaskType[pluginName]
-                if !found {
-                    existing = make([]string, 0, 1)
-                 }
-                  
-		pluginDefaultForTaskType[pluginName] = append(existing, cleanString(taskName))
+		existing, found := pluginDefaultForTaskType[pluginName]
+		if !found {
+			existing = make([]string, 0, 1)
+		}
+		pluginDefaultForTaskType[cleanString(pluginName)] = append(existing, cleanString(taskName))
 	}
+
+	enabledPluginsNames := sets.NewString()
 	for _, pluginName := range p.EnabledPlugins {
 		cleanedPluginName := cleanString(pluginName)
 		enabledPlugins[cleanedPluginName] = PluginConfig{
 			DefaultForTaskTypes: pluginDefaultForTaskType[pluginName],
 		}
+		enabledPluginsNames.Insert(cleanedPluginName)
 	}
-	return enabledPlugins
+
+	// All plugins are enabled, nothing further to validate here.
+	if len(enabledPlugins) == 0 {
+		return enabledPlugins, nil
+	}
+
+	// Finally, validate that default plugins for task types only reference enabled plugins
+	for pluginName, taskTypes := range pluginDefaultForTaskType {
+		if !enabledPluginsNames.Has(pluginName) {
+			logger.Errorf(context.TODO(), "Cannot set default plugin [%s] for task types [%+v] when it is not "+
+				"configured to be an enabled plugin. Please double check the flytepropeller config.", pluginName, taskTypes)
+			return nil, fmt.Errorf("cannot set default plugin [%s] for task types [%+v] when it is not "+
+				"configured to be an enabled plugin", pluginName, taskTypes)
+		}
+	}
+	return enabledPlugins, nil
 }
 
 func GetConfig() *Config {

@@ -205,7 +205,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	}
 
 	// Not every task type will have a default plugin specified in the flytepropeller config.
-	// That's fine, we resort to using the plugins' static RegisteredTaskTypes as a fallback.
+	// That's fine, we resort to using the plugins' static RegisteredTaskTypes as a fallback further below.
 	fallbackTaskHandlerMap := make(map[string]map[string]pluginCore.Plugin)
 
 	for _, p := range enabledPlugins {
@@ -214,17 +214,20 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		sCtxFinal := newNameSpacedSetupCtx(
 			tSCtx, newResourceManagerBuilder.GetResourceRegistrar(pluginResourceNamespacePrefix))
 		logger.Infof(ctx, "Loading Plugin [%s] ENABLED", p.ID)
-		// cp, err := p.LoadPlugin(ctx, tSCtx)
 		cp, err := p.LoadPlugin(ctx, sCtxFinal)
 		if err != nil {
 			return regErrors.Wrapf(err, "failed to load plugin - %s", p.ID)
 		}
+		// For every default plugin for a task type specified in flytepropeller config we validate that the plugin's
+		// static definition includes that task type as something it is registered to handle.
 		for _, tt := range p.RegisteredTaskTypes {
 			for _, defaultTaskType := range p.DefaultForTaskTypes {
 				if defaultTaskType == tt {
 					if existingHandler, alreadyDefaulted := t.defaultPlugins[tt]; alreadyDefaulted && existingHandler.GetID() != cp.GetID() {
-						logger.Panicf(ctx, "TaskType [%s] has multiple default handlers specified: [%s] and [%s]",
+						logger.Errorf(ctx, "TaskType [%s] has multiple default handlers specified: [%s] and [%s]",
 							tt, existingHandler.GetID(), cp.GetID())
+						return regErrors.New(fmt.Sprintf("TaskType [%s] has multiple default handlers specified: [%s] and [%s]",
+							tt, existingHandler.GetID(), cp.GetID()))
 					}
 					logger.Infof(ctx, "Plugin [%s] registered for TaskType [%s]", cp.GetID(), tt)
 					t.defaultPlugins[tt] = cp
@@ -258,7 +261,8 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 			break
 		}
 		if len(registeredPlugins) != 1 {
-			logger.Panicf(ctx, "Multiple plugins registered to handle task type: %s. ([%+v])", taskType, registeredPlugins)
+			logger.Errorf(ctx, "Multiple plugins registered to handle task type: %s. ([%+v])", taskType, registeredPlugins)
+			return regErrors.New(fmt.Sprintf("Multiple plugins registered to handle task type: %s. ([%+v])", taskType, registeredPlugins))
 		}
 		for _, plugin := range registeredPlugins {
 			t.defaultPlugins[taskType] = plugin
