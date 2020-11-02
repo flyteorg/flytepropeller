@@ -15,7 +15,9 @@ import (
 
 func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPluginConfig, pr PluginRegistryIface) ([]core.PluginEntry, error) {
 	allPluginsEnabled := false
-	pluginsConfigMeta := config.PluginsConfigMeta{}
+	pluginsConfigMeta := config.PluginsConfigMeta{
+	    AllDefaultForTaskTypes: map[PluginID][]TaskType{}
+	}
 	var err error
 	if cfg != nil {
 		pluginsConfigMeta, err = cfg.GetEnabledPlugins()
