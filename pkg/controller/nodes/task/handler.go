@@ -263,7 +263,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		}
 		if len(registeredPlugins) != 1 {
 			logger.Errorf(ctx, "Multiple plugins registered to handle task type: %s. ([%+v])", taskType, registeredPlugins)
-			return regErrors.New(fmt.Sprintf("Multiple plugins registered to handle task type: %s. ([%+v])", taskType, registeredPlugins))
+			return regErrors.New(fmt.Sprintf("Multiple plugins registered to handle task type: %s. ([%+v]). Use default-for-task-type config option to choose the desired plugin.", taskType, registeredPlugins))
 		}
 		for _, plugin := range registeredPlugins {
 			t.defaultPlugins[taskType] = plugin
