@@ -101,3 +101,25 @@ jobs:
           GO111MODULE: "on"
         with:
           args: make install && make lint
+
+  goreleaser-check:
+    name: Check Goreleaser bot
+    runs-on: ubuntu-latest
+    outputs:
+      can_run: ${{ steps.getlength.outputs.commits_length == 0 || github.event.commits[0].author.name != 'EngHabu' }}
+    steps:
+      - id: getlength
+        name: Get commits length
+        env:
+          commits: ${{ toJson(github.event.commits) }}
+        run: |
+          echo "$commits"
+          LL=#(echo $commits | jq '. | length')
+          echo "::set-output name=commits_length::$LL"
+
+  test-job:
+    name: Test jobs
+    runs-on: ubuntu-latest
+    if: jobs.goreleaser-check.can_run
+    steps:
+      - run: echo "hello world"
