@@ -108,6 +108,10 @@ jobs:
     outputs:
       can_run: ${{ steps.getlength.outputs.commits_length == 0 || github.event.commits[0].author.name != 'EngHabu' }}
     steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
       - id: getlength
         name: Get commits length
         env:
