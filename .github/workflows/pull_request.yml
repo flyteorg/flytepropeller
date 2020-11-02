@@ -120,6 +120,7 @@ jobs:
   test-job:
     name: Test jobs
     runs-on: ubuntu-latest
-    if: jobs.goreleaser-check.can_run
+    needs: goreleaser-check
+    if: needs.jobs.goreleaser-check.can_run
     steps:
       - run: echo "hello world"
