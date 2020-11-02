@@ -153,6 +153,7 @@ type PluginRegistryIface interface {
 	GetK8sPlugins() []pluginK8s.PluginEntry
 }
 
+type taskType = string
 type pluginID = string
 
 type Handler struct {
@@ -206,7 +207,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 
 	// Not every task type will have a default plugin specified in the flytepropeller config.
 	// That's fine, we resort to using the plugins' static RegisteredTaskTypes as a fallback further below.
-	fallbackTaskHandlerMap := make(map[string]map[string]pluginCore.Plugin)
+	fallbackTaskHandlerMap := make(map[taskType]map[pluginID]pluginCore.Plugin)
 
 	for _, p := range enabledPlugins {
 		// create a new resource registrar proxy for each plugin, and pass it into the plugin's LoadPlugin() via a setup context
@@ -243,7 +244,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 
 			fallbackMap, ok := fallbackTaskHandlerMap[tt]
 			if !ok {
-				fallbackMap = make(map[string]pluginCore.Plugin)
+				fallbackMap = make(map[pluginID]pluginCore.Plugin)
 			}
 			fallbackMap[cp.GetID()] = cp
 			fallbackTaskHandlerMap[tt] = fallbackMap

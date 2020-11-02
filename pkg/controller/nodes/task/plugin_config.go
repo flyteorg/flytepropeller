@@ -36,7 +36,9 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 			logger.Infof(ctx, "Plugin [%s] is DISABLED (not found in enabled plugins list).", id)
 		} else {
 			logger.Infof(ctx, "Plugin [%s] ENABLED", id)
-			cpe.DefaultForTaskTypes = pluginsConfigMeta.AllDefaultForTaskTypes[id]
+			if defaults, ok := pluginsConfigMeta.AllDefaultForTaskTypes[id]; ok {
+				cpe.DefaultForTaskTypes = defaults
+			}
 			finalizedPlugins = append(finalizedPlugins, cpe)
 		}
 	}
