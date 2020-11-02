@@ -114,7 +114,7 @@ jobs:
           commits: ${{ toJson(github.event.commits) }}
         run: |
           echo "$commits"
-          LL=#(echo $commits | jq '. | length')
+          LL=$(echo $commits | jq '. | length')
           echo "::set-output name=commits_length::$LL"
 
   test-job:
