@@ -29,6 +29,31 @@ jobs:
       - name: Tag and cache docker image
         run: mkdir -p /tmp/tmp/docker-images && docker save lyft/${{ github.event.repository.name }}:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save lyft/${{ github.event.repository.name }}:latest -o /tmp/tmp/docker-images/snapshot.tar
 
+      - name: Log into registry
+        run: docker login ghcr.io -u ${{ github.actor }} --password "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Push image
+        run: |
+          IMAGE_ID=ghcr.io/${{ github.repository }}/${{ github.event.repository.name }}
+
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Strip "v" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+
+          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION
+
   endtoend:
     name: End to End tests
     runs-on: ubuntu-latest
