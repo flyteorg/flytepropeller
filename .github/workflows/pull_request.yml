@@ -8,6 +8,9 @@ jobs:
     name: Build Docker Image
     runs-on: ubuntu-latest
     steps:
+      - name: Log into registry
+        run: echo "${{ secrets.PUBLISH_CONTAINER }}" | docker login https://ghcr.io -u EngHabu --password-stdin
+
       - name: Checkout
         uses: actions/checkout@v2
       - id: load-docker-cache
@@ -28,9 +31,6 @@ jobs:
 
       - name: Tag and cache docker image
         run: mkdir -p /tmp/tmp/docker-images && docker save lyft/${{ github.event.repository.name }}:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save lyft/${{ github.event.repository.name }}:latest -o /tmp/tmp/docker-images/snapshot.tar
-
-      - name: Log into registry
-        run: echo "${{ secrets.PUBLISH_CONTAINER }}" | docker login https://ghcr.io -u EngHabu --password-stdin
 
       - name: Push image
         run: |
