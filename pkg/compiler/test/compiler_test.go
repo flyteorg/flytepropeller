@@ -120,8 +120,24 @@ func TestBranches(t *testing.T) {
 			assert.NoError(t, err)
 
 			t.Log("Compiling Workflow")
-			_, err = compiler.CompileWorkflow(wf.Workflow, []*core.WorkflowTemplate{}, mustCompileTasks(t, wf.Tasks),
+			compiledTasks := mustCompileTasks(t, wf.Tasks)
+			compiledWfc, err := compiler.CompileWorkflow(wf.Workflow, []*core.WorkflowTemplate{}, compiledTasks,
 				[]common.InterfaceProvider{})
+			assert.NoError(t, err)
+
+			inputs := map[string]interface{}{}
+			for varName, v := range compiledWfc.Primary.Template.Interface.Inputs.Variables {
+				inputs[varName] = utils.MustMakeDefaultLiteralForType(v.Type)
+			}
+
+			_, err = k8s.BuildFlyteWorkflow(compiledWfc,
+				utils.MustMakeLiteral(inputs).GetMap(),
+				&core.WorkflowExecutionIdentifier{
+					Project: "hello",
+					Domain:  "domain",
+					Name:    "name",
+				},
+				"namespace")
 			assert.NoError(t, err)
 		})
 

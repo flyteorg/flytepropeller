@@ -53,10 +53,18 @@ func branchNodeIdFormatter(parentNodeID, thenNodeID string) string {
 	return fmt.Sprintf("%v.%v", parentNodeID, thenNodeID)
 }
 
-func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType bool, errs errors.CompileErrors) bool {
+type edgeInfo struct {
+	from string
+	to   string
+}
+
+func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType bool, errs errors.CompileErrors) (
+	discoveredNodes []c.NodeBuilder, additionalEdges []edgeInfo, ok bool) {
 	cases := make([]*flyte.IfBlock, 0, len(n.GetBranchNode().IfElse.Other)+1)
 	cases = append(cases, n.GetBranchNode().IfElse.Case)
 	cases = append(cases, n.GetBranchNode().IfElse.Other...)
+	discoveredNodes = make([]c.NodeBuilder, 0, len(cases))
+	additionalEdges = make([]edgeInfo, 0, len(cases))
 	for _, block := range cases {
 		// Validate condition
 		ValidateBooleanExpression(n, block.Condition, requireParamType, errs.NewScope())
@@ -68,8 +76,11 @@ func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType b
 			wrapperNode.SetID(branchNodeIdFormatter(n.GetId(), wrapperNode.GetId()))
 			if ValidateNode(w, wrapperNode, requireParamType, errs.NewScope()) {
 				// Add to the global nodes to be able to reference it later
-				w.AddNode(wrapperNode, errs.NewScope())
-				w.AddExecutionEdge(n.GetId(), wrapperNode.GetId())
+				discoveredNodes = append(discoveredNodes, wrapperNode)
+				additionalEdges = append(additionalEdges, edgeInfo{
+					from: n.GetId(),
+					to:   wrapperNode.GetId(),
+				})
 			}
 		}
 	}
@@ -79,12 +90,15 @@ func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType b
 		wrapperNode.SetID(branchNodeIdFormatter(n.GetId(), wrapperNode.GetId()))
 		if ValidateNode(w, wrapperNode, requireParamType, errs.NewScope()) {
 			// Add to the global nodes to be able to reference it later
-			w.AddNode(wrapperNode, errs.NewScope())
-			w.AddExecutionEdge(n.GetId(), wrapperNode.GetId())
+			discoveredNodes = append(discoveredNodes, wrapperNode)
+			additionalEdges = append(additionalEdges, edgeInfo{
+				from: n.GetId(),
+				to:   wrapperNode.GetId(),
+			})
 		}
 	}
 
-	return !errs.HasErrors()
+	return discoveredNodes, additionalEdges, !errs.HasErrors()
 }
 
 func validateNodeID(w c.WorkflowBuilder, nodeID string, errs errors.CompileErrors) (node c.NodeBuilder, ok bool) {
@@ -110,7 +124,15 @@ func ValidateNode(w c.WorkflowBuilder, n c.NodeBuilder, validateConditionTypes b
 
 	// Validate branch node conditions and inner nodes.
 	if n.GetBranchNode() != nil {
-		ValidateBranchNode(w, n, validateConditionTypes, errs.NewScope())
+		if nodes, edges, ok := ValidateBranchNode(w, n, validateConditionTypes, errs.NewScope()); ok {
+			for _, n := range nodes {
+				w.AddNode(n, errs)
+			}
+
+			for _, edge := range edges {
+				w.AddExecutionEdge(edge.from, edge.to)
+			}
+		}
 	} else if workflowN := n.GetWorkflowNode(); workflowN != nil && workflowN.GetSubWorkflowRef() != nil {
 		workflowID := *workflowN.GetSubWorkflowRef()
 		if wf, wfOk := w.GetSubWorkflow(workflowID); wfOk {
