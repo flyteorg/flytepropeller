@@ -197,18 +197,20 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 	// Because conditions in branch nodes do not carry type information with them for the variables involved (e.g.
 	// if x == y), we need to wait till all nodes have populated their interfaces before we can resolve x and y to their
 	// original types and then validate whether they are compatible for comparison.
-	for _, n := range wf.Nodes {
-		if n.GetBranchNode() != nil {
-			if inputVars, ok := v.ValidateBindings(&wf, n, n.GetInputs(), n.GetInterface().GetInputs(),
-				false /* validateParamTypes */, errs.NewScope()); ok {
-				merge, err := v.JoinVariableMapsUniqueKeys(n.GetInterface().Inputs.Variables, inputVars.Variables)
-				if err != nil {
-					errs.Collect(errors.NewWorkflowBuildError(err))
+	if !errs.HasErrors() {
+		for _, n := range wf.Nodes {
+			if n.GetBranchNode() != nil {
+				if inputVars, ok := v.ValidateBindings(&wf, n, n.GetInputs(), n.GetInterface().GetInputs(),
+					false /* validateParamTypes */, errs.NewScope()); ok {
+					merge, err := v.JoinVariableMapsUniqueKeys(n.GetInterface().Inputs.Variables, inputVars.Variables)
+					if err != nil {
+						errs.Collect(errors.NewWorkflowBuildError(err))
+					}
+
+					n.GetInterface().Inputs = &core.VariableMap{Variables: merge}
+
+					v.ValidateBranchNode(&wf, n, true /* validateConditionTypes */, errs.NewScope())
 				}
-
-				n.GetInterface().Inputs = &core.VariableMap{Variables: merge}
-
-				v.ValidateBranchNode(&wf, n, true /* validateConditionTypes */, errs.NewScope())
 			}
 		}
 	}
