@@ -50,7 +50,7 @@ func validateEffectiveOutputParameters(n c.NodeBuilder, errs errors.CompileError
 }
 
 func branchNodeIdFormatter(parentNodeID, thenNodeID string) string {
-	return fmt.Sprintf("%v.%v", parentNodeID, thenNodeID)
+	return fmt.Sprintf("%v-%v", parentNodeID, thenNodeID)
 }
 
 type edgeInfo struct {

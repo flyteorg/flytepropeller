@@ -157,7 +157,7 @@ func (in *Inputs) UnmarshalJSON(b []byte) error {
 
 func (in *Inputs) MarshalJSON() ([]byte, error) {
 	if in == nil {
-		return []byte{}, nil
+		return json.Marshal(nil)
 	}
 	var buf bytes.Buffer
 	if err := marshaler.Marshal(&buf, in.LiteralMap); err != nil {

@@ -130,7 +130,7 @@ func TestBranches(t *testing.T) {
 				inputs[varName] = utils.MustMakeDefaultLiteralForType(v.Type)
 			}
 
-			_, err = k8s.BuildFlyteWorkflow(compiledWfc,
+			flyteWf, err := k8s.BuildFlyteWorkflow(compiledWfc,
 				utils.MustMakeLiteral(inputs).GetMap(),
 				&core.WorkflowExecutionIdentifier{
 					Project: "hello",
@@ -138,7 +138,12 @@ func TestBranches(t *testing.T) {
 					Name:    "name",
 				},
 				"namespace")
-			assert.NoError(t, err)
+			if assert.NoError(t, err) {
+				raw, err := json.Marshal(flyteWf)
+				if assert.NoError(t, err) {
+					assert.NotEmpty(t, raw)
+				}
+			}
 		})
 
 		return nil
