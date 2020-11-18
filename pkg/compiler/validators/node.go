@@ -65,6 +65,7 @@ func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType b
 	cases = append(cases, n.GetBranchNode().IfElse.Other...)
 	discoveredNodes = make([]c.NodeBuilder, 0, len(cases))
 	additionalEdges = make([]edgeInfo, 0, len(cases))
+	subNodes := make([]c.NodeBuilder, 0, len(cases)+1)
 	for _, block := range cases {
 		// Validate condition
 		ValidateBooleanExpression(n, block.Condition, requireParamType, errs.NewScope())
@@ -73,21 +74,16 @@ func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType b
 			errs.Collect(errors.NewBranchNodeNotSpecified(n.GetId()))
 		} else {
 			wrapperNode := w.NewNodeBuilder(block.GetThenNode())
-			wrapperNode.SetID(branchNodeIdFormatter(n.GetId(), wrapperNode.GetId()))
-			if ValidateNode(w, wrapperNode, requireParamType, errs.NewScope()) {
-				// Add to the global nodes to be able to reference it later
-				discoveredNodes = append(discoveredNodes, wrapperNode)
-				additionalEdges = append(additionalEdges, edgeInfo{
-					from: n.GetId(),
-					to:   wrapperNode.GetId(),
-				})
-			}
+			subNodes = append(subNodes, wrapperNode)
 		}
 	}
 
 	if elseNode := n.GetBranchNode().IfElse.GetElseNode(); elseNode != nil {
 		wrapperNode := w.NewNodeBuilder(elseNode)
-		wrapperNode.SetID(branchNodeIdFormatter(n.GetId(), wrapperNode.GetId()))
+		subNodes = append(subNodes, wrapperNode)
+	}
+
+	for _, wrapperNode := range subNodes {
 		if ValidateNode(w, wrapperNode, requireParamType, errs.NewScope()) {
 			// Add to the global nodes to be able to reference it later
 			discoveredNodes = append(discoveredNodes, wrapperNode)
@@ -125,11 +121,23 @@ func ValidateNode(w c.WorkflowBuilder, n c.NodeBuilder, validateConditionTypes b
 	// Validate branch node conditions and inner nodes.
 	if n.GetBranchNode() != nil {
 		if nodes, edges, ok := ValidateBranchNode(w, n, validateConditionTypes, errs.NewScope()); ok {
-			for _, n := range nodes {
-				w.AddNode(n, errs)
+			renamedNodes := make(map[c.NodeID]c.NodeID, len(nodes))
+			for _, subNode := range nodes {
+				oldID := subNode.GetId()
+				subNode.SetID(branchNodeIdFormatter(n.GetId(), subNode.GetId()))
+				w.AddNode(subNode, errs)
+				renamedNodes[oldID] = subNode.GetId()
 			}
 
 			for _, edge := range edges {
+				if newID, found := renamedNodes[edge.from]; found {
+					edge.from = newID
+				}
+
+				if newID, found := renamedNodes[edge.to]; found {
+					edge.to = newID
+				}
+
 				w.AddExecutionEdge(edge.from, edge.to)
 			}
 		}
