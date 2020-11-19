@@ -518,7 +518,7 @@ func TestValidateUnderlyingInterface(parentT *testing.T) {
 			}}, errs)
 			assert.True(t, ifaceOk)
 			assert.False(t, errs.HasErrors())
-			assert.Equal(t, taskIface, iface)
+			assert.Equal(t, taskIface.Outputs, iface.Outputs)
 		})
 
 		branchT.Run("TwoCases", func(t *testing.T) {
@@ -547,8 +547,8 @@ func TestValidateUnderlyingInterface(parentT *testing.T) {
 					},
 				},
 			}}, errs)
-			assert.False(t, ifaceOk)
-			assert.True(t, errs.HasErrors())
+			assert.True(t, ifaceOk)
+			assert.False(t, errs.HasErrors())
 		})
 	})
 }
