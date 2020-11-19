@@ -330,7 +330,7 @@ func TestComparisonExpression_MissingLeftRight(t *testing.T) {
 	}
 
 	errs := errors.NewCompileErrors()
-	v.ValidateBooleanExpression(&nodeBuilder{flyteNode: &flyteNode{}}, bExpr, errs)
+	v.ValidateBooleanExpression(&nodeBuilder{flyteNode: &flyteNode{}}, bExpr, true, errs)
 	assert.Error(t, errs)
 	assert.Equal(t, 2, errs.ErrorCount())
 }
@@ -347,7 +347,7 @@ func TestComparisonExpression(t *testing.T) {
 	}
 
 	errs := errors.NewCompileErrors()
-	v.ValidateBooleanExpression(&nodeBuilder{flyteNode: &flyteNode{}}, bExpr, errs)
+	v.ValidateBooleanExpression(&nodeBuilder{flyteNode: &flyteNode{}}, bExpr, true, errs)
 	assert.True(t, errs.HasErrors())
 	assert.Equal(t, 1, errs.ErrorCount())
 }
@@ -371,7 +371,7 @@ func TestBooleanExpression_BranchNodeHasNoCondition(t *testing.T) {
 	}
 
 	errs := errors.NewCompileErrors()
-	v.ValidateBooleanExpression(&nodeBuilder{flyteNode: &flyteNode{}}, bExpr, errs)
+	v.ValidateBooleanExpression(&nodeBuilder{flyteNode: &flyteNode{}}, bExpr, true, errs)
 	assert.True(t, errs.HasErrors())
 	assert.Equal(t, 1, errs.ErrorCount())
 	for e := range *errs.Errors() {
