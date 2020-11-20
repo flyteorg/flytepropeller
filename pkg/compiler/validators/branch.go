@@ -46,15 +46,14 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 	caseBlock := node.GetBranchNode().IfElse.Case
 	cases = append(cases, caseBlock.ThenNode)
 
-	if otherCases := node.GetBranchNode().IfElse.Other; otherCases != nil {
-		for _, otherCase := range otherCases {
-			if otherCase.ThenNode == nil {
-				errs.Collect(errors.NewValueRequiredErr(node.GetId(), "IfElse.Case.ThenNode"))
-				continue
-			}
-
-			cases = append(cases, otherCase.ThenNode)
+	otherCases := node.GetBranchNode().IfElse.Other
+	for _, otherCase := range otherCases {
+		if otherCase.ThenNode == nil {
+			errs.Collect(errors.NewValueRequiredErr(node.GetId(), "IfElse.Case.ThenNode"))
+			continue
 		}
+
+		cases = append(cases, otherCase.ThenNode)
 	}
 
 	if elseNode := node.GetBranchNode().IfElse.GetElseNode(); elseNode != nil {

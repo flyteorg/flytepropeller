@@ -73,7 +73,7 @@ func ValidateUnderlyingInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs e
 				for name, p := range inputs.Parameters {
 					if p.GetRequired() {
 						exposedInputs[name] = p.Var
-					} else if _, found := findBindingByVariableName(node.GetInputs(), name); found {
+					} else if containsBindingByVariableName(node.GetInputs(), name) {
 						exposedInputs[name] = p.Var
 					}
 					// else, the param has a default value and is not being overwritten by the node

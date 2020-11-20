@@ -12,7 +12,7 @@ import (
 )
 
 func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, binding *flyte.BindingData,
-	expectedType *flyte.LiteralType, validateType bool, errs errors.CompileErrors) (
+	expectedType *flyte.LiteralType, errs errors.CompileErrors) (
 	resolvedType *flyte.LiteralType, upstreamNodes []c.NodeID, ok bool) {
 
 	switch binding.GetValue().(type) {
@@ -21,7 +21,7 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 			allNodeIds := make([]c.NodeID, 0, len(binding.GetMap().GetBindings()))
 			var subType *flyte.LiteralType
 			for _, v := range binding.GetCollection().GetBindings() {
-				if resolvedType, nodeIds, ok := validateBinding(w, nodeID, nodeParam, v, expectedType.GetCollectionType(), validateType, errs.NewScope()); ok {
+				if resolvedType, nodeIds, ok := validateBinding(w, nodeID, nodeParam, v, expectedType.GetCollectionType(), errs.NewScope()); ok {
 					allNodeIds = append(allNodeIds, nodeIds...)
 					subType = resolvedType
 				}
@@ -40,7 +40,7 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 			allNodeIds := make([]c.NodeID, 0, len(binding.GetMap().GetBindings()))
 			var subType *flyte.LiteralType
 			for _, v := range binding.GetMap().GetBindings() {
-				if resolvedType, nodeIds, ok := validateBinding(w, nodeID, nodeParam, v, expectedType.GetMapValueType(), validateType, errs.NewScope()); ok {
+				if resolvedType, nodeIds, ok := validateBinding(w, nodeID, nodeParam, v, expectedType.GetMapValueType(), errs.NewScope()); ok {
 					allNodeIds = append(allNodeIds, nodeIds...)
 					subType = resolvedType
 				}
@@ -124,7 +124,7 @@ func ValidateBindings(w c.WorkflowBuilder, node c.Node, bindings []*flyte.Bindin
 			}
 			providedBindings.Insert(binding.GetVar())
 			if resolvedType, upstreamNodes, bindingOk := validateBinding(w, node.GetId(), binding.GetVar(), binding.GetBinding(),
-				param.Type, validateParamTypes, errs.NewScope()); bindingOk {
+				param.Type, errs.NewScope()); bindingOk {
 				for _, upNode := range upstreamNodes {
 					// Add implicit Edges
 					w.AddExecutionEdge(upNode, node.GetId())

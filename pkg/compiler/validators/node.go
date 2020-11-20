@@ -49,22 +49,22 @@ func validateEffectiveOutputParameters(n c.NodeBuilder, errs errors.CompileError
 	return params, !errs.HasErrors()
 }
 
-func branchNodeIdFormatter(parentNodeID, thenNodeID string) string {
+func branchNodeIDFormatter(parentNodeID, thenNodeID string) string {
 	return fmt.Sprintf("%v-%v", parentNodeID, thenNodeID)
 }
 
-type edgeInfo struct {
+type EdgeInfo struct {
 	from string
 	to   string
 }
 
 func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType bool, errs errors.CompileErrors) (
-	discoveredNodes []c.NodeBuilder, additionalEdges []edgeInfo, ok bool) {
+	discoveredNodes []c.NodeBuilder, additionalEdges []EdgeInfo, ok bool) {
 	cases := make([]*flyte.IfBlock, 0, len(n.GetBranchNode().IfElse.Other)+1)
 	cases = append(cases, n.GetBranchNode().IfElse.Case)
 	cases = append(cases, n.GetBranchNode().IfElse.Other...)
 	discoveredNodes = make([]c.NodeBuilder, 0, len(cases))
-	additionalEdges = make([]edgeInfo, 0, len(cases))
+	additionalEdges = make([]EdgeInfo, 0, len(cases))
 	subNodes := make([]c.NodeBuilder, 0, len(cases)+1)
 	for _, block := range cases {
 		// Validate condition
@@ -87,7 +87,7 @@ func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType b
 		if ValidateNode(w, wrapperNode, requireParamType, errs.NewScope()) {
 			// Add to the global nodes to be able to reference it later
 			discoveredNodes = append(discoveredNodes, wrapperNode)
-			additionalEdges = append(additionalEdges, edgeInfo{
+			additionalEdges = append(additionalEdges, EdgeInfo{
 				from: n.GetId(),
 				to:   wrapperNode.GetId(),
 			})
@@ -124,7 +124,7 @@ func ValidateNode(w c.WorkflowBuilder, n c.NodeBuilder, validateConditionTypes b
 			renamedNodes := make(map[c.NodeID]c.NodeID, len(nodes))
 			for _, subNode := range nodes {
 				oldID := subNode.GetId()
-				subNode.SetID(branchNodeIdFormatter(n.GetId(), subNode.GetId()))
+				subNode.SetID(branchNodeIDFormatter(n.GetId(), subNode.GetId()))
 				w.AddNode(subNode, errs)
 				renamedNodes[oldID] = subNode.GetId()
 			}

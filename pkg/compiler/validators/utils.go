@@ -8,14 +8,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func findBindingByVariableName(bindings []*core.Binding, name string) (binding *core.Binding, found bool) {
+func containsBindingByVariableName(bindings []*core.Binding, name string) (found bool) {
 	for _, b := range bindings {
 		if b.Var == name {
-			return b, true
+			return true
 		}
 	}
 
-	return nil, false
+	return false
 }
 
 func findVariableByName(vars *core.VariableMap, name string) (variable *core.Variable, found bool) {

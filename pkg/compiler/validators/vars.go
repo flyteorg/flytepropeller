@@ -29,7 +29,7 @@ func validateInputVar(n c.NodeBuilder, paramName string, requireParamType bool, 
 	}
 
 	if !requireParamType {
-		if _, ok = findBindingByVariableName(n.GetInputs(), paramName); ok {
+		if containsBindingByVariableName(n.GetInputs(), paramName) {
 			return
 		}
 	}
