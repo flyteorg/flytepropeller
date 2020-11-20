@@ -2,8 +2,6 @@ package v1alpha1
 
 import (
 	"bytes"
-	"encoding/json"
-
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 )
@@ -20,7 +18,7 @@ func (in *ExecutionError) UnmarshalJSON(b []byte) error {
 
 func (in *ExecutionError) MarshalJSON() ([]byte, error) {
 	if in == nil {
-		return json.Marshal(nil)
+		return nilJson, nil
 	}
 	var buf bytes.Buffer
 	if err := marshaler.Marshal(&buf, in.ExecutionError); err != nil {

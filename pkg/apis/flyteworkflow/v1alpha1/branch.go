@@ -2,8 +2,6 @@ package v1alpha1
 
 import (
 	"bytes"
-	"encoding/json"
-
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 )
@@ -19,7 +17,7 @@ func (in Error) UnmarshalJSON(b []byte) error {
 
 func (in Error) MarshalJSON() ([]byte, error) {
 	if in.Error == nil {
-		return json.Marshal(nil)
+		return nilJson, nil
 	}
 
 	var buf bytes.Buffer
@@ -43,7 +41,7 @@ type BooleanExpression struct {
 
 func (in BooleanExpression) MarshalJSON() ([]byte, error) {
 	if in.BooleanExpression == nil {
-		return json.Marshal(nil)
+		return nilJson, nil
 	}
 
 	var buf bytes.Buffer
