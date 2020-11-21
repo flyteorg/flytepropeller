@@ -157,7 +157,7 @@ func (in *Inputs) UnmarshalJSON(b []byte) error {
 
 func (in *Inputs) MarshalJSON() ([]byte, error) {
 	if in == nil {
-		return nilJson, nil
+		return nilJSON, nil
 	}
 
 	var buf bytes.Buffer
