@@ -117,7 +117,7 @@ func withVariableName(param *core.Variable) (newParam *core.Variable, ok bool) {
 	return
 }
 
-func JoinVariableMapsUniqueKeys(m1, m2 map[string]*core.Variable) (map[string]*core.Variable, error) {
+func UnionDistinctVariableMaps(m1, m2 map[string]*core.Variable) (map[string]*core.Variable, error) {
 	res := make(map[string]*core.Variable, len(m1)+len(m2))
 	for k, v := range m1 {
 		res[k] = v
@@ -126,7 +126,7 @@ func JoinVariableMapsUniqueKeys(m1, m2 map[string]*core.Variable) (map[string]*c
 	for k, v := range m2 {
 		if existingV, exists := res[k]; exists {
 			if v.Type.String() != existingV.Type.String() {
-				return nil, fmt.Errorf("key already exists wit a different type. %v has type [%v] on one side "+
+				return nil, fmt.Errorf("key already exists with a different type. %v has type [%v] on one side "+
 					"and type [%v] on the other", k, existingV.Type.String(), v.Type.String())
 			}
 		}

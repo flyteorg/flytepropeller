@@ -33,7 +33,7 @@ func TestJoinVariableMapsUniqueKeys(t *testing.T) {
 			},
 		}
 
-		res, err := JoinVariableMapsUniqueKeys(m1, m2)
+		res, err := UnionDistinctVariableMaps(m1, m2)
 		assert.NoError(t, err)
 		assert.Len(t, res, 2)
 	})
@@ -51,7 +51,7 @@ func TestJoinVariableMapsUniqueKeys(t *testing.T) {
 			},
 		}
 
-		res, err := JoinVariableMapsUniqueKeys(m1, m2)
+		res, err := UnionDistinctVariableMaps(m1, m2)
 		assert.NoError(t, err)
 		assert.Len(t, res, 1)
 	})
@@ -69,7 +69,7 @@ func TestJoinVariableMapsUniqueKeys(t *testing.T) {
 			},
 		}
 
-		_, err := JoinVariableMapsUniqueKeys(m1, m2)
+		_, err := UnionDistinctVariableMaps(m1, m2)
 		assert.Error(t, err)
 	})
 }

@@ -202,7 +202,7 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 			if n.GetBranchNode() != nil {
 				if inputVars, ok := v.ValidateBindings(&wf, n, n.GetInputs(), n.GetInterface().GetInputs(),
 					false /* validateParamTypes */, errs.NewScope()); ok {
-					merge, err := v.JoinVariableMapsUniqueKeys(n.GetInterface().Inputs.Variables, inputVars.Variables)
+					merge, err := v.UnionDistinctVariableMaps(n.GetInterface().Inputs.Variables, inputVars.Variables)
 					if err != nil {
 						errs.Collect(errors.NewWorkflowBuildError(err))
 					}
