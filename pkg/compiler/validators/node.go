@@ -86,7 +86,7 @@ func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType b
 	if elseNode := n.GetBranchNode().IfElse.GetElseNode(); elseNode != nil {
 		wrapperNode := w.NewNodeBuilder(elseNode)
 		subNodes = append(subNodes, wrapperNode)
-	} else if defaultError := n.GetBranchNode().IfElse.GetError(); defaultError == nil {
+	} else if defaultElse := n.GetBranchNode().IfElse.GetDefault(); defaultElse == nil {
 		errs.Collect(errors.NewBranchNodeHasNoDefault(n.GetId()))
 	}
 
