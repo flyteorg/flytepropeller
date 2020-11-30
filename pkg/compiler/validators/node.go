@@ -61,7 +61,12 @@ type EdgeInfo struct {
 func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType bool, errs errors.CompileErrors) (
 	discoveredNodes []c.NodeBuilder, additionalEdges []EdgeInfo, ok bool) {
 	cases := make([]*flyte.IfBlock, 0, len(n.GetBranchNode().IfElse.Other)+1)
-	cases = append(cases, n.GetBranchNode().IfElse.Case)
+	if n.GetBranchNode().IfElse.Case == nil {
+		errs.Collect(errors.NewBranchNodeHasNoCondition(n.GetId()))
+	} else {
+		cases = append(cases, n.GetBranchNode().IfElse.Case)
+	}
+
 	cases = append(cases, n.GetBranchNode().IfElse.Other...)
 	discoveredNodes = make([]c.NodeBuilder, 0, len(cases))
 	additionalEdges = make([]EdgeInfo, 0, len(cases))
@@ -81,6 +86,8 @@ func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType b
 	if elseNode := n.GetBranchNode().IfElse.GetElseNode(); elseNode != nil {
 		wrapperNode := w.NewNodeBuilder(elseNode)
 		subNodes = append(subNodes, wrapperNode)
+	} else if defaultError := n.GetBranchNode().IfElse.GetError(); defaultError == nil {
+		errs.Collect(errors.NewBranchNodeHasNoDefault(n.GetId()))
 	}
 
 	for _, wrapperNode := range subNodes {
