@@ -1,6 +1,8 @@
 package compiler
 
 import (
+	"strings"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytepropeller/pkg/compiler/common"
 	"github.com/lyft/flytepropeller/pkg/compiler/errors"
@@ -34,7 +36,12 @@ func GetRequirements(fg *core.WorkflowTemplate, subWfs []*core.WorkflowTemplate)
 	index, ok := common.NewWorkflowIndex(compiledSubWfs, errs)
 
 	if ok {
-		return getRequirements(fg, index, true, errs), nil
+		reqs := getRequirements(fg, index, true, errs)
+		if errs.HasErrors() {
+			return reqs, errs
+		}
+
+		return reqs, nil
 	}
 
 	return WorkflowExecutionRequirements{}, errs
@@ -45,7 +52,8 @@ func getRequirements(fg *core.WorkflowTemplate, subWfs common.WorkflowIndex, fol
 
 	taskIds := common.NewIdentifierSet()
 	launchPlanIds := common.NewIdentifierSet()
-	updateWorkflowRequirements(fg, subWfs, taskIds, launchPlanIds, followSubworkflows, errs)
+	visited := common.NewWorkflowIDSet()
+	updateWorkflowRequirements("root", fg, subWfs, taskIds, launchPlanIds, visited, followSubworkflows, errs)
 
 	reqs.taskIds = taskIds.List()
 	reqs.launchPlanIds = launchPlanIds.List()
@@ -54,16 +62,23 @@ func getRequirements(fg *core.WorkflowTemplate, subWfs common.WorkflowIndex, fol
 }
 
 // Augments taskIds and launchPlanIds with referenced tasks/workflows within coreWorkflow nodes
-func updateWorkflowRequirements(workflow *core.WorkflowTemplate, subWfs common.WorkflowIndex,
-	taskIds, workflowIds common.IdentifierSet, followSubworkflows bool, errs errors.CompileErrors) {
+func updateWorkflowRequirements(nodeID string, workflow *core.WorkflowTemplate, subWfs common.WorkflowIndex,
+	taskIds, workflowIds common.IdentifierSet, visited common.WorkflowIDSet, followSubworkflows bool, errs errors.CompileErrors) {
+
+	if visited.Has(workflow.Id.String()) {
+		errs.Collect(errors.NewCycleDetectedInWorkflowErr(nodeID, strings.Join(visited.UnsortedList(), "> ")))
+		return
+	}
+
+	visited.Insert(workflow.Id.String())
 
 	for _, node := range workflow.Nodes {
-		updateNodeRequirements(node, subWfs, taskIds, workflowIds, followSubworkflows, errs)
+		updateNodeRequirements(node, subWfs, taskIds, workflowIds, visited, followSubworkflows, errs)
 	}
 }
 
 func updateNodeRequirements(node *flyteNode, subWfs common.WorkflowIndex, taskIds, workflowIds common.IdentifierSet,
-	followSubworkflows bool, errs errors.CompileErrors) {
+	visited common.WorkflowIDSet, followSubworkflows bool, errs errors.CompileErrors) {
 
 	if taskN := node.GetTaskNode(); taskN != nil && taskN.GetReferenceId() != nil {
 		taskIds.Insert(*taskN.GetReferenceId())
@@ -74,13 +89,13 @@ func updateNodeRequirements(node *flyteNode, subWfs common.WorkflowIndex, taskId
 			if subWf, found := subWfs[workflowNode.GetSubWorkflowRef().String()]; !found {
 				errs.Collect(errors.NewWorkflowReferenceNotFoundErr(node.Id, workflowNode.GetSubWorkflowRef().String()))
 			} else {
-				updateWorkflowRequirements(subWf.Template, subWfs, taskIds, workflowIds, followSubworkflows, errs)
+				updateWorkflowRequirements(node.Id, subWf.Template, subWfs, taskIds, workflowIds, visited, followSubworkflows, errs)
 			}
 		}
 	} else if branchN := node.GetBranchNode(); branchN != nil {
-		updateNodeRequirements(branchN.IfElse.Case.ThenNode, subWfs, taskIds, workflowIds, followSubworkflows, errs)
+		updateNodeRequirements(branchN.IfElse.Case.ThenNode, subWfs, taskIds, workflowIds, visited, followSubworkflows, errs)
 		for _, otherCase := range branchN.IfElse.Other {
-			updateNodeRequirements(otherCase.ThenNode, subWfs, taskIds, workflowIds, followSubworkflows, errs)
+			updateNodeRequirements(otherCase.ThenNode, subWfs, taskIds, workflowIds, visited, followSubworkflows, errs)
 		}
 	}
 }
