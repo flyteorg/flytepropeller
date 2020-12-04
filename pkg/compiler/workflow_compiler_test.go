@@ -655,6 +655,96 @@ func TestNoNodesFound(t *testing.T) {
 	assert.Contains(t, errs.Error(), errors.NoNodesFound)
 }
 
+func TestDoubleCompilation(t *testing.T) {
+	inputWorkflow := &core.WorkflowTemplate{
+		Id: &core.Identifier{Name: "repo"},
+		Interface: &core.TypedInterface{
+			Inputs:  createVariableMap(map[string]*core.Variable{}),
+			Outputs: createVariableMap(map[string]*core.Variable{}),
+		},
+		Nodes: []*core.Node{
+			{
+				Id: "subwf",
+				Target: &core.Node_WorkflowNode{
+					WorkflowNode: &core.WorkflowNode{
+						Reference: &core.WorkflowNode_SubWorkflowRef{
+							SubWorkflowRef: &core.Identifier{Name: "child"},
+						},
+					},
+				},
+			},
+			{
+				Id: "subwf2",
+				Target: &core.Node_WorkflowNode{
+					WorkflowNode: &core.WorkflowNode{
+						Reference: &core.WorkflowNode_SubWorkflowRef{
+							SubWorkflowRef: &core.Identifier{Name: "child"},
+						},
+					},
+				},
+			},
+		},
+		Outputs: []*core.Binding{},
+	}
+
+	dependencyWf := &core.WorkflowTemplate{
+		Id: &core.Identifier{Name: "child"},
+		Interface: &core.TypedInterface{
+			Inputs:  createVariableMap(map[string]*core.Variable{}),
+			Outputs: createVariableMap(map[string]*core.Variable{}),
+		},
+		Nodes: []*core.Node{
+			{
+				Id: "subwf",
+				Target: &core.Node_TaskNode{
+					TaskNode: &core.TaskNode{Reference: &core.TaskNode_ReferenceId{ReferenceId: &core.Identifier{Name: "task_123"}}},
+				},
+			},
+		},
+		Outputs: []*core.Binding{},
+	}
+
+	inputTasks := []common.Task{
+		&taskBuilder{
+			flyteTask: &core.TaskTemplate{
+				Id: &core.Identifier{Name: "task_123"}, Metadata: &core.TaskMetadata{},
+				Interface: &core.TypedInterface{
+					Inputs: createVariableMap(map[string]*core.Variable{}),
+					Outputs: createVariableMap(map[string]*core.Variable{
+						"x": {
+							Type: getIntegerLiteralType(),
+						},
+					}),
+				},
+				Target: &core.TaskTemplate_Container{
+					Container: &core.Container{
+						Command: []string{},
+						Image:   "image://123",
+					},
+				},
+			},
+		},
+	}
+
+	// Validate overall requirements of the coreWorkflow.
+	compiledSubWorkflows := toCompiledWorkflows(dependencyWf)
+	errs := errors.NewCompileErrors()
+	wfIndex, ok := common.NewWorkflowIndex(compiledSubWorkflows, errs.NewScope())
+	assert.True(t, ok)
+	compiledWf := &core.CompiledWorkflow{Template: inputWorkflow}
+
+	gb := newWorkflowBuilder(compiledWf, wfIndex, common.NewTaskIndex(inputTasks...), map[string]common.InterfaceProvider{})
+	validatedWf, ok := gb.ValidateWorkflow(compiledWf, errs.NewScope())
+	assert.Len(t, validatedWf.(workflowBuilder).failedValidationWorkflows, 2)
+	//
+	//_, errs := CompileWorkflow(inputWorkflow, []*core.WorkflowTemplate{dependencyWf},
+	//	mustCompileTasks(inputTasks), []common.InterfaceProvider{})
+	//if assert.Nil(t, errs) {
+	//	t.Log(errs)
+	//	assert.Contains(t, errs.Error(), errors.NoNodesFound)
+	//}
+}
+
 func mustCompileTasks(tasks []*core.TaskTemplate) []*core.CompiledTask {
 	res := make([]*core.CompiledTask, 0, len(tasks))
 	for _, t := range tasks {

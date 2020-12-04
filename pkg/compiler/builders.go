@@ -25,6 +25,11 @@ type workflowBuilder struct {
 	allLaunchPlans  map[string]c.InterfaceProvider
 	allTasks        c.TaskIndex
 	allSubWorkflows c.WorkflowIndex
+
+	// Stores the set of workflows that have been processed (whether they succeeded or not) to avoid re-validating the
+	// same workflow over and over again.
+	successfullyValidatedWorkflows c.WorkflowBuilderIndex
+	failedValidationWorkflows      c.WorkflowIDSet
 }
 
 func (w workflowBuilder) GetFailureNode() c.Node {

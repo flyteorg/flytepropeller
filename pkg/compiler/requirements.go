@@ -70,10 +70,10 @@ func updateWorkflowRequirements(nodeID string, workflow *core.WorkflowTemplate, 
 		return
 	}
 
-	visited.Insert(workflow.Id.String())
-
 	for _, node := range workflow.Nodes {
+		visited.Insert(workflow.Id.String())
 		updateNodeRequirements(node, subWfs, taskIds, workflowIds, visited, followSubworkflows, errs)
+		visited.Delete(workflow.Id.String())
 	}
 }
 

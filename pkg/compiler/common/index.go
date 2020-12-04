@@ -7,12 +7,16 @@ import (
 )
 
 // Defines an index of nodebuilders based on the id.
-type NodeIndex map[NodeID]NodeBuilder
+type NodeIndex = map[NodeID]NodeBuilder
 
 // Defines an index of tasks based on the id.
-type TaskIndex map[TaskIDKey]Task
+type TaskIndex = map[TaskIDKey]Task
 
-type WorkflowIndex map[WorkflowIDKey]*core.CompiledWorkflow
+type WorkflowIndex = map[WorkflowIDKey]*core.CompiledWorkflow
+
+type WorkflowBuilderIndex = map[WorkflowIDKey]WorkflowBuilder
+
+type WorkflowIDSet = sets.String
 
 // Defines a string adjacency list.
 type AdjacencyList map[string]IdentifierSet
@@ -27,6 +31,10 @@ func (l AdjacencyList) ToMapOfLists() map[string][]Identifier {
 	}
 
 	return res
+}
+
+func NewWorkflowIDSet(ids ...WorkflowIDKey) WorkflowIDSet {
+	return sets.NewString(ids...)
 }
 
 // Creates a new TaskIndex.
@@ -68,4 +76,8 @@ func NewWorkflowIndex(workflows []*core.CompiledWorkflow, errs errors.CompileErr
 	}
 
 	return
+}
+
+func NewWorkflowBuilderIndex() WorkflowBuilderIndex {
+	return WorkflowBuilderIndex{}
 }

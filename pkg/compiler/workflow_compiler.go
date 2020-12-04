@@ -150,6 +150,17 @@ func (w workflowBuilder) AddEdges(n c.NodeBuilder, errs errors.CompileErrors) (o
 
 // Contains the main validation logic for the coreWorkflow. If successful, it'll build an executable Workflow.
 func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.CompileErrors) (c.Workflow, bool) {
+	if fg.Template == nil || fg.Template.Id == nil {
+		errs.Collect(errors.NewValueRequiredErr("root", ".Template.Id"))
+		return nil, errs.HasErrors()
+	}
+
+	//if wfBuilder, found := w.successfullyValidatedWorkflows[fg.Template.Id.String()]; found {
+	//	return wfBuilder, true
+	//} else if w.failedValidationWorkflows.Has(fg.Template.Id.String()) {
+	//	return nil, false
+	//}
+
 	if len(fg.Template.Nodes) == 0 {
 		errs.Collect(errors.NewNoNodesFoundErr(fg.Template.Id.String()))
 		return nil, !errs.HasErrors()
@@ -247,6 +258,14 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 
 	// Validate no cycles are detected.
 	wf.validateReachable(errs.NewScope())
+
+	// This will store the compilation result regardless of whether it succeeded or not.
+	// If a workflow fails to compile the first time, it'll consistently fail to in subsequent attempts.
+	if errs.HasErrors() {
+		wf.failedValidationWorkflows.Insert(fg.Template.Id.String())
+	} else {
+		wf.successfullyValidatedWorkflows[fg.Template.Id.String()] = wf
+	}
 
 	return wf, !errs.HasErrors()
 }
@@ -348,14 +367,16 @@ func newWorkflowBuilder(fg *flyteWorkflow, wfIndex c.WorkflowIndex, tasks c.Task
 	workflows map[string]c.InterfaceProvider) workflowBuilder {
 
 	return workflowBuilder{
-		CoreWorkflow:    fg,
-		LaunchPlans:     map[string]c.InterfaceProvider{},
-		Nodes:           c.NewNodeIndex(),
-		Tasks:           c.NewTaskIndex(),
-		downstreamNodes: c.StringAdjacencyList{},
-		upstreamNodes:   c.StringAdjacencyList{},
-		allSubWorkflows: wfIndex,
-		allLaunchPlans:  workflows,
-		allTasks:        tasks,
+		CoreWorkflow:                   fg,
+		LaunchPlans:                    map[string]c.InterfaceProvider{},
+		Nodes:                          c.NewNodeIndex(),
+		Tasks:                          c.NewTaskIndex(),
+		downstreamNodes:                c.StringAdjacencyList{},
+		upstreamNodes:                  c.StringAdjacencyList{},
+		allSubWorkflows:                wfIndex,
+		allLaunchPlans:                 workflows,
+		allTasks:                       tasks,
+		successfullyValidatedWorkflows: c.NewWorkflowBuilderIndex(),
+		failedValidationWorkflows:      c.NewWorkflowIDSet(),
 	}
 }
