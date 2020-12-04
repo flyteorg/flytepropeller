@@ -20,7 +20,7 @@ type launchPlanHandler struct {
 	launchPlan launchplan.Executor
 }
 
-func fetchParentNodeExecutionID(nCtx handler.NodeExecutionContext) (*core.NodeExecutionIdentifier, error) {
+func getParentNodeExecutionID(nCtx handler.NodeExecutionContext) (*core.NodeExecutionIdentifier, error) {
 	nodeExecID := &core.NodeExecutionIdentifier{
 		ExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID().ExecutionId,
 	}
@@ -44,7 +44,7 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.RuntimeExecutionError, errMsg, nil)), nil
 	}
 
-	parentNodeExecutionID, err := fetchParentNodeExecutionID(nCtx)
+	parentNodeExecutionID, err := getParentNodeExecutionID(nCtx)
 	if err != nil {
 		return handler.UnknownTransition, err
 	}
@@ -83,7 +83,7 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 }
 
 func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
-	parentNodeExecutionID, err := fetchParentNodeExecutionID(nCtx)
+	parentNodeExecutionID, err := getParentNodeExecutionID(nCtx)
 	if err != nil {
 		return handler.UnknownTransition, err
 	}
@@ -167,7 +167,7 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 }
 
 func (l *launchPlanHandler) HandleAbort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
-	parentNodeExecutionID, err := fetchParentNodeExecutionID(nCtx)
+	parentNodeExecutionID, err := getParentNodeExecutionID(nCtx)
 	if err != nil {
 		return err
 	}
