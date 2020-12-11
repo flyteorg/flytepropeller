@@ -41,8 +41,6 @@ jobs:
           args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_TOKEN }}
-      - name: Update new version in krew-index
-        uses: rajatjindal/krew-release-bot@v0.0.38
 
   push-github-end2end:
     runs-on: ubuntu-latest
