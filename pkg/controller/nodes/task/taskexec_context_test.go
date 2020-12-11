@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 
+	mocks2 "github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog/mocks"
 	ioMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
@@ -16,6 +18,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	flyteMocks "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/lyft/flytepropeller/pkg/controller/nodes/handler/mocks"
@@ -58,6 +61,8 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	res := &v12.ResourceRequirements{}
 	n := &flyteMocks.ExecutableNode{}
 	n.OnGetResources().Return(res)
+	ma := 5
+	n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 
 	ir := &ioMocks.InputReader{}
 	nCtx := &nodeMocks.NodeExecutionContext{}
@@ -71,6 +76,12 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	nCtx.OnNodeID().Return(nodeID)
 	nCtx.OnEventsRecorder().Return(nil)
 	nCtx.OnEnqueueOwnerFunc().Return(nil)
+
+	executionContext := &mocks2.ExecutionContext{}
+	executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
+	executionContext.OnGetParentInfo().Return(nil)
+	executionContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
+	nCtx.OnExecutionContext().Return(executionContext)
 
 	ds, err := storage.NewDataStore(
 		&storage.Config{

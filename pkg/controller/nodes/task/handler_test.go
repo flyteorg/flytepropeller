@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	pluginK8sMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s/mocks"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 
@@ -28,7 +30,6 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	ioMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	pluginK8s "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
-	pluginK8sMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s/mocks"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
@@ -150,41 +151,60 @@ func Test_task_Setup(t *testing.T) {
 		defaultPluginID string
 	}
 	tests := []struct {
-		name     string
-		registry PluginRegistryIface
-		fields   wantFields
-		wantErr  bool
+		name                string
+		registry            PluginRegistryIface
+		enabledPlugins      []string
+		defaultForTaskTypes map[string]string
+		fields              wantFields
+		wantErr             bool
 	}{
-		{"no-plugins", testPluginRegistry{}, wantFields{}, false},
+		{"no-plugins", testPluginRegistry{}, []string{}, map[string]string{}, wantFields{}, false},
 		{"no-default-only-core", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry}, k8s: []pluginK8s.PluginEntry{},
-		}, wantFields{
-			pluginIDs: map[pluginCore.TaskType]string{corePluginType: corePluginType},
-		}, false},
+		}, []string{corePluginType}, map[string]string{
+			corePluginType: corePluginType},
+			wantFields{
+				pluginIDs: map[pluginCore.TaskType]string{corePluginType: corePluginType},
+			}, false},
 		{"no-default-only-k8s", testPluginRegistry{
 			core: []pluginCore.PluginEntry{}, k8s: []pluginK8s.PluginEntry{k8sPluginEntry},
+		}, []string{k8sPluginType}, map[string]string{
+			k8sPluginType: k8sPluginType},
+			wantFields{
+				pluginIDs: map[pluginCore.TaskType]string{k8sPluginType: k8sPluginType},
+			}, false},
+		{"no-default", testPluginRegistry{}, []string{corePluginType, k8sPluginType}, map[string]string{
+			corePluginType: corePluginType,
+			k8sPluginType:  k8sPluginType,
 		}, wantFields{
-			pluginIDs: map[pluginCore.TaskType]string{k8sPluginType: k8sPluginType},
-		}, false},
-		{"no-default", testPluginRegistry{
-			core: []pluginCore.PluginEntry{corePluginEntry}, k8s: []pluginK8s.PluginEntry{k8sPluginEntry},
-		}, wantFields{
-			pluginIDs: map[pluginCore.TaskType]string{corePluginType: corePluginType, k8sPluginType: k8sPluginType},
+			pluginIDs: map[pluginCore.TaskType]string{},
 		}, false},
 		{"only-default-core", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry, corePluginEntryDefault}, k8s: []pluginK8s.PluginEntry{k8sPluginEntry},
+		}, []string{corePluginType, corePluginDefaultType, k8sPluginType}, map[string]string{
+			corePluginType:        corePluginType,
+			corePluginDefaultType: corePluginDefaultType,
+			k8sPluginType:         k8sPluginType,
 		}, wantFields{
 			pluginIDs:       map[pluginCore.TaskType]string{corePluginType: corePluginType, corePluginDefaultType: corePluginDefaultType, k8sPluginType: k8sPluginType},
 			defaultPluginID: corePluginDefaultType,
 		}, false},
 		{"only-default-k8s", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry}, k8s: []pluginK8s.PluginEntry{k8sPluginEntryDefault},
+		}, []string{corePluginType, k8sPluginDefaultType}, map[string]string{
+			corePluginType:       corePluginType,
+			k8sPluginDefaultType: k8sPluginDefaultType,
 		}, wantFields{
 			pluginIDs:       map[pluginCore.TaskType]string{corePluginType: corePluginType, k8sPluginDefaultType: k8sPluginDefaultType},
 			defaultPluginID: k8sPluginDefaultType,
 		}, false},
 		{"default-both", testPluginRegistry{
 			core: []pluginCore.PluginEntry{corePluginEntry, corePluginEntryDefault}, k8s: []pluginK8s.PluginEntry{k8sPluginEntry, k8sPluginEntryDefault},
+		}, []string{corePluginType, corePluginDefaultType, k8sPluginType, k8sPluginDefaultType}, map[string]string{
+			corePluginType:        corePluginType,
+			corePluginDefaultType: corePluginDefaultType,
+			k8sPluginType:         k8sPluginType,
+			k8sPluginDefaultType:  k8sPluginDefaultType,
 		}, wantFields{
 			pluginIDs:       map[pluginCore.TaskType]string{corePluginType: corePluginType, corePluginDefaultType: corePluginDefaultType, k8sPluginType: k8sPluginType, k8sPluginDefaultType: k8sPluginDefaultType},
 			defaultPluginID: corePluginDefaultType,
@@ -200,6 +220,8 @@ func Test_task_Setup(t *testing.T) {
 			sCtx.On("MetricsScope").Return(promutils.NewTestScope())
 
 			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
+			tk.cfg.TaskPlugins.EnabledPlugins = tt.enabledPlugins
+			tk.cfg.TaskPlugins.DefaultForTaskTypes = tt.defaultForTaskTypes
 			assert.NoError(t, err)
 			tk.pluginRegistry = tt.registry
 			if err := tk.Setup(context.TODO(), sCtx); err != nil {
@@ -359,6 +381,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 			Kind: "sample",
 			Name: "name",
 		})
+		nm.OnIsInterruptible().Return(false)
 
 		tk := &core.TaskTemplate{
 			Id:   &core.Identifier{ResourceType: core.ResourceType_TASK, Project: "proj", Domain: "dom", Version: "ver"},
@@ -392,6 +415,8 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 
 		res := &v1.ResourceRequirements{}
 		n := &flyteMocks.ExecutableNode{}
+		ma := 5
+		n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 		n.OnGetResources().Return(res)
 
 		ir := &ioMocks.InputReader{}
@@ -421,6 +446,8 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 
 		executionContext := &mocks.ExecutionContext{}
 		executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
+		executionContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
+		executionContext.OnGetParentInfo().Return(nil)
 		nCtx.OnExecutionContext().Return(executionContext)
 
 		st := bytes.NewBuffer([]byte{})
@@ -680,6 +707,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			Kind: "sample",
 			Name: "name",
 		})
+		nm.OnIsInterruptible().Return(true)
 
 		taskID := &core.Identifier{}
 		tk := &core.TaskTemplate{
@@ -713,6 +741,8 @@ func Test_task_Handle_Catalog(t *testing.T) {
 
 		res := &v1.ResourceRequirements{}
 		n := &flyteMocks.ExecutableNode{}
+		ma := 5
+		n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 		n.OnGetResources().Return(res)
 
 		ir := &ioMocks.InputReader{}
@@ -740,6 +770,8 @@ func Test_task_Handle_Catalog(t *testing.T) {
 
 		executionContext := &mocks.ExecutionContext{}
 		executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
+		executionContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
+		executionContext.OnGetParentInfo().Return(nil)
 		nCtx.OnExecutionContext().Return(executionContext)
 
 		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
@@ -902,6 +934,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 			Kind: "sample",
 			Name: "name",
 		})
+		nm.OnIsInterruptible().Return(true)
 
 		taskID := &core.Identifier{}
 		tk := &core.TaskTemplate{
@@ -935,6 +968,8 @@ func Test_task_Handle_Barrier(t *testing.T) {
 
 		res := &v1.ResourceRequirements{}
 		n := &flyteMocks.ExecutableNode{}
+		ma := 5
+		n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 		n.OnGetResources().Return(res)
 
 		ir := &ioMocks.InputReader{}
@@ -961,6 +996,8 @@ func Test_task_Handle_Barrier(t *testing.T) {
 
 		executionContext := &mocks.ExecutionContext{}
 		executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
+		executionContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
+		executionContext.OnGetParentInfo().Return(nil)
 		nCtx.OnExecutionContext().Return(executionContext)
 
 		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
@@ -1206,6 +1243,8 @@ func Test_task_Abort(t *testing.T) {
 
 		res := &v1.ResourceRequirements{}
 		n := &flyteMocks.ExecutableNode{}
+		ma := 5
+		n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 		n.OnGetResources().Return(res)
 
 		ir := &ioMocks.InputReader{}
@@ -1231,6 +1270,150 @@ func Test_task_Abort(t *testing.T) {
 
 		executionContext := &mocks.ExecutionContext{}
 		executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
+		executionContext.OnGetParentInfo().Return(nil)
+		executionContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
+		nCtx.OnExecutionContext().Return(executionContext)
+
+		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
+		nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
+
+		st := bytes.NewBuffer([]byte{})
+		a := 45
+		type test struct {
+			A int
+		}
+		cod := codex.GobStateCodec{}
+		assert.NoError(t, cod.Encode(test{A: a}, st))
+		nr := &nodeMocks.NodeStateReader{}
+		nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
+			PluginState: st.Bytes(),
+		})
+		nCtx.OnNodeStateReader().Return(nr)
+		return nCtx
+	}
+
+	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())
+
+	type fields struct {
+		defaultPluginCallback func() pluginCore.Plugin
+	}
+	type args struct {
+		ev *fakeBufferedTaskEventRecorder
+	}
+	tests := []struct {
+		name        string
+		fields      fields
+		args        args
+		wantErr     bool
+		abortCalled bool
+	}{
+		{"no-plugin", fields{defaultPluginCallback: func() pluginCore.Plugin {
+			return nil
+		}}, args{nil}, true, false},
+
+		{"abort-fails", fields{defaultPluginCallback: func() pluginCore.Plugin {
+			p := &pluginCoreMocks.Plugin{}
+			p.On("GetID").Return("id")
+			p.On("Abort", mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
+			return p
+		}}, args{nil}, true, true},
+		{"abort-success", fields{defaultPluginCallback: func() pluginCore.Plugin {
+			p := &pluginCoreMocks.Plugin{}
+			p.On("GetID").Return("id")
+			p.On("Abort", mock.Anything, mock.Anything).Return(nil)
+			return p
+		}}, args{ev: &fakeBufferedTaskEventRecorder{}}, false, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := tt.fields.defaultPluginCallback()
+			tk := Handler{
+				defaultPlugin:   m,
+				resourceManager: noopRm,
+			}
+			nCtx := createNodeCtx(tt.args.ev)
+			if err := tk.Abort(context.TODO(), nCtx, "reason"); (err != nil) != tt.wantErr {
+				t.Errorf("Handler.Abort() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			c := 0
+			if tt.abortCalled {
+				c = 1
+				if !tt.wantErr {
+					assert.Len(t, tt.args.ev.evs, 1)
+				}
+			}
+			if m != nil {
+				m.(*pluginCoreMocks.Plugin).AssertNumberOfCalls(t, "Abort", c)
+			}
+		})
+	}
+}
+
+func Test_task_Abort_v1(t *testing.T) {
+	createNodeCtx := func(ev *fakeBufferedTaskEventRecorder) *nodeMocks.NodeExecutionContext {
+		wfExecID := &core.WorkflowExecutionIdentifier{
+			Project: "project",
+			Domain:  "domain",
+			Name:    "name",
+		}
+
+		nodeID := "n1"
+
+		nm := &nodeMocks.NodeExecutionMetadata{}
+		nm.OnGetAnnotations().Return(map[string]string{})
+		nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
+			NodeId:      nodeID,
+			ExecutionId: wfExecID,
+		})
+		nm.OnGetK8sServiceAccount().Return("service-account")
+		nm.OnGetLabels().Return(map[string]string{})
+		nm.OnGetNamespace().Return("namespace")
+		nm.OnGetOwnerID().Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
+		nm.OnGetOwnerReference().Return(v12.OwnerReference{
+			Kind: "sample",
+			Name: "name",
+		})
+
+		taskID := &core.Identifier{}
+		tr := &nodeMocks.TaskReader{}
+		tr.OnGetTaskID().Return(taskID)
+		tr.OnGetTaskType().Return("x")
+
+		ns := &flyteMocks.ExecutableNodeStatus{}
+		ns.OnGetDataDir().Return(storage.DataReference("data-dir"))
+		ns.OnGetOutputDir().Return(storage.DataReference("output-dir"))
+
+		res := &v1.ResourceRequirements{}
+		n := &flyteMocks.ExecutableNode{}
+		ma := 5
+		n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
+		n.OnGetResources().Return(res)
+
+		ir := &ioMocks.InputReader{}
+		nCtx := &nodeMocks.NodeExecutionContext{}
+		nCtx.OnNodeExecutionMetadata().Return(nm)
+		nCtx.OnNode().Return(n)
+		nCtx.OnInputReader().Return(ir)
+		ds, err := storage.NewDataStore(
+			&storage.Config{
+				Type: storage.TypeMemory,
+			},
+			promutils.NewTestScope(),
+		)
+		assert.NoError(t, err)
+		nCtx.OnDataStore().Return(ds)
+		nCtx.OnCurrentAttempt().Return(uint32(1))
+		nCtx.OnTaskReader().Return(tr)
+		nCtx.OnMaxDatasetSizeBytes().Return(int64(1))
+		nCtx.OnNodeStatus().Return(ns)
+		nCtx.OnNodeID().Return("n1")
+		nCtx.OnEnqueueOwnerFunc().Return(nil)
+		nCtx.OnEventsRecorder().Return(ev)
+
+		executionContext := &mocks.ExecutionContext{}
+		executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
+		executionContext.OnGetParentInfo().Return(nil)
+		executionContext.OnGetEventVersion().Return(v1alpha1.EventVersion1)
 		nCtx.OnExecutionContext().Return(executionContext)
 
 		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
@@ -1344,6 +1527,8 @@ func Test_task_Finalize(t *testing.T) {
 
 	res := &v1.ResourceRequirements{}
 	n := &flyteMocks.ExecutableNode{}
+	ma := 5
+	n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 	n.OnGetResources().Return(res)
 
 	ir := &ioMocks.InputReader{}
@@ -1369,6 +1554,8 @@ func Test_task_Finalize(t *testing.T) {
 
 	executionContext := &mocks.ExecutionContext{}
 	executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
+	executionContext.OnGetParentInfo().Return(nil)
+	executionContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
 	nCtx.OnExecutionContext().Return(executionContext)
 
 	nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
