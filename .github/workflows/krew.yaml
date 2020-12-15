@@ -15,4 +15,5 @@ jobs:
         run: git fetch --prune --unshallow
 
       - name: Update new version in krew-index
+        if: "!github.event.release.prerelease"
         uses: rajatjindal/krew-release-bot@v0.0.38
