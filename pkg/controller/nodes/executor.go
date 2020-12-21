@@ -246,7 +246,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeEx
 		currentAttempt, maxAttempts, isEligible := c.isEligibleForRetry(nCtx, nodeStatus, phase.GetErr())
 
 		if !c.cleanupLastRetry && !isEligible {
-			logger.Errorf(ctx, "Transit node phase to failure")
+			logger.Debugf(ctx, "Transit node phase to failure")
 			return handler.PhaseInfoFailure(
 				core.ExecutionError_USER,
 				fmt.Sprintf("RetriesExhausted|%s", phase.GetErr().Code),
