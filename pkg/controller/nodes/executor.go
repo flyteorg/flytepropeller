@@ -77,6 +77,7 @@ type nodeExecutor struct {
 	interruptibleFailureThreshold   uint32
 	defaultDataSandbox              storage.DataReference
 	shardSelector                   ioutils.ShardSelector
+	cleanupLastRetry            bool
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, dag executors.DAGStructure, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -243,7 +244,9 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeEx
 
 	if phase.GetPhase() == handler.EPhaseRetryableFailure {
 		currentAttempt, maxAttempts, isEligible := c.isEligibleForRetry(nCtx, nodeStatus, phase.GetErr())
-		if !isEligible {
+
+		if !c.cleanupLastRetry && !isEligible {
+			logger.Errorf(ctx, "Transit node phase to failure")
 			return handler.PhaseInfoFailure(
 				core.ExecutionError_USER,
 				fmt.Sprintf("RetriesExhausted|%s", phase.GetErr().Code),
@@ -445,6 +448,18 @@ func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx *nodeExe
 
 	// NOTE: It is important to increment attempts only after abort has been called. Increment attempt mutates the state
 	// Attempt is used throughout the system to determine the idempotent resource version.
+	nodeErr := nodeStatus.GetExecutionError()
+	currentAttempt, maxAttempts, isEligible := c.isEligibleForRetry(nCtx, nodeStatus, nodeErr)
+	if c.cleanupLastRetry && !isEligible {
+		logger.Debugf(ctx, "Transit node to phase failed status as retries exxhauted")
+		return executors.NodeStatusFailed(
+			&core.ExecutionError{
+				Kind: nodeErr.Kind,
+				Code: fmt.Sprintf("RetriesExhausted|%s", nodeErr.Code),
+				Message: fmt.Sprintf("[%d/%d] currentAttempt done. Last Error: %s::%s", currentAttempt, maxAttempts,
+					nodeErr.GetKind(), nodeErr.GetMessage()),
+			}), nil
+	}
 	nodeStatus.IncrementAttempts()
 	nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying", nil)
 	// We are going to retry in the next round, so we should clear all current state
@@ -915,6 +930,7 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		interruptibleFailureThreshold:   uint32(nodeConfig.InterruptibleFailureThreshold),
 		defaultDataSandbox:              defaultRawOutputPrefix,
 		shardSelector:                   shardSelector,
+		cleanupLastRetry:            nodeConfig.CleanupLastRetry,
 	}
 	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory
