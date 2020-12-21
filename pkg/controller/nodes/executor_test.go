@@ -479,7 +479,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		}
 
 		var err *v1alpha1.ExecutionError
-		if p == v1alpha1.NodePhaseFailing || p == v1alpha1.NodePhaseFailed {
+		if p == v1alpha1.NodePhaseFailing || p == v1alpha1.NodePhaseFailed || p == v1alpha1.NodePhaseRetryableFailure{
 			err = &v1alpha1.ExecutionError{ExecutionError: &core.ExecutionError{Code: "test", Message: "test"}}
 		}
 		ns := &v1alpha1.NodeStatus{
@@ -962,6 +962,69 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		assert.Equal(t, executors.NodePhasePending.String(), s.NodePhase.String())
 		assert.Equal(t, uint32(0), mockNodeStatus.GetAttempts())
 		assert.Equal(t, v1alpha1.NodePhaseFailing.String(), mockNodeStatus.GetPhase().String())
+	})
+
+	// not fail immediately for last retry failure when enabled cleanupLastRetry
+	t.Run("not-fail-immediately-for-last-failure", func(t *testing.T) {
+		hf := &mocks2.HandlerFactory{}
+		store := createInmemoryDataStore(t, promutils.NewTestScope())
+		adminClient := launchplan.NewFailFastLaunchPlanExecutor()
+		execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient,
+			adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+		assert.NoError(t, err)
+		exec := execIface.(*nodeExecutor)
+		exec.cleanupLastRetry = true
+		exec.nodeHandlerFactory = hf
+
+		h := &nodeHandlerMocks.Node{}
+		h.On("Handle",
+			mock.MatchedBy(func(ctx context.Context) bool { return true }),
+			mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
+		).Return(handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure(core.ExecutionError_USER, "x", "y", nil)), nil)
+		h.On("FinalizeRequired").Return(true)
+		h.On("Finalize", mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
+		hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
+
+		mockWf, _, mockNodeStatus := createSingleNodeWf(v1alpha1.NodePhaseRunning, 1)
+		startNode := mockWf.StartNode()
+		execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil)
+		s, err := exec.RecursiveNodeHandler(ctx, execContext, mockWf, mockWf, startNode)
+		assert.NoError(t, err)
+		assert.Equal(t, executors.NodePhasePending.String(), s.NodePhase.String())
+		assert.Equal(t, uint32(0), mockNodeStatus.GetAttempts())
+		assert.Equal(t, v1alpha1.NodePhaseRetryableFailure.String(), mockNodeStatus.GetPhase().String())
+	})
+
+	// Clean up last retry
+	t.Run("retries-last-cleanup", func(t *testing.T) {
+		hf := &mocks2.HandlerFactory{}
+		store := createInmemoryDataStore(t, promutils.NewTestScope())
+		adminClient := launchplan.NewFailFastLaunchPlanExecutor()
+		execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient,
+			adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+		assert.NoError(t, err)
+		exec := execIface.(*nodeExecutor)
+		exec.cleanupLastRetry = true
+		exec.nodeHandlerFactory = hf
+
+		h := &nodeHandlerMocks.Node{}
+		h.On("Handle",
+			mock.MatchedBy(func(ctx context.Context) bool { return true }),
+			mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
+		).Return(handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure(core.ExecutionError_USER, "x", "y", nil)), nil)
+		h.On("FinalizeRequired").Return(true)
+		h.On("Finalize", mock.Anything, mock.Anything).Return(nil)
+		h.On("Abort", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
+
+		mockWf, _, mockNodeStatus := createSingleNodeWf(v1alpha1.NodePhaseRetryableFailure, 0)
+		startNode := mockWf.StartNode()
+		execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil)
+		s, err := exec.RecursiveNodeHandler(ctx, execContext, mockWf, mockWf, startNode)
+		assert.NoError(t, err)
+		assert.Equal(t, executors.NodePhaseFailed.String(), s.NodePhase.String())
+		assert.Equal(t, uint32(0), mockNodeStatus.GetAttempts())
+		assert.Equal(t, v1alpha1.NodePhaseRetryableFailure.String(), mockNodeStatus.GetPhase().String())
 	})
 }
 

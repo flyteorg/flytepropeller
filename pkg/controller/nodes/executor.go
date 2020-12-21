@@ -77,7 +77,7 @@ type nodeExecutor struct {
 	interruptibleFailureThreshold   uint32
 	defaultDataSandbox              storage.DataReference
 	shardSelector                   ioutils.ShardSelector
-	cleanupLastRetry            bool
+	cleanupLastRetry                bool
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, dag executors.DAGStructure, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -930,7 +930,7 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		interruptibleFailureThreshold:   uint32(nodeConfig.InterruptibleFailureThreshold),
 		defaultDataSandbox:              defaultRawOutputPrefix,
 		shardSelector:                   shardSelector,
-		cleanupLastRetry:            nodeConfig.CleanupLastRetry,
+		cleanupLastRetry:                nodeConfig.CleanupLastRetry,
 	}
 	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory
