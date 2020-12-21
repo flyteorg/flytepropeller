@@ -46,7 +46,7 @@ var (
 			},
 			MaxNodeRetriesOnSystemFailures: 3,
 			InterruptibleFailureThreshold:  1,
-			CleanupLastRetry:           false,
+			CleanupLastRetry:               false,
 		},
 	}
 )

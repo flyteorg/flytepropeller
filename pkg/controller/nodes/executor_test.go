@@ -479,7 +479,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		}
 
 		var err *v1alpha1.ExecutionError
-		if p == v1alpha1.NodePhaseFailing || p == v1alpha1.NodePhaseFailed || p == v1alpha1.NodePhaseRetryableFailure{
+		if p == v1alpha1.NodePhaseFailing || p == v1alpha1.NodePhaseFailed || p == v1alpha1.NodePhaseRetryableFailure {
 			err = &v1alpha1.ExecutionError{ExecutionError: &core.ExecutionError{Code: "test", Message: "test"}}
 		}
 		ns := &v1alpha1.NodeStatus{
