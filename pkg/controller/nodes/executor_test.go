@@ -875,7 +875,12 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				}
 				hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
 
-				mockWf, _, mockNodeStatus := createSingleNodeWf(test.currentNodePhase, 1)
+				maxAttempts := 1
+				if test.currentNodePhase == v1alpha1.NodePhaseRetryableFailure {
+					// For case retryableFailure -> running, the attempts should less that maxAttempts
+					maxAttempts = 2
+				}
+				mockWf, _, mockNodeStatus := createSingleNodeWf(test.currentNodePhase, maxAttempts)
 				execErr := mockNodeStatus.GetExecutionError()
 				startNode := mockWf.StartNode()
 				execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil)
@@ -965,7 +970,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	})
 
 	// not fail immediately for last retry failure when ImagePullBackOff
-	t.Run("not-fail-immediately-for-last-failure", func(t *testing.T) {
+	t.Run("imagePullBackOff-not-fail-immediately-for-last-failure", func(t *testing.T) {
 		hf := &mocks2.HandlerFactory{}
 		store := createInmemoryDataStore(t, promutils.NewTestScope())
 		adminClient := launchplan.NewFailFastLaunchPlanExecutor()
@@ -995,7 +1000,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	})
 
 	// Clean up pod last retry for ImagePullBackOff
-	t.Run("retries-last-cleanup", func(t *testing.T) {
+	t.Run("imagePullBackOff-last-retries-cleanup", func(t *testing.T) {
 		hf := &mocks2.HandlerFactory{}
 		store := createInmemoryDataStore(t, promutils.NewTestScope())
 		adminClient := launchplan.NewFailFastLaunchPlanExecutor()
@@ -1022,7 +1027,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	})
 
 	// Abort error when clean up last retry
-	t.Run("abort-error-retries-last-cleanup", func(t *testing.T) {
+	t.Run("imagePullBackOff-abort-error-retries-last-cleanup", func(t *testing.T) {
 		hf := &mocks2.HandlerFactory{}
 		store := createInmemoryDataStore(t, promutils.NewTestScope())
 		adminClient := launchplan.NewFailFastLaunchPlanExecutor()
