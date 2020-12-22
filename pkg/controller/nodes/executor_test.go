@@ -977,13 +977,13 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		exec.nodeHandlerFactory = hf
 
 		h := &nodeHandlerMocks.Node{}
-		h.On("Handle",
+		h.OnHandleMatch(
 			mock.MatchedBy(func(ctx context.Context) bool { return true }),
 			mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
 		).Return(handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure(core.ExecutionError_USER, "x", "y", nil)), nil)
-		h.On("FinalizeRequired").Return(true)
-		h.On("Finalize", mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
-		hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
+		h.OnFinalizeRequiredMatch().Return(true)
+		h.OnFinalizeMatch(mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
+		hf.OnGetHandlerMatch(v1alpha1.NodeKindTask).Return(h, nil)
 
 		mockWf, _, mockNodeStatus := createSingleNodeWf(v1alpha1.NodePhaseRunning, 1)
 		startNode := mockWf.StartNode()
@@ -1008,14 +1008,10 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		exec.nodeHandlerFactory = hf
 
 		h := &nodeHandlerMocks.Node{}
-		h.On("Handle",
-			mock.MatchedBy(func(ctx context.Context) bool { return true }),
-			mock.MatchedBy(func(o handler.NodeExecutionContext) bool { return true }),
-		).Return(handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure(core.ExecutionError_USER, "x", "y", nil)), nil)
-		h.On("FinalizeRequired").Return(true)
-		h.On("Finalize", mock.Anything, mock.Anything).Return(nil)
-		h.On("Abort", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
+		h.OnFinalizeRequiredMatch().Return(true)
+		h.OnFinalizeMatch(mock.Anything, mock.Anything).Return(nil)
+		h.OnAbortMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		hf.OnGetHandlerMatch(v1alpha1.NodeKindTask).Return(h, nil)
 
 		mockWf, _, mockNodeStatus := createSingleNodeWf(v1alpha1.NodePhaseRetryableFailure, 0)
 		startNode := mockWf.StartNode()
@@ -1023,6 +1019,34 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		s, err := exec.RecursiveNodeHandler(ctx, execContext, mockWf, mockWf, startNode)
 		assert.NoError(t, err)
 		assert.Equal(t, executors.NodePhaseFailed.String(), s.NodePhase.String())
+		assert.Equal(t, uint32(0), mockNodeStatus.GetAttempts())
+		assert.Equal(t, v1alpha1.NodePhaseRetryableFailure.String(), mockNodeStatus.GetPhase().String())
+	})
+
+	// Abort error when clean up last retry
+	t.Run("abort-error-retries-last-cleanup", func(t *testing.T) {
+		hf := &mocks2.HandlerFactory{}
+		store := createInmemoryDataStore(t, promutils.NewTestScope())
+		adminClient := launchplan.NewFailFastLaunchPlanExecutor()
+		execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient,
+			adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+		assert.NoError(t, err)
+		exec := execIface.(*nodeExecutor)
+		exec.cleanupLastRetry = true
+		exec.nodeHandlerFactory = hf
+
+		h := &nodeHandlerMocks.Node{}
+		h.OnFinalizeRequiredMatch().Return(true)
+		h.OnFinalizeMatch(mock.Anything, mock.Anything).Return(nil)
+		h.OnAbortMatch(mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
+		hf.OnGetHandlerMatch(v1alpha1.NodeKindTask).Return(h, nil)
+
+		mockWf, _, mockNodeStatus := createSingleNodeWf(v1alpha1.NodePhaseRetryableFailure, 0)
+		startNode := mockWf.StartNode()
+		execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil)
+		s, err := exec.RecursiveNodeHandler(ctx, execContext, mockWf, mockWf, startNode)
+		assert.Error(t, err)
+		assert.Equal(t, executors.NodePhaseUndefined.String(), s.NodePhase.String())
 		assert.Equal(t, uint32(0), mockNodeStatus.GetAttempts())
 		assert.Equal(t, v1alpha1.NodePhaseRetryableFailure.String(), mockNodeStatus.GetPhase().String())
 	})
