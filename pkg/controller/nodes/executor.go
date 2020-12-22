@@ -3,6 +3,7 @@ package nodes
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/common"
@@ -244,12 +245,15 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeEx
 	if phase.GetPhase() == handler.EPhaseRetryableFailure {
 		currentAttempt, maxAttempts, isEligible := c.isEligibleForRetry(nCtx, nodeStatus, phase.GetErr())
 		if !isEligible {
-			return handler.PhaseInfoFailure(
-				core.ExecutionError_USER,
-				fmt.Sprintf("RetriesExhausted|%s", phase.GetErr().Code),
-				fmt.Sprintf("[%d/%d] currentAttempt done. Last Error: %s::%s", currentAttempt, maxAttempts, phase.GetErr().Kind.String(), phase.GetErr().Message),
-				phase.GetInfo(),
-			), nil
+			pErr := phase.GetErr()
+			if pErr.Kind != core.ExecutionError_USER || !strings.Contains(pErr.Code, "ImagePullBackOff") {
+				return handler.PhaseInfoFailure(
+					core.ExecutionError_USER,
+					fmt.Sprintf("RetriesExhausted|%s", phase.GetErr().Code),
+					fmt.Sprintf("[%d/%d] currentAttempt done. Last Error: %s::%s", currentAttempt, maxAttempts, phase.GetErr().Kind.String(), phase.GetErr().Message),
+					phase.GetInfo(),
+				), nil
+			}
 		}
 
 		// Retrying to clearing all status
@@ -443,6 +447,19 @@ func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx *nodeExe
 		return executors.NodeStatusUndefined, err
 	}
 
+	nodeErr := nodeStatus.GetExecutionError()
+	currentAttempt, maxAttempts, isEligible := c.isEligibleForRetry(nCtx, nodeStatus, nodeErr)
+	if !isEligible {
+		// Only possible to reach here because of ImagePullBackOff error
+		logger.Debugf(ctx, "Transit node to phase failed status as retries exhausted")
+		return executors.NodeStatusFailed(
+			&core.ExecutionError{
+				Kind: nodeErr.Kind,
+				Code: fmt.Sprintf("RetriesExhausted|%s", nodeErr.Code),
+				Message: fmt.Sprintf("[%d/%d] currentAttempt done. Last Error: %s::%s", currentAttempt, maxAttempts,
+					nodeErr.GetKind(), nodeErr.GetMessage()),
+			}), nil
+	}
 	// NOTE: It is important to increment attempts only after abort has been called. Increment attempt mutates the state
 	// Attempt is used throughout the system to determine the idempotent resource version.
 	nodeStatus.IncrementAttempts()
