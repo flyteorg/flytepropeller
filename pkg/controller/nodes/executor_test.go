@@ -815,7 +815,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				},
 				false, true, core.NodeExecution_FAILED, 0},
 
-			{"retryablefailure->running", v1alpha1.NodePhaseRetryableFailure, v1alpha1.NodePhaseRunning, executors.NodePhasePending, func() (handler.Transition, error) {
+			{"retryableFailure->running", v1alpha1.NodePhaseRetryableFailure, v1alpha1.NodePhaseRunning, executors.NodePhasePending, func() (handler.Transition, error) {
 				return handler.UnknownTransition, fmt.Errorf("should not be invoked")
 			}, false, false, core.NodeExecution_RUNNING, 1},
 
@@ -876,7 +876,8 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
 
 				maxAttempts := 1
-				if test.currentNodePhase == v1alpha1.NodePhaseRetryableFailure {
+				if test.currentNodePhase == v1alpha1.NodePhaseRetryableFailure &&
+					test.expectedNodePhase == v1alpha1.NodePhaseRunning {
 					// For case retryableFailure -> running, the attempts should less that maxAttempts
 					maxAttempts = 2
 				}
@@ -1000,7 +1001,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	})
 
 	// Clean up pod last retry for ImagePullBackOff
-	t.Run("imagePullBackOff-last-retries-cleanup", func(t *testing.T) {
+	t.Run("last-retries-cleanup", func(t *testing.T) {
 		hf := &mocks2.HandlerFactory{}
 		store := createInmemoryDataStore(t, promutils.NewTestScope())
 		adminClient := launchplan.NewFailFastLaunchPlanExecutor()
@@ -1027,7 +1028,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	})
 
 	// Abort error when clean up last retry
-	t.Run("imagePullBackOff-abort-error-retries-last-cleanup", func(t *testing.T) {
+	t.Run("abort-error-retries-last-cleanup", func(t *testing.T) {
 		hf := &mocks2.HandlerFactory{}
 		store := createInmemoryDataStore(t, promutils.NewTestScope())
 		adminClient := launchplan.NewFailFastLaunchPlanExecutor()
