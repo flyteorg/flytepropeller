@@ -178,17 +178,17 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 		Upstream:   make(map[string]*core.ConnectionSet_IdList),
 	}
 
-	globalInputNode, _ := wf.AddNode(wf.NewNodeBuilder(startNode), errs)
+	globalInputNode, _ := wf.AddNode(wf.NewNodeBuilder(startNode, false), errs)
 	globalInputNode.SetInterface(&core.TypedInterface{Outputs: wf.CoreWorkflow.Template.Interface.Inputs})
 
 	endNode := &core.Node{Id: c.EndNodeID}
-	globalOutputNode, _ := wf.AddNode(wf.NewNodeBuilder(endNode), errs)
+	globalOutputNode, _ := wf.AddNode(wf.NewNodeBuilder(endNode, false), errs)
 	globalOutputNode.SetInterface(&core.TypedInterface{Inputs: wf.CoreWorkflow.Template.Interface.Outputs})
 	globalOutputNode.SetInputs(wf.CoreWorkflow.Template.Outputs)
 
 	// Add and validate all other nodes
 	for _, n := range checkpoint {
-		if node, addOk := wf.AddNode(wf.NewNodeBuilder(n), errs.NewScope()); addOk {
+		if node, addOk := wf.AddNode(wf.NewNodeBuilder(n, false), errs.NewScope()); addOk {
 			v.ValidateNode(&wf, node, false /* validateConditionTypes */, errs.NewScope())
 		}
 	}
@@ -225,7 +225,7 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 	}
 
 	// Add execution edges for orphan nodes that don't have any inward/outward edges.
-	for nodeID := range wf.Nodes {
+	for nodeID, n := range wf.Nodes {
 		if nodeID == c.StartNodeID || nodeID == c.EndNodeID {
 			continue
 		}
@@ -234,8 +234,10 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 			wf.AddExecutionEdge(c.StartNodeID, nodeID)
 		}
 
-		if _, foundDownStream := wf.downstreamNodes[nodeID]; !foundDownStream {
-			wf.AddExecutionEdge(nodeID, c.EndNodeID)
+		if !n.IsBranch() {
+			if _, foundDownStream := wf.downstreamNodes[nodeID]; !foundDownStream {
+				wf.AddExecutionEdge(nodeID, c.EndNodeID)
+			}
 		}
 	}
 

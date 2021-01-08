@@ -144,6 +144,7 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 		return handler.UnknownTransition, err
 	}
 
+	//if downstreamStatus.NodePhase == executors.NodePhaseSuccess {
 	if downstreamStatus.IsComplete() {
 		// For branch node we set the output node to be the same as the child nodes output
 		phase := handler.PhaseInfoSuccess(&handler.ExecutionInfo{

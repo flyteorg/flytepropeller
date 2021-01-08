@@ -20,7 +20,7 @@ type WorkflowBuilder interface {
 	AddExecutionEdge(nodeFrom, nodeTo NodeID)
 	AddNode(n NodeBuilder, errs errors.CompileErrors) (node NodeBuilder, ok bool)
 	ValidateWorkflow(fg *core.CompiledWorkflow, errs errors.CompileErrors) (Workflow, bool)
-	NewNodeBuilder(n *core.Node) NodeBuilder
+	NewNodeBuilder(n *core.Node, isBranch bool) NodeBuilder
 }
 
 // A mutable node used during the build of the intermediate layer.
