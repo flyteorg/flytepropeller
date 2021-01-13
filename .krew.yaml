@@ -4,7 +4,7 @@ metadata:
   name: flyte
 spec:
   version: "{{ .TagName }}"
-  homepage: https://github.com/lyft/flyt
+  homepage: https://github.com/lyft/flyte
   shortDescription: >-
   description: |+2
       kubectl-flyte is an command line tool that can be used as an extension to kubectl.
@@ -31,4 +31,3 @@ spec:
         - from: LICENSE
           to: .
       bin: flyte
-
