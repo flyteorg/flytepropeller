@@ -29,7 +29,7 @@ type workflowBuilder struct {
 
 func (w workflowBuilder) GetFailureNode() c.Node {
 	if w.GetCoreWorkflow() != nil && w.GetCoreWorkflow().GetTemplate() != nil && w.GetCoreWorkflow().GetTemplate().FailureNode != nil {
-		return w.NewNodeBuilder(w.GetCoreWorkflow().GetTemplate().FailureNode, false)
+		return w.NewNodeBuilder(w.GetCoreWorkflow().GetTemplate().FailureNode)
 	}
 
 	return nil
@@ -51,8 +51,8 @@ func (w workflowBuilder) GetUpstreamNodes() c.StringAdjacencyList {
 	return w.upstreamNodes
 }
 
-func (w workflowBuilder) NewNodeBuilder(n *flyteNode, isBranch bool) c.NodeBuilder {
-	return &nodeBuilder{flyteNode: n, isBranch: isBranch}
+func (w workflowBuilder) NewNodeBuilder(n *flyteNode) c.NodeBuilder {
+	return &nodeBuilder{flyteNode: n}
 }
 
 func (w workflowBuilder) GetNode(id c.NodeID) (node c.NodeBuilder, found bool) {

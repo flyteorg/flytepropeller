@@ -178,17 +178,23 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 		Upstream:   make(map[string]*core.ConnectionSet_IdList),
 	}
 
-	globalInputNode, _ := wf.AddNode(wf.NewNodeBuilder(startNode, false), errs)
+	globalInputNode, _ := wf.AddNode(wf.NewNodeBuilder(startNode), errs)
 	globalInputNode.SetInterface(&core.TypedInterface{Outputs: wf.CoreWorkflow.Template.Interface.Inputs})
 
 	endNode := &core.Node{Id: c.EndNodeID}
-	globalOutputNode, _ := wf.AddNode(wf.NewNodeBuilder(endNode, false), errs)
+	globalOutputNode, _ := wf.AddNode(wf.NewNodeBuilder(endNode), errs)
 	globalOutputNode.SetInterface(&core.TypedInterface{Inputs: wf.CoreWorkflow.Template.Interface.Outputs})
 	globalOutputNode.SetInputs(wf.CoreWorkflow.Template.Outputs)
 
+	// Track top level nodes (a branch in a branch node is NOT a top level node). The final graph should ensure that all
+	// top level nodes are executed before the end node. We do that by adding execution edges from leaf nodes that do not
+	// contribute to the final outputs to the end node.
+	topLevelNodes := sets.NewString()
+
 	// Add and validate all other nodes
 	for _, n := range checkpoint {
-		if node, addOk := wf.AddNode(wf.NewNodeBuilder(n, false), errs.NewScope()); addOk {
+		topLevelNodes.Insert(n.Id)
+		if node, addOk := wf.AddNode(wf.NewNodeBuilder(n), errs.NewScope()); addOk {
 			v.ValidateNode(&wf, node, false /* validateConditionTypes */, errs.NewScope())
 		}
 	}
@@ -225,7 +231,7 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 	}
 
 	// Add execution edges for orphan nodes that don't have any inward/outward edges.
-	for nodeID, n := range wf.Nodes {
+	for nodeID := range wf.Nodes {
 		if nodeID == c.StartNodeID || nodeID == c.EndNodeID {
 			continue
 		}
@@ -234,7 +240,7 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 			wf.AddExecutionEdge(c.StartNodeID, nodeID)
 		}
 
-		if !n.IsBranch() {
+		if topLevelNodes.Has(nodeID) {
 			if _, foundDownStream := wf.downstreamNodes[nodeID]; !foundDownStream {
 				wf.AddExecutionEdge(nodeID, c.EndNodeID)
 			}

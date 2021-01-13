@@ -56,8 +56,7 @@ func Test_validateBranchInterface(t *testing.T) {
 	wf.OnGetTask(identifier).Return(task, true)
 
 	errs := compilerErrors.NewCompileErrors()
-	wf.OnNewNodeBuilder(coreN2, false).Return(n2)
-	wf.OnNewNodeBuilder(coreN2, true).Return(n2)
+	wf.OnNewNodeBuilder(coreN2).Return(n2)
 
 	t.Run("single branch", func(t *testing.T) {
 		n := &mocks.NodeBuilder{}

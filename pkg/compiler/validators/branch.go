@@ -61,7 +61,7 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 	}
 
 	for _, block := range cases {
-		n := w.NewNodeBuilder(block, true)
+		n := w.NewNodeBuilder(block)
 		if iface == nil {
 			// if this is the first node to validate, just assume all other nodes will match the interface
 			if iface, ok = ValidateUnderlyingInterface(w, n, errs.NewScope()); ok {
