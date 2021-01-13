@@ -363,14 +363,15 @@ func newWorkflowBuilder(fg *flyteWorkflow, wfIndex c.WorkflowIndex, tasks c.Task
 	workflows map[string]c.InterfaceProvider) workflowBuilder {
 
 	return workflowBuilder{
-		CoreWorkflow:    fg,
-		LaunchPlans:     map[string]c.InterfaceProvider{},
-		Nodes:           c.NewNodeIndex(),
-		Tasks:           c.NewTaskIndex(),
-		downstreamNodes: c.StringAdjacencyList{},
-		upstreamNodes:   c.StringAdjacencyList{},
-		allSubWorkflows: wfIndex,
-		allLaunchPlans:  workflows,
-		allTasks:        tasks,
+		CoreWorkflow:            fg,
+		LaunchPlans:             map[string]c.InterfaceProvider{},
+		Nodes:                   c.NewNodeIndex(),
+		Tasks:                   c.NewTaskIndex(),
+		downstreamNodes:         c.StringAdjacencyList{},
+		upstreamNodes:           c.StringAdjacencyList{},
+		allSubWorkflows:         wfIndex,
+		allCompiledSubWorkflows: c.WorkflowIndex{},
+		allLaunchPlans:          workflows,
+		allTasks:                tasks,
 	}
 }
