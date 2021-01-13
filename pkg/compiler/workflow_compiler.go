@@ -236,10 +236,17 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 			continue
 		}
 
+		// Nodes that do not have a upstream dependencies means they do not rely on the workflow inputs to execute.
+		// This is a rare but possible occurrence, by explicitly adding an execution edge from the start node to these
+		// nodes, we ensure that propeller starts executing the workflow by running all such nodes and then their
+		// downstream dependencies.
 		if _, foundUpStream := wf.upstreamNodes[nodeID]; !foundUpStream {
 			wf.AddExecutionEdge(c.StartNodeID, nodeID)
 		}
 
+		// When propeller executes nodes it'll ensure that any node does not start executing until all of its upstream
+		// dependencies have finished successfully. By explicitly adding execution edges from such nodes to end-node, we
+		// ensure that execution continues until all nodes successfully finish.
 		if topLevelNodes.Has(nodeID) {
 			if _, foundDownStream := wf.downstreamNodes[nodeID]; !foundDownStream {
 				wf.AddExecutionEdge(nodeID, c.EndNodeID)
