@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/common"
 	stdErrors "github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
@@ -112,21 +113,39 @@ func (b *branchHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionCo
 	return b.HandleBranchNode(ctx, branchNode, nCtx, nl)
 }
 
+func (b *branchHandler) getExecutionContextForDownstream(nCtx handler.NodeExecutionContext) (executors.ExecutionContext, error) {
+	newParentInfo, err := common.CreateParentInfo(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID(), nCtx.CurrentAttempt())
+	if err != nil {
+		return nil, err
+	}
+	return executors.NewExecutionContextWithParentInfo(nCtx.ExecutionContext(), newParentInfo), nil
+}
+
 func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.NodeExecutionContext, nodeStatus v1alpha1.ExecutableNodeStatus, branchTakenNode v1alpha1.ExecutableNode) (handler.Transition, error) {
 	// TODO we should replace the call to RecursiveNodeHandler with a call to SingleNode Handler. The inputs are also already known ahead of time
 	// There is no DAGStructure for the branch nodes, the branch taken node is the leaf node. The node itself may be arbitrarily complex, but in that case the node should reference a subworkflow etc
 	// The parent of the BranchTaken Node is the actual Branch Node and all the data is just forwarded from the Branch to the executed node.
+	nl := nCtx.ContextualNodeLookup()
+	if nl == nil {
+		return handler.DoTransition(handler.TransitionTypeBarrier, handler.PhaseInfo{}),
+			errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "nodeLookup must be supplied.")
+	}
+
+	childNodeStatus := nl.GetNodeExecutionStatus(ctx, branchTakenNode.GetID())
+	childNodeStatus.SetDataDir(nodeStatus.GetDataDir())
+	childNodeStatus.SetOutputDir(nodeStatus.GetOutputDir())
 	dag := executors.NewLeafNodeDAGStructure(branchTakenNode.GetID(), nCtx.NodeID())
-	downstreamStatus, err := b.nodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), branchTakenNode)
+	execContext, err := b.getExecutionContextForDownstream(nCtx)
+	if err != nil {
+		return handler.UnknownTransition, err
+	}
+	downstreamStatus, err := b.nodeExecutor.RecursiveNodeHandler(ctx, execContext, dag, nCtx.ContextualNodeLookup(), branchTakenNode)
 	if err != nil {
 		return handler.UnknownTransition, err
 	}
 
 	if downstreamStatus.IsComplete() {
 		// For branch node we set the output node to be the same as the child nodes output
-		childNodeStatus := nCtx.ContextualNodeLookup().GetNodeExecutionStatus(ctx, branchTakenNode.GetID())
-		nodeStatus.SetDataDir(childNodeStatus.GetDataDir())
-		nodeStatus.SetOutputDir(childNodeStatus.GetOutputDir())
 		phase := handler.PhaseInfoSuccess(&handler.ExecutionInfo{
 			OutputInfo: &handler.OutputInfo{OutputURI: v1alpha1.GetOutputsFile(childNodeStatus.GetOutputDir())},
 		})
@@ -175,7 +194,11 @@ func (b *branchHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionCon
 	// There is no DAGStructure for the branch nodes, the branch taken node is the leaf node. The node itself may be arbitrarily complex, but in that case the node should reference a subworkflow etc
 	// The parent of the BranchTaken Node is the actual Branch Node and all the data is just forwarded from the Branch to the executed node.
 	dag := executors.NewLeafNodeDAGStructure(branchTakenNode.GetID(), nCtx.NodeID())
-	return b.nodeExecutor.AbortHandler(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), branchTakenNode, reason)
+	execContext, err := b.getExecutionContextForDownstream(nCtx)
+	if err != nil {
+		return err
+	}
+	return b.nodeExecutor.AbortHandler(ctx, execContext, dag, nCtx.ContextualNodeLookup(), branchTakenNode, reason)
 }
 
 func (b *branchHandler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
@@ -211,7 +234,11 @@ func (b *branchHandler) Finalize(ctx context.Context, nCtx handler.NodeExecution
 	// There is no DAGStructure for the branch nodes, the branch taken node is the leaf node. The node itself may be arbitrarily complex, but in that case the node should reference a subworkflow etc
 	// The parent of the BranchTaken Node is the actual Branch Node and all the data is just forwarded from the Branch to the executed node.
 	dag := executors.NewLeafNodeDAGStructure(branchTakenNode.GetID(), nCtx.NodeID())
-	return b.nodeExecutor.FinalizeHandler(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), branchTakenNode)
+	execContext, err := b.getExecutionContextForDownstream(nCtx)
+	if err != nil {
+		return err
+	}
+	return b.nodeExecutor.FinalizeHandler(ctx, execContext, dag, nCtx.ContextualNodeLookup(), branchTakenNode)
 }
 
 func New(executor executors.Node, scope promutils.Scope) handler.Node {

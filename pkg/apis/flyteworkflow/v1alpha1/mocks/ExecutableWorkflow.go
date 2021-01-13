@@ -193,6 +193,70 @@ func (_m *ExecutableWorkflow) GetCreationTimestamp() v1.Time {
 	return r0
 }
 
+type ExecutableWorkflow_GetEventVersion struct {
+	*mock.Call
+}
+
+func (_m ExecutableWorkflow_GetEventVersion) Return(_a0 v1alpha1.EventVersion) *ExecutableWorkflow_GetEventVersion {
+	return &ExecutableWorkflow_GetEventVersion{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableWorkflow) OnGetEventVersion() *ExecutableWorkflow_GetEventVersion {
+	c := _m.On("GetEventVersion")
+	return &ExecutableWorkflow_GetEventVersion{Call: c}
+}
+
+func (_m *ExecutableWorkflow) OnGetEventVersionMatch(matchers ...interface{}) *ExecutableWorkflow_GetEventVersion {
+	c := _m.On("GetEventVersion", matchers...)
+	return &ExecutableWorkflow_GetEventVersion{Call: c}
+}
+
+// GetEventVersion provides a mock function with given fields:
+func (_m *ExecutableWorkflow) GetEventVersion() v1alpha1.EventVersion {
+	ret := _m.Called()
+
+	var r0 v1alpha1.EventVersion
+	if rf, ok := ret.Get(0).(func() v1alpha1.EventVersion); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(v1alpha1.EventVersion)
+	}
+
+	return r0
+}
+
+type ExecutableWorkflow_GetExecutionConfig struct {
+	*mock.Call
+}
+
+func (_m ExecutableWorkflow_GetExecutionConfig) Return(_a0 v1alpha1.ExecutionConfig) *ExecutableWorkflow_GetExecutionConfig {
+	return &ExecutableWorkflow_GetExecutionConfig{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableWorkflow) OnGetExecutionConfig() *ExecutableWorkflow_GetExecutionConfig {
+	c := _m.On("GetExecutionConfig")
+	return &ExecutableWorkflow_GetExecutionConfig{Call: c}
+}
+
+func (_m *ExecutableWorkflow) OnGetExecutionConfigMatch(matchers ...interface{}) *ExecutableWorkflow_GetExecutionConfig {
+	c := _m.On("GetExecutionConfig", matchers...)
+	return &ExecutableWorkflow_GetExecutionConfig{Call: c}
+}
+
+// GetExecutionConfig provides a mock function with given fields:
+func (_m *ExecutableWorkflow) GetExecutionConfig() v1alpha1.ExecutionConfig {
+	ret := _m.Called()
+
+	var r0 v1alpha1.ExecutionConfig
+	if rf, ok := ret.Get(0).(func() v1alpha1.ExecutionConfig); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(v1alpha1.ExecutionConfig)
+	}
+
+	return r0
+}
+
 type ExecutableWorkflow_GetExecutionID struct {
 	*mock.Call
 }
@@ -691,6 +755,38 @@ func (_m *ExecutableWorkflow) GetOwnerReference() v1.OwnerReference {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(v1.OwnerReference)
+	}
+
+	return r0
+}
+
+type ExecutableWorkflow_GetRawOutputDataConfig struct {
+	*mock.Call
+}
+
+func (_m ExecutableWorkflow_GetRawOutputDataConfig) Return(_a0 v1alpha1.RawOutputDataConfig) *ExecutableWorkflow_GetRawOutputDataConfig {
+	return &ExecutableWorkflow_GetRawOutputDataConfig{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableWorkflow) OnGetRawOutputDataConfig() *ExecutableWorkflow_GetRawOutputDataConfig {
+	c := _m.On("GetRawOutputDataConfig")
+	return &ExecutableWorkflow_GetRawOutputDataConfig{Call: c}
+}
+
+func (_m *ExecutableWorkflow) OnGetRawOutputDataConfigMatch(matchers ...interface{}) *ExecutableWorkflow_GetRawOutputDataConfig {
+	c := _m.On("GetRawOutputDataConfig", matchers...)
+	return &ExecutableWorkflow_GetRawOutputDataConfig{Call: c}
+}
+
+// GetRawOutputDataConfig provides a mock function with given fields:
+func (_m *ExecutableWorkflow) GetRawOutputDataConfig() v1alpha1.RawOutputDataConfig {
+	ret := _m.Called()
+
+	var r0 v1alpha1.RawOutputDataConfig
+	if rf, ok := ret.Get(0).(func() v1alpha1.RawOutputDataConfig); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(v1alpha1.RawOutputDataConfig)
 	}
 
 	return r0

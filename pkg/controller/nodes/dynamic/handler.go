@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
@@ -32,8 +33,9 @@ const dynamicNodeID = "dynamic-node"
 
 type TaskNodeHandler interface {
 	handler.Node
-	ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader, r io.OutputReader, outputCommitter io.OutputWriter,
-		tr pluginCore.TaskReader, m catalog.Metadata) (*io.ExecutionError, error)
+	ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader,
+		r io.OutputReader, outputCommitter io.OutputWriter, executionConfig v1alpha1.ExecutionConfig,
+		tr pluginCore.TaskReader, m catalog.Metadata) (catalog.Status, *io.ExecutionError, error)
 }
 
 type metrics struct {
@@ -115,9 +117,10 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 		outputPaths := ioutils.NewRemoteFileOutputPaths(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetOutputDir(), nil)
 		execID := task.GetTaskExecutionIdentifier(nCtx)
 		outputReader := ioutils.NewRemoteFileOutputReader(ctx, nCtx.DataStore(), outputPaths, nCtx.MaxDatasetSizeBytes())
-		ee, err := d.TaskNodeHandler.ValidateOutputAndCacheAdd(ctx, nCtx.NodeID(), nCtx.InputReader(), outputReader, nil, nCtx.TaskReader(), catalog.Metadata{
-			TaskExecutionIdentifier: execID,
-		})
+		status, ee, err := d.TaskNodeHandler.ValidateOutputAndCacheAdd(ctx, nCtx.NodeID(), nCtx.InputReader(),
+			outputReader, nil, nCtx.ExecutionContext().GetExecutionConfig(), nCtx.TaskReader(), catalog.Metadata{
+				TaskExecutionIdentifier: execID,
+			})
 
 		if err != nil {
 			return handler.UnknownTransition, prevState, err
@@ -130,6 +133,7 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 
 			return trns.WithInfo(handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
 		}
+		trns.WithInfo(trns.Info().WithInfo(&handler.ExecutionInfo{TaskNodeInfo: &handler.TaskNodeInfo{TaskNodeMetadata: &event.TaskNodeMetadata{CacheStatus: status.GetCacheStatus(), CatalogKey: status.GetMetadata()}}}))
 	}
 
 	return trns, newState, nil

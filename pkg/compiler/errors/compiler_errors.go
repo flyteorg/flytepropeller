@@ -16,6 +16,9 @@ const (
 	// BranchNode is missing a condition.
 	BranchNodeHasNoCondition ErrorCode = "BranchNodeHasNoCondition"
 
+	// BranchNode is missing the else case & the else fail
+	BranchNodeHasNoDefault ErrorCode = "BranchNodeHasNoDefault"
+
 	// An expected field isn't populated.
 	ValueRequired ErrorCode = "ValueRequired"
 
@@ -72,6 +75,9 @@ const (
 
 	// A value isn't on the right syntax.
 	SyntaxError ErrorCode = "SyntaxError"
+
+	// A workflow is missing any nodes to execute
+	NoNodesFound ErrorCode = "NoNodesFound"
 )
 
 func NewBranchNodeNotSpecified(branchNodeID string) *CompileError {
@@ -86,6 +92,14 @@ func NewBranchNodeHasNoCondition(branchNodeID string) *CompileError {
 	return newError(
 		BranchNodeHasNoCondition,
 		"One of the branches on the node doesn't have a condition.",
+		branchNodeID,
+	)
+}
+
+func NewBranchNodeHasNoDefault(branchNodeID string) *CompileError {
+	return newError(
+		BranchNodeHasNoDefault,
+		"Branch Node must have either the else case set or a default error.",
 		branchNodeID,
 	)
 }
@@ -243,6 +257,14 @@ func NewSyntaxError(nodeID string, element string, err error) *CompileError {
 	return newError(SyntaxError,
 		fmt.Sprintf("Failed to parse element [%v].", element),
 		nodeID,
+	)
+}
+
+func NewNoNodesFoundErr(graphID string) *CompileError {
+	return newError(
+		NoNodesFound,
+		fmt.Sprintf("Can't find any nodes in workflow [%v].", graphID),
+		graphID,
 	)
 }
 

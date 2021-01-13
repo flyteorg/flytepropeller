@@ -5,6 +5,10 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+
+	"github.com/lyft/flytepropeller/pkg/controller/nodes/common"
+
 	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 
 	"github.com/lyft/flytestdlib/logger"
@@ -26,6 +30,7 @@ var (
 )
 
 const IDMaxLength = 50
+const DefaultMaxAttempts = 1
 
 type taskExecutionID struct {
 	execName string
@@ -42,8 +47,9 @@ func (te taskExecutionID) GetGeneratedName() string {
 
 type taskExecutionMetadata struct {
 	handler.NodeExecutionMetadata
-	taskExecID taskExecutionID
-	o          pluginCore.TaskOverrides
+	taskExecID  taskExecutionID
+	o           pluginCore.TaskOverrides
+	maxAttempts uint32
 }
 
 func (t taskExecutionMetadata) GetTaskExecutionID() pluginCore.TaskExecutionID {
@@ -52,6 +58,10 @@ func (t taskExecutionMetadata) GetTaskExecutionID() pluginCore.TaskExecutionID {
 
 func (t taskExecutionMetadata) GetOverrides() pluginCore.TaskOverrides {
 	return t.o
+}
+
+func (t taskExecutionMetadata) GetMaxAttempts() uint32 {
+	return t.maxAttempts
 }
 
 type taskExecutionContext struct {
@@ -115,10 +125,18 @@ func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 }
 
 func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.NodeExecutionContext, pluginID string) (*taskExecutionContext, error) {
-
 	id := GetTaskExecutionIdentifier(nCtx)
 
-	uniqueID, err := utils.FixedLengthUniqueIDForParts(IDMaxLength, nCtx.NodeExecutionMetadata().GetOwnerID().Name, nCtx.NodeID(), strconv.Itoa(int(id.RetryAttempt)))
+	currentNodeUniqueID := nCtx.NodeID()
+	if nCtx.ExecutionContext().GetEventVersion() != v1alpha1.EventVersion0 {
+		var err error
+		currentNodeUniqueID, err = common.GenerateUniqueID(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	uniqueID, err := utils.FixedLengthUniqueIDForParts(IDMaxLength, nCtx.NodeExecutionMetadata().GetOwnerID().Name, currentNodeUniqueID, strconv.Itoa(int(id.RetryAttempt)))
 	if err != nil {
 		// SHOULD never really happen
 		return nil, err
@@ -140,6 +158,10 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 	}
 
 	resourceNamespacePrefix := pluginCore.ResourceNamespace(t.resourceManager.GetID()).CreateSubNamespace(pluginCore.ResourceNamespace(pluginID))
+	maxAttempts := uint32(DefaultMaxAttempts)
+	if nCtx.Node().GetRetryStrategy() != nil && nCtx.Node().GetRetryStrategy().MinAttempts != nil {
+		maxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
+	}
 
 	return &taskExecutionContext{
 		NodeExecutionContext: nCtx,
@@ -147,6 +169,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
 			o:                     nCtx.Node(),
+			maxAttempts:           maxAttempts,
 		},
 		rm: resourcemanager.GetTaskResourceManager(
 			t.resourceManager, resourceNamespacePrefix, id),

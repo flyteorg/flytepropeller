@@ -330,7 +330,7 @@ func TestComparisonExpression_MissingLeftRight(t *testing.T) {
 	}
 
 	errs := errors.NewCompileErrors()
-	v.ValidateBooleanExpression(&nodeBuilder{flyteNode: &flyteNode{}}, bExpr, errs)
+	v.ValidateBooleanExpression(&nodeBuilder{flyteNode: &flyteNode{}}, bExpr, true, errs)
 	assert.Error(t, errs)
 	assert.Equal(t, 2, errs.ErrorCount())
 }
@@ -347,7 +347,7 @@ func TestComparisonExpression(t *testing.T) {
 	}
 
 	errs := errors.NewCompileErrors()
-	v.ValidateBooleanExpression(&nodeBuilder{flyteNode: &flyteNode{}}, bExpr, errs)
+	v.ValidateBooleanExpression(&nodeBuilder{flyteNode: &flyteNode{}}, bExpr, true, errs)
 	assert.True(t, errs.HasErrors())
 	assert.Equal(t, 1, errs.ErrorCount())
 }
@@ -371,7 +371,7 @@ func TestBooleanExpression_BranchNodeHasNoCondition(t *testing.T) {
 	}
 
 	errs := errors.NewCompileErrors()
-	v.ValidateBooleanExpression(&nodeBuilder{flyteNode: &flyteNode{}}, bExpr, errs)
+	v.ValidateBooleanExpression(&nodeBuilder{flyteNode: &flyteNode{}}, bExpr, true, errs)
 	assert.True(t, errs.HasErrors())
 	assert.Equal(t, 1, errs.ErrorCount())
 	for e := range *errs.Errors() {
@@ -518,7 +518,7 @@ func TestValidateUnderlyingInterface(parentT *testing.T) {
 			}}, errs)
 			assert.True(t, ifaceOk)
 			assert.False(t, errs.HasErrors())
-			assert.Equal(t, taskIface, iface)
+			assert.Equal(t, taskIface.Outputs, iface.Outputs)
 		})
 
 		branchT.Run("TwoCases", func(t *testing.T) {
@@ -547,8 +547,8 @@ func TestValidateUnderlyingInterface(parentT *testing.T) {
 					},
 				},
 			}}, errs)
-			assert.False(t, ifaceOk)
-			assert.True(t, errs.HasErrors())
+			assert.True(t, ifaceOk)
+			assert.False(t, errs.HasErrors())
 		})
 	})
 }
@@ -629,6 +629,30 @@ func TestCompileWorkflow(t *testing.T) {
 
 		assert.Equal(t, []string{"node_123"}, output.Primary.Connections.Upstream["node_456"].Ids)
 	}
+}
+
+func TestNoNodesFound(t *testing.T) {
+	inputWorkflow := &core.WorkflowTemplate{
+		Id: &core.Identifier{Name: "repo"},
+		Interface: &core.TypedInterface{
+			Inputs: createVariableMap(map[string]*core.Variable{
+				"x": {
+					Type: getIntegerLiteralType(),
+				},
+			}),
+			Outputs: createVariableMap(map[string]*core.Variable{
+				"x": {
+					Type: getIntegerLiteralType(),
+				},
+			}),
+		},
+		Nodes:   []*core.Node{},
+		Outputs: []*core.Binding{newVarBinding("node_456", "x", "x")},
+	}
+
+	_, errs := CompileWorkflow(inputWorkflow, []*core.WorkflowTemplate{},
+		mustCompileTasks(make([]*core.TaskTemplate, 0)), []common.InterfaceProvider{})
+	assert.Contains(t, errs.Error(), errors.NoNodesFound)
 }
 
 func mustCompileTasks(tasks []*core.TaskTemplate) []*core.CompiledTask {

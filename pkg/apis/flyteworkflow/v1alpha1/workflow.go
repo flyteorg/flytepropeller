@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/golang/protobuf/jsonpb"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,6 +27,7 @@ type FlyteWorkflow struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	*WorkflowSpec     `json:"spec"`
+	WorkflowMeta      *WorkflowMeta                `json:"workflowMeta,omitempty"`
 	Inputs            *Inputs                      `json:"inputs,omitempty"`
 	ExecutionID       ExecutionID                  `json:"executionId"`
 	Tasks             map[TaskID]*TaskSpec         `json:"tasks"`
@@ -44,10 +46,40 @@ type FlyteWorkflow struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty" protobuf:"bytes,8,opt,name=serviceAccountName"`
 	// Status is the only mutable section in the workflow. It holds all the execution information
 	Status WorkflowStatus `json:"status,omitempty"`
+	// RawOutputDataConfig defines the configurations to use for generating raw outputs (e.g. blobs, schemas).
+	RawOutputDataConfig RawOutputDataConfig `json:"rawOutputDataConfig,omitempty"`
+	// Workflow-execution specifications and overrides
+	ExecutionConfig ExecutionConfig `json:"executionConfig,omitempty"`
 
-	// non-Serialized fields
+	// non-Serialized fields (these will not get written to etcd)
+	// As of 2020-07, the only real implementation of this interface is a URLPathConstructor, which is just an empty
+	// struct. However, because this field is an interface, we create it once when the crd is hydrated from etcd,
+	// so that it can be used downstream without any confusion.
+	// This field is here because it's easier to put it here than pipe through a new object through all of propeller.
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
 }
+
+func (in *FlyteWorkflow) GetEventVersion() EventVersion {
+	if in.WorkflowMeta != nil {
+		return in.WorkflowMeta.EventVersion
+	}
+	return EventVersion0
+}
+
+func (in *FlyteWorkflow) GetExecutionConfig() ExecutionConfig {
+	return in.ExecutionConfig
+}
+
+type WorkflowMeta struct {
+	EventVersion EventVersion `json:"eventVersion,omitempty"`
+}
+
+type EventVersion int
+
+const (
+	EventVersion0 EventVersion = iota
+	EventVersion1
+)
 
 type NodeDefaults struct {
 	// Default behaviour for Interruptible for nodes unless explicitly set at the node level.
@@ -110,6 +142,10 @@ func (in *FlyteWorkflow) IsInterruptible() bool {
 	return in.NodeDefaults.Interruptible
 }
 
+func (in *FlyteWorkflow) GetRawOutputDataConfig() RawOutputDataConfig {
+	return in.RawOutputDataConfig
+}
+
 type Inputs struct {
 	*core.LiteralMap
 }
@@ -121,8 +157,9 @@ func (in *Inputs) UnmarshalJSON(b []byte) error {
 
 func (in *Inputs) MarshalJSON() ([]byte, error) {
 	if in == nil {
-		return []byte{}, nil
+		return nilJSON, nil
 	}
+
 	var buf bytes.Buffer
 	if err := marshaler.Marshal(&buf, in.LiteralMap); err != nil {
 		return nil, err
@@ -268,4 +305,15 @@ type FlyteWorkflowList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 	Items           []FlyteWorkflow `json:"items"`
+}
+
+// This contains workflow-execution specifications and overrides.
+type ExecutionConfig struct {
+	// Maps individual task types to their alternate (non-default) plugin handlers by name.
+	TaskPluginImpls map[string]TaskPluginOverride
+}
+
+type TaskPluginOverride struct {
+	PluginIDs             []string
+	MissingPluginBehavior admin.PluginOverride_MissingPluginBehavior
 }
