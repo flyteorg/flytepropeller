@@ -89,7 +89,6 @@ type nodeBuilder struct {
 	subWorkflow c.Workflow
 	Task        c.Task
 	Iface       *core.TypedInterface
-	isBranch    bool
 }
 
 func (n nodeBuilder) GetTask() c.Task {
@@ -106,10 +105,6 @@ func (n nodeBuilder) GetSubWorkflow() c.Workflow {
 
 func (n nodeBuilder) GetCoreNode() *core.Node {
 	return n.flyteNode
-}
-
-func (n nodeBuilder) IsBranch() bool {
-	return n.isBranch
 }
 
 func (n nodeBuilder) GetInterface() *core.TypedInterface {

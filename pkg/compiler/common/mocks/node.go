@@ -419,35 +419,3 @@ func (_m *Node) GetWorkflowNode() *core.WorkflowNode {
 
 	return r0
 }
-
-type Node_IsBranch struct {
-	*mock.Call
-}
-
-func (_m Node_IsBranch) Return(_a0 bool) *Node_IsBranch {
-	return &Node_IsBranch{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *Node) OnIsBranch() *Node_IsBranch {
-	c := _m.On("IsBranch")
-	return &Node_IsBranch{Call: c}
-}
-
-func (_m *Node) OnIsBranchMatch(matchers ...interface{}) *Node_IsBranch {
-	c := _m.On("IsBranch", matchers...)
-	return &Node_IsBranch{Call: c}
-}
-
-// IsBranch provides a mock function with given fields:
-func (_m *Node) IsBranch() bool {
-	ret := _m.Called()
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func() bool); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
