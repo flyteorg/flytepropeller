@@ -240,8 +240,10 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 		// This is a rare but possible occurrence, by explicitly adding an execution edge from the start node to these
 		// nodes, we ensure that propeller starts executing the workflow by running all such nodes and then their
 		// downstream dependencies.
-		if _, foundUpStream := wf.upstreamNodes[nodeID]; !foundUpStream {
-			wf.AddExecutionEdge(c.StartNodeID, nodeID)
+		if topLevelNodes.Has(nodeID) {
+			if _, foundUpStream := wf.upstreamNodes[nodeID]; !foundUpStream {
+				wf.AddExecutionEdge(c.StartNodeID, nodeID)
+			}
 		}
 
 		// When propeller executes nodes it'll ensure that any node does not start executing until all of its upstream
