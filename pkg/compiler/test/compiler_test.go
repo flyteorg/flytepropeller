@@ -124,13 +124,13 @@ func TestDynamic(t *testing.T) {
 			t.Log("Compiling Workflow")
 			compiledTasks := mustCompileTasks(t, wf.Tasks)
 			wfTemplate := &core.WorkflowTemplate{
-				Id:        &core.Identifier{
+				Id: &core.Identifier{
 					Domain:  "domain",
 					Name:    "name",
 					Version: "version",
 				},
 				Interface: &core.TypedInterface{
-					Inputs:  &core.VariableMap{Variables: map[string]*core.Variable{}},
+					Inputs: &core.VariableMap{Variables: map[string]*core.Variable{}},
 					Outputs: &core.VariableMap{Variables: map[string]*core.Variable{
 						"o0": {
 							Type: &core.LiteralType{
@@ -145,8 +145,8 @@ func TestDynamic(t *testing.T) {
 						},
 					}},
 				},
-				Nodes:     wf.Nodes,
-				Outputs:   wf.Outputs,
+				Nodes:   wf.Nodes,
+				Outputs: wf.Outputs,
 			}
 			compiledWfc, err := compiler.CompileWorkflow(wfTemplate, wf.Subworkflows, compiledTasks,
 				[]common.InterfaceProvider{})
