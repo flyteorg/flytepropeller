@@ -438,8 +438,8 @@ func (_m WorkflowBuilder_NewNodeBuilder) Return(_a0 common.NodeBuilder) *Workflo
 	return &WorkflowBuilder_NewNodeBuilder{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *WorkflowBuilder) OnNewNodeBuilder(n *core.Node) *WorkflowBuilder_NewNodeBuilder {
-	c := _m.On("NewNodeBuilder", n)
+func (_m *WorkflowBuilder) OnNewNodeBuilder(n *core.Node, isBranch bool) *WorkflowBuilder_NewNodeBuilder {
+	c := _m.On("NewNodeBuilder", n, isBranch)
 	return &WorkflowBuilder_NewNodeBuilder{Call: c}
 }
 
@@ -448,13 +448,13 @@ func (_m *WorkflowBuilder) OnNewNodeBuilderMatch(matchers ...interface{}) *Workf
 	return &WorkflowBuilder_NewNodeBuilder{Call: c}
 }
 
-// NewNodeBuilder provides a mock function with given fields: n
-func (_m *WorkflowBuilder) NewNodeBuilder(n *core.Node) common.NodeBuilder {
-	ret := _m.Called(n)
+// NewNodeBuilder provides a mock function with given fields: n, isBranch
+func (_m *WorkflowBuilder) NewNodeBuilder(n *core.Node, isBranch bool) common.NodeBuilder {
+	ret := _m.Called(n, isBranch)
 
 	var r0 common.NodeBuilder
-	if rf, ok := ret.Get(0).(func(*core.Node) common.NodeBuilder); ok {
-		r0 = rf(n)
+	if rf, ok := ret.Get(0).(func(*core.Node, bool) common.NodeBuilder); ok {
+		r0 = rf(n, isBranch)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(common.NodeBuilder)

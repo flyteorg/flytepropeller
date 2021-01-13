@@ -394,7 +394,7 @@ func TestValidateReachable(t *testing.T) {
 	}
 
 	for range graph.downstreamNodes {
-		graph.Nodes = common.NewNodeIndex(graph.NewNodeBuilder(nil))
+		graph.Nodes = common.NewNodeIndex(graph.NewNodeBuilder(nil, false))
 	}
 
 	errs := errors.NewCompileErrors()

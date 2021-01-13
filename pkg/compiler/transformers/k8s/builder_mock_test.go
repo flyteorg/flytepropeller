@@ -71,6 +71,11 @@ type mockNode struct {
 	upstream []string
 	task     common.Task
 	subWF    common.Workflow
+	isBranch bool
+}
+
+func (n mockNode) IsBranch() bool {
+	return n.isBranch
 }
 
 func (n *mockNode) SetID(id common.NodeID) {
