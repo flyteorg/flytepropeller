@@ -109,6 +109,7 @@ func TestDynamic(t *testing.T) {
 		}
 
 		t.Run(path, func(t *testing.T) {
+			// If you want to debug a single use-case. Uncomment this line.
 			//if !strings.HasSuffix(path, "success_1.json") {
 			//	t.SkipNow()
 			//}
@@ -187,9 +188,10 @@ func TestBranches(t *testing.T) {
 		}
 
 		t.Run(path, func(t *testing.T) {
-			if !strings.HasSuffix(path, "success_1.json") {
-				t.SkipNow()
-			}
+			// If you want to debug a single use-case. Uncomment this line.
+			//if !strings.HasSuffix(path, "success_1.json") {
+			//	t.SkipNow()
+			//}
 
 			raw, err := ioutil.ReadFile(path)
 			assert.NoError(t, err)
