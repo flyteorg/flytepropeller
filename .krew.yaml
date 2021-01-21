@@ -5,9 +5,9 @@ metadata:
 spec:
   version: "{{ .TagName }}"
   homepage: https://github.com/lyft/flyte
-  shortDescription: kubectl-flyte is a commandline tool for flytepropeller which execute flyteworkflows on kubernetes
+  shortDescription: Monitor, launch and manage flyte executions
   description: |+2
-       Kubectl-flyte can be used to manage workflows in a kubernetes cluster that are being executed by FlytePropeller. This is useful in monitoring/visualizing executing workflows, deleting/terminating workflows in bulk, understanding quota utilization for tenants. It can also be used to launch yaml based flyte workflows without needing flyteadmin etc. For more information about flyte refer to https://flyte.org
+       Kubectl-flyte can be used to manage workflows in a kubernetes cluster executed by FlytePropeller. Users can monitor, visualize executing workflows, delete/terminate executions in bulk, dive into quota utilization for tenants. The tool allows users to launch yaml based Flyte workflows without needing FlyteAdmin etc. For more information about Flyte refer to https://flyte.org
   platforms:
     - selector:
         matchLabels:
