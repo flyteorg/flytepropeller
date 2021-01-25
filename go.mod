@@ -21,7 +21,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.14.3 // indirect
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/lyft/datacatalog v0.2.1
-	github.com/lyft/flyteidl v0.18.9
+	github.com/lyft/flyteidl v0.18.11
 	github.com/lyft/flyteplugins v0.5.20
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
@@ -47,7 +47,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe // indirect
 	k8s.io/utils v0.0.0-20200229041039-0a110f9eb7ab // indirect
 	sigs.k8s.io/controller-runtime v0.5.1
-	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
 // Pin the version of client-go to something that's compatible with katrogan's fork of api and apimachinery
@@ -58,6 +57,7 @@ require (
 replace (
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.4-0.20201027003055-c76b67e3b6d0
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
+	github.com/lyft/flyteplugins => github.com/enghabu/flyteplugins v0.5.22-0.20210125231950-7bf755336fa6
 	gopkg.in/fsnotify.v1 => github.com/fsnotify/fsnotify v1.4.7
 	k8s.io/api => github.com/lyft/api v0.0.0-20191031200350-b49a72c274e0
 	k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
