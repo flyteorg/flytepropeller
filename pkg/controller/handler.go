@@ -190,7 +190,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		maxLength = 1
 	}
 
-	for streak = 0; streak < ; streak++ {
+	for streak = 0; streak < maxLength; streak++ {
 		mutatedWf, err := p.TryMutateWorkflow(ctx, w)
 		if err != nil {
 			// NOTE We are overriding the deepcopy here, as we are essentially ingnoring all mutations
