@@ -32,6 +32,7 @@ type propellerMetrics struct {
 	PanicObserved            labeled.Counter
 	RoundSkipped             prometheus.Counter
 	WorkflowNotFound         prometheus.Counter
+	StreakLength             labeled.Counter
 }
 
 func newPropellerMetrics(scope promutils.Scope) *propellerMetrics {
@@ -45,6 +46,7 @@ func newPropellerMetrics(scope promutils.Scope) *propellerMetrics {
 		PanicObserved:            labeled.NewCounter("panic", "Panic during handling or aborting workflow", roundScope, labeled.EmitUnlabeledMetric),
 		RoundSkipped:             roundScope.MustNewCounter("skipped", "Round Skipped because of stale workflow"),
 		WorkflowNotFound:         roundScope.MustNewCounter("not_found", "workflow not found in the cache"),
+		StreakLength:             labeled.NewCounter("streak_length", "Number of consecutive rounds used in fast follow mode", roundScope, labeled.EmitUnlabeledMetric),
 	}
 }
 
@@ -180,8 +182,10 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			return nil
 		}
 	}
+	streak := 0
+	defer p.metrics.StreakLength.Add(ctx, float64(streak))
 
-	for ; ; {
+	for streak = 0; streak < p.cfg.MaxTTLInHours; streak++ {
 		mutatedWf, err := p.TryMutateWorkflow(ctx, w)
 		if err != nil {
 			// NOTE We are overriding the deepcopy here, as we are essentially ingnoring all mutations
@@ -224,7 +228,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 				p.cfg.EnableFastFollow, mutatedWf.GetExecutionStatus().IsTerminated(), newWf.ResourceVersion == mutatedWf.ResourceVersion)
 			return nil
 		}
-		logger.Infof(ctx, "FastFollow Enabled. Detected State change, we will try another round")
+		logger.Infof(ctx, "FastFollow Enabled. Detected State change, we will try another round. StreakLength [%d]", streak)
 		w = newWf
 	}
 	return nil
