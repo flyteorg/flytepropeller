@@ -74,6 +74,7 @@ type Config struct {
 	MaxDatasetSizeBytes    int64                `json:"max-output-size-bytes" pflag:",Maximum size of outputs per task"`
 	KubeConfig             KubeClientConfig     `json:"kube-client-config" pflag:",Configuration to control the Kubernetes client"`
 	NodeConfig             NodeConfig           `json:"node-config,omitempty" pflag:",config for a workflow node"`
+	EnableFastFollow       bool					`json:"enable-fast-follow" pflag:",Boolean flag that enables Fast Follow mode, this makes Propeller proceed to another round on successful write to etcD."`
 }
 
 type KubeClientConfig struct {

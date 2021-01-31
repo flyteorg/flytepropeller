@@ -181,39 +181,53 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		}
 	}
 
-	mutatedWf, err := p.TryMutateWorkflow(ctx, w)
-	if err != nil {
-		// NOTE We are overriding the deepcopy here, as we are essentially ingnoring all mutations
-		// We only want to increase failed attempts and discard any other partial changes to the CRD.
-		mutatedWf = RecordSystemError(w, err)
-		p.metrics.SystemError.Inc(ctx)
-	} else if mutatedWf == nil {
-		return nil
-	} else {
-		if !w.GetExecutionStatus().IsTerminated() {
-			// No updates in the status we detected, we will skip writing to KubeAPI
-			if mutatedWf.Status.Equals(&w.Status) {
-				logger.Info(ctx, "WF hasn't been updated in this round.")
-				return nil
+	for ; ; {
+		mutatedWf, err := p.TryMutateWorkflow(ctx, w)
+		if err != nil {
+			// NOTE We are overriding the deepcopy here, as we are essentially ingnoring all mutations
+			// We only want to increase failed attempts and discard any other partial changes to the CRD.
+			mutatedWf = RecordSystemError(w, err)
+			p.metrics.SystemError.Inc(ctx)
+		} else if mutatedWf == nil {
+			return nil
+		} else {
+			if !w.GetExecutionStatus().IsTerminated() {
+				// No updates in the status we detected, we will skip writing to KubeAPI
+				if mutatedWf.Status.Equals(&w.Status) {
+					logger.Info(ctx, "WF hasn't been updated in this round.")
+					return nil
+				}
+			}
+			if mutatedWf.GetExecutionStatus().IsTerminated() {
+				// If the end result is a terminated workflow, we remove the labels
+				// We add a completed label so that we can avoid polling for this workflow
+				SetCompletedLabel(mutatedWf, time.Now())
+				ResetFinalizers(mutatedWf)
 			}
 		}
-		if mutatedWf.GetExecutionStatus().IsTerminated() {
-			// If the end result is a terminated workflow, we remove the labels
-			// We add a completed label so that we can avoid polling for this workflow
-			SetCompletedLabel(mutatedWf, time.Now())
-			ResetFinalizers(mutatedWf)
-		}
-	}
-	// TODO we will need to call updatestatus when it is supported. But to preserve metadata like (label/finalizer) we will need to use update
+		// TODO we will need to call updatestatus when it is supported. But to preserve metadata like (label/finalizer) we will need to use update
 
-	// update the GetExecutionStatus block of the FlyteWorkflow resource. UpdateStatus will not
-	// allow changes to the Spec of the resource, which is ideal for ensuring
-	// nothing other than resource status has been updated.
-	_, updateErr := p.wfStore.Update(ctx, mutatedWf, workflowstore.PriorityClassCritical)
-	if updateErr != nil {
-		return updateErr
+		// update the GetExecutionStatus block of the FlyteWorkflow resource. UpdateStatus will not
+		// allow changes to the Spec of the resource, which is ideal for ensuring
+		// nothing other than resource status has been updated.
+		newWf, updateErr := p.wfStore.Update(ctx, mutatedWf, workflowstore.PriorityClassCritical)
+		if updateErr != nil {
+			return updateErr
+		}
+		if err != nil {
+			// An error was encountered during the round. Let us return, so that we can back-off gracefully
+			return err
+		}
+		if !p.cfg.EnableFastFollow || mutatedWf.GetExecutionStatus().IsTerminated() || newWf.ResourceVersion == mutatedWf.ResourceVersion {
+			// Workflow is terminated (no need to continue) or no status was changed, we can wait
+			logger.Infof(ctx, "Will not fast follow, Reason: Enabled? %v, Wf terminated? %v, Version matched? %v",
+				p.cfg.EnableFastFollow, mutatedWf.GetExecutionStatus().IsTerminated(), newWf.ResourceVersion == mutatedWf.ResourceVersion)
+			return nil
+		}
+		logger.Infof(ctx, "FastFollow Enabled. Detected State change, we will try another round")
+		w = newWf
 	}
-	return err
+	return nil
 }
 
 func NewPropellerHandler(_ context.Context, cfg *config.Config, wfStore workflowstore.FlyteWorkflow, executor executors.Workflow, scope promutils.Scope) *Propeller {
