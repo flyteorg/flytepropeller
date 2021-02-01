@@ -47,8 +47,8 @@ var (
 			MaxNodeRetriesOnSystemFailures: 3,
 			InterruptibleFailureThreshold:  1,
 		},
-		EnableFastFollow: true,
-		MaxStreakLength:  5,
+		EnableTurboMode: true,
+		MaxStreakLength: 5,
 	}
 )
 
@@ -76,8 +76,8 @@ type Config struct {
 	MaxDatasetSizeBytes    int64                `json:"max-output-size-bytes" pflag:",Maximum size of outputs per task"`
 	KubeConfig             KubeClientConfig     `json:"kube-client-config" pflag:",Configuration to control the Kubernetes client"`
 	NodeConfig             NodeConfig           `json:"node-config,omitempty" pflag:",config for a workflow node"`
-	EnableFastFollow       bool                 `json:"enable-fast-follow" pflag:",Boolean flag that enables Fast Follow mode, this makes Propeller proceed to another round on successful write to etcD."`
-	MaxStreakLength        int                  `json:"max-streak-length" pflag:",Maximum number of consecutive rounds that one propeller worker can use for one workflow if fast follow mode is enabled."`
+	EnableTurboMode        bool                 `json:"enable-turbo-mode" pflag:",Boolean flag that enables Turbo-mode, this makes Propeller proceed to another round on successful write to etcD."`
+	MaxStreakLength        int                  `json:"max-streak-length" pflag:",Maximum number of consecutive rounds that one propeller worker can use for one workflow if turbo-mode is enabled."`
 }
 
 type KubeClientConfig struct {

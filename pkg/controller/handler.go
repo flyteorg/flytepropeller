@@ -132,6 +132,10 @@ func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.F
 	return mutableW, nil
 }
 
+func ShouldExitCurrentEvaluationLoop(turboModeEnabled bool, isWorkflowTerminated bool, newResVer, oldResVer string) bool {
+	return !(turboModeEnabled && !isWorkflowTerminated && newResVer != oldResVer)
+}
+
 // reconciler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the GetExecutionStatus block of the FlyteWorkflow resource
 // with the current status of the resource.
@@ -227,10 +231,11 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			// An error was encountered during the round. Let us return, so that we can back-off gracefully
 			return err
 		}
-		if !p.cfg.EnableFastFollow || mutatedWf.GetExecutionStatus().IsTerminated() || newWf.ResourceVersion == mutatedWf.ResourceVersion {
+		if ShouldExitCurrentEvaluationLoop(p.cfg.EnableTurboMode, mutatedWf.GetExecutionStatus().IsTerminated(),
+			newWf.ResourceVersion, mutatedWf.ResourceVersion) {
 			// Workflow is terminated (no need to continue) or no status was changed, we can wait
 			logger.Infof(ctx, "Will not fast follow, Reason: Enabled? %v, Wf terminated? %v, Version matched? %v",
-				p.cfg.EnableFastFollow, mutatedWf.GetExecutionStatus().IsTerminated(), newWf.ResourceVersion == mutatedWf.ResourceVersion)
+				p.cfg.EnableTurboMode, mutatedWf.GetExecutionStatus().IsTerminated(), newWf.ResourceVersion == mutatedWf.ResourceVersion)
 			return nil
 		}
 		logger.Infof(ctx, "FastFollow Enabled. Detected State change, we will try another round. StreakLength [%d]", streak)

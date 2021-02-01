@@ -50,8 +50,10 @@ func (i *InmemoryWorkflowStore) UpdateStatus(ctx context.Context, w *v1alpha1.Fl
 		if w.Name != "" && w.Namespace != "" {
 			if m, ok := i.store[w.Namespace]; ok {
 				if _, ok := m[w.Name]; ok {
-					m[w.Name] = w
-					return w, nil
+					newW := w.DeepCopy()
+					newW.ResourceVersion = w.ResourceVersion + "x"
+					m[w.Name] = newW
+					return newW, nil
 				}
 			}
 
