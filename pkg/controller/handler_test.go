@@ -457,7 +457,6 @@ func TestPropeller_Handle_TurboMode(t *testing.T) {
 	exec := &mockExecutor{}
 	cfg := &config.Config{
 		MaxWorkflowRetries: 0,
-		EnableTurboMode:    true,
 		MaxStreakLength:    5,
 	}
 
@@ -669,12 +668,4 @@ func TestPropellerHandler_Initialize(t *testing.T) {
 	p := NewPropellerHandler(ctx, cfg, s, exec, scope)
 
 	assert.NoError(t, p.Initialize(ctx))
-}
-
-func TestShouldExitCurrentEvaluationLoop(t *testing.T) {
-	assert.True(t, ShouldExitCurrentEvaluationLoop(false, false, "x", "y"))
-	assert.True(t, ShouldExitCurrentEvaluationLoop(true, true, "x", "y"))
-	assert.True(t, ShouldExitCurrentEvaluationLoop(true, false, "x", "x"))
-	assert.True(t, ShouldExitCurrentEvaluationLoop(false, true, "x", "x"))
-	assert.False(t, ShouldExitCurrentEvaluationLoop(true, false, "x", "y"))
 }

@@ -33,6 +33,7 @@ type propellerMetrics struct {
 	RoundSkipped             prometheus.Counter
 	WorkflowNotFound         prometheus.Counter
 	StreakLength             labeled.Counter
+	RoundTime                labeled.StopWatch
 }
 
 func newPropellerMetrics(scope promutils.Scope) *propellerMetrics {
@@ -47,6 +48,7 @@ func newPropellerMetrics(scope promutils.Scope) *propellerMetrics {
 		RoundSkipped:             roundScope.MustNewCounter("skipped", "Round Skipped because of stale workflow"),
 		WorkflowNotFound:         roundScope.MustNewCounter("not_found", "workflow not found in the cache"),
 		StreakLength:             labeled.NewCounter("streak_length", "Number of consecutive rounds used in fast follow mode", roundScope, labeled.EmitUnlabeledMetric),
+		RoundTime:                labeled.NewStopWatch("round_time", "Total time taken by one round traversing, copying and storing a workflow", time.Millisecond, roundScope, labeled.EmitUnlabeledMetric),
 	}
 }
 
@@ -132,10 +134,6 @@ func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.F
 	return mutableW, nil
 }
 
-func ShouldExitCurrentEvaluationLoop(turboModeEnabled bool, isWorkflowTerminated bool, newResVer, oldResVer string) bool {
-	return !(turboModeEnabled && !isWorkflowTerminated && newResVer != oldResVer)
-}
-
 // reconciler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the GetExecutionStatus block of the FlyteWorkflow resource
 // with the current status of the resource.
@@ -195,6 +193,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	}
 
 	for streak = 0; streak < maxLength; streak++ {
+		t := p.metrics.RoundTime.Start(ctx)
 		mutatedWf, err := p.TryMutateWorkflow(ctx, w)
 		if err != nil {
 			// NOTE We are overriding the deepcopy here, as we are essentially ingnoring all mutations
@@ -208,6 +207,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 				// No updates in the status we detected, we will skip writing to KubeAPI
 				if mutatedWf.Status.Equals(&w.Status) {
 					logger.Info(ctx, "WF hasn't been updated in this round.")
+					t.Stop()
 					return nil
 				}
 			}
@@ -231,16 +231,18 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			// An error was encountered during the round. Let us return, so that we can back-off gracefully
 			return err
 		}
-		if ShouldExitCurrentEvaluationLoop(p.cfg.EnableTurboMode, mutatedWf.GetExecutionStatus().IsTerminated(),
-			newWf.ResourceVersion, mutatedWf.ResourceVersion) {
+		if mutatedWf.GetExecutionStatus().IsTerminated() || newWf.ResourceVersion == mutatedWf.ResourceVersion {
 			// Workflow is terminated (no need to continue) or no status was changed, we can wait
-			logger.Infof(ctx, "Will not fast follow, Reason: Enabled? %v, Wf terminated? %v, Version matched? %v",
-				p.cfg.EnableTurboMode, mutatedWf.GetExecutionStatus().IsTerminated(), newWf.ResourceVersion == mutatedWf.ResourceVersion)
+			logger.Infof(ctx, "Will not fast follow, Reason: Wf terminated? %v, Version matched? %v",
+				mutatedWf.GetExecutionStatus().IsTerminated(), newWf.ResourceVersion == mutatedWf.ResourceVersion)
+			t.Stop()
 			return nil
 		}
 		logger.Infof(ctx, "FastFollow Enabled. Detected State change, we will try another round. StreakLength [%d]", streak)
 		w = newWf
+		t.Stop()
 	}
+	logger.Infof(ctx, "Streak ended at [%d]/Max: [%d]", streak, maxLength)
 	return nil
 }
 
