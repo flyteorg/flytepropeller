@@ -51,6 +51,7 @@ func (i *InmemoryWorkflowStore) UpdateStatus(ctx context.Context, w *v1alpha1.Fl
 			if m, ok := i.store[w.Namespace]; ok {
 				if _, ok := m[w.Name]; ok {
 					newW := w.DeepCopy()
+					// Appends to the resource version to ensure that resource version has been updated
 					newW.ResourceVersion = w.ResourceVersion + "x"
 					m[w.Name] = newW
 					return newW, nil
@@ -69,6 +70,9 @@ func (i *InmemoryWorkflowStore) Update(ctx context.Context, w *v1alpha1.FlyteWor
 	return i.UpdateStatus(ctx, w, priorityClass)
 }
 
+// Returns an inmemory store, that will update the resource version for every update automatically. This is a good
+// idea to test that resource version checks work, but does not represent that the object was actually updated or not
+// The resource version is ALWAYS updated.
 func NewInMemoryWorkflowStore() *InmemoryWorkflowStore {
 	return &InmemoryWorkflowStore{
 		store: map[string]map[string]*v1alpha1.FlyteWorkflow{},

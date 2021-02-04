@@ -201,6 +201,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			mutatedWf = RecordSystemError(w, err)
 			p.metrics.SystemError.Inc(ctx)
 		} else if mutatedWf == nil {
+			logger.Errorf(ctx, "Should not happen! Mutation resulted in a nil workflow!")
 			return nil
 		} else {
 			if !w.GetExecutionStatus().IsTerminated() {
@@ -225,9 +226,11 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		// nothing other than resource status has been updated.
 		newWf, updateErr := p.wfStore.Update(ctx, mutatedWf, workflowstore.PriorityClassCritical)
 		if updateErr != nil {
+			t.Stop()
 			return updateErr
 		}
 		if err != nil {
+			t.Stop()
 			// An error was encountered during the round. Let us return, so that we can back-off gracefully
 			return err
 		}
