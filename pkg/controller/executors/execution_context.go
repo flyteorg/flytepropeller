@@ -2,6 +2,7 @@ package executors
 
 import (
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/lyft/flytestdlib/atomic"
 )
 
 type TaskDetailsGetter interface {
@@ -28,14 +29,21 @@ type ImmutableParentInfo interface {
 	CurrentAttempt() uint32
 }
 
+type ControlFlow interface {
+	CurrentParallelism() uint32
+	IncrementParallelism() uint32
+}
+
 type ExecutionContext interface {
 	ImmutableExecutionContext
 	TaskDetailsGetter
 	SubWorkflowGetter
 	ParentInfoGetter
+	ControlFlow
 }
 
 type execContext struct {
+	ControlFlow
 	ImmutableExecutionContext
 	TaskDetailsGetter
 	SubWorkflowGetter
@@ -59,24 +67,37 @@ func (p *parentExecutionInfo) CurrentAttempt() uint32 {
 	return p.currentAttempts
 }
 
+type controlFlow struct {
+	v atomic.Uint32
+}
+
+func (c *controlFlow) 	CurrentParallelism() uint32 {
+	return c.v.Load()
+}
+
+func (c *controlFlow) IncrementParallelism() uint32 {
+	return c.v.Inc()
+}
+
 func NewExecutionContextWithTasksGetter(prevExecContext ExecutionContext, taskGetter TaskDetailsGetter) ExecutionContext {
-	return NewExecutionContext(prevExecContext, taskGetter, prevExecContext, prevExecContext.GetParentInfo())
+	return NewExecutionContext(prevExecContext, taskGetter, prevExecContext, prevExecContext.GetParentInfo(), prevExecContext)
 }
 
 func NewExecutionContextWithWorkflowGetter(prevExecContext ExecutionContext, getter SubWorkflowGetter) ExecutionContext {
-	return NewExecutionContext(prevExecContext, prevExecContext, getter, prevExecContext.GetParentInfo())
+	return NewExecutionContext(prevExecContext, prevExecContext, getter, prevExecContext.GetParentInfo(), prevExecContext)
 }
 
 func NewExecutionContextWithParentInfo(prevExecContext ExecutionContext, parentInfo ImmutableParentInfo) ExecutionContext {
-	return NewExecutionContext(prevExecContext, prevExecContext, prevExecContext, parentInfo)
+	return NewExecutionContext(prevExecContext, prevExecContext, prevExecContext, parentInfo, prevExecContext)
 }
 
-func NewExecutionContext(immExecContext ImmutableExecutionContext, tasksGetter TaskDetailsGetter, workflowGetter SubWorkflowGetter, parentInfo ImmutableParentInfo) ExecutionContext {
+func NewExecutionContext(immExecContext ImmutableExecutionContext, tasksGetter TaskDetailsGetter, workflowGetter SubWorkflowGetter, parentInfo ImmutableParentInfo, flow ControlFlow) ExecutionContext {
 	return execContext{
 		ImmutableExecutionContext: immExecContext,
 		TaskDetailsGetter:         tasksGetter,
 		SubWorkflowGetter:         workflowGetter,
 		parentInfo:                parentInfo,
+		ControlFlow:               flow,
 	}
 }
 
@@ -84,5 +105,11 @@ func NewParentInfo(uniqueID string, currentAttempts uint32) ImmutableParentInfo 
 	return &parentExecutionInfo{
 		currentAttempts: currentAttempts,
 		uniqueID:        uniqueID,
+	}
+}
+
+func InitializeControlFlow() ControlFlow {
+	return &controlFlow{
+		v: atomic.NewUint32(0),
 	}
 }
