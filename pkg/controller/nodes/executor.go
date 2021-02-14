@@ -664,6 +664,19 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 			return executors.NodeStatusRunning, nil
 		}
 
+		// Now if the node is of type task, then let us check if we are within the parallelism limit, only if the node
+		// has been queued already
+		if currentNode.GetKind() == v1alpha1.NodeKindTask && nodeStatus.GetPhase() == v1alpha1.NodePhaseQueued {
+			// If we are queued, let us see if we can proceed within the node parallelism bounds
+			// TODO replace with max parallelism
+			if execContext.CurrentParallelism() < 10 {
+				return executors.NodeStatusRunning, nil
+			}
+			// We know that Propeller goes through each workflow in a single thread, thus every node is really processed
+			// sequentially. So, we can continue - now that we know we are under the parallelism limits and increment the
+			// parallelism if the node, enters a running state
+		}
+
 		nCtx, err := c.newNodeExecContextDefault(ctx, currentNode.GetID(), execContext, nl)
 		if err != nil {
 			// NodeExecution creation failure is a permanent fail / system error.
@@ -681,7 +694,17 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 			return executors.NodeStatusUndefined, err
 		}
 
-		return c.handleNode(currentNodeCtx, dag, nCtx, h)
+		s, err := c.handleNode(currentNodeCtx, dag, nCtx, h)
+		if err != nil {
+			return s, err
+		}
+		// If it is a task node, lets optionally increment parallelism, if the node is in a running state.
+		if currentNode.GetKind() == v1alpha1.NodeKindTask {
+			if s == executors.NodeStatusRunning {
+				logger.Infof(ctx, "Parallelism is now set to [%d]", execContext.IncrementParallelism())
+			}
+		}
+		return s, err
 
 		// TODO we can optimize skip state handling by iterating down the graph and marking all as skipped
 		// Currently we treat either Skip or Success the same way. In this approach only one node will be skipped
