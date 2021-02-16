@@ -704,7 +704,7 @@ func (in *WorkflowNodeStatus) DeepCopyInto(out *WorkflowNodeStatus) {
 	if in.ExecutionError != nil {
 		in, out := &in.ExecutionError, &out.ExecutionError
 		*out = new(core.ExecutionError)
-		(*in).DeepCopyInto(*out)
+		**out = **in
 	}
 	return
 }
