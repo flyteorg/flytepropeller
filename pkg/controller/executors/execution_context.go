@@ -2,7 +2,6 @@ package executors
 
 import (
 	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/lyft/flytestdlib/atomic"
 )
 
 type TaskDetailsGetter interface {
@@ -68,15 +67,18 @@ func (p *parentExecutionInfo) CurrentAttempt() uint32 {
 }
 
 type controlFlow struct {
-	v atomic.Uint32
+	// We could use atomic.Uint32, but this is not required for current Propeller. As every round is run in a single
+	// thread and using atomic will introduce memory barriers
+	v uint32
 }
 
-func (c *controlFlow) 	CurrentParallelism() uint32 {
-	return c.v.Load()
+func (c *controlFlow) CurrentParallelism() uint32 {
+	return c.v
 }
 
 func (c *controlFlow) IncrementParallelism() uint32 {
-	return c.v.Inc()
+	c.v = c.v + 1
+	return c.v
 }
 
 func NewExecutionContextWithTasksGetter(prevExecContext ExecutionContext, taskGetter TaskDetailsGetter) ExecutionContext {
@@ -110,6 +112,6 @@ func NewParentInfo(uniqueID string, currentAttempts uint32) ImmutableParentInfo 
 
 func InitializeControlFlow() ControlFlow {
 	return &controlFlow{
-		v: atomic.NewUint32(0),
+		v: 0,
 	}
 }

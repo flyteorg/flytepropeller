@@ -5,16 +5,15 @@ go 1.13
 require (
 	cloud.google.com/go v0.54.0 // indirect
 	github.com/Azure/azure-sdk-for-go v40.3.0+incompatible // indirect
-	github.com/Azure/go-autorest/autorest v0.10.0 // indirect
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/fatih/color v1.9.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-redis/redis v6.15.7+incompatible
-	github.com/gogo/protobuf v1.3.1
-	github.com/golang/protobuf v1.3.5
-	github.com/google/uuid v1.1.1
+	github.com/gogo/protobuf v1.3.2
+	github.com/golang/protobuf v1.4.3
+	github.com/google/uuid v1.1.2
 	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/graymeta/stow v0.2.5 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
@@ -35,7 +34,7 @@ require (
 	github.com/spf13/cobra v0.0.6
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
-	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
+	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gomodules.xyz/jsonpatch/v2 v2.1.0 // indirect
 	google.golang.org/genproto v0.0.0-20200312145019-da6875a35672 // indirect
 	google.golang.org/grpc v1.28.0
@@ -45,7 +44,6 @@ require (
 	k8s.io/client-go v11.0.1-0.20190918222721-c0e3722d5cf0+incompatible
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe // indirect
-	k8s.io/utils v0.0.0-20200229041039-0a110f9eb7ab // indirect
 	sigs.k8s.io/controller-runtime v0.5.1
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
@@ -61,5 +59,5 @@ replace (
 	gopkg.in/fsnotify.v1 => github.com/fsnotify/fsnotify v1.4.7
 	k8s.io/api => github.com/lyft/api v0.0.0-20191031200350-b49a72c274e0
 	k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
-	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20210206011112-100613764a76
 )
