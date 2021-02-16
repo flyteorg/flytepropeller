@@ -13,3 +13,15 @@ type RawOutputDataConfig struct {
 func (in *RawOutputDataConfig) DeepCopyInto(out *RawOutputDataConfig) {
 	*out = *in
 }
+
+// This contains workflow-execution specifications and overrides.
+type ExecutionConfig struct {
+	// Maps individual task types to their alternate (non-default) plugin handlers by name.
+	TaskPluginImpls map[string]TaskPluginOverride
+	MaxParallelism  uint32 `json:"max_parallelism"`
+}
+
+type TaskPluginOverride struct {
+	PluginIDs             []string
+	MissingPluginBehavior admin.PluginOverride_MissingPluginBehavior
+}
