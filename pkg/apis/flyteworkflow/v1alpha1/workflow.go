@@ -307,13 +307,3 @@ type FlyteWorkflowList struct {
 	Items           []FlyteWorkflow `json:"items"`
 }
 
-// This contains workflow-execution specifications and overrides.
-type ExecutionConfig struct {
-	// Maps individual task types to their alternate (non-default) plugin handlers by name.
-	TaskPluginImpls map[string]TaskPluginOverride
-}
-
-type TaskPluginOverride struct {
-	PluginIDs             []string
-	MissingPluginBehavior admin.PluginOverride_MissingPluginBehavior
-}

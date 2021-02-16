@@ -669,7 +669,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 		if currentNode.GetKind() == v1alpha1.NodeKindTask && nodeStatus.GetPhase() == v1alpha1.NodePhaseQueued {
 			// If we are queued, let us see if we can proceed within the node parallelism bounds
 			// TODO replace with max parallelism
-			if execContext.CurrentParallelism() > 10 {
+			if execContext.CurrentParallelism() > execContext.GetExecutionConfig() {
 				logger.Infof(ctx, "Parallelism is [%d], will short circuit.", execContext.CurrentParallelism())
 				return executors.NodeStatusRunning, nil
 			}
