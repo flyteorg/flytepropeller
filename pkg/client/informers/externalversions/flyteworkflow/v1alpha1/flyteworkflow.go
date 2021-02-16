@@ -3,6 +3,7 @@
 package v1alpha1
 
 import (
+	"context"
 	time "time"
 
 	flyteworkflowv1alpha1 "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -45,13 +46,13 @@ func NewFilteredFlyteWorkflowInformer(client versioned.Interface, namespace stri
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.FlyteworkflowV1alpha1().FlyteWorkflows(namespace).List(options)
+				return client.FlyteworkflowV1alpha1().FlyteWorkflows(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.FlyteworkflowV1alpha1().FlyteWorkflows(namespace).Watch(options)
+				return client.FlyteworkflowV1alpha1().FlyteWorkflows(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&flyteworkflowv1alpha1.FlyteWorkflow{},

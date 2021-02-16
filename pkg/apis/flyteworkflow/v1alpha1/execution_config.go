@@ -18,7 +18,7 @@ func (in *RawOutputDataConfig) DeepCopyInto(out *RawOutputDataConfig) {
 type ExecutionConfig struct {
 	// Maps individual task types to their alternate (non-default) plugin handlers by name.
 	TaskPluginImpls map[string]TaskPluginOverride
-	MaxParallelism  uint32
+	MaxParallelism  uint32 `json:"max_parallelism"`
 }
 
 type TaskPluginOverride struct {
