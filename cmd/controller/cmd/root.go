@@ -99,6 +99,7 @@ func initConfig(cmd *cobra.Command, _ []string) error {
 		StrictMode:  false,
 		SearchPaths: []string{cfgFile},
 	})
+	configAccessor.InitializePflags(cmd.Flags())
 
 	configAccessor.InitializePflags(cmd.PersistentFlags())
 
