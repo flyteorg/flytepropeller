@@ -2,6 +2,7 @@ package workflowstore
 
 import (
 	"context"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -47,7 +48,7 @@ func (p *passthroughWorkflowStore) UpdateStatus(ctx context.Context, workflow *v
 	// Something has changed. Lets save
 	logger.Debugf(ctx, "Observed FlyteWorkflow State change. [%v] -> [%v]", workflow.Status.Phase.String(), workflow.Status.Phase.String())
 	t := p.metrics.workflowUpdateLatency.Start()
-	newWF, err = p.wfClientSet.FlyteWorkflows(workflow.Namespace).Update(workflow)
+	newWF, err = p.wfClientSet.FlyteWorkflows(workflow.Namespace).Update(ctx, workflow, v1.UpdateOptions{})
 	if err != nil {
 		if kubeerrors.IsNotFound(err) {
 			return nil, nil
@@ -72,7 +73,7 @@ func (p *passthroughWorkflowStore) Update(ctx context.Context, workflow *v1alpha
 	// Something has changed. Lets save
 	logger.Debugf(ctx, "Observed FlyteWorkflow Update (maybe finalizer)")
 	t := p.metrics.workflowUpdateLatency.Start()
-	newWF, err = p.wfClientSet.FlyteWorkflows(workflow.Namespace).Update(workflow)
+	newWF, err = p.wfClientSet.FlyteWorkflows(workflow.Namespace).Update(ctx, workflow, v1.UpdateOptions{})
 	if err != nil {
 		if kubeerrors.IsNotFound(err) {
 			return nil, nil

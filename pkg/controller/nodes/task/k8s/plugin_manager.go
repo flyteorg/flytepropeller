@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 	"time"
 
@@ -422,31 +423,32 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 
 	enqueueOwner := iCtx.EnqueueOwner()
 	err := src.Start(
+		ctx,
 		// Handlers
 		handler.Funcs{
 			CreateFunc: func(evt event.CreateEvent, q2 workqueue.RateLimitingInterface) {
-				logger.Debugf(context.Background(), "Create received for %s, ignoring.", evt.Meta.GetName())
+				logger.Debugf(context.Background(), "Create received for %s, ignoring.", evt.Object.GetName())
 			},
 			UpdateFunc: func(evt event.UpdateEvent, q2 workqueue.RateLimitingInterface) {
-				if evt.MetaNew == nil {
+				if evt.ObjectNew == nil {
 					logger.Warn(context.Background(), "Received an Update event with nil MetaNew.")
-				} else if evt.MetaOld == nil || evt.MetaOld.GetResourceVersion() != evt.MetaNew.GetResourceVersion() {
-					newCtx := contextutils.WithNamespace(context.Background(), evt.MetaNew.GetNamespace())
-					logger.Debugf(ctx, "Enqueueing owner for updated object [%v/%v]", evt.MetaNew.GetNamespace(), evt.MetaNew.GetName())
-					if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.MetaNew.GetName(), Namespace: evt.MetaNew.GetNamespace()}); err != nil {
-						logger.Warnf(context.Background(), "Failed to handle Update event for object [%v]", evt.MetaNew.GetName())
+				} else if evt.ObjectOld == nil || evt.ObjectOld.GetResourceVersion() != evt.ObjectNew.GetResourceVersion() {
+					newCtx := contextutils.WithNamespace(context.Background(), evt.ObjectNew.GetNamespace())
+					logger.Debugf(ctx, "Enqueueing owner for updated object [%v/%v]", evt.ObjectNew.GetNamespace(), evt.ObjectNew.GetName())
+					if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.ObjectNew.GetName(), Namespace: evt.ObjectNew.GetNamespace()}); err != nil {
+						logger.Warnf(context.Background(), "Failed to handle Update event for object [%v]", evt.ObjectNew.GetName())
 					}
 					updateCount.Inc(newCtx)
 				} else {
-					newCtx := contextutils.WithNamespace(context.Background(), evt.MetaNew.GetNamespace())
+					newCtx := contextutils.WithNamespace(context.Background(), evt.ObjectNew.GetNamespace())
 					droppedUpdateCount.Inc(newCtx)
 				}
 			},
 			DeleteFunc: func(evt event.DeleteEvent, q2 workqueue.RateLimitingInterface) {
-				logger.Debugf(context.Background(), "Delete received for %s, ignoring.", evt.Meta.GetName())
+				logger.Debugf(context.Background(), "Delete received for %s, ignoring.", evt.Object.GetName())
 			},
 			GenericFunc: func(evt event.GenericEvent, q2 workqueue.RateLimitingInterface) {
-				logger.Debugf(context.Background(), "Generic received for %s, ignoring.", evt.Meta.GetName())
+				logger.Debugf(context.Background(), "Generic received for %s, ignoring.", evt.Object.GetName())
 				genericCount.Inc(ctx)
 			},
 		},
@@ -461,13 +463,13 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 			},
 			UpdateFunc: func(updateEvent event.UpdateEvent) bool {
 				// TODO we should filter out events in case there are no updates observed between the old and new?
-				return workflowParentPredicate(updateEvent.MetaNew)
+				return workflowParentPredicate(updateEvent.ObjectNew)
 			},
 			DeleteFunc: func(deleteEvent event.DeleteEvent) bool {
 				return false
 			},
 			GenericFunc: func(genericEvent event.GenericEvent) bool {
-				return workflowParentPredicate(genericEvent.Meta)
+				return workflowParentPredicate(genericEvent.Object)
 			},
 		})
 
@@ -480,7 +482,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	if err != nil {
 		return nil, err
 	}
-	sharedInformer, err := getPluginSharedInformer(iCtx, entry.ResourceToWatch)
+	sharedInformer, err := getPluginSharedInformer(ctx, iCtx, entry.ResourceToWatch)
 	if err != nil {
 		return nil, err
 	}
@@ -506,8 +508,8 @@ func getPluginGvk(resourceToWatch runtime.Object) (schema.GroupVersionKind, erro
 	return kinds[0], nil
 }
 
-func getPluginSharedInformer(iCtx pluginsCore.SetupContext, resourceToWatch runtime.Object) (cache.SharedIndexInformer, error) {
-	i, err := iCtx.KubeClient().GetCache().GetInformer(resourceToWatch)
+func getPluginSharedInformer(ctx context.Context, iCtx pluginsCore.SetupContext, resourceToWatch client.Object) (cache.SharedIndexInformer, error) {
+	i, err := iCtx.KubeClient().GetCache().GetInformer(ctx, resourceToWatch)
 	if err != nil {
 		return nil, errors.Wrapf(errors.PluginInitializationFailed, err, "Error getting informer for %s", reflect.TypeOf(i))
 	}

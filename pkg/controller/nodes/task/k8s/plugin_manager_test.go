@@ -587,7 +587,7 @@ func TestResourceManagerConstruction(t *testing.T) {
 	gvk, err := getPluginGvk(&v1.Pod{})
 	assert.NoError(t, err)
 	assert.Equal(t, gvk.Kind, "Pod")
-	si, err := getPluginSharedInformer(sCtx, &v1.Pod{})
+	si, err := getPluginSharedInformer(ctx, sCtx, &v1.Pod{})
 	assert.NotNil(t, si)
 	assert.NoError(t, err)
 	rm := index.GetOrCreateResourceLevelMonitor(ctx, scope, si, gvk)
