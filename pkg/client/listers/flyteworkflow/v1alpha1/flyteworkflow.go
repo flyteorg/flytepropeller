@@ -10,8 +10,10 @@ import (
 )
 
 // FlyteWorkflowLister helps list FlyteWorkflows.
+// All objects returned here must be treated as read-only.
 type FlyteWorkflowLister interface {
 	// List lists all FlyteWorkflows in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.FlyteWorkflow, err error)
 	// FlyteWorkflows returns an object that can list and get FlyteWorkflows.
 	FlyteWorkflows(namespace string) FlyteWorkflowNamespaceLister
@@ -42,10 +44,13 @@ func (s *flyteWorkflowLister) FlyteWorkflows(namespace string) FlyteWorkflowName
 }
 
 // FlyteWorkflowNamespaceLister helps list and get FlyteWorkflows.
+// All objects returned here must be treated as read-only.
 type FlyteWorkflowNamespaceLister interface {
 	// List lists all FlyteWorkflows in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.FlyteWorkflow, err error)
 	// Get retrieves the FlyteWorkflow from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.FlyteWorkflow, error)
 	FlyteWorkflowNamespaceListerExpansion
 }
