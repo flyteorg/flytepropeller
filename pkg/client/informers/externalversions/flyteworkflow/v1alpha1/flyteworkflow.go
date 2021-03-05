@@ -5,10 +5,10 @@ package v1alpha1
 import (
 	time "time"
 
-	flyteworkflowv1alpha1 "github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	versioned "github.com/lyft/flytepropeller/pkg/client/clientset/versioned"
-	internalinterfaces "github.com/lyft/flytepropeller/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/lyft/flytepropeller/pkg/client/listers/flyteworkflow/v1alpha1"
+	flyteworkflowv1alpha1 "github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	versioned "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned"
+	internalinterfaces "github.com/flyteorg/flytepropeller/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/flyteorg/flytepropeller/pkg/client/listers/flyteworkflow/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"

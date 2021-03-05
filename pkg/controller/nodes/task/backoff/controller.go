@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	stdAtomic "github.com/lyft/flytestdlib/atomic"
+	stdAtomic "github.com/flyteorg/flytestdlib/atomic"
 
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/logger"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/clock"
 )

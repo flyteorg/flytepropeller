@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
 type TaskSpec struct {
