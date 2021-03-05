@@ -8,14 +8,14 @@ import (
 
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-	"github.com/lyft/flytestdlib/contextutils"
-	"github.com/lyft/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/flyteorg/flytestdlib/contextutils"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/backoff"
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/backoff"
+	"github.com/flyteorg/flytestdlib/promutils"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,22 +23,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache/informertest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
-	pluginsk8sMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s/mocks"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	pluginsCoreMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
+	pluginsk8sMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s/mocks"
 
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/lyft/flytepropeller/pkg/controller/executors/mocks"
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 )
 
 type extendedFakeClient struct {

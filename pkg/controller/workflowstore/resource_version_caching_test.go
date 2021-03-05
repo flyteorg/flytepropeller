@@ -10,13 +10,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	testing2 "k8s.io/client-go/testing"
 
-	"github.com/lyft/flytestdlib/contextutils"
-	"github.com/lyft/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/contextutils"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
 	goObjectHash "github.com/benlaurie/objecthash/go/objecthash"
-	"github.com/lyft/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/lyft/flytepropeller/pkg/client/clientset/versioned/fake"
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned/fake"
+	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 )

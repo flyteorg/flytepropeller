@@ -8,28 +8,28 @@ import (
 	"runtime/pprof"
 	"strings"
 
-	"github.com/lyft/flytestdlib/contextutils"
+	"github.com/flyteorg/flytestdlib/contextutils"
 
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 
-	"github.com/lyft/flytepropeller/pkg/controller/executors"
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	config2 "github.com/lyft/flytepropeller/pkg/controller/config"
+	config2 "github.com/flyteorg/flytepropeller/pkg/controller/config"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/lyft/flytestdlib/config/viper"
-	"github.com/lyft/flytestdlib/version"
+	"github.com/flyteorg/flytestdlib/config/viper"
+	"github.com/flyteorg/flytestdlib/version"
 
-	"github.com/lyft/flytestdlib/config"
-	"github.com/lyft/flytestdlib/logger"
-	"github.com/lyft/flytestdlib/profutils"
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/profutils"
+	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 
@@ -40,10 +40,10 @@ import (
 
 	restclient "k8s.io/client-go/rest"
 
-	clientset "github.com/lyft/flytepropeller/pkg/client/clientset/versioned"
-	informers "github.com/lyft/flytepropeller/pkg/client/informers/externalversions"
-	"github.com/lyft/flytepropeller/pkg/controller"
-	"github.com/lyft/flytepropeller/pkg/signals"
+	clientset "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned"
+	informers "github.com/flyteorg/flytepropeller/pkg/client/informers/externalversions"
+	"github.com/flyteorg/flytepropeller/pkg/controller"
+	"github.com/flyteorg/flytepropeller/pkg/signals"
 )
 
 const (

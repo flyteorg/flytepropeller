@@ -12,35 +12,35 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/backoff"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/backoff"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flytestdlib/contextutils"
-	stdErrors "github.com/lyft/flytestdlib/errors"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/flyteorg/flytestdlib/contextutils"
+	stdErrors "github.com/flyteorg/flytestdlib/errors"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/lyft/flytestdlib/promutils"
-	"github.com/lyft/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/logger"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/lyft/flyteplugins/go/tasks/errors"
+	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 
-	nodeTaskConfig "github.com/lyft/flytepropeller/pkg/controller/nodes/task/config"
+	nodeTaskConfig "github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/config"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
 
