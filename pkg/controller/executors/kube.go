@@ -41,8 +41,6 @@ func (c fallbackClientReader) List(ctx context.Context, list runtime.Object, opt
 	return
 }
 
-// Creates a new k8s client that uses the cached client for reads and falls back to making API
-// calls if it failed. Write calls will always go to raw client directly.
 func NewFallbackClient(cachedClient, rawClient client.Client) client.Client {
 	return client.DelegatingClient{
 		Reader: fallbackClientReader{
@@ -50,5 +48,28 @@ func NewFallbackClient(cachedClient, rawClient client.Client) client.Client {
 		},
 		StatusClient: rawClient,
 		Writer:       rawClient,
+	}
+}
+
+type fallbackCache struct {
+	cache.Cache
+	rawClient client.Client
+}
+
+func (f fallbackCache) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+	err := f.Cache.Get(ctx, key, obj)
+	if err == nil {
+		return nil
+	}
+
+	return f.rawClient.Get(ctx, key, obj)
+}
+
+// Creates a new k8s client that uses the cached client for reads and falls back to making API
+// calls if it failed. Write calls will always go to raw client directly.
+func NewFallbackCache(cache cache.Cache, rawClient client.Client) cache.Cache {
+	return fallbackCache{
+		Cache:     cache,
+		rawClient: rawClient,
 	}
 }

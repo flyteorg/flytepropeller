@@ -62,7 +62,7 @@ var rootCmd = &cobra.Command{
 	Short: "Operator for running Flyte Workflows",
 	Long: `Flyte Propeller runs a workflow to completion by recursing through the nodes, 
 			handling their tasks to completion and propagating their status upstream.`,
-	PreRunE: initConfig,
+	PersistentPreRunE: initConfig,
 	Run: func(cmd *cobra.Command, args []string) {
 		executeRootCmd(config2.GetConfig())
 	},
@@ -198,7 +198,15 @@ func executeRootCmd(cfg *config2.Config) {
 	mgr, err := manager.New(kubecfg, manager.Options{
 		Namespace:  limitNamespace,
 		SyncPeriod: &cfg.DownstreamEval.Duration,
-		NewClient: func(cache cache.Cache, config *restclient.Config, options client.Options) (i client.Client, e error) {
+		NewCache: func(config *restclient.Config, opts cache.Options) (cache.Cache, error) {
+			c, err := cache.New(config, opts)
+			if err != nil {
+				return nil, err
+			}
+
+			return executors.NewFallbackClient(), nil
+		},
+		ClientBuilder: func(cache cache.Cache, config *restclient.Config, options client.Options) (i client.Client, e error) {
 			rawClient, err := client.New(kubecfg, client.Options{})
 			if err != nil {
 				return nil, err

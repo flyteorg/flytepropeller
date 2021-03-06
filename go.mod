@@ -55,5 +55,7 @@ replace (
 	k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
 	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe
-	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.5.1
+
+	github.com/lyft/flyteplugins => ../flyteplugins
+	github.com/lyft/flyteidl => ../flyteidl
 )

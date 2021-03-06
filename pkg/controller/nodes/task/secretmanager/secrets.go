@@ -7,8 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
+	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/logger"
+	v1 "k8s.io/api/core/v1"
 )
 
 type FileEnvSecretManager struct {
@@ -36,6 +39,23 @@ func (f FileEnvSecretManager) Get(ctx context.Context, key string) (string, erro
 		return "", err
 	}
 	return string(b), err
+}
+
+func (f FileEnvSecretManager) InjectK8s(ctx context.Context, key *idlCore.Secret, o v1.Pod) error {
+	secret, err := f.Get(ctx, key.Name)
+	if err != nil {
+		return err
+	}
+
+	envVar := fmt.Sprintf("%s%s", f.envPrefix, key)
+	for _, c := range append(o.Spec.Containers, o.Spec.InitContainers...) {
+		c.Env = append(c.Env, v1.EnvVar{
+			Name:  envVar,
+			Value: secret,
+		})
+	}
+
+	return nil
 }
 
 func NewFileEnvSecretManager(cfg *Config) core.SecretManager {
