@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/jsonpb"
@@ -217,7 +219,7 @@ func (c *CreateOpts) createWorkflowFromProto() error {
 		}
 		fmt.Println(string(y))
 	} else {
-		wf, err := c.flyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(c.ConfigOverrides.Context.Namespace).Create(flyteWf)
+		wf, err := c.flyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(c.ConfigOverrides.Context.Namespace).Create(context.TODO(), flyteWf, v1.CreateOptions{})
 		if err != nil {
 			return err
 		}

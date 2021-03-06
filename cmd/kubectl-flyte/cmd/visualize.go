@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/flyteorg/flytepropeller/pkg/visualize"
@@ -25,7 +26,7 @@ func NewVisualizeCommand(opts *RootOptions) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			w, err := vizOpts.flyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(vizOpts.ConfigOverrides.Context.Namespace).Get(name, v1.GetOptions{})
+			w, err := vizOpts.flyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(vizOpts.ConfigOverrides.Context.Namespace).Get(context.TODO(), name, v1.GetOptions{})
 			if err != nil {
 				return err
 			}
