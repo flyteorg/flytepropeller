@@ -2,7 +2,7 @@ package validators
 
 import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	flyte "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	flyte "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
 type typeChecker interface {

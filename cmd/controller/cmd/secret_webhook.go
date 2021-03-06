@@ -3,7 +3,7 @@ package cmd
 import (
 	"context"
 
-	"github.com/lyft/flytepropeller/pkg/controller/config"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/spf13/cobra"
 )
 
@@ -24,5 +24,5 @@ func init() {
 }
 
 func runSecretsWebhook(ctx context.Context, cfg *config.Config) error {
-
+	return nil
 }

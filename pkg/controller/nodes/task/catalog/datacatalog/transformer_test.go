@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
-	datacatalog "github.com/lyft/datacatalog/protos/gen"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
+	datacatalog "github.com/flyteorg/datacatalog/protos/gen"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lyft/flytepropeller/pkg/utils"
+	"github.com/flyteorg/flytepropeller/pkg/utils"
 )
 
 // add test for raarranged Literal maps for input values

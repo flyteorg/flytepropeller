@@ -8,15 +8,15 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
-	datacatalog "github.com/lyft/datacatalog/protos/gen"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
-	mocks2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	datacatalog "github.com/flyteorg/datacatalog/protos/gen"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
+	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/pkg/errors"
 
-	"github.com/lyft/flytestdlib/contextutils"
-	"github.com/lyft/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/contextutils"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/codes"
@@ -24,7 +24,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 
-	"github.com/lyft/flytepropeller/pkg/controller/nodes/task/catalog/datacatalog/mocks"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog/datacatalog/mocks"
 )
 
 func init() {

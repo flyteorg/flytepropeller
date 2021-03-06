@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	config2 "github.com/lyft/flytepropeller/pkg/controller/config"
+	config2 "github.com/flyteorg/flytepropeller/pkg/controller/config"
 
-	"github.com/lyft/flytepropeller/pkg/client/clientset/versioned/typed/flyteworkflow/v1alpha1"
-	"github.com/lyft/flytestdlib/config"
-	"github.com/lyft/flytestdlib/promutils"
+	"github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned/typed/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 	corev1Types "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
