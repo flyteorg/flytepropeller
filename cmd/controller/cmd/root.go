@@ -10,12 +10,8 @@ import (
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 
-	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/klog"
 
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -196,23 +192,9 @@ func executeRootCmd(cfg *config2.Config) {
 	}
 
 	mgr, err := manager.New(kubecfg, manager.Options{
-		Namespace:  limitNamespace,
-		SyncPeriod: &cfg.DownstreamEval.Duration,
-		NewClient: func(cache cache.Cache, config *restclient.Config, options client.Options) (i client.Client, e error) {
-			rawClient, err := client.New(kubecfg, client.Options{})
-			if err != nil {
-				return nil, err
-			}
-
-			return executors.NewFallbackClient(&client.DelegatingClient{
-				Reader: &client.DelegatingReader{
-					CacheReader:  cache,
-					ClientReader: rawClient,
-				},
-				Writer:       rawClient,
-				StatusClient: rawClient,
-			}, rawClient), nil
-		},
+		Namespace:     limitNamespace,
+		SyncPeriod:    &cfg.DownstreamEval.Duration,
+		ClientBuilder: executors.NewFallbackClientBuilder(),
 	})
 	if err != nil {
 		logger.Fatalf(ctx, "Failed to initialize controller run-time manager. Error: %v", err)
@@ -226,7 +208,7 @@ func executeRootCmd(cfg *config2.Config) {
 		ctx = contextutils.WithGoroutineLabel(ctx, "controller-runtime-manager")
 		pprof.SetGoroutineLabels(ctx)
 		logger.Infof(ctx, "Starting controller-runtime manager")
-		err := mgr.Start(ctx.Done())
+		err := mgr.Start(ctx)
 		if err != nil {
 			logger.Fatalf(ctx, "Failed to start manager. Error: %v", err)
 		}
