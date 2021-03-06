@@ -3,8 +3,8 @@ package v1alpha1
 import (
 	"bytes"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/golang/protobuf/jsonpb"
 )
 
 // Wrapper around core.Execution error. Execution Error has a protobuf enum and hence needs to be wrapped by custom marshaller

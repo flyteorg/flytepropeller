@@ -3,8 +3,8 @@ package v1alpha1
 import (
 	"bytes"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/golang/protobuf/jsonpb"
 )
 
 type Error struct {
