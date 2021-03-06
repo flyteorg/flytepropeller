@@ -3,6 +3,8 @@ package executors
 import (
 	"context"
 
+	"k8s.io/client-go/rest"
+
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -51,7 +53,7 @@ func (f *FallbackClientBuilder) WithUncached(objs ...client.Object) cluster.Clie
 	return f
 }
 
-func (f FallbackClientBuilder) Build(cache cache.Cache, config *interface{}, options client.Options) (client.Client, error) {
+func (f FallbackClientBuilder) Build(cache cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
 	c, err := client.New(config, options)
 	if err != nil {
 		return nil, err
