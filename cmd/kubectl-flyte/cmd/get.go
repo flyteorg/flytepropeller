@@ -59,7 +59,7 @@ func (g *GetOpts) getWorkflow(ctx context.Context, name string) error {
 		g.ConfigOverrides.Context.Namespace = parts[0]
 		name = parts[1]
 	}
-	w, err := g.flyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(g.ConfigOverrides.Context.Namespace).Get(name, v1.GetOptions{})
+	w, err := g.flyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(g.ConfigOverrides.Context.Namespace).Get(context.TODO(), name, v1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (g *GetOpts) iterateOverWorkflows(f func(*v1alpha1.FlyteWorkflow) error, ba
 	}
 	var counter int64
 	for {
-		wList, err := g.flyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(g.ConfigOverrides.Context.Namespace).List(*opts)
+		wList, err := g.flyteClient.FlyteworkflowV1alpha1().FlyteWorkflows(g.ConfigOverrides.Context.Namespace).List(context.TODO(), *opts)
 		if err != nil {
 			return err
 		}
@@ -123,7 +123,7 @@ func (g *GetOpts) iterateOverQuotas(f func(quota *v12.ResourceQuota) error, batc
 
 	var counter int64
 	for {
-		rq, err := g.kubeClient.CoreV1().ResourceQuotas(g.ConfigOverrides.Context.Namespace).List(opts)
+		rq, err := g.kubeClient.CoreV1().ResourceQuotas(g.ConfigOverrides.Context.Namespace).List(context.TODO(), opts)
 		if err != nil {
 			return err
 		}
