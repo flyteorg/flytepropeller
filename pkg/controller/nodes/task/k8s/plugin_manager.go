@@ -83,7 +83,7 @@ func newPluginMetrics(s promutils.Scope) PluginMetrics {
 	}
 }
 
-func AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o k8s.Resource, cfg *config.K8sPluginConfig) {
+func AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o client.Object, cfg *config.K8sPluginConfig) {
 	o.SetNamespace(taskCtx.GetNamespace())
 	o.SetAnnotations(utils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
 	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
@@ -175,7 +175,7 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 	}
 
 	AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
-	logger.Infof(ctx, "Creating Object: Type:[%v], Object:[%v/%v]", o.GroupVersionKind(), o.GetNamespace(), o.GetName())
+	logger.Infof(ctx, "Creating Object: Type:[%v], Object:[%v/%v]", o.GetObjectKind().GroupVersionKind(), o.GetNamespace(), o.GetName())
 
 	key := backoff.ComposeResourceKey(o)
 
@@ -325,7 +325,7 @@ func (e PluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecution
 	return nil
 }
 
-func (e *PluginManager) ClearFinalizers(ctx context.Context, o k8s.Resource) error {
+func (e *PluginManager) ClearFinalizers(ctx context.Context, o client.Object) error {
 	if len(o.GetFinalizers()) > 0 {
 		o.SetFinalizers([]string{})
 		err := e.kubeClient.GetClient().Update(ctx, o)
