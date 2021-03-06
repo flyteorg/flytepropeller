@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/google/uuid"
 	datacatalog "github.com/flyteorg/datacatalog/protos/gen"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/golang/protobuf/proto"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
@@ -110,7 +110,7 @@ func TestCatalog_Get(t *testing.T) {
 		mockClient.On("GetDataset",
 			ctx,
 			mock.MatchedBy(func(o *datacatalog.GetDatasetRequest) bool {
-				assert.EqualValues(t, datasetID, o.Dataset)
+				assert.EqualValues(t, datasetID.String(), o.Dataset.String())
 				return true
 			}),
 		).Return(nil, status.Error(codes.NotFound, "test not found"))
@@ -138,7 +138,7 @@ func TestCatalog_Get(t *testing.T) {
 		mockClient.On("GetDataset",
 			ctx,
 			mock.MatchedBy(func(o *datacatalog.GetDatasetRequest) bool {
-				assert.EqualValues(t, datasetID, o.Dataset)
+				assert.EqualValues(t, datasetID.String(), o.Dataset.String())
 				return true
 			}),
 		).Return(&datacatalog.GetDatasetResponse{Dataset: sampleDataSet}, nil, "")

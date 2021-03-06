@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
 	datacatalog "github.com/flyteorg/datacatalog/protos/gen"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
@@ -61,7 +60,7 @@ func TestEmptyParamTask(t *testing.T) {
 	key.TypedInterface.Outputs = nil
 	datasetIDDupe, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
-	assert.True(t, proto.Equal(datasetIDDupe, datasetID))
+	assert.Equal(t, datasetIDDupe.String(), datasetID.String())
 }
 
 // Ensure the key order on the map generates the same dataset
@@ -98,7 +97,7 @@ func TestVariableMapOrder(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "1.0.0-UxVtPm0k-GKw-c0Pw", datasetIDDupe.Version)
-	assert.True(t, proto.Equal(datasetID, datasetIDDupe))
+	assert.Equal(t, datasetID.String(), datasetIDDupe.String())
 }
 
 // Ensure the key order on the inputs generates the same tag

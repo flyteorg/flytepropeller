@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -154,7 +156,7 @@ func TestResourceVersionCaching_Get_UpdateAndRead(t *testing.T) {
 			return wf, nil
 		}
 
-		_, err := mockClient.FlyteWorkflows(wf.GetNamespace()).Create(wf)
+		_, err := mockClient.FlyteWorkflows(wf.GetNamespace()).Create(ctx, wf, v1.CreateOptions{})
 		assert.NoError(t, err)
 
 		newWf := wf.DeepCopy()
@@ -206,7 +208,7 @@ func TestResourceVersionCaching_Get_UpdateAndRead(t *testing.T) {
 		wf := dummyWf(namespace, notUpdatedName)
 		wf.ResourceVersion = resourceVersion
 
-		_, err := mockClient.FlyteWorkflows(wf.GetNamespace()).Create(wf)
+		_, err := mockClient.FlyteWorkflows(wf.GetNamespace()).Create(ctx, wf, v1.CreateOptions{})
 		assert.NoError(t, err)
 
 		scope := promutils.NewTestScope()
@@ -240,7 +242,7 @@ func TestResourceVersionCaching_UpdateTerminated(t *testing.T) {
 	wf := dummyWf(namespace, name)
 	wf.ResourceVersion = resourceVersion
 
-	_, err := mockClient.FlyteWorkflows(wf.GetNamespace()).Create(wf)
+	_, err := mockClient.FlyteWorkflows(wf.GetNamespace()).Create(ctx, wf, v1.CreateOptions{})
 	assert.NoError(t, err)
 
 	newWf := wf.DeepCopy()
