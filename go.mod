@@ -32,13 +32,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.8.2
 )
 
-// Pin the version of client-go to something that's compatible with katrogan's fork of api and apimachinery
-// Type the following
-//   replace k8s.io/client-go => k8s.io/client-go kubernetes-1.16.2
-// and it will be replaced with the 'sha' variant of the version
-
 replace (
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.4-0.20201027003055-c76b67e3b6d0
 	github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
-	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
 )
