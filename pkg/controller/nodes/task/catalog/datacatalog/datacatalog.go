@@ -5,16 +5,16 @@ import (
 	"crypto/x509"
 	"time"
 
-	grpcRetry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	datacatalog "github.com/flyteorg/datacatalog/protos/gen"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	grpcRetry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/pkg/errors"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"

@@ -34,11 +34,11 @@ package compiler
 import (
 	"strings"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	c "github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
 	v "github.com/flyteorg/flytepropeller/pkg/compiler/validators"
+	"github.com/golang/protobuf/proto"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 

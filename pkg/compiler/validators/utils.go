@@ -3,8 +3,8 @@ package validators
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/golang/protobuf/proto"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 

@@ -1,7 +1,6 @@
 package task
 
 import (
-	"github.com/golang/protobuf/ptypes"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -9,6 +8,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
+	"github.com/golang/protobuf/ptypes"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 )

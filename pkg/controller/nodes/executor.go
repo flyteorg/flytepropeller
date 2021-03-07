@@ -10,7 +10,6 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	errors2 "github.com/flyteorg/flytestdlib/errors"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/flyteorg/flyteidl/clients/go/events"
 	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -20,6 +19,7 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/flyteorg/flytestdlib/storage"
+	"github.com/golang/protobuf/ptypes"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"

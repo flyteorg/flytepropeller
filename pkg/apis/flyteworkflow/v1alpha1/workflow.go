@@ -9,9 +9,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

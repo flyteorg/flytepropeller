@@ -3,8 +3,9 @@ package backoff
 import (
 	"context"
 	"fmt"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	stdAtomic "github.com/flyteorg/flytestdlib/atomic"
 

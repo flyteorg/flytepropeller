@@ -13,7 +13,6 @@ import (
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	pluginMachinery "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
@@ -26,6 +25,7 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/flyteorg/flytestdlib/storage"
+	"github.com/golang/protobuf/ptypes"
 	regErrors "github.com/pkg/errors"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager"

@@ -117,13 +117,13 @@ func TestPassthroughWorkflowStore_UpdateStatus(t *testing.T) {
 		wf.ResourceVersion = "r1"
 		_, err := n.Create(ctx, wf, v1.CreateOptions{})
 		assert.NoError(t, err)
-		updated, err := n.Get(ctx,"x", v1.GetOptions{})
+		updated, err := n.Get(ctx, "x", v1.GetOptions{})
 		if assert.NoError(t, err) {
 			assert.Equal(t, v1alpha1.WorkflowPhaseSucceeding, updated.GetExecutionStatus().GetPhase())
 			wf.GetExecutionStatus().UpdatePhase(v1alpha1.WorkflowPhaseFailed, "", &core.ExecutionError{})
 			_, err := wfStore.UpdateStatus(ctx, wf, PriorityClassCritical)
 			assert.NoError(t, err)
-			newVal, err := n.Get(ctx,"x", v1.GetOptions{})
+			newVal, err := n.Get(ctx, "x", v1.GetOptions{})
 			assert.NoError(t, err)
 			assert.Equal(t, v1alpha1.WorkflowPhaseFailed, newVal.GetExecutionStatus().GetPhase())
 		}
