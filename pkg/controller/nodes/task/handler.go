@@ -7,25 +7,25 @@ import (
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-
-	"github.com/flyteorg/flytepropeller/pkg/utils"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
-
-	"github.com/golang/protobuf/ptypes"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	pluginMachinery "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
-	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
-	pluginK8s "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/flyteorg/flytestdlib/storage"
+	"github.com/golang/protobuf/ptypes"
+
+	"github.com/flyteorg/flytepropeller/pkg/utils"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
+
+	pluginMachinery "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
+	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	pluginK8s "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	regErrors "github.com/pkg/errors"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager"

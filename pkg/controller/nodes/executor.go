@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/flyteorg/flyteidl/clients/go/events"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
+	"github.com/flyteorg/flytestdlib/contextutils"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/storage"
+	"github.com/golang/protobuf/ptypes"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	errors2 "github.com/flyteorg/flytestdlib/errors"
-
-	"github.com/golang/protobuf/ptypes"
-	"github.com/flyteorg/flyteidl/clients/go/events"
-	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	"github.com/flyteorg/flytestdlib/contextutils"
-	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/flyteorg/flytestdlib/promutils/labeled"
-	"github.com/flyteorg/flytestdlib/storage"
+
+	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"

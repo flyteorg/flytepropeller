@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flytestdlib/logger"
 	v1 "k8s.io/api/core/v1"
