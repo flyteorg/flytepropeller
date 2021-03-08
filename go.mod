@@ -1,6 +1,6 @@
 module github.com/flyteorg/flytepropeller
 
-go 1.13
+go 1.16
 
 require (
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295
