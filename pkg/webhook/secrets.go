@@ -3,20 +3,28 @@ package webhook
 import (
 	"context"
 	"encoding/json"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"net/http"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
+	"github.com/flyteorg/flytestdlib/promutils"
 
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	secretUtils "github.com/flyteorg/flytepropeller/pkg/utils/secrets"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 type SecretsWebhook struct {
-	decoder *admission.Decoder
+	decoder  *admission.Decoder
+	injector SecretsInjector
+}
+
+type SecretsInjector interface {
+	Inject(ctx context.Context, secrets []*core.Secret, p *corev1.Pod) (*corev1.Pod, error)
 }
 
 // InjectDecoder injects the decoder into a mutatingHandler.
@@ -33,8 +41,18 @@ func (s SecretsWebhook) Handle(ctx context.Context, request admission.Request) a
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
+	secrets, err := secretUtils.UnmarshalStringMapToSecrets(obj.GetAnnotations())
+	if err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
+	}
+
+	newObj, err := s.injector.Inject(ctx, secrets, obj)
+	if err != nil {
+		admission.Errored(http.StatusBadRequest, err)
+	}
+
 	// Default the object
-	marshalled, err := json.Marshal(obj)
+	marshalled, err := json.Marshal(newObj)
 	if err != nil {
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
@@ -43,17 +61,9 @@ func (s SecretsWebhook) Handle(ctx context.Context, request admission.Request) a
 	return admission.PatchResponseFromRaw(request.Object.Raw, marshalled)
 }
 
-func (s SecretsWebhook) InjectCache(cache cache.Cache) error {
-	panic("implement me")
-}
-
-func (s SecretsWebhook) InjectClient(client client.Client) error {
-	panic("implement me")
-}
-
 func (s SecretsWebhook) Register(_ context.Context, mgr manager.Manager) error {
 	wh := &admission.Webhook{
-		Handler:s,
+		Handler: s,
 	}
 
 	pod := &corev1.Pod{}
@@ -66,6 +76,6 @@ func generateMutatePath(gvk schema.GroupVersionKind) string {
 		gvk.Version + "-" + strings.ToLower(gvk.Kind)
 }
 
-func NewSecretsWebhook() SecretsWebhook {
+func NewSecretsWebhook(scope promutils.Scope) SecretsWebhook {
 	return SecretsWebhook{}
 }
