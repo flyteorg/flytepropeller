@@ -36,5 +36,4 @@ replace (
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.4-0.20201027003055-c76b67e3b6d0
 	github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
 	github.com/flyteorg/flyteplugins => github.com/flyteorg/flyteplugins v0.5.29-0.20210306003701-5b9e97cb2945
-	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
 )
