@@ -239,7 +239,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindStart).Return(h, nil)
 
 				mockWf, startNode, startNodeStatus := createStartNodeWf(test.currentNodePhase, 0)
-				executionContext := executors.NewExecutionContext(mockWf, nil, nil, nil)
+				executionContext := executors.NewExecutionContext(mockWf, nil, nil, nil, executors.InitializeControlFlow())
 				s, err := exec.RecursiveNodeHandler(ctx, executionContext, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
@@ -328,7 +328,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindEnd).Return(h, nil)
 
 				mockWf, mockNode, mockNodeStatus := createSingleNodeWf(test.parentNodePhase, 0)
-				execContext := executors.NewExecutionContext(mockWf, nil, nil, nil)
+				execContext := executors.NewExecutionContext(mockWf, nil, nil, nil, executors.InitializeControlFlow())
 				s, err := exec.RecursiveNodeHandler(ctx, execContext, mockWf, mockWf, mockNode)
 				if test.expectedError {
 					assert.Error(t, err)
@@ -392,7 +392,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 					RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
 				},
 			}
-			executionContext := executors.NewExecutionContext(w, nil, nil, nil)
+			executionContext := executors.NewExecutionContext(w, nil, nil, nil, executors.InitializeControlFlow())
 			return w, executionContext, n, ns
 		}
 
@@ -665,7 +665,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				exec := execIface.(*nodeExecutor)
 				exec.nodeHandlerFactory = hf
 
-				execContext := executors.NewExecutionContext(mockWf, mockWf, mockWf, nil)
+				execContext := executors.NewExecutionContext(mockWf, mockWf, mockWf, nil, executors.InitializeControlFlow())
 				s, err := exec.RecursiveNodeHandler(ctx, execContext, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
@@ -769,7 +769,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				startNode := mockWf.StartNode()
 				startStatus := mockWf.GetNodeExecutionStatus(ctx, startNode.GetID())
 				assert.Equal(t, v1alpha1.NodePhaseSucceeded, startStatus.GetPhase())
-				execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil)
+				execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil, executors.InitializeControlFlow())
 				s, err := exec.RecursiveNodeHandler(ctx, execContext, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
@@ -878,7 +878,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				mockWf, _, mockNodeStatus := createSingleNodeWf(test.currentNodePhase, 1)
 				execErr := mockNodeStatus.GetExecutionError()
 				startNode := mockWf.StartNode()
-				execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil)
+				execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil, executors.InitializeControlFlow())
 				s, err := exec.RecursiveNodeHandler(ctx, execContext, mockWf, mockWf, startNode)
 				if test.expectedError {
 					assert.Error(t, err)
@@ -925,7 +925,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 
 		mockWf, _, mockNodeStatus := createSingleNodeWf(v1alpha1.NodePhaseRunning, 0)
 		startNode := mockWf.StartNode()
-		execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil)
+		execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil, executors.InitializeControlFlow())
 
 		s, err := exec.RecursiveNodeHandler(ctx, execContext, mockWf, mockWf, startNode)
 		assert.NoError(t, err)
@@ -956,7 +956,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 
 		mockWf, _, mockNodeStatus := createSingleNodeWf(v1alpha1.NodePhaseRunning, 1)
 		startNode := mockWf.StartNode()
-		execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil)
+		execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil, executors.InitializeControlFlow())
 		s, err := exec.RecursiveNodeHandler(ctx, execContext, mockWf, mockWf, startNode)
 		assert.NoError(t, err)
 		assert.Equal(t, executors.NodePhasePending.String(), s.NodePhase.String())
@@ -1061,7 +1061,7 @@ func TestNodeExecutor_RecursiveNodeHandler_NoDownstream(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
 
 				mockWf, mockNode, mockNodeStatus := createSingleNodeWf(test.currentNodePhase, 1)
-				execContext := executors.NewExecutionContext(mockWf, nil, nil, nil)
+				execContext := executors.NewExecutionContext(mockWf, nil, nil, nil, executors.InitializeControlFlow())
 				s, err := exec.RecursiveNodeHandler(ctx, execContext, mockWf, mockWf, mockNode)
 				if test.expectedError {
 					assert.Error(t, err)
@@ -1169,7 +1169,7 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 				hf.On("GetHandler", v1alpha1.NodeKindTask).Return(h, nil)
 
 				mockWf, mockNode, mockNodeStatus := createSingleNodeWf(test.parentNodePhase, 0)
-				execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil)
+				execContext := executors.NewExecutionContext(mockWf, mockWf, nil, nil, executors.InitializeControlFlow())
 				s, err := exec.RecursiveNodeHandler(ctx, execContext, mockWf, mockWf, mockNode)
 				if test.expectedError {
 					assert.Error(t, err)
@@ -1251,6 +1251,7 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 				eCtx.OnGetRawOutputDataConfig().Return(v1alpha1.RawOutputDataConfig{
 					RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
 				})
+				eCtx.OnCurrentParallelism().Return(0)
 
 				branchTakenNodeID := "branchTakenNode"
 				branchTakenNode := &mocks.ExecutableNode{}
