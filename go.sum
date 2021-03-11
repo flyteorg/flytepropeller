@@ -78,6 +78,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295 h1:xJ0dAkuxJXfwdH7IaSzBEbSQxEDz36YUmt7+CB4zoNA=
 github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295/go.mod h1:e0aH495YLkrsIe9fhedd6aSR6fgU/qhKvtroi6y7G/M=
+github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.0.0-20200723154620-6f35a1152625 h1:cQyO5JQ2iuHnEcF3v24kdDMsgh04RjyFPDtuvD6PCE0=
+github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.0.0-20200723154620-6f35a1152625/go.mod h1:6PnrZv6zUDkrNMw0mIoGRmGBR7i9LulhKPmxFq4rUiM=
 github.com/Jeffail/gabs/v2 v2.5.1/go.mod h1:xCn81vdHKxFUuWWAaD5jCTQDNPBMh5pPs9IJ+NcziBI=
 github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/Masterminds/semver v1.5.0 h1:H65muMkzWKEuNDnfl9d70GUjFniHKHRbFPGBuZ3QEww=
@@ -243,6 +245,8 @@ github.com/flyteorg/flyteplugins v0.5.29-0.20210308212805-da3706206b2f h1:xucGyE
 github.com/flyteorg/flyteplugins v0.5.29-0.20210308212805-da3706206b2f/go.mod h1:1bdo/fGUDI6KH4RP/HTHlvFgErtvh9dyOfUUqMcScLw=
 github.com/flyteorg/flyteplugins v0.5.30 h1:iHJddXe3R+RUw3Zj+g+h6e6W83MkKfp6yERgfwVeDAQ=
 github.com/flyteorg/flyteplugins v0.5.30/go.mod h1:1bdo/fGUDI6KH4RP/HTHlvFgErtvh9dyOfUUqMcScLw=
+github.com/flyteorg/flyteplugins v0.5.32-0.20210310205442-c82c49124375 h1:GCsR63/DQhQb0nF6nz193rPL5TLZnVCfKfmbmo9r9TU=
+github.com/flyteorg/flyteplugins v0.5.32-0.20210310205442-c82c49124375/go.mod h1:+qu3cAdUdyNXer+R9NcvEKsEWwhvKAqRObmuFBGOJ0s=
 github.com/flyteorg/flytestdlib v0.3.13 h1:5ioA/q3ixlyqkFh5kDaHgmPyTP/AHtqq1K/TIbVLUzM=
 github.com/flyteorg/flytestdlib v0.3.13/go.mod h1:Tz8JCECAbX6VWGwFT6cmEQ+RJpZ/6L9pswu3fzWs220=
 github.com/form3tech-oss/jwt-go v3.2.2+incompatible h1:TcekIExNqud5crz4xD2pavyTgWiPvpYe4Xau31I0PRk=
