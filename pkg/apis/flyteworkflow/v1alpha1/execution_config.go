@@ -18,6 +18,7 @@ func (in *RawOutputDataConfig) DeepCopyInto(out *RawOutputDataConfig) {
 type ExecutionConfig struct {
 	// Maps individual task types to their alternate (non-default) plugin handlers by name.
 	TaskPluginImpls map[string]TaskPluginOverride
+	// Can be used to control the number of parallel nodes to run within the workflow. This is useful to achieve fairness.
 	MaxParallelism  uint32
 }
 
