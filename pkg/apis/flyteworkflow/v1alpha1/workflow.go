@@ -9,7 +9,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/pkg/errors"
