@@ -714,6 +714,10 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 		if currentNode.GetKind() == v1alpha1.NodeKindTask {
 			if s == executors.NodeStatusRunning {
 				maxParallelism := execContext.GetExecutionConfig().MaxParallelism
+				if maxParallelism == 0 {
+					// For testing! TODO delete this block
+					maxParallelism = 10
+				}
 				if maxParallelism > 0 {
 					logger.Debugf(ctx, "Parallelism control enabled. Node Kind [%s] is running, current Parallelism is [%d]",
 						currentNode.GetKind().String(), execContext.IncrementParallelism())
