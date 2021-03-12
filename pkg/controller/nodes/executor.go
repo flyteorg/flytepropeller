@@ -668,6 +668,10 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 		// has been queued already
 		if currentNode.GetKind() == v1alpha1.NodeKindTask && nodeStatus.GetPhase() == v1alpha1.NodePhaseQueued {
 			maxParallelism := execContext.GetExecutionConfig().MaxParallelism
+			if maxParallelism == 0 {
+				// For testing! TODO delete this block
+				maxParallelism = 10
+			}
 			if maxParallelism > 0 {
 				// If we are queued, let us see if we can proceed within the node parallelism bounds
 				if execContext.CurrentParallelism() > maxParallelism {
@@ -677,9 +681,11 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 				// We know that Propeller goes through each workflow in a single thread, thus every node is really processed
 				// sequentially. So, we can continue - now that we know we are under the parallelism limits and increment the
 				// parallelism if the node, enters a running state
+			} else {
+				logger.Debugf(ctx, "Parallelism control disabled")
 			}
 		} else {
-			logger.Debugf(ctx, "Node[%s] in status [%s]. Parallelism level [%d] is not applicable",
+			logger.Debugf(ctx, "NodeKind: %s in status [%s]. Parallelism control is not applicable. Current Parallelism [%d]",
 				currentNode.GetKind().String(), nodeStatus.GetPhase().String(), execContext.CurrentParallelism())
 		}
 
