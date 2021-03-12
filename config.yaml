@@ -22,10 +22,14 @@ propeller:
       type: bucket
       rate: 100
       capacity: 1000
-  kube-config: "$HOME/.kube/config"
+  kube-config: "$HOME/kubeconfig/k3s/k3s.yaml"
   publish-k8s-events: true
   workflowStore:
     policy: "ResourceVersionCache"
+  webhook:
+    certDir: "/Users/haythamabuelfutuh/webhook/certs"
+    name: flyte-pod-webhook
+    namespace: flyte
 tasks:
   task-plugins:
     enabled-plugins:

@@ -6,6 +6,12 @@ import (
 	"net/http"
 	"strings"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+
+	"github.com/flyteorg/flytestdlib/logger"
+
 	"github.com/flyteorg/flytestdlib/promutils"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -19,12 +25,17 @@ import (
 )
 
 type SecretsWebhook struct {
-	decoder  *admission.Decoder
-	injector SecretsInjector
+	decoder   *admission.Decoder
+	injectors []SecretsInjector
 }
 
 type SecretsInjector interface {
-	Inject(ctx context.Context, secrets []*core.Secret, p *corev1.Pod) (*corev1.Pod, error)
+	ID() string
+	Inject(ctx context.Context, secrets *core.Secret, p *corev1.Pod) (*corev1.Pod, error)
+}
+
+func (s *SecretsWebhook) InjectClient(c client.Client) error {
+	return nil
 }
 
 // InjectDecoder injects the decoder into a mutatingHandler.
@@ -33,7 +44,7 @@ func (s *SecretsWebhook) InjectDecoder(d *admission.Decoder) error {
 	return nil
 }
 
-func (s SecretsWebhook) Handle(ctx context.Context, request admission.Request) admission.Response {
+func (s *SecretsWebhook) Handle(ctx context.Context, request admission.Request) admission.Response {
 	// Get the object in the request
 	obj := &corev1.Pod{}
 	err := s.decoder.Decode(request, obj)
@@ -46,13 +57,22 @@ func (s SecretsWebhook) Handle(ctx context.Context, request admission.Request) a
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	newObj, err := s.injector.Inject(ctx, secrets, obj)
-	if err != nil {
-		admission.Errored(http.StatusBadRequest, err)
+	for _, secret := range secrets {
+		for _, injector := range s.injectors {
+			obj, err = injector.Inject(ctx, secret, obj)
+			if err != nil {
+				logger.Infof(ctx, "Failed to inject a secret using injector [%v].", injector.ID())
+			} else {
+				break
+			}
+		}
+
+		if err != nil {
+			admission.Errored(http.StatusBadRequest, err)
+		}
 	}
 
-	// Default the object
-	marshalled, err := json.Marshal(newObj)
+	marshalled, err := json.Marshal(obj)
 	if err != nil {
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
@@ -61,14 +81,24 @@ func (s SecretsWebhook) Handle(ctx context.Context, request admission.Request) a
 	return admission.PatchResponseFromRaw(request.Object.Raw, marshalled)
 }
 
-func (s SecretsWebhook) Register(_ context.Context, mgr manager.Manager) error {
+func (s *SecretsWebhook) Register(ctx context.Context, mgr manager.Manager) error {
 	wh := &admission.Webhook{
 		Handler: s,
 	}
 
-	pod := &corev1.Pod{}
-	mgr.GetWebhookServer().Register(generateMutatePath(pod.GroupVersionKind()), wh)
+	mutatePath := GetPodMutatePath()
+	logger.Infof(ctx, "Registering path [%v]", mutatePath)
+	mgr.GetWebhookServer().Register(mutatePath, wh)
 	return nil
+}
+
+func (s SecretsWebhook) GetMutatePath() string {
+	return GetPodMutatePath()
+}
+
+func GetPodMutatePath() string {
+	pod := flytek8s.BuildIdentityPod()
+	return generateMutatePath(pod.GroupVersionKind())
 }
 
 func generateMutatePath(gvk schema.GroupVersionKind) string {
@@ -76,6 +106,11 @@ func generateMutatePath(gvk schema.GroupVersionKind) string {
 		gvk.Version + "-" + strings.ToLower(gvk.Kind)
 }
 
-func NewSecretsWebhook(scope promutils.Scope) SecretsWebhook {
-	return SecretsWebhook{}
+func NewSecretsWebhook(scope promutils.Scope) *SecretsWebhook {
+	return &SecretsWebhook{
+		injectors: []SecretsInjector{
+			GlobalSecrets{},
+			K8sSecretInjector{},
+		},
+	}
 }
