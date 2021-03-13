@@ -305,4 +305,3 @@ type FlyteWorkflowList struct {
 	metav1.ListMeta `json:"metadata"`
 	Items           []FlyteWorkflow `json:"items"`
 }
-

@@ -609,7 +609,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 				handlerPhase:    handler.EPhaseRunning,
 				event:           false,
 				skipStateUpdate: true,
-				incrParallel: true,
+				incrParallel:    true,
 			},
 		},
 		{
