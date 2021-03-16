@@ -239,6 +239,8 @@ github.com/flyteorg/datacatalog v0.3.0 h1:rkZ/IJTPGAJjHig2O+iSq9W9xqqVZdJTwGYb2Q
 github.com/flyteorg/datacatalog v0.3.0/go.mod h1:Y022upSReYrjYCO+S+/udfuVOBj047bxgJkA+2irHRI=
 github.com/flyteorg/flyteidl v0.18.15 h1:sXrlwTRaRjQsXYMNrY/S930SKdKtu4XnpNFEu8I4tn4=
 github.com/flyteorg/flyteidl v0.18.15/go.mod h1:b5Fq4Z8a5b0mF6pEwTd48ufvikUGVkWSjZiMT0ZtqKI=
+github.com/flyteorg/flyteidl v0.18.17 h1:74pPZ9PzITuzq+CgjMPb9EcFI5bVkf8mM5m4xmmlTmY=
+github.com/flyteorg/flyteidl v0.18.17/go.mod h1:b5Fq4Z8a5b0mF6pEwTd48ufvikUGVkWSjZiMT0ZtqKI=
 github.com/flyteorg/flyteplugins v0.5.32 h1:fXyHUZFtNt1yQIQehilSnpzKlOAkXkqqnwh9M696Dvw=
 github.com/flyteorg/flyteplugins v0.5.32/go.mod h1:+qu3cAdUdyNXer+R9NcvEKsEWwhvKAqRObmuFBGOJ0s=
 github.com/flyteorg/flytestdlib v0.3.13 h1:5ioA/q3ixlyqkFh5kDaHgmPyTP/AHtqq1K/TIbVLUzM=
