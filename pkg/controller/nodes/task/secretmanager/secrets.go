@@ -6,11 +6,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
-	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	coreIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flytestdlib/logger"
-	v1 "k8s.io/api/core/v1"
 )
 
 type FileEnvSecretManager struct {
@@ -40,26 +41,39 @@ func (f FileEnvSecretManager) Get(ctx context.Context, key string) (string, erro
 	return string(b), err
 }
 
-func (f FileEnvSecretManager) InjectK8s(ctx context.Context, key *idlCore.Secret, o v1.Pod) error {
-	secretName := key.Group
-	if len(secretName) == 0 {
-		secretName = key.Key
+func (f FileEnvSecretManager) GetForSecret(ctx context.Context, secret *coreIdl.Secret) (string, error) {
+	lookup := strings.ToUpper(secret.Key)
+	if len(secret.Group) > 0 {
+		lookup = strings.ToUpper(secret.Group) + "_" + strings.ToUpper(secret.Key)
 	}
 
-	secret, err := f.Get(ctx, secretName)
+	envVar := fmt.Sprintf("%s%s", f.envPrefix, lookup)
+	v, ok := os.LookupEnv(envVar)
+	if ok {
+		logger.Debugf(ctx, "Secret found %s", v)
+		return v, nil
+	}
+
+	fileLookup := secret.Key
+	if len(secret.Group) > 0 {
+		fileLookup = filepath.Join(secret.Group, fileLookup)
+	}
+
+	secretFile := filepath.Join(f.secretPath, fileLookup)
+	if _, err := os.Stat(secretFile); err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("secrets not found - file [%s], Env [%s]", secretFile, envVar)
+		}
+		return "", err
+	}
+
+	logger.Debugf(ctx, "reading secrets from filePath [%s]", secretFile)
+	b, err := ioutil.ReadFile(secretFile)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	envVar := fmt.Sprintf("%s%s", f.envPrefix, key)
-	for _, c := range append(o.Spec.Containers, o.Spec.InitContainers...) {
-		c.Env = append(c.Env, v1.EnvVar{
-			Name:  envVar,
-			Value: secret,
-		})
-	}
-
-	return nil
+	return string(b), err
 }
 
 func NewFileEnvSecretManager(cfg *Config) core.SecretManager {

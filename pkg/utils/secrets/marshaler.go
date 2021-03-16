@@ -1,7 +1,7 @@
 package secrets
 
 import (
-	"encoding/base64"
+	"encoding/base32"
 	"fmt"
 	"strings"
 
@@ -16,17 +16,20 @@ const totalAnnotationSizeLimitB int = 256 * (1 << 10) // 256 kB
 const valueSeparator = "/"
 const groupSeparator = "."
 
+var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)
+
 func encodeSecretGroup(group string) string {
-	return strings.ToLower(base64.StdEncoding.EncodeToString([]byte(group)))
+	res := strings.ToLower(encoding.EncodeToString([]byte(group)))
+	return strings.TrimSuffix(res, "=")
 }
 
-func decodeSecretGroup(encoded string) string {
-	decodedRaw, err := base64.StdEncoding.DecodeString(strings.ToUpper(encoded))
+func decodeSecretGroup(encoded string) (string, error) {
+	decodedRaw, err := encoding.DecodeString(strings.ToUpper(encoded))
 	if err != nil {
-		return encoded
+		return encoded, err
 	}
 
-	return string(decodedRaw)
+	return string(decodedRaw), nil
 }
 
 func MarshalSecretsToMapStrings(secrets []*core.Secret) (map[string]string, error) {
@@ -34,6 +37,10 @@ func MarshalSecretsToMapStrings(secrets []*core.Secret) (map[string]string, erro
 	for _, s := range secrets {
 		if len(s.Group)+len(s.Key)+len(annotationPrefix) >= totalAnnotationSizeLimitB {
 			return nil, fmt.Errorf("secret name cannot exceet [%v]", totalAnnotationSizeLimitB-len(annotationPrefix))
+		}
+
+		if _, found := core.Secret_MountType_name[int32(s.MountRequirement)]; !found {
+			return nil, fmt.Errorf("invalid mount requirement [%v]", s.MountRequirement)
 		}
 
 		if len(s.Group) > 0 {
@@ -61,8 +68,13 @@ func UnmarshalStringMapToSecrets(m map[string]string) ([]*core.Secret, error) {
 
 			parts := strings.Split(trimmed, valueSeparator)
 
+			decoded, err := decodeSecretGroup(parts[0])
+			if err != nil {
+				return nil, fmt.Errorf("error decoding [%v]. Error: %w", key, err)
+			}
+
 			res = append(res, &core.Secret{
-				Group:            decodeSecretGroup(parts[0]),
+				Group:            decoded,
 				Key:              parts[1],
 				MountRequirement: core.Secret_MountType(mountType),
 			})
