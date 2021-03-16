@@ -3,8 +3,13 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	corev1 "k8s.io/api/core/v1"
 
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +42,13 @@ func runWebhook(origContext context.Context, cfg *config.Config) error {
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler(origContext)
 
+	raw, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(raw))
+
 	_, kubecfg, err := getKubeConfig(ctx, cfg)
 	if err != nil {
 		return err
@@ -67,14 +79,6 @@ func runWebhook(origContext context.Context, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-
-	defer func() {
-		// Cleans up the MutationConfig so that we do not block Pod creation with a Pod out of commission.
-		err = deleteMutationConfig(origContext, cfg)
-		if err != nil {
-			panic(err)
-		}
-	}()
 
 	mgr, err := manager.New(kubecfg, manager.Options{
 		Port:          cfg.Webhook.ListenPort,
@@ -113,15 +117,48 @@ func createMutationConfig(ctx context.Context, cfg *config.Config, caCert *bytes
 		return fmt.Errorf("failed to create kubeclient. Error: %w", err)
 	}
 
+	shouldAddOwnerRef := true
+	podName, found := os.LookupEnv("POD_NAME")
+	if !found {
+		shouldAddOwnerRef = false
+	}
+
+	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
+	if !found {
+		shouldAddOwnerRef = false
+	}
+
+	var ownerRef []metav1.OwnerReference
+	webhookObjectName := cfg.Webhook.Name
+	if shouldAddOwnerRef {
+		// Lookup the pod to retrieve its UID
+		p, err := kubeClient.CoreV1().Pods(podNamespace).Get(ctx, podName, metav1.GetOptions{})
+		if err != nil {
+			logger.Infof(ctx, "Failed to get Pod [%v/%v]. Error: %v", podNamespace, podName, err)
+			return fmt.Errorf("failed to get pod. Error: %w", err)
+		}
+
+		ownerRef = []metav1.OwnerReference{
+			{
+				Kind:       flytek8s.PodKind,
+				Name:       p.Name,
+				APIVersion: corev1.SchemeGroupVersion.Version,
+				UID:        p.UID,
+			},
+		}
+
+		// Use the pod's name as the object name to ensure uniqueness.
+		webhookObjectName = ownerRef[0].Name
+	}
+
 	path := webhook.GetPodMutatePath()
 	fail := admissionregistrationv1.Fail
 	sideEffects := admissionregistrationv1.SideEffectClassNoneOnDryRun
 
 	mutateConfig := &admissionregistrationv1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: cfg.Webhook.Name,
-			// It looks like the client ignores this namespace option as Webhooks are installed globally...
-			Namespace: cfg.Webhook.Namespace,
+			Name:            webhookObjectName,
+			OwnerReferences: ownerRef,
 		},
 		Webhooks: []admissionregistrationv1.MutatingWebhook{
 			{
@@ -129,9 +166,8 @@ func createMutationConfig(ctx context.Context, cfg *config.Config, caCert *bytes
 				ClientConfig: admissionregistrationv1.WebhookClientConfig{
 					CABundle: caCert.Bytes(), // CA bundle created earlier
 					Service: &admissionregistrationv1.ServiceReference{
-						Name:      cfg.Webhook.Name,
-						Namespace: cfg.Webhook.Namespace,
-						Path:      &path,
+						Name: cfg.Webhook.Name,
+						Path: &path,
 					},
 				},
 				Rules: []admissionregistrationv1.RuleWithOperations{
@@ -154,6 +190,15 @@ func createMutationConfig(ctx context.Context, cfg *config.Config, caCert *bytes
 				},
 			}},
 	}
+
+	if len(cfg.Webhook.Namespace) > 0 {
+		mutateConfig.Webhooks[0].ClientConfig.Service.Namespace = cfg.Webhook.Namespace
+
+		// It looks like the client ignores this namespace option as Webhooks are installed globally...
+		mutateConfig.Namespace = cfg.Webhook.Namespace
+	}
+
+	logger.Infof(ctx, "Creating obj [%v]", mutateConfig.String())
 
 	_, err = kubeClient.AdmissionregistrationV1().MutatingWebhookConfigurations().Create(ctx, mutateConfig, metav1.CreateOptions{})
 	// TODO: Check for AlreadyExists error

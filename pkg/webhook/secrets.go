@@ -61,14 +61,14 @@ func (s *SecretsWebhook) Handle(ctx context.Context, request admission.Request) 
 		for _, injector := range s.injectors {
 			obj, err = injector.Inject(ctx, secret, obj)
 			if err != nil {
-				logger.Infof(ctx, "Failed to inject a secret using injector [%v].", injector.ID())
+				logger.Infof(ctx, "Failed to inject a secret using injector [%v]. Error: %v", injector.ID(), err)
 			} else {
 				break
 			}
 		}
 
 		if err != nil {
-			admission.Errored(http.StatusBadRequest, err)
+			return admission.Errored(http.StatusBadRequest, err)
 		}
 	}
 

@@ -18,7 +18,7 @@ func (g GlobalSecrets) ID() string {
 }
 
 func (g GlobalSecrets) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (*corev1.Pod, error) {
-	v, err := g.envSecretManager.Get(ctx, secret.Name)
+	v, err := g.envSecretManager.Get(ctx, secret.Key)
 	if err != nil {
 		return p, err
 	}
@@ -41,7 +41,7 @@ func (g GlobalSecrets) Inject(ctx context.Context, secret *core.Secret, p *corev
 		}
 
 		c.Env = append(c.Env, corev1.EnvVar{
-			Name:  secret.Name,
+			Name:  secret.Group + "." + secret.Key,
 			Value: v,
 		})
 	}

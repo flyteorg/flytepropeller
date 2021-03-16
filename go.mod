@@ -7,7 +7,7 @@ require (
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/fatih/color v1.10.0
 	github.com/flyteorg/datacatalog v0.3.0
-	github.com/flyteorg/flyteidl v0.18.16
+	github.com/flyteorg/flyteidl v0.18.18
 	github.com/flyteorg/flyteplugins v0.5.29-0.20210306003701-5b9e97cb2945
 	github.com/flyteorg/flytestdlib v0.3.13
 	github.com/ghodss/yaml v1.0.0
@@ -35,5 +35,4 @@ require (
 replace (
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.4-0.20201027003055-c76b67e3b6d0
 	github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
-	github.com/flyteorg/flyteplugins => github.com/flyteorg/flyteplugins v0.5.29-0.20210306003701-5b9e97cb2945
 )

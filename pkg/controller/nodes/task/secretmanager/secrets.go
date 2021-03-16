@@ -41,7 +41,12 @@ func (f FileEnvSecretManager) Get(ctx context.Context, key string) (string, erro
 }
 
 func (f FileEnvSecretManager) InjectK8s(ctx context.Context, key *idlCore.Secret, o v1.Pod) error {
-	secret, err := f.Get(ctx, key.Name)
+	secretName := key.Group
+	if len(secretName) == 0 {
+		secretName = key.Key
+	}
+
+	secret, err := f.Get(ctx, secretName)
 	if err != nil {
 		return err
 	}
