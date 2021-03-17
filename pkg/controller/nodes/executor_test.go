@@ -1770,7 +1770,6 @@ func TestNodeExecutor_RecursiveNodeHandler_ParallelismLimit(t *testing.T) {
 
 	}
 
-
 	t.Run("parallelism-not-met", func(t *testing.T) {
 		mockWf, mockNode, _ := createSingleNodeWf(v1alpha1.NodePhaseQueued, 1)
 		cf := executors.InitializeControlFlow()
