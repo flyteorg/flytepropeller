@@ -719,11 +719,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 			return executors.NodeStatusUndefined, err
 		}
 
-		s, err := c.handleNode(currentNodeCtx, dag, nCtx, h)
-		if err != nil {
-			return s, err
-		}
-		return s, err
+		return c.handleNode(currentNodeCtx, dag, nCtx, h)
 
 		// TODO we can optimize skip state handling by iterating down the graph and marking all as skipped
 		// Currently we treat either Skip or Success the same way. In this approach only one node will be skipped
