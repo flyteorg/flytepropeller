@@ -64,14 +64,6 @@ func (t taskExecutionMetadata) GetMaxAttempts() uint32 {
 	return t.maxAttempts
 }
 
-func (t taskExecutionMetadata) GetSecurityContext() core.SecurityContext {
-	return core.SecurityContext{
-		RunAs: &core.Identity{
-			K8SServiceAccount: t.GetK8sServiceAccount(),
-		},
-	}
-}
-
 type taskExecutionContext struct {
 	handler.NodeExecutionContext
 	tm  taskExecutionMetadata
