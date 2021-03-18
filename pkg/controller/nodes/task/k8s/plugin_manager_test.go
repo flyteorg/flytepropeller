@@ -585,8 +585,7 @@ func TestPluginManager_CustomKubeClient(t *testing.T) {
 	assert.Equal(t, newFakeClient, pluginManager.kubeClient)
 }
 
-func TestPluginManager_AddObjectMetadata_IgnoreOwnerReferences(t *testing.T) {
-	pluginManager := PluginManager{disableInjectOwnerReferences: true}
+func TestPluginManager_AddObjectMetadata(t *testing.T) {
 	genName := "genName"
 	ns := "ns"
 	or := v12.OwnerReference{}
@@ -594,43 +593,48 @@ func TestPluginManager_AddObjectMetadata_IgnoreOwnerReferences(t *testing.T) {
 	a := map[string]string{"aKey": "aVal"}
 	tm := getMockTaskExecutionMetadataCustom(genName, ns, a, l, or)
 
-	o := &v1.Pod{}
-	cfg := config.GetK8sPluginConfig()
-	pluginManager.AddObjectMetadata(tm, o, cfg)
-	assert.Equal(t, genName, o.GetName())
-	// empty OwnerReference since we are ignoring
-	assert.Equal(t, 0, len(o.GetOwnerReferences()))
-	assert.Equal(t, ns, o.GetNamespace())
-	assert.Equal(t, map[string]string{
-		"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
-		"aKey": "aVal",
-	}, o.GetAnnotations())
-	assert.Equal(t, l, o.GetLabels())
-	assert.Equal(t, 0, len(o.GetFinalizers()))
-}
-
-func TestPluginManager_AddObjectMetadata_InjectFinalizer(t *testing.T) {
-	pluginManager := PluginManager{
-		disableInjectOwnerReferences: true,
-		disableInjectFinalizer:       true,
-	}
-	genName := "genName"
-	ns := "ns"
-	or := v12.OwnerReference{}
-	l := map[string]string{"l1": "lv1"}
-	a := map[string]string{"aKey": "aVal"}
-	tm := getMockTaskExecutionMetadataCustom(genName, ns, a, l, or)
-
-	o := &v1.Pod{}
 	cfg := config.GetK8sPluginConfig()
 
-	t.Run("Disable enabled InjectFinalizer", func(t *testing.T) {
-		// enable finalizer injection
-		cfg.InjectFinalizer = true
+	t.Run("default", func(t *testing.T) {
+		o := &v1.Pod{}
+		pluginManager := PluginManager{}
+		pluginManager.AddObjectMetadata(tm, o, cfg)
+		assert.Equal(t, genName, o.GetName())
+		assert.Equal(t, []v12.OwnerReference{or}, o.GetOwnerReferences())
+		assert.Equal(t, ns, o.GetNamespace())
+		assert.Equal(t, map[string]string{
+			"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+			"aKey": "aVal",
+		}, o.GetAnnotations())
+		assert.Equal(t, l, o.GetLabels())
+		assert.Equal(t, 0, len(o.GetFinalizers()))
+	})
+
+	t.Run("Disable OwnerReferences injection", func(t *testing.T) {
+		pluginManager := PluginManager{disableInjectOwnerReferences: true}
+		o := &v1.Pod{}
 		pluginManager.AddObjectMetadata(tm, o, cfg)
 		assert.Equal(t, genName, o.GetName())
 		// empty OwnerReference since we are ignoring
 		assert.Equal(t, 0, len(o.GetOwnerReferences()))
+		assert.Equal(t, ns, o.GetNamespace())
+		assert.Equal(t, map[string]string{
+			"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+			"aKey": "aVal",
+		}, o.GetAnnotations())
+		assert.Equal(t, l, o.GetLabels())
+		assert.Equal(t, 0, len(o.GetFinalizers()))
+	})
+
+	t.Run("Disable enabled InjectFinalizer", func(t *testing.T) {
+		pluginManager := PluginManager{disableInjectFinalizer: true}
+		// enable finalizer injection
+		cfg.InjectFinalizer = true
+		o := &v1.Pod{}
+		pluginManager.AddObjectMetadata(tm, o, cfg)
+		assert.Equal(t, genName, o.GetName())
+		// empty OwnerReference since we are ignoring
+		assert.Equal(t, 1, len(o.GetOwnerReferences()))
 		assert.Equal(t, ns, o.GetNamespace())
 		assert.Equal(t, map[string]string{
 			"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
@@ -641,12 +645,14 @@ func TestPluginManager_AddObjectMetadata_InjectFinalizer(t *testing.T) {
 	})
 
 	t.Run("Disable disabled InjectFinalizer", func(t *testing.T) {
+		pluginManager := PluginManager{disableInjectFinalizer: true}
 		// disable finalizer injection
 		cfg.InjectFinalizer = false
+		o := &v1.Pod{}
 		pluginManager.AddObjectMetadata(tm, o, cfg)
 		assert.Equal(t, genName, o.GetName())
 		// empty OwnerReference since we are ignoring
-		assert.Equal(t, 0, len(o.GetOwnerReferences()))
+		assert.Equal(t, 1, len(o.GetOwnerReferences()))
 		assert.Equal(t, ns, o.GetNamespace())
 		assert.Equal(t, map[string]string{
 			"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
@@ -655,29 +661,7 @@ func TestPluginManager_AddObjectMetadata_InjectFinalizer(t *testing.T) {
 		assert.Equal(t, l, o.GetLabels())
 		assert.Equal(t, 0, len(o.GetFinalizers()))
 	})
-}
 
-func TestPluginManager_AddObjectMetadata(t *testing.T) {
-	pluginManager := PluginManager{}
-	genName := "genName"
-	ns := "ns"
-	or := v12.OwnerReference{}
-	l := map[string]string{"l1": "lv1"}
-	a := map[string]string{"aKey": "aVal"}
-	tm := getMockTaskExecutionMetadataCustom(genName, ns, a, l, or)
-
-	o := &v1.Pod{}
-	cfg := config.GetK8sPluginConfig()
-	pluginManager.AddObjectMetadata(tm, o, cfg)
-	assert.Equal(t, genName, o.GetName())
-	assert.Equal(t, []v12.OwnerReference{or}, o.GetOwnerReferences())
-	assert.Equal(t, ns, o.GetNamespace())
-	assert.Equal(t, map[string]string{
-		"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
-		"aKey": "aVal",
-	}, o.GetAnnotations())
-	assert.Equal(t, l, o.GetLabels())
-	assert.Equal(t, 0, len(o.GetFinalizers()))
 }
 
 func TestResourceManagerConstruction(t *testing.T) {
