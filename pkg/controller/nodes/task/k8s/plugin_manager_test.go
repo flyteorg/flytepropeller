@@ -624,7 +624,7 @@ func TestPluginManager_AddObjectMetadata_InjectFinalizer(t *testing.T) {
 	o := &v1.Pod{}
 	cfg := config.GetK8sPluginConfig()
 
-	t.Run("Disable enbaled InjectFinalizer", func(t *testing.T) {
+	t.Run("Disable enabled InjectFinalizer", func(t *testing.T) {
 		// enable finalizer injection
 		cfg.InjectFinalizer = true
 		pluginManager.AddObjectMetadata(tm, o, cfg)
@@ -641,7 +641,7 @@ func TestPluginManager_AddObjectMetadata_InjectFinalizer(t *testing.T) {
 	})
 
 	t.Run("Disable disabled InjectFinalizer", func(t *testing.T) {
-		// enable finalizer injection
+		// disable finalizer injection
 		cfg.InjectFinalizer = false
 		pluginManager.AddObjectMetadata(tm, o, cfg)
 		assert.Equal(t, genName, o.GetName())
