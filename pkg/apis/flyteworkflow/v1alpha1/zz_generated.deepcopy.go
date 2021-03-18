@@ -233,12 +233,12 @@ func (in *FlyteWorkflow) DeepCopyInto(out *FlyteWorkflow) {
 		in, out := &in.AcceptedAt, &out.AcceptedAt
 		*out = (*in).DeepCopy()
 	}
-	in.SecurityContext.DeepCopyInto(&out.SecurityContext)
+	out.SecurityContext = in.SecurityContext
 	in.Status.DeepCopyInto(&out.Status)
 	in.RawOutputDataConfig.DeepCopyInto(&out.RawOutputDataConfig)
 	in.ExecutionConfig.DeepCopyInto(&out.ExecutionConfig)
 	if in.DataReferenceConstructor != nil {
-		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
+		out.DataReferenceConstructor = in.DataReferenceConstructor
 	}
 	return
 }
@@ -550,7 +550,7 @@ func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 		*out = (*in).DeepCopy()
 	}
 	if in.DataReferenceConstructor != nil {
-		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
+		out.DataReferenceConstructor = in.DataReferenceConstructor
 	}
 	return
 }
@@ -705,7 +705,7 @@ func (in *WorkflowNodeStatus) DeepCopyInto(out *WorkflowNodeStatus) {
 	if in.ExecutionError != nil {
 		in, out := &in.ExecutionError, &out.ExecutionError
 		*out = new(core.ExecutionError)
-		(*in).DeepCopyInto(*out)
+		*out = *in
 	}
 	return
 }
@@ -806,7 +806,7 @@ func (in *WorkflowStatus) DeepCopyInto(out *WorkflowStatus) {
 		*out = (*in).DeepCopy()
 	}
 	if in.DataReferenceConstructor != nil {
-		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
+		out.DataReferenceConstructor = in.DataReferenceConstructor
 	}
 	return
 }
