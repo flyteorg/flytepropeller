@@ -160,6 +160,25 @@ func getMockTaskExecutionMetadata() pluginsCore.TaskExecutionMetadata {
 	return taskExecutionMetadata
 }
 
+func getMockTaskExecutionMetadataCustom(
+	tid string,
+	ns string,
+	annotations map[string]string,
+	labels map[string]string,
+	ownerRef v12.OwnerReference) pluginsCore.TaskExecutionMetadata {
+	taskExecutionMetadata := &pluginsCoreMock.TaskExecutionMetadata{}
+	taskExecutionMetadata.On("GetNamespace").Return(ns)
+	taskExecutionMetadata.On("GetAnnotations").Return(annotations)
+	taskExecutionMetadata.On("GetLabels").Return(labels)
+	taskExecutionMetadata.On("GetOwnerReference").Return(ownerRef)
+
+	id := &pluginsCoreMock.TaskExecutionID{}
+	id.On("GetGeneratedName").Return(tid)
+	id.On("GetID").Return(core.TaskExecutionIdentifier{})
+	taskExecutionMetadata.On("GetTaskExecutionID").Return(id)
+	return taskExecutionMetadata
+}
+
 func dummySetupContext(fakeClient client.Client) pluginsCore.SetupContext {
 	setupContext := &pluginsCoreMock.SetupContext{}
 	var enqueueOwnerFunc = pluginsCore.EnqueueOwner(func(ownerId k8stypes.NamespacedName) error { return nil })
@@ -567,22 +586,14 @@ func TestPluginManager_CustomKubeClient(t *testing.T) {
 }
 
 func TestPluginManager_AddObjectMetadata_IgnoreOwnerReferences(t *testing.T) {
-	pluginManager := PluginManager{ignoreOwnerReferences: true}
+	override := true
+	pluginManager := PluginManager{overrideInjectOwnerReferences: &override}
 	genName := "genName"
-	execID := &pluginsCoreMock.TaskExecutionID{}
-	execID.On("GetGeneratedName").Return(genName)
-	tm := &pluginsCoreMock.TaskExecutionMetadata{}
-	tm.On("GetTaskExecutionID").Return(execID)
-	or := v12.OwnerReference{}
-	tm.On("GetOwnerReference").Return(or)
 	ns := "ns"
-	tm.On("GetNamespace").Return(ns)
-	tm.On("GetAnnotations").Return(map[string]string{"aKey": "aVal"})
-
-	l := map[string]string{
-		"l1": "lv1",
-	}
-	tm.On("GetLabels").Return(l)
+	or := v12.OwnerReference{}
+	l := map[string]string{"l1": "lv1"}
+	a := map[string]string{"aKey": "aVal"}
+	tm := getMockTaskExecutionMetadataCustom(genName, ns, a, l, or)
 
 	o := &v1.Pod{}
 	cfg := config.GetK8sPluginConfig()
@@ -596,25 +607,46 @@ func TestPluginManager_AddObjectMetadata_IgnoreOwnerReferences(t *testing.T) {
 		"aKey": "aVal",
 	}, o.GetAnnotations())
 	assert.Equal(t, l, o.GetLabels())
+	assert.Equal(t, 0, len(o.GetFinalizers()))
+}
+
+func TestPluginManager_AddObjectMetadata_InjectFinalizer(t *testing.T) {
+	overrideInjectOwnerRef := true
+	overrideInjectFinalizer := true
+	pluginManager := PluginManager{
+		overrideInjectOwnerReferences: &overrideInjectOwnerRef,
+		overrideInjectFinalizer:       &overrideInjectFinalizer,
+	}
+	genName := "genName"
+	ns := "ns"
+	or := v12.OwnerReference{}
+	l := map[string]string{"l1": "lv1"}
+	a := map[string]string{"aKey": "aVal"}
+	tm := getMockTaskExecutionMetadataCustom(genName, ns, a, l, or)
+
+	o := &v1.Pod{}
+	cfg := config.GetK8sPluginConfig()
+	pluginManager.AddObjectMetadata(tm, o, cfg)
+	assert.Equal(t, genName, o.GetName())
+	// empty OwnerReference since we are ignoring
+	assert.Equal(t, 0, len(o.GetOwnerReferences()))
+	assert.Equal(t, ns, o.GetNamespace())
+	assert.Equal(t, map[string]string{
+		"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+		"aKey": "aVal",
+	}, o.GetAnnotations())
+	assert.Equal(t, l, o.GetLabels())
+	assert.Equal(t, 1, len(o.GetFinalizers()))
 }
 
 func TestPluginManager_AddObjectMetadata(t *testing.T) {
 	pluginManager := PluginManager{}
 	genName := "genName"
-	execID := &pluginsCoreMock.TaskExecutionID{}
-	execID.On("GetGeneratedName").Return(genName)
-	tm := &pluginsCoreMock.TaskExecutionMetadata{}
-	tm.On("GetTaskExecutionID").Return(execID)
-	or := v12.OwnerReference{}
-	tm.On("GetOwnerReference").Return(or)
 	ns := "ns"
-	tm.On("GetNamespace").Return(ns)
-	tm.On("GetAnnotations").Return(map[string]string{"aKey": "aVal"})
-
-	l := map[string]string{
-		"l1": "lv1",
-	}
-	tm.On("GetLabels").Return(l)
+	or := v12.OwnerReference{}
+	l := map[string]string{"l1": "lv1"}
+	a := map[string]string{"aKey": "aVal"}
+	tm := getMockTaskExecutionMetadataCustom(genName, ns, a, l, or)
 
 	o := &v1.Pod{}
 	cfg := config.GetK8sPluginConfig()
@@ -627,6 +659,7 @@ func TestPluginManager_AddObjectMetadata(t *testing.T) {
 		"aKey": "aVal",
 	}, o.GetAnnotations())
 	assert.Equal(t, l, o.GetLabels())
+	assert.Equal(t, 0, len(o.GetFinalizers()))
 }
 
 func TestResourceManagerConstruction(t *testing.T) {

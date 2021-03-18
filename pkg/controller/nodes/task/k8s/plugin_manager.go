@@ -97,22 +97,24 @@ type PluginManager struct {
 	kubeClient      pluginsCore.KubeClient
 	metrics         PluginMetrics
 	// Per namespace-resource
-	backOffController     *backoff.Controller
-	resourceLevelMonitor  *ResourceLevelMonitor
-	ignoreOwnerReferences bool
+	backOffController             *backoff.Controller
+	resourceLevelMonitor          *ResourceLevelMonitor
+	overrideInjectOwnerReferences *bool
+	overrideInjectFinalizer       *bool
 }
 
-func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o k8s.Resource, cfg *config.K8sPluginConfig) {
+func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o client.Object, cfg *config.K8sPluginConfig) {
 	o.SetNamespace(taskCtx.GetNamespace())
 	o.SetAnnotations(utils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
 	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
 	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
 
-	if !e.ignoreOwnerReferences {
+	if e.overrideInjectOwnerReferences != nil && *e.overrideInjectOwnerReferences {
 		o.SetOwnerReferences([]metav1.OwnerReference{taskCtx.GetOwnerReference()})
 	}
 
-	if cfg.InjectFinalizer {
+	overrideInjectFinalizer := e.overrideInjectFinalizer
+	if (overrideInjectFinalizer != nil && *overrideInjectFinalizer) || cfg.InjectFinalizer {
 		f := append(o.GetFinalizers(), finalizer)
 		o.SetFinalizers(f)
 	}
@@ -398,8 +400,8 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	}
 
 	kubeClient := iCtx.KubeClient()
-	if entry.NewKubeClient != nil {
-		kc, err := entry.NewKubeClient(ctx)
+	if entry.CustomKubeClient != nil {
+		kc, err := entry.CustomKubeClient(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -419,7 +421,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	}
 
 	workflowParentPredicate := func(o metav1.Object) bool {
-		if entry.IgnoreOwnerReferences {
+		if entry.OverrideInjectOwnerReferences != nil && *entry.OverrideInjectOwnerReferences {
 			return true
 		}
 
@@ -513,13 +515,14 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	rm.RunCollectorOnce(ctx)
 
 	return &PluginManager{
-		id:                    entry.ID,
-		plugin:                entry.Plugin,
-		resourceToWatch:       entry.ResourceToWatch,
-		metrics:               newPluginMetrics(metricsScope),
-		kubeClient:            kubeClient,
-		resourceLevelMonitor:  rm,
-		ignoreOwnerReferences: entry.IgnoreOwnerReferences,
+		id:                            entry.ID,
+		plugin:                        entry.Plugin,
+		resourceToWatch:               entry.ResourceToWatch,
+		metrics:                       newPluginMetrics(metricsScope),
+		kubeClient:                    kubeClient,
+		resourceLevelMonitor:          rm,
+		overrideInjectOwnerReferences: entry.OverrideInjectOwnerReferences,
+		overrideInjectFinalizer:       entry.OverrideInjectFinalizer,
 	}, nil
 }
 
