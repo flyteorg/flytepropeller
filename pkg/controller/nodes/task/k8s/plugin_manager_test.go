@@ -570,13 +570,13 @@ func TestPluginManager_CustomKubeClient(t *testing.T) {
 	// common setup code
 	mockResourceHandler := &pluginsk8sMock.Plugin{}
 	mockResourceHandler.On("BuildResource", mock.Anything, tctx).Return(&v1.Pod{}, nil)
-	fakeClient := fake.NewFakeClient()
+	fakeClient := fake.NewClientBuilder().Build()
 	newFakeClient := &pluginsCoreMock.KubeClient{}
 	pluginManager, err := NewPluginManager(ctx, dummySetupContext(fakeClient), k8s.PluginEntry{
 		ID:              "x",
 		ResourceToWatch: &v1.Pod{},
 		Plugin:          mockResourceHandler,
-		NewKubeClient: func(ctx context.Context) (pluginsCore.KubeClient, error) {
+		CustomKubeClient: func(ctx context.Context) (pluginsCore.KubeClient, error) {
 			return newFakeClient, nil
 		},
 	}, NewResourceMonitorIndex())
