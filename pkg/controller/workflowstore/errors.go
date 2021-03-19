@@ -6,13 +6,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-var errStaleWorkflowError = fmt.Errorf("stale Workflow Found error")
-var errWorkflowNotFound = fmt.Errorf("workflow not-found error")
+var ErrStaleWorkflowError = fmt.Errorf("stale Workflow Found error")
+var ErrWorkflowNotFound = fmt.Errorf("workflow not-found error")
+var ErrWorkflowToLarge = fmt.Errorf("workflow too large")
 
 func IsNotFound(err error) bool {
-	return errors.Cause(err) == errWorkflowNotFound
+	return errors.Cause(err) == ErrWorkflowNotFound
 }
 
 func IsWorkflowStale(err error) bool {
-	return errors.Cause(err) == errStaleWorkflowError
+	return errors.Cause(err) == ErrStaleWorkflowError
+}
+
+func IsWorkflowTooLarge(err error) bool {
+	return errors.Cause(err) == ErrWorkflowToLarge
 }

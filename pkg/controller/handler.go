@@ -7,6 +7,8 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
@@ -227,6 +229,21 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		newWf, updateErr := p.wfStore.Update(ctx, mutatedWf, workflowstore.PriorityClassCritical)
 		if updateErr != nil {
 			t.Stop()
+			if workflowstore.IsWorkflowTooLarge(updateErr) {
+				logger.Errorf(ctx, "Failed storing workflow to the store, reason: %s", updateErr)
+				// Workflow is too large, we will mark the workflow as failed and
+				mutableW := w.DeepCopy()
+				mutableW.Status.UpdatePhase(v1alpha1.WorkflowPhaseFailing, "Workflow size has breached threshold, aborting", &core.ExecutionError{
+					Kind:    core.ExecutionError_SYSTEM,
+					Code:    "WorkflowTooLarge",
+					Message: "Workflow execution state is too large for Flyte to handle.",
+				})
+				if _, e := p.wfStore.Update(ctx, mutableW, workflowstore.PriorityClassCritical); e != nil {
+					logger.Errorf(ctx, "Failed recording a large workflow as failed, reason: %s. Retrying...", e)
+					return e
+				}
+				return nil
+			}
 			return updateErr
 		}
 		if err != nil {
