@@ -176,7 +176,19 @@ func (e *PluginManager) getPodEffectiveResourceLimits(ctx context.Context, pod *
 
 func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (pluginsCore.Transition, error) {
 
-	o, err := e.plugin.BuildResource(ctx, tCtx)
+	tmpl, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return pluginsCore.Transition{}, err
+	}
+
+	k8sTaskCtxMetadata, err := newTaskExecutionMetadata(tCtx.TaskExecutionMetadata(), tmpl)
+	if err != nil {
+		return pluginsCore.Transition{}, err
+	}
+
+	k8sTaskCtx := newTaskExecutionContext(tCtx, k8sTaskCtxMetadata)
+
+	o, err := e.plugin.BuildResource(ctx, k8sTaskCtx)
 	if err != nil {
 		return pluginsCore.UnknownTransition, err
 	}
