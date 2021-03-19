@@ -1,3 +1,5 @@
+// This module contains the K8s controller logic. This does not contain the actual workflow re-conciliation.
+// It is then entrypoint into the K8s based Flyte controller.
 package controller
 
 import (
@@ -54,6 +56,7 @@ func newPropellerMetrics(scope promutils.Scope) *propellerMetrics {
 	}
 }
 
+// Helper method to record system error in the workflow.
 func RecordSystemError(w *v1alpha1.FlyteWorkflow, err error) *v1alpha1.FlyteWorkflow {
 	// Let's mark these as system errors.
 	// We only want to increase failed attempts and discard any other partial changes to the CRD.
@@ -63,6 +66,7 @@ func RecordSystemError(w *v1alpha1.FlyteWorkflow, err error) *v1alpha1.FlyteWork
 	return wfDeepCopy
 }
 
+// Core Propeller structure that houses the Reconciliation loop for Flytepropeller
 type Propeller struct {
 	wfStore          workflowstore.FlyteWorkflow
 	workflowExecutor executors.Workflow
@@ -70,10 +74,13 @@ type Propeller struct {
 	cfg              *config.Config
 }
 
+// Initializes all downstream executors
 func (p *Propeller) Initialize(ctx context.Context) error {
 	return p.workflowExecutor.Initialize(ctx)
 }
 
+// TryMutateWorkflow will try to mutate the workflow by traversing it and reconciling the desired and actual state.
+// The desired state here is the entire workflow is completed, actual state is each nodes current execution state.
 func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.FlyteWorkflow) (*v1alpha1.FlyteWorkflow, error) {
 
 	t := p.metrics.DeepCopyTime.Start()
@@ -136,7 +143,8 @@ func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.F
 	return mutableW, nil
 }
 
-// reconciler compares the actual state with the desired, and attempts to
+// Handle method is the entry point for the reconciler.
+// It compares the actual state with the desired, and attempts to
 // converge the two. It then updates the GetExecutionStatus block of the FlyteWorkflow resource
 // with the current status of the resource.
 // Every FlyteWorkflow transitions through the following
@@ -266,6 +274,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	return nil
 }
 
+// Creates a new Propeller and initializes metrics
 func NewPropellerHandler(_ context.Context, cfg *config.Config, wfStore workflowstore.FlyteWorkflow, executor executors.Workflow, scope promutils.Scope) *Propeller {
 
 	metrics := newPropellerMetrics(scope)
