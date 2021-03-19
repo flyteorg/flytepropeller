@@ -26,13 +26,13 @@ func (i K8sSecretInjector) ID() string {
 	return "K8s"
 }
 
-func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (*corev1.Pod, error) {
+func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
 	switch secret.MountRequirement {
 	case core.Secret_ANY:
 		fallthrough
 	case core.Secret_FILE:
 		volumeName := secret.Key
-		if len(secret.Group) > 0 {
+		if len(secret.Group) > 0 && len(secret.Key) > 0 {
 			volumeName = secret.Group + EnvVarGroupKeySeparator + secret.Key
 			p.Spec.Volumes = append(p.Spec.Volumes, corev1.Volume{
 				Name: volumeName,
@@ -48,12 +48,23 @@ func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *c
 					},
 				},
 			})
-		} else {
+		} else if len(secret.Key) > 0 {
+			volumeName = secret.Key
 			p.Spec.Volumes = append(p.Spec.Volumes, corev1.Volume{
 				Name: volumeName,
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
 						SecretName: secret.Key,
+					},
+				},
+			})
+		} else if len(secret.Group) > 0 {
+			volumeName = secret.Group
+			p.Spec.Volumes = append(p.Spec.Volumes, corev1.Volume{
+				Name: volumeName,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: secret.Group,
 					},
 				},
 			})
@@ -80,7 +91,7 @@ func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *c
 		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, prefixEnvVar)
 	case core.Secret_ENV_VAR:
 		if len(secret.Group) == 0 {
-			return nil, fmt.Errorf("mounting a secret to env var requires selecting the secret and a single key within. Key [%v]", secret.Key)
+			return nil, false, fmt.Errorf("mounting a secret to env var requires selecting the secret and a single key within. Key [%v]", secret.Key)
 		}
 
 		envVar := corev1.EnvVar{
@@ -95,6 +106,9 @@ func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *c
 			},
 		}
 
+		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, envVar)
+		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, envVar)
+
 		prefixEnvVar := corev1.EnvVar{
 			Name:  K8sEnvVarPrefix,
 			Value: K8sDefaultEnvVarPrefix,
@@ -102,14 +116,15 @@ func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *c
 
 		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, prefixEnvVar)
 		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, prefixEnvVar)
-
-		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, envVar)
-		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, envVar)
 	default:
 		err := fmt.Errorf("unrecognized mount requirement [%v] for secret [%v]", secret.MountRequirement.String(), secret.Key)
 		logger.Error(ctx, err)
-		return p, err
+		return p, false, err
 	}
 
-	return p, nil
+	return p, true, nil
+}
+
+func NewK8sSecretsInjector() K8sSecretInjector {
+	return K8sSecretInjector{}
 }

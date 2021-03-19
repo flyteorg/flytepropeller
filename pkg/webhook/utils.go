@@ -1,10 +1,17 @@
 package webhook
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	"bytes"
+	"fmt"
+	"io/ioutil"
+	"os"
+
+	corev1 "k8s.io/api/core/v1"
+)
 
 func hasEnvVar(envVars []corev1.EnvVar, envVarKey string) bool {
 	for _, e := range envVars {
-		if e.Name == K8sEnvVarPrefix {
+		if e.Name == envVarKey {
 			return true
 		}
 	}
@@ -38,4 +45,31 @@ func UpdateEnvVars(containers []corev1.Container, envVar corev1.EnvVar) []corev1
 	}
 
 	return res
+}
+
+// ReadFile reads file contents given a path
+func ReadFile(filepath string) (*bytes.Buffer, error) {
+	f, err := os.Open(filepath)
+	if err != nil {
+		if f != nil {
+			err2 := f.Close()
+			if err2 != nil {
+				return nil, fmt.Errorf("failed to create and close file. Create Error: %w. Close Error: %v", err, err2)
+			}
+		}
+
+		return nil, fmt.Errorf("failed to create file. Error: %w", err)
+	}
+
+	buf, err := ioutil.ReadAll(f)
+	if err != nil {
+		err2 := f.Close()
+		if err2 != nil {
+			return nil, fmt.Errorf("failed to write and close file. Write Error: %w. Close Error: %v", err, err2)
+		}
+
+		return nil, err
+	}
+
+	return bytes.NewBuffer(buf), nil
 }

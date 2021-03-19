@@ -5,35 +5,39 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	coreIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
 	corev1 "k8s.io/api/core/v1"
-
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
 )
 
+//go:generate mockery -all -case=underscore
+
+type GlobalSecretProvider interface {
+	GetForSecret(ctx context.Context, secret *coreIdl.Secret) (string, error)
+}
+
 type GlobalSecrets struct {
-	envSecretManager secretmanager.FileEnvSecretManager
+	envSecretManager GlobalSecretProvider
 }
 
 func (g GlobalSecrets) ID() string {
 	return "global"
 }
 
-func (g GlobalSecrets) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (*corev1.Pod, error) {
+func (g GlobalSecrets) Inject(ctx context.Context, secret *coreIdl.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
 	v, err := g.envSecretManager.GetForSecret(ctx, secret)
 	if err != nil {
-		return p, err
+		return p, false, err
 	}
 
 	switch secret.MountRequirement {
-	case core.Secret_FILE:
-		return nil, fmt.Errorf("cannot use FILE requirement with global secret [%v/%v]", secret.Group, secret.Key)
-	case core.Secret_ANY:
+	case coreIdl.Secret_FILE:
+		return nil, false, fmt.Errorf("cannot use FILE requirement with global secret [%v/%v]", secret.Group, secret.Key)
+	case coreIdl.Secret_ANY:
 		fallthrough
-	case core.Secret_ENV_VAR:
+	case coreIdl.Secret_ENV_VAR:
 		if len(secret.Group) == 0 {
-			return nil, fmt.Errorf("mounting a secret to env var requires selecting the secret and a single key within. Key [%v]", secret.Key)
+			return nil, false, fmt.Errorf("mounting a secret to env var requires selecting the secret and a single key within. Key [%v]", secret.Key)
 		}
 
 		envVar := corev1.EnvVar{
@@ -54,8 +58,14 @@ func (g GlobalSecrets) Inject(ctx context.Context, secret *core.Secret, p *corev
 	default:
 		err := fmt.Errorf("unrecognized mount requirement [%v] for secret [%v]", secret.MountRequirement.String(), secret.Key)
 		logger.Error(ctx, err)
-		return p, err
+		return p, false, err
 	}
 
-	return p, nil
+	return p, true, nil
+}
+
+func NewGlobalSecrets(provider GlobalSecretProvider) GlobalSecrets {
+	return GlobalSecrets{
+		envSecretManager: provider,
+	}
 }

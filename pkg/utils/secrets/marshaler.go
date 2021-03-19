@@ -9,6 +9,8 @@ import (
 )
 
 const annotationPrefix = "flyte.secrets"
+const PodLabel = "inject-flyte-secrets"
+const PodLabelValue = "true"
 
 // Copied from:
 // https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/validation/objectmeta.go#L36

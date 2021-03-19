@@ -84,9 +84,5 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "node-config.max-node-retries-system-failures"), defaultConfig.NodeConfig.MaxNodeRetriesOnSystemFailures, "Maximum number of retries per node for node failure due to infra issues")
 	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "node-config.interruptible-failure-threshold"), defaultConfig.NodeConfig.InterruptibleFailureThreshold, "number of failures for a node to be still considered interruptible'")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "max-streak-length"), defaultConfig.MaxStreakLength, "Maximum number of consecutive rounds that one propeller worker can use for one workflow - >1 => turbo-mode is enabled.")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "webhook.certDir"), defaultConfig.Webhook.CertDir, "Certificate directory to use to write generated certs. Defaults to /etc/webhook/certs/")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "webhook.listenPort"), defaultConfig.Webhook.ListenPort, "The port to use to listen to webhook calls. Defaults to 9443")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "webhook.namespace"), defaultConfig.Webhook.Namespace, "The namespace to create the webhook config in")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "webhook.name"), defaultConfig.Webhook.Name, "The name of the webhook service.")
 	return cmdFlags
 }

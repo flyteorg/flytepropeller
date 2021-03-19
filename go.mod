@@ -4,14 +4,16 @@ go 1.16
 
 require (
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295
+	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.1.3 // indirect
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/fatih/color v1.10.0
 	github.com/flyteorg/datacatalog v0.3.0
-	github.com/flyteorg/flyteidl v0.18.18
-	github.com/flyteorg/flyteplugins v0.5.29-0.20210306003701-5b9e97cb2945
+	github.com/flyteorg/flyteidl v0.18.24
+	github.com/flyteorg/flyteplugins v0.5.33
 	github.com/flyteorg/flytestdlib v0.3.13
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-redis/redis v6.15.7+incompatible
+	github.com/go-test/deep v1.0.7
 	github.com/golang/protobuf v1.4.3
 	github.com/google/uuid v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0

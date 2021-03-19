@@ -26,10 +26,10 @@ propeller:
   publish-k8s-events: true
   workflowStore:
     policy: "ResourceVersionCache"
-  webhook:
-    certDir: "/Users/haythamabuelfutuh/webhook/certs"
-    name: flyte-pod-webhook
-    namespace: flyte
+webhook:
+  certDir: "/Users/haythamabuelfutuh/webhook/certs"
+  name: flyte-pod-webhook
+  namespace: flyte
 tasks:
   task-plugins:
     enabled-plugins:

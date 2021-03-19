@@ -202,7 +202,7 @@ func TestK8sTaskExecutor_Handle_LaunchResource(t *testing.T) {
 		assert.Equal(t, pluginsCore.PhaseQueued, transitionInfo.Phase())
 		createdPod := &v1.Pod{}
 
-		assert.NoError(t, AddObjectMetadata(tctx.TaskExecutionMetadata(), nil, createdPod, &config.K8sPluginConfig{}))
+		AddObjectMetadata(tctx.TaskExecutionMetadata(), createdPod, &config.K8sPluginConfig{})
 		assert.NoError(t, fakeClient.Get(ctx, k8stypes.NamespacedName{Namespace: tctx.TaskExecutionMetadata().GetNamespace(),
 			Name: tctx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()}, createdPod))
 		assert.Equal(t, tctx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), createdPod.Name)
@@ -223,7 +223,7 @@ func TestK8sTaskExecutor_Handle_LaunchResource(t *testing.T) {
 		assert.NoError(t, err)
 
 		createdPod := &v1.Pod{}
-		assert.NoError(t, AddObjectMetadata(tctx.TaskExecutionMetadata(), nil, createdPod, &config.K8sPluginConfig{}))
+		AddObjectMetadata(tctx.TaskExecutionMetadata(), createdPod, &config.K8sPluginConfig{})
 		assert.NoError(t, fakeClient.Create(ctx, createdPod))
 
 		transition, err := pluginManager.Handle(ctx, tctx)
@@ -349,7 +349,7 @@ func TestK8sTaskExecutor_Handle_LaunchResource(t *testing.T) {
 		// Build a reference resource that is supposed to be identical to the resource built by pluginManager
 		referenceResource, err := mockResourceHandler.BuildResource(ctx, tctx)
 		assert.NoError(t, err)
-		assert.NoError(t, AddObjectMetadata(tctx.TaskExecutionMetadata(), nil, referenceResource, config.GetK8sPluginConfig()))
+		AddObjectMetadata(tctx.TaskExecutionMetadata(), referenceResource, config.GetK8sPluginConfig())
 		refKey := backoff.ComposeResourceKey(referenceResource)
 		podBackOffHandler, found := backOffController.GetBackOffHandler(refKey)
 		assert.True(t, found)
@@ -564,7 +564,7 @@ func TestAddObjectMetadata(t *testing.T) {
 
 	o := &v1.Pod{}
 	cfg := config.GetK8sPluginConfig()
-	assert.NoError(t, AddObjectMetadata(tm, nil, o, cfg))
+	AddObjectMetadata(tm, o, cfg)
 	assert.Equal(t, genName, o.GetName())
 	assert.Equal(t, []v12.OwnerReference{or}, o.GetOwnerReferences())
 	assert.Equal(t, ns, o.GetNamespace())

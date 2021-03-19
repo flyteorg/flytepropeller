@@ -1,17 +1,16 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-	corev1 "k8s.io/api/core/v1"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 
-	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	"k8s.io/client-go/kubernetes"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
@@ -26,11 +25,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	PodNameEnvVar       = "POD_NAME"
+	PodNamespaceEnvVar  = "POD_NAMESPACE"
+	podDefaultNamespace = "default"
+)
+
 var webhookCmd = &cobra.Command{
 	Use:     "webhook",
+	Short:   "Runs Propeller Pod Webhook that listens for certain labels and modify the pod accordingly.",
 	Aliases: []string{"webhooks"},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runWebhook(context.Background(), config.GetConfig())
+		return runWebhook(context.Background(), config.GetConfig(), webhook.GetConfig())
 	},
 }
 
@@ -38,7 +44,7 @@ func init() {
 	rootCmd.AddCommand(webhookCmd)
 }
 
-func runWebhook(origContext context.Context, cfg *config.Config) error {
+func runWebhook(origContext context.Context, propellerCfg *config.Config, cfg *webhook.Config) error {
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler(origContext)
 
@@ -49,42 +55,39 @@ func runWebhook(origContext context.Context, cfg *config.Config) error {
 
 	fmt.Println(string(raw))
 
-	_, kubecfg, err := getKubeConfig(ctx, cfg)
+	kubeClient, kubecfg, err := getKubeConfig(ctx, propellerCfg)
 	if err != nil {
 		return err
 	}
 
 	// Add the propeller subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
-	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(safeMetricName(cfg.LimitNamespace))
+	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(safeMetricName(propellerCfg.LimitNamespace))
 
 	go func() {
-		err := profutils.StartProfilingServerWithDefaultHandlers(ctx, cfg.ProfilerPort.Port, nil)
+		err := profutils.StartProfilingServerWithDefaultHandlers(ctx, propellerCfg.ProfilerPort.Port, nil)
 		if err != nil {
 			logger.Panicf(ctx, "Failed to Start profiling and metrics server. Error: %v", err)
 		}
 	}()
 
 	limitNamespace := ""
-	if cfg.LimitNamespace != defaultNamespace {
-		limitNamespace = cfg.LimitNamespace
+	if propellerCfg.LimitNamespace != defaultNamespace {
+		limitNamespace = propellerCfg.LimitNamespace
 	}
 
-	caBuff, err := ReadFile(filepath.Join(cfg.Webhook.CertDir, "ca.crt"))
-	if err != nil {
-		return err
-	}
+	secretsWebhook := webhook.NewPodMutator(cfg, propellerScope.NewSubScope("webhook"))
 
 	// Creates a MutationConfig to instruct ApiServer to call this service whenever a Pod is being created.
-	err = createMutationConfig(ctx, cfg, caBuff)
+	err = createMutationConfig(ctx, kubeClient, secretsWebhook)
 	if err != nil {
 		return err
 	}
 
 	mgr, err := manager.New(kubecfg, manager.Options{
-		Port:          cfg.Webhook.ListenPort,
-		CertDir:       cfg.Webhook.CertDir,
+		Port:          cfg.ListenPort,
+		CertDir:       cfg.CertDir,
 		Namespace:     limitNamespace,
-		SyncPeriod:    &cfg.DownstreamEval.Duration,
+		SyncPeriod:    &propellerCfg.DownstreamEval.Duration,
 		ClientBuilder: executors.NewFallbackClientBuilder(),
 	})
 
@@ -92,7 +95,6 @@ func runWebhook(origContext context.Context, cfg *config.Config) error {
 		logger.Fatalf(ctx, "Failed to initialize controller run-time manager. Error: %v", err)
 	}
 
-	secretsWebhook := webhook.NewSecretsWebhook(propellerScope)
 	err = secretsWebhook.Register(ctx, mgr)
 	if err != nil {
 		logger.Fatalf(ctx, "Failed to register webhook with manager. Error: %v", err)
@@ -102,34 +104,24 @@ func runWebhook(origContext context.Context, cfg *config.Config) error {
 	return mgr.Start(ctx)
 }
 
-func deleteMutationConfig(ctx context.Context, cfg *config.Config) error {
-	kubeClient, _, err := getKubeConfig(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create kubeclient. Error: %w", err)
-	}
-
-	return kubeClient.AdmissionregistrationV1().MutatingWebhookConfigurations().Delete(ctx, cfg.Webhook.Name, metav1.DeleteOptions{})
-}
-
-func createMutationConfig(ctx context.Context, cfg *config.Config, caCert *bytes.Buffer) error {
-	kubeClient, _, err := getKubeConfig(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create kubeclient. Error: %w", err)
-	}
-
+func createMutationConfig(ctx context.Context, kubeClient *kubernetes.Clientset, webhookObj *webhook.PodMutator) error {
 	shouldAddOwnerRef := true
-	podName, found := os.LookupEnv("POD_NAME")
+	podName, found := os.LookupEnv(PodNameEnvVar)
 	if !found {
 		shouldAddOwnerRef = false
 	}
 
-	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
+	podNamespace, found := os.LookupEnv(PodNamespaceEnvVar)
 	if !found {
 		shouldAddOwnerRef = false
+		podNamespace = podDefaultNamespace
 	}
 
-	var ownerRef []metav1.OwnerReference
-	webhookObjectName := cfg.Webhook.Name
+	mutateConfig, err := webhookObj.CreateMutationWebhookConfiguration(podNamespace)
+	if err != nil {
+		return err
+	}
+
 	if shouldAddOwnerRef {
 		// Lookup the pod to retrieve its UID
 		p, err := kubeClient.CoreV1().Pods(podNamespace).Get(ctx, podName, metav1.GetOptions{})
@@ -138,71 +130,14 @@ func createMutationConfig(ctx context.Context, cfg *config.Config, caCert *bytes
 			return fmt.Errorf("failed to get pod. Error: %w", err)
 		}
 
-		ownerRef = []metav1.OwnerReference{
-			{
-				Kind:       flytek8s.PodKind,
-				Name:       p.Name,
-				APIVersion: corev1.SchemeGroupVersion.Version,
-				UID:        p.UID,
-			},
-		}
-
-		// Use the pod's name as the object name to ensure uniqueness.
-		webhookObjectName = ownerRef[0].Name
+		mutateConfig.OwnerReferences = p.OwnerReferences
 	}
 
-	path := webhook.GetPodMutatePath()
-	fail := admissionregistrationv1.Fail
-	sideEffects := admissionregistrationv1.SideEffectClassNoneOnDryRun
-
-	mutateConfig := &admissionregistrationv1.MutatingWebhookConfiguration{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            webhookObjectName,
-			OwnerReferences: ownerRef,
-		},
-		Webhooks: []admissionregistrationv1.MutatingWebhook{
-			{
-				Name: webhookName,
-				ClientConfig: admissionregistrationv1.WebhookClientConfig{
-					CABundle: caCert.Bytes(), // CA bundle created earlier
-					Service: &admissionregistrationv1.ServiceReference{
-						Name: cfg.Webhook.Name,
-						Path: &path,
-					},
-				},
-				Rules: []admissionregistrationv1.RuleWithOperations{
-					{
-						Operations: []admissionregistrationv1.OperationType{
-							admissionregistrationv1.Create,
-						},
-						Rule: admissionregistrationv1.Rule{
-							APIGroups:   []string{"*"},
-							APIVersions: []string{"v1"},
-							Resources:   []string{"pods"},
-						},
-					},
-				},
-				FailurePolicy: &fail,
-				SideEffects:   &sideEffects,
-				AdmissionReviewVersions: []string{
-					"v1",
-					"v1beta1",
-				},
-			}},
-	}
-
-	if len(cfg.Webhook.Namespace) > 0 {
-		mutateConfig.Webhooks[0].ClientConfig.Service.Namespace = cfg.Webhook.Namespace
-
-		// It looks like the client ignores this namespace option as Webhooks are installed globally...
-		mutateConfig.Namespace = cfg.Webhook.Namespace
-	}
-
-	logger.Infof(ctx, "Creating obj [%v]", mutateConfig.String())
+	logger.Infof(ctx, "Creating MutatingWebhookConfiguration [%v/%v]", mutateConfig.GetNamespace(), mutateConfig.GetName())
 
 	_, err = kubeClient.AdmissionregistrationV1().MutatingWebhookConfigurations().Create(ctx, mutateConfig, metav1.CreateOptions{})
-	// TODO: Check for AlreadyExists error
-	if err != nil {
+	var statusErr *apiErrors.StatusError
+	if err != nil && errors.As(err, &statusErr) && statusErr.Status().Reason == metav1.StatusReasonAlreadyExists {
 		logger.Infof(ctx, "Failed to create MutatingWebhookConfiguration. Will attempt to update. Error: %v", err)
 		obj, getErr := kubeClient.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(ctx, mutateConfig.Name, metav1.GetOptions{})
 		if getErr != nil {

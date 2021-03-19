@@ -8,10 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flyteorg/flytepropeller/pkg/utils/secrets"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -89,21 +85,11 @@ func newPluginMetrics(s promutils.Scope) PluginMetrics {
 	}
 }
 
-func AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, securityContext *core.SecurityContext,
-	o client.Object, cfg *config.K8sPluginConfig) error {
-
-	var err error
-	secretsMap := make(map[string]string, 0)
-	if securityContext != nil && len(securityContext.Secrets) > 0 {
-		secretsMap, err = secrets.MarshalSecretsToMapStrings(securityContext.Secrets)
-		if err != nil {
-			return err
-		}
-	}
+func AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o client.Object, cfg *config.K8sPluginConfig) {
 
 	o.SetNamespace(taskCtx.GetNamespace())
 	o.SetAnnotations(utils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(),
-		utils.CopyMap(taskCtx.GetAnnotations()), secretsMap))
+		utils.CopyMap(taskCtx.GetAnnotations())))
 	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
 	o.SetOwnerReferences([]metav1.OwnerReference{taskCtx.GetOwnerReference()})
 	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
@@ -111,8 +97,6 @@ func AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, securityContex
 		f := append(o.GetFinalizers(), finalizer)
 		o.SetFinalizers(f)
 	}
-
-	return nil
 }
 
 func IsK8sObjectNotExists(err error) bool {
@@ -189,21 +173,24 @@ func (e *PluginManager) getPodEffectiveResourceLimits(ctx context.Context, pod *
 
 func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (pluginsCore.Transition, error) {
 
-	o, err := e.plugin.BuildResource(ctx, tCtx)
-	if err != nil {
-		return pluginsCore.UnknownTransition, err
-	}
-
 	tmpl, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return pluginsCore.Transition{}, err
 	}
 
-	err = AddObjectMetadata(tCtx.TaskExecutionMetadata(), tmpl.SecurityContext, o, config.GetK8sPluginConfig())
+	k8sTaskCtxMetadata, err := newTaskExecutionMetadata(tCtx.TaskExecutionMetadata(), tmpl)
 	if err != nil {
 		return pluginsCore.Transition{}, err
 	}
 
+	k8sTaskCtx := newTaskExecutionContext(tCtx, k8sTaskCtxMetadata)
+
+	o, err := e.plugin.BuildResource(ctx, k8sTaskCtx)
+	if err != nil {
+		return pluginsCore.UnknownTransition, err
+	}
+
+	AddObjectMetadata(k8sTaskCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
 	logger.Infof(ctx, "Creating Object: Type:[%v], Object:[%v/%v]", o.GetObjectKind().GroupVersionKind(), o.GetNamespace(), o.GetName())
 
 	key := backoff.ComposeResourceKey(o)
@@ -273,10 +260,7 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 		return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("BadTaskDefinition", fmt.Sprintf("Failed to build resource, caused by: %s", err.Error()), nil)), nil
 	}
 
-	err = AddObjectMetadata(tCtx.TaskExecutionMetadata(), nil, o, config.GetK8sPluginConfig())
-	if err != nil {
-		return pluginsCore.Transition{}, err
-	}
+	AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
 
 	nsName := k8stypes.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
 	// Attempt to get resource from informer cache, if not found, retrieve it from API server.
@@ -364,10 +348,7 @@ func (e PluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecution
 		return nil
 	}
 
-	err = AddObjectMetadata(tCtx.TaskExecutionMetadata(), nil, o, config.GetK8sPluginConfig())
-	if err != nil {
-		return err
-	}
+	AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
 
 	err = e.kubeClient.GetClient().Delete(ctx, o)
 	if err != nil && !IsK8sObjectNotExists(err) {
@@ -405,10 +386,7 @@ func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecu
 			return nil
 		}
 
-		err = AddObjectMetadata(tCtx.TaskExecutionMetadata(), nil, o, config.GetK8sPluginConfig())
-		if err != nil {
-			return err
-		}
+		AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
 
 		nsName := k8stypes.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
 		// Attempt to get resource from informer cache, if not found, retrieve it from API server.

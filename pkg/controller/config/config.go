@@ -48,10 +48,6 @@ var (
 			InterruptibleFailureThreshold:  1,
 		},
 		MaxStreakLength: 5, // Turbo mode is enabled by default
-		Webhook: WebhookConfig{
-			CertDir:    "/etc/webhook/certs",
-			ListenPort: 9443,
-		},
 	}
 )
 
@@ -80,14 +76,6 @@ type Config struct {
 	KubeConfig             KubeClientConfig     `json:"kube-client-config" pflag:",Configuration to control the Kubernetes client"`
 	NodeConfig             NodeConfig           `json:"node-config,omitempty" pflag:",config for a workflow node"`
 	MaxStreakLength        int                  `json:"max-streak-length" pflag:",Maximum number of consecutive rounds that one propeller worker can use for one workflow - >1 => turbo-mode is enabled."`
-	Webhook                WebhookConfig        `json:"webhook" pflag:",Webhook config."`
-}
-
-type WebhookConfig struct {
-	CertDir    string `json:"certDir" pflag:",Certificate directory to use to write generated certs. Defaults to /etc/webhook/certs/"`
-	ListenPort int    `json:"listenPort" pflag:",The port to use to listen to webhook calls. Defaults to 9443"`
-	Namespace  string `json:"namespace" pflag:",The namespace to create the webhook config in"`
-	Name       string `json:"name" pflag:",The name of the webhook service."`
 }
 
 type KubeClientConfig struct {

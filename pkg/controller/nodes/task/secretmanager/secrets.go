@@ -10,7 +10,6 @@ import (
 
 	coreIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
@@ -76,7 +75,7 @@ func (f FileEnvSecretManager) GetForSecret(ctx context.Context, secret *coreIdl.
 	return string(b), err
 }
 
-func NewFileEnvSecretManager(cfg *Config) core.SecretManager {
+func NewFileEnvSecretManager(cfg *Config) FileEnvSecretManager {
 	return FileEnvSecretManager{
 		secretPath: cfg.SecretFilePrefix,
 		envPrefix:  cfg.EnvironmentPrefix,
