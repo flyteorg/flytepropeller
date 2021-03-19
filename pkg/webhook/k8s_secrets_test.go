@@ -150,13 +150,7 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 			want: &successPodFile, wantErr: false},
 		{name: "require file all keys", args: args{secret: &coreIdl.Secret{Key: "hello", MountRequirement: coreIdl.Secret_FILE},
 			p: inputPod.DeepCopy()},
-			want: &successPodFileAllKeys, wantErr: false},
-		{name: "require file all keys", args: args{secret: &coreIdl.Secret{Group: "hello", MountRequirement: coreIdl.Secret_FILE},
-			p: inputPod.DeepCopy()},
-			want: &successPodFileAllKeys, wantErr: false},
-		{name: "require file all keys", args: args{secret: &coreIdl.Secret{Group: "hello"},
-			p: inputPod.DeepCopy()},
-			want: &successPodFileAllKeys, wantErr: false},
+			want: &successPodFileAllKeys, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

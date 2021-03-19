@@ -41,7 +41,7 @@ func TestSecretsWebhook_Mutate(t *testing.T) {
 		}
 
 		_, changed, err := m.Mutate(context.Background(), podWithAnnotations.DeepCopy())
-		assert.NoError(t, err)
+		assert.Error(t, err)
 		assert.False(t, changed)
 	})
 

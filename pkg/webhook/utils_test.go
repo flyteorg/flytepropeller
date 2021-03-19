@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -173,5 +175,14 @@ func TestUpdateEnvVars(t *testing.T) {
 }
 
 func TestReadFile(t *testing.T) {
+	t.Run("Found", func(t *testing.T) {
+		raw, err := ReadFile("utils.go")
+		assert.NoError(t, err)
+		assert.NotEmpty(t, raw)
+	})
 
+	t.Run("Not Found", func(t *testing.T) {
+		_, err := ReadFile("utils-not-found.go")
+		assert.Error(t, err)
+	})
 }

@@ -26,6 +26,7 @@ import (
 
 const webhookName = "flyte-pod-webhook.flyte.org"
 
+// PodMutator implements controller-runtime WebHook interface.
 type PodMutator struct {
 	decoder  *admission.Decoder
 	cfg      *Config

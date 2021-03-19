@@ -48,26 +48,8 @@ func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *c
 					},
 				},
 			})
-		} else if len(secret.Key) > 0 {
-			volumeName = secret.Key
-			p.Spec.Volumes = append(p.Spec.Volumes, corev1.Volume{
-				Name: volumeName,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: secret.Key,
-					},
-				},
-			})
-		} else if len(secret.Group) > 0 {
-			volumeName = secret.Group
-			p.Spec.Volumes = append(p.Spec.Volumes, corev1.Volume{
-				Name: volumeName,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: secret.Group,
-					},
-				},
-			})
+		} else {
+			return nil, false, fmt.Errorf("k8s Secrets Webhook require both key and group to be set")
 		}
 
 		// Mount the secret to all containers in the given pod.
