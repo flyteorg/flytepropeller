@@ -11,9 +11,9 @@ import (
 
 func TestEncodeSecretGroup(t *testing.T) {
 	input := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890._-/"
-	encoded := encodeSecretGroup(input)
+	encoded := encodeSecret(input)
 	t.Log(input + " -> " + encoded)
-	decoded, err := decodeSecretGroup(encoded)
+	decoded, err := decodeSecret(encoded)
 	assert.NoError(t, err)
 	assert.Equal(t, input, decoded)
 }
@@ -35,22 +35,14 @@ func TestMarshalSecretsToMapStrings(t *testing.T) {
 				Group: ";':/\\",
 			},
 		}}, want: map[string]string{
-			"flyte.secrets.hmttul24/": "ANY",
+			"flyte.secrets/s0": "m5zg65lqhirdwjz2f5ofyira",
 		}, wantErr: false},
-		{name: "Invalid Mount Point", args: args{secrets: []*core.Secret{
-			{
-				Group:            ";':/\\",
-				MountRequirement: -1,
-			},
-		}}, want: map[string]string{
-			"flyte.secrets.hmttul24/": "BLAH",
-		}, wantErr: true},
 		{name: "Without group", args: args{secrets: []*core.Secret{
 			{
 				Key: "my_key",
 			},
 		}}, want: map[string]string{
-			"flyte.secrets/my_key": "ANY",
+			"flyte.secrets/s0": "nnsxsorcnv4v623fperca",
 		}, wantErr: false},
 	}
 	for _, tt := range tests {

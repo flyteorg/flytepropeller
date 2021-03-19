@@ -3,29 +3,32 @@ package secrets
 import (
 	"encoding/base32"
 	"fmt"
+	"strconv"
 	"strings"
+
+	"github.com/golang/protobuf/proto"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
-const annotationPrefix = "flyte.secrets"
-const PodLabel = "inject-flyte-secrets"
-const PodLabelValue = "true"
+const (
+	annotationPrefix = "flyte.secrets/s"
+	PodLabel         = "inject-flyte-secrets"
+	PodLabelValue    = "true"
+)
 
 // Copied from:
 // https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/validation/objectmeta.go#L36
 const totalAnnotationSizeLimitB int = 256 * (1 << 10) // 256 kB
-const valueSeparator = "/"
-const groupSeparator = "."
 
 var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)
 
-func encodeSecretGroup(group string) string {
-	res := strings.ToLower(encoding.EncodeToString([]byte(group)))
+func encodeSecret(secretAsString string) string {
+	res := strings.ToLower(encoding.EncodeToString([]byte(secretAsString)))
 	return strings.TrimSuffix(res, "=")
 }
 
-func decodeSecretGroup(encoded string) (string, error) {
+func decodeSecret(encoded string) (string, error) {
 	decodedRaw, err := encoding.DecodeString(strings.ToUpper(encoded))
 	if err != nil {
 		return encoded, err
@@ -34,21 +37,33 @@ func decodeSecretGroup(encoded string) (string, error) {
 	return string(decodedRaw), nil
 }
 
+func marshalSecret(s *core.Secret) string {
+	return encodeSecret(s.String())
+}
+
+func unmarshalSecret(encoded string) (*core.Secret, error) {
+	decoded, err := decodeSecret(encoded)
+	if err != nil {
+		return nil, err
+	}
+
+	s := &core.Secret{}
+	err = proto.UnmarshalText(decoded, s)
+	return s, err
+}
+
 func MarshalSecretsToMapStrings(secrets []*core.Secret) (map[string]string, error) {
 	res := make(map[string]string, len(secrets))
-	for _, s := range secrets {
-		if len(s.Group)+len(s.Key)+len(annotationPrefix) >= totalAnnotationSizeLimitB {
-			return nil, fmt.Errorf("secret name cannot exceet [%v]", totalAnnotationSizeLimitB-len(annotationPrefix))
-		}
-
+	for index, s := range secrets {
 		if _, found := core.Secret_MountType_name[int32(s.MountRequirement)]; !found {
 			return nil, fmt.Errorf("invalid mount requirement [%v]", s.MountRequirement)
 		}
 
-		if len(s.Group) > 0 {
-			res[annotationPrefix+groupSeparator+encodeSecretGroup(s.Group)+valueSeparator+s.Key] = s.MountRequirement.String()
-		} else {
-			res[annotationPrefix+valueSeparator+s.Key] = s.MountRequirement.String()
+		encodedSecret := marshalSecret(s)
+		res[annotationPrefix+strconv.Itoa(index)] = encodedSecret
+
+		if len(encodedSecret) > totalAnnotationSizeLimitB {
+			return nil, fmt.Errorf("secret descriptor cannot exceet [%v]", totalAnnotationSizeLimitB)
 		}
 	}
 
@@ -58,28 +73,13 @@ func MarshalSecretsToMapStrings(secrets []*core.Secret) (map[string]string, erro
 func UnmarshalStringMapToSecrets(m map[string]string) ([]*core.Secret, error) {
 	res := make([]*core.Secret, 0, len(m))
 	for key, val := range m {
-		if trimmed := strings.TrimPrefix(key, annotationPrefix); len(trimmed) < len(key) {
-			mountType, found := core.Secret_MountType_value[val]
-			if !found {
-				return nil, fmt.Errorf("failed to unmarshal secret [%v]'s mount type [%v]. Mount type not found",
-					trimmed, val)
-			}
-
-			// Remove group separator if it exists...
-			trimmed = strings.TrimPrefix(trimmed, groupSeparator)
-
-			parts := strings.Split(trimmed, valueSeparator)
-
-			decoded, err := decodeSecretGroup(parts[0])
+		if strings.HasPrefix(key, annotationPrefix) {
+			s, err := unmarshalSecret(val)
 			if err != nil {
-				return nil, fmt.Errorf("error decoding [%v]. Error: %w", key, err)
+				return nil, fmt.Errorf("error unmarshaling secret [%v]. Error: %w", key, err)
 			}
 
-			res = append(res, &core.Secret{
-				Group:            decoded,
-				Key:              parts[1],
-				MountRequirement: core.Secret_MountType(mountType),
-			})
+			res = append(res, s)
 		}
 	}
 
