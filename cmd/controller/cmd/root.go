@@ -1,3 +1,4 @@
+// Commands for FlytePropeller controller.
 package cmd
 
 import (

@@ -38,7 +38,21 @@ const (
 var initCertsCmd = &cobra.Command{
 	Use:     "init-certs",
 	Aliases: []string{"init-cert"},
-	Short:   "Generates CA, Cert and cert key and saves them into",
+	Short:   "Generates CA, Cert and cert key and saves them into a secret using the configured --webhook.secretName",
+	Long: `
+K8s API Server Webhooks' Services are required to serve traffic over SSL. Ideally the SSL certificate is issued by a 
+known Certificate Authority that's already trusted by API Server (e.g. using Let's Encrypt Cluster Certificate Controller).
+Otherwise, a self-issued certificate can be used to serve traffic as long as the CA for that certificate is stored in
+the MutatingWebhookConfiguration object that registers the webhook with API Server.
+
+init-certs generates 4096-bit X509 Certificates for Certificate Authority as well as a derived Server cert and its private
+key. It serializes all of them in PEM format (base64 encoding-compatible) and stores them into a new kubernetes secret.
+If a secret with the same name already exist, it'll not update it.
+
+POD_NAMESPACE is an environment variable that can, optionally, be set on the Pod that runs init-certs command. If set, 
+the secret will be created in that namespace. It's critical that this command creates the secret in the right namespace
+for the Webhook command to mount and read correctly.
+`,
 	Example: "flytepropeller webhook init-certs",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runCertsCmd(context.Background(), config.GetConfig(), webhook.GetConfig())
@@ -59,15 +73,15 @@ func init() {
 }
 
 func runCertsCmd(ctx context.Context, propellerCfg *config.Config, cfg *webhook.Config) error {
-	logger.Infof(ctx, "Issuing certs")
-	certs, err := createCerts()
-	if err != nil {
-		return err
-	}
-
 	podNamespace, found := os.LookupEnv(PodNamespaceEnvVar)
 	if !found {
 		podNamespace = podDefaultNamespace
+	}
+
+	logger.Infof(ctx, "Issuing certs")
+	certs, err := createCerts(podNamespace)
+	if err != nil {
+		return err
 	}
 
 	kubeClient, _, err := getKubeConfig(ctx, propellerCfg)
@@ -111,10 +125,10 @@ func createWebhookSecret(ctx context.Context, namespace string, cfg *webhook.Con
 	return err
 }
 
-func createCerts() (certs webhookCerts, err error) {
+func createCerts(serviceNamespace string) (certs webhookCerts, err error) {
 	// CA config
 	caRequest := &x509.Certificate{
-		SerialNumber: big.NewInt(2020),
+		SerialNumber: big.NewInt(2021),
 		Subject: pkix.Name{
 			Organization: []string{"flyte.org"},
 		},
@@ -149,8 +163,8 @@ func createCerts() (certs webhookCerts, err error) {
 	}
 
 	dnsNames := []string{"flyte-pod-webhook",
-		"flyte-pod-webhook.flyte", "flyte-pod-webhook.flyte.svc"}
-	commonName := "flyte-pod-webhook.flyte.svc"
+		"flyte-pod-webhook." + serviceNamespace, "flyte-pod-webhook." + serviceNamespace + ".svc"}
+	commonName := "flyte-pod-webhook." + serviceNamespace + ".svc"
 
 	// server cert config
 	certRequest := &x509.Certificate{

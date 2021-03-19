@@ -34,6 +34,9 @@ const (
 var webhookCmd = &cobra.Command{
 	Use:     "webhook",
 	Short:   "Runs Propeller Pod Webhook that listens for certain labels and modify the pod accordingly.",
+	Long: `
+This command initializes propeller's Pod webhook that enables it to mutate pods whether they are 
+`,
 	Aliases: []string{"webhooks"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runWebhook(context.Background(), config.GetConfig(), webhook.GetConfig())
