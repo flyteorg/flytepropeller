@@ -1,10 +1,9 @@
 package webhook
 
 import (
+	"path/filepath"
 	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -57,8 +56,8 @@ func Test_hasEnvVar(t *testing.T) {
 
 func TestUpdateVolumeMounts(t *testing.T) {
 	type args struct {
-		containers []corev1.Container
-		secretName string
+		containers  []corev1.Container
+		volumeMount corev1.VolumeMount
 	}
 	tests := []struct {
 		name string
@@ -73,7 +72,11 @@ func TestUpdateVolumeMounts(t *testing.T) {
 						Name: "my_container",
 					},
 				},
-				secretName: "my_secret",
+				volumeMount: corev1.VolumeMount{
+					Name:      "my_secret",
+					ReadOnly:  true,
+					MountPath: filepath.Join(filepath.Join(K8sSecretPathPrefix...), "my_secret"),
+				},
 			},
 			want: []corev1.Container{
 				{
@@ -82,7 +85,7 @@ func TestUpdateVolumeMounts(t *testing.T) {
 						{
 							Name:      "my_secret",
 							ReadOnly:  true,
-							MountPath: K8sSecretPathPrefix + "my_secret",
+							MountPath: filepath.Join(filepath.Join(K8sSecretPathPrefix...), "my_secret"),
 						},
 					},
 				},
@@ -91,7 +94,7 @@ func TestUpdateVolumeMounts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := UpdateVolumeMounts(tt.args.containers, tt.args.secretName); !reflect.DeepEqual(got, tt.want) {
+			if got := UpdateVolumeMounts(tt.args.containers, tt.args.volumeMount); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("UpdateVolumeMounts() = %v, want %v", got, tt.want)
 			}
 		})
@@ -172,17 +175,4 @@ func TestUpdateEnvVars(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestReadFile(t *testing.T) {
-	t.Run("Found", func(t *testing.T) {
-		raw, err := ReadFile("utils.go")
-		assert.NoError(t, err)
-		assert.NotEmpty(t, raw)
-	})
-
-	t.Run("Not Found", func(t *testing.T) {
-		_, err := ReadFile("utils-not-found.go")
-		assert.Error(t, err)
-	})
 }

@@ -3,7 +3,8 @@ package webhook
 import (
 	"context"
 	"fmt"
-	"strings"
+	"os"
+	"path/filepath"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -13,12 +14,23 @@ import (
 const (
 	K8sPathDefaultDirEnvVar = "FLYTE_SECRETS_DEFAULT_DIR"
 	K8sPathFilePrefixEnvVar = "FLYTE_SECRETS_FILE_PREFIX"
-	K8sSecretPathPrefix     = "/etc/flyte/secrets/"
 	K8sEnvVarPrefix         = "FLYTE_SECRETS_ENV_PREFIX"
 	K8sDefaultEnvVarPrefix  = "_FSEC_"
 	EnvVarGroupKeySeparator = "_"
 )
 
+var (
+	K8sSecretPathPrefix = []string{string(os.PathSeparator), "etc", "flyte", "secrets"}
+)
+
+// K8sSecretInjector allows injecting of secrets into pods by specifying either EnvVarSource or SecretVolumeSource in
+// the Pod Spec. It'll, by default, mount secrets as files into pods.
+// The current version does not allow mounting an entire secret object (with all keys inside it). It only supports mounting
+// a single key from the referenced secret object.
+// The secret.Group will be used to reference the k8s secret object, the Secret.Key will be used to reference a key inside
+// and the secret.Version will be ignored.
+// Environment variables will be named _FSEC_<SecretGroup>_<SecretKey>. Files will be mounted on
+// /etc/flyte/secrets/<SecretGroup>/<SecretKey>
 type K8sSecretInjector struct {
 }
 
@@ -27,43 +39,35 @@ func (i K8sSecretInjector) ID() string {
 }
 
 func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
+	if len(secret.Group) == 0 || len(secret.Key) == 0 {
+		return nil, false, fmt.Errorf("k8s Secrets Webhook require both key and group to be set")
+	}
+
 	switch secret.MountRequirement {
 	case core.Secret_ANY:
 		fallthrough
 	case core.Secret_FILE:
-		volumeName := secret.Key
-		if len(secret.Group) > 0 && len(secret.Key) > 0 {
-			volumeName = secret.Group + EnvVarGroupKeySeparator + secret.Key
-			p.Spec.Volumes = append(p.Spec.Volumes, corev1.Volume{
-				Name: volumeName,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: secret.Group,
-						Items: []corev1.KeyToPath{
-							{
-								Key:  secret.Key,
-								Path: secret.Key,
-							},
-						},
-					},
-				},
-			})
-		} else {
-			return nil, false, fmt.Errorf("k8s Secrets Webhook require both key and group to be set")
-		}
+		// Inject a Volume that to the pod and all of its containers and init containers that mounts the secret into a
+		// file.
+
+		volume := CreateVolumeForSecret(secret)
+		p.Spec.Volumes = append(p.Spec.Volumes, volume)
 
 		// Mount the secret to all containers in the given pod.
-		p.Spec.InitContainers = UpdateVolumeMounts(p.Spec.InitContainers, volumeName)
-		p.Spec.Containers = UpdateVolumeMounts(p.Spec.Containers, volumeName)
+		mount := CreateVolumeMountForSecret(volume.Name, secret)
+		p.Spec.InitContainers = UpdateVolumeMounts(p.Spec.InitContainers, mount)
+		p.Spec.Containers = UpdateVolumeMounts(p.Spec.Containers, mount)
 
+		// Set environment variable to let the container know where to find the mounted files.
 		defaultDirEnvVar := corev1.EnvVar{
 			Name:  K8sPathDefaultDirEnvVar,
-			Value: K8sSecretPathPrefix,
+			Value: filepath.Join(K8sSecretPathPrefix...),
 		}
 
 		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, defaultDirEnvVar)
 		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, defaultDirEnvVar)
 
+		// Sets an empty prefix to let the containers know the file names will match the secret keys as-is.
 		prefixEnvVar := corev1.EnvVar{
 			Name:  K8sPathFilePrefixEnvVar,
 			Value: "",
@@ -72,22 +76,7 @@ func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *c
 		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, prefixEnvVar)
 		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, prefixEnvVar)
 	case core.Secret_ENV_VAR:
-		if len(secret.Group) == 0 {
-			return nil, false, fmt.Errorf("mounting a secret to env var requires selecting the secret and a single key within. Key [%v]", secret.Key)
-		}
-
-		envVar := corev1.EnvVar{
-			Name: strings.ToUpper(K8sDefaultEnvVarPrefix + secret.Group + EnvVarGroupKeySeparator + secret.Key),
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: secret.Group,
-					},
-					Key: secret.Key,
-				},
-			},
-		}
-
+		envVar := CreateEnvVarForSecret(secret)
 		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, envVar)
 		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, envVar)
 

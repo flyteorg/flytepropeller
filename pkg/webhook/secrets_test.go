@@ -26,7 +26,7 @@ func TestSecretsWebhook_Mutate(t *testing.T) {
 	podWithAnnotations := &corev1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Annotations: map[string]string{
-				"flyte.secrets.hmttul24/": "ANY",
+				"flyte.secrets/s0": "nnsxsorcnv4v623fperca",
 			},
 		},
 	}

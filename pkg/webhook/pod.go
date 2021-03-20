@@ -30,6 +30,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -157,7 +158,7 @@ func generateMutatePath(gvk schema.GroupVersionKind) string {
 }
 
 func (pm PodMutator) CreateMutationWebhookConfiguration(namespace string) (*admissionregistrationv1.MutatingWebhookConfiguration, error) {
-	caBuff, err := ReadFile(filepath.Join(pm.cfg.CertDir, "ca.crt"))
+	caBytes, err := ioutil.ReadFile(filepath.Join(pm.cfg.CertDir, "ca.crt"))
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +176,7 @@ func (pm PodMutator) CreateMutationWebhookConfiguration(namespace string) (*admi
 			{
 				Name: webhookName,
 				ClientConfig: admissionregistrationv1.WebhookClientConfig{
-					CABundle: caBuff.Bytes(), // CA bundle created earlier
+					CABundle: caBytes, // CA bundle created earlier
 					Service: &admissionregistrationv1.ServiceReference{
 						Name:      pm.cfg.ServiceName,
 						Namespace: namespace,

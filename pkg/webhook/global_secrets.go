@@ -16,6 +16,9 @@ type GlobalSecretProvider interface {
 	GetForSecret(ctx context.Context, secret *coreIdl.Secret) (string, error)
 }
 
+// GlobalSecrets allows the injection of secrets from the process memory space (env vars) or mounted files into pods
+// intercepted through this admission webhook. Secrets injected through this type will be mounted as environment
+// variables. If a secret has a mounting requirement that does not allow Env Vars, it'll fail to inject the secret.
 type GlobalSecrets struct {
 	envSecretManager GlobalSecretProvider
 }
@@ -32,12 +35,14 @@ func (g GlobalSecrets) Inject(ctx context.Context, secret *coreIdl.Secret, p *co
 
 	switch secret.MountRequirement {
 	case coreIdl.Secret_FILE:
-		return nil, false, fmt.Errorf("cannot use FILE requirement with global secret [%v/%v]", secret.Group, secret.Key)
+		return nil, false, fmt.Errorf("global secrets can only be injected as environment "+
+			"variables [%v/%v]", secret.Group, secret.Key)
 	case coreIdl.Secret_ANY:
 		fallthrough
 	case coreIdl.Secret_ENV_VAR:
 		if len(secret.Group) == 0 {
-			return nil, false, fmt.Errorf("mounting a secret to env var requires selecting the secret and a single key within. Key [%v]", secret.Key)
+			return nil, false, fmt.Errorf("mounting a secret to env var requires selecting the "+
+				"secret and a single key within. Key [%v]", secret.Key)
 		}
 
 		envVar := corev1.EnvVar{

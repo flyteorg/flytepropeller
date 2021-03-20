@@ -1,10 +1,10 @@
 package webhook
 
 import (
-	"bytes"
-	"fmt"
-	"io/ioutil"
-	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -19,15 +19,49 @@ func hasEnvVar(envVars []corev1.EnvVar, envVarKey string) bool {
 	return false
 }
 
-func UpdateVolumeMounts(containers []corev1.Container, secretName string) []corev1.Container {
+func CreateEnvVarForSecret(secret *core.Secret) corev1.EnvVar {
+	return corev1.EnvVar{
+		Name: strings.ToUpper(K8sDefaultEnvVarPrefix + secret.Group + EnvVarGroupKeySeparator + secret.Key),
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: secret.Group,
+				},
+				Key: secret.Key,
+			},
+		},
+	}
+}
+
+func CreateVolumeForSecret(secret *core.Secret) corev1.Volume {
+	return corev1.Volume{
+		Name: secret.Group + EnvVarGroupKeySeparator + secret.Key,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: secret.Group,
+				Items: []corev1.KeyToPath{
+					{
+						Key:  secret.Key,
+						Path: secret.Key,
+					},
+				},
+			},
+		},
+	}
+}
+
+func CreateVolumeMountForSecret(volumeName string, secret *core.Secret) corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      volumeName,
+		ReadOnly:  true,
+		MountPath: filepath.Join(filepath.Join(K8sSecretPathPrefix...), secret.Group),
+	}
+}
+
+func UpdateVolumeMounts(containers []corev1.Container, mount corev1.VolumeMount) []corev1.Container {
 	res := make([]corev1.Container, 0, len(containers))
 	for _, c := range containers {
-		c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
-			Name:      secretName,
-			ReadOnly:  true,
-			MountPath: K8sSecretPathPrefix + secretName,
-		})
-
+		c.VolumeMounts = append(c.VolumeMounts, mount)
 		res = append(res, c)
 	}
 
@@ -45,31 +79,4 @@ func UpdateEnvVars(containers []corev1.Container, envVar corev1.EnvVar) []corev1
 	}
 
 	return res
-}
-
-// ReadFile reads file contents given a path
-func ReadFile(filepath string) (*bytes.Buffer, error) {
-	f, err := os.Open(filepath)
-	if err != nil {
-		if f != nil {
-			err2 := f.Close()
-			if err2 != nil {
-				return nil, fmt.Errorf("failed to create and close file. Create Error: %w. Close Error: %v", err, err2)
-			}
-		}
-
-		return nil, fmt.Errorf("failed to create file. Error: %w", err)
-	}
-
-	buf, err := ioutil.ReadAll(f)
-	if err != nil {
-		err2 := f.Close()
-		if err2 != nil {
-			return nil, fmt.Errorf("failed to write and close file. Write Error: %w. Close Error: %v", err, err2)
-		}
-
-		return nil, err
-	}
-
-	return bytes.NewBuffer(buf), nil
 }

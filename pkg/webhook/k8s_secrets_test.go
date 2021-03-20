@@ -75,14 +75,14 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "group_hello",
-							MountPath: "/etc/flyte/secrets/group_hello",
+							MountPath: "/etc/flyte/secrets/group",
 							ReadOnly:  true,
 						},
 					},
 					Env: []corev1.EnvVar{
 						{
 							Name:  "FLYTE_SECRETS_DEFAULT_DIR",
-							Value: "/etc/flyte/secrets/",
+							Value: "/etc/flyte/secrets",
 						},
 						{
 							Name: "FLYTE_SECRETS_FILE_PREFIX",
@@ -119,7 +119,7 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 					Env: []corev1.EnvVar{
 						{
 							Name:  "FLYTE_SECRETS_DEFAULT_DIR",
-							Value: "/etc/flyte/secrets/",
+							Value: "/etc/flyte/secrets",
 						},
 						{
 							Name: "FLYTE_SECRETS_FILE_PREFIX",
