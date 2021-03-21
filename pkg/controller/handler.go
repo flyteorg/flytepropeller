@@ -237,9 +237,12 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		newWf, updateErr := p.wfStore.Update(ctx, mutatedWf, workflowstore.PriorityClassCritical)
 		if updateErr != nil {
 			t.Stop()
+			// The update has failed, lets check if this is because the size is too large. If so
 			if workflowstore.IsWorkflowTooLarge(updateErr) {
 				logger.Errorf(ctx, "Failed storing workflow to the store, reason: %s", updateErr)
-				// Workflow is too large, we will mark the workflow as failed and
+				p.metrics.SystemError.Inc(ctx)
+				// Workflow is too large, we will mark the workflow as failing and record it. This will automatically
+				// propagate the failure in the next round.
 				mutableW := w.DeepCopy()
 				mutableW.Status.UpdatePhase(v1alpha1.WorkflowPhaseFailing, "Workflow size has breached threshold, aborting", &core.ExecutionError{
 					Kind:    core.ExecutionError_SYSTEM,
