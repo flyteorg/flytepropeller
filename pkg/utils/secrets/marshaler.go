@@ -62,7 +62,7 @@ func MarshalSecretsToMapStrings(secrets []*core.Secret) (map[string]string, erro
 		res[annotationPrefix+strconv.Itoa(index)] = encodedSecret
 
 		if len(encodedSecret) > totalAnnotationSizeLimitB {
-			return nil, fmt.Errorf("secret descriptor cannot exceet [%v]", totalAnnotationSizeLimitB)
+			return nil, fmt.Errorf("secret descriptor cannot exceed [%v]", totalAnnotationSizeLimitB)
 		}
 	}
 
