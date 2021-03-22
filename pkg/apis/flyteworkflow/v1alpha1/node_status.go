@@ -208,7 +208,7 @@ type NodeStatus struct {
 
 	TaskNodeStatus    *TaskNodeStatus    `json:",omitempty"`
 	DynamicNodeStatus *DynamicNodeStatus `json:"dynamicNodeStatus,omitempty"`
-	// In case of Failing/Failed Phase, an execution error can be optionally associated with the Node
+	// InputReader case of Failing/Failed Phase, an execution error can be optionally associated with the Node
 	Error *ExecutionError `json:"error,omitempty"`
 
 	// Not Persisted

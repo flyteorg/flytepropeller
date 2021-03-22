@@ -164,7 +164,7 @@ func (c *Controller) getWorkflowUpdatesHandler() cache.ResourceEventHandler {
 		DeleteFunc: func(obj interface{}) {
 			// There is a corner case where the obj is not in fact a valid resource (it sends a DeletedFinalStateUnknown
 			// object instead) -it has to do with missing some event that leads to not knowing the final state of the
-			// resource. In which case, we can't use the regular metaAccessor to read obj name/namespace but should
+			// resource. InputReader which case, we can't use the regular metaAccessor to read obj name/namespace but should
 			// instead use cache.DeletionHandling* helper functions that know how to deal with that.
 
 			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)

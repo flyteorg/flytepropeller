@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	// Env var to lookup pod name in. In pod spec, you will have to specify it like this:
+	// Env var to lookup pod name in. InputReader pod spec, you will have to specify it like this:
 	//  env:
 	//  - name: POD_NAME
 	//    valueFrom:

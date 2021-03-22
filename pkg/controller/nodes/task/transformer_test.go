@@ -21,6 +21,8 @@ import (
 	handlerMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
 )
 
+const containerTaskType = "container"
+
 func TestToTaskEventPhase(t *testing.T) {
 	assert.Equal(t, core.TaskExecution_UNDEFINED, ToTaskEventPhase(pluginCore.PhaseUndefined))
 	assert.Equal(t, core.TaskExecution_SUCCEEDED, ToTaskEventPhase(pluginCore.PhaseSuccess))
@@ -81,8 +83,15 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	mockExecContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
 	mockExecContext.OnGetParentInfo().Return(nil)
 
-	tev, err := ToTaskExecutionEvent(id, in, out, pluginCore.PhaseInfoWaitingForResources(n, 0, "reason"),
-		&nodeExecutionMetadata, mockExecContext)
+	tev, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
+		TaskExecID:            id,
+		InputReader:           in,
+		OutputWriter:          out,
+		Info:                  pluginCore.PhaseInfoWaitingForResources(n, 0, "reason"),
+		NodeExecutionMetadata: &nodeExecutionMetadata,
+		ExecContext:           mockExecContext,
+		TaskType:              containerTaskType,
+	})
 	assert.NoError(t, err)
 	assert.Nil(t, tev.Logs)
 	assert.Equal(t, core.TaskExecution_WAITING_FOR_RESOURCES, tev.Phase)
@@ -93,16 +102,26 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, inputPath, tev.InputUri)
 	assert.Nil(t, tev.OutputResult)
 	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceClass)
+	assert.Equal(t, containerTaskType, tev.TaskType)
+	assert.Equal(t, "reason", tev.Reason)
 
 	l := []*core.TaskLog{
 		{Uri: "x", Name: "y", MessageFormat: core.TaskLog_JSON},
 	}
 	c := &structpb.Struct{}
-	tev, err = ToTaskExecutionEvent(id, in, out, pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{
-		OccurredAt: &n,
-		Logs:       l,
-		CustomInfo: c,
-	}), &nodeExecutionMetadata, mockExecContext)
+	tev, err = ToTaskExecutionEvent(ToTaskExecutionEventInputs{
+		TaskExecID:   id,
+		InputReader:  in,
+		OutputWriter: out,
+		Info: pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{
+			OccurredAt: &n,
+			Logs:       l,
+			CustomInfo: c,
+		}),
+		NodeExecutionMetadata: &nodeExecutionMetadata,
+		ExecContext:           mockExecContext,
+		TaskType:              containerTaskType,
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_RUNNING, tev.Phase)
 	assert.Equal(t, uint32(1), tev.PhaseVersion)
@@ -114,14 +133,23 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, inputPath, tev.InputUri)
 	assert.Nil(t, tev.OutputResult)
 	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceClass)
+	assert.Equal(t, containerTaskType, tev.TaskType)
 
 	defaultNodeExecutionMetadata := handlerMocks.NodeExecutionMetadata{}
 	defaultNodeExecutionMetadata.OnIsInterruptible().Return(false)
-	tev, err = ToTaskExecutionEvent(id, in, out, pluginCore.PhaseInfoSuccess(&pluginCore.TaskInfo{
-		OccurredAt: &n,
-		Logs:       l,
-		CustomInfo: c,
-	}), &defaultNodeExecutionMetadata, mockExecContext)
+	tev, err = ToTaskExecutionEvent(ToTaskExecutionEventInputs{
+		TaskExecID:   id,
+		InputReader:  in,
+		OutputWriter: out,
+		Info: pluginCore.PhaseInfoSuccess(&pluginCore.TaskInfo{
+			OccurredAt: &n,
+			Logs:       l,
+			CustomInfo: c,
+		}),
+		NodeExecutionMetadata: &defaultNodeExecutionMetadata,
+		ExecContext:           mockExecContext,
+		TaskType:              containerTaskType,
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_SUCCEEDED, tev.Phase)
 	assert.Equal(t, uint32(0), tev.PhaseVersion)
@@ -135,6 +163,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, inputPath, tev.InputUri)
 	assert.Equal(t, outputPath, tev.GetOutputUri())
 	assert.Empty(t, event.TaskExecutionMetadata_DEFAULT, tev.Metadata.InstanceClass)
+	assert.Equal(t, containerTaskType, tev.TaskType)
 }
 
 func TestToTransitionType(t *testing.T) {
@@ -172,8 +201,15 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 	mockParentInfo.OnCurrentAttempt().Return(uint32(2))
 	mockExecContext.OnGetParentInfo().Return(mockParentInfo)
 
-	tev, err := ToTaskExecutionEvent(id, in, out, pluginCore.PhaseInfoWaitingForResources(n, 0, "reason"),
-		&nodeExecutionMetadata, mockExecContext)
+	tev, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
+		InputReader:           in,
+		OutputWriter:          out,
+		Info:                  pluginCore.PhaseInfoWaitingForResources(n, 0, "reason"),
+		NodeExecutionMetadata: &nodeExecutionMetadata,
+		ExecContext:           mockExecContext,
+		TaskExecID:            id,
+		TaskType:              containerTaskType,
+	})
 	assert.NoError(t, err)
 	expectedNodeID := &core.NodeExecutionIdentifier{
 		NodeId: "fmxzd5ta",
@@ -187,16 +223,26 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 	assert.Equal(t, inputPath, tev.InputUri)
 	assert.Nil(t, tev.OutputResult)
 	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceClass)
+	assert.Equal(t, containerTaskType, tev.TaskType)
+	assert.Equal(t, "reason", tev.Reason)
 
 	l := []*core.TaskLog{
 		{Uri: "x", Name: "y", MessageFormat: core.TaskLog_JSON},
 	}
 	c := &structpb.Struct{}
-	tev, err = ToTaskExecutionEvent(id, in, out, pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{
-		OccurredAt: &n,
-		Logs:       l,
-		CustomInfo: c,
-	}), &nodeExecutionMetadata, mockExecContext)
+	tev, err = ToTaskExecutionEvent(ToTaskExecutionEventInputs{
+		TaskExecID:   id,
+		InputReader:  in,
+		OutputWriter: out,
+		Info: pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{
+			OccurredAt: &n,
+			Logs:       l,
+			CustomInfo: c,
+		}),
+		NodeExecutionMetadata: &nodeExecutionMetadata,
+		ExecContext:           mockExecContext,
+		TaskType:              containerTaskType,
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_RUNNING, tev.Phase)
 	assert.Equal(t, uint32(1), tev.PhaseVersion)
@@ -208,4 +254,5 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 	assert.Equal(t, inputPath, tev.InputUri)
 	assert.Nil(t, tev.OutputResult)
 	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceClass)
+	assert.Equal(t, containerTaskType, tev.TaskType)
 }

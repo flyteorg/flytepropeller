@@ -70,12 +70,12 @@ func getParentNodeExecIDForTask(taskExecID *core.TaskExecutionIdentifier, execCo
 }
 
 type ToTaskExecutionEventInputs struct {
-	In                    io.InputFilePaths
-	Out                   io.OutputFilePaths
+	TaskExecID            *core.TaskExecutionIdentifier
+	InputReader           io.InputFilePaths
+	OutputWriter          io.OutputFilePaths
 	Info                  pluginCore.PhaseInfo
 	NodeExecutionMetadata handler.NodeExecutionMetadata
 	ExecContext           executors.ExecutionContext
-	TaskExecutionContext  *taskExecutionContext
 	TaskType              string
 }
 
@@ -91,28 +91,27 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		}
 	}
 
-	taskExecID := input.TaskExecutionContext.TaskExecutionMetadata().GetTaskExecutionID().GetID()
-	nodeExecutionID, err := getParentNodeExecIDForTask(&taskExecID, input.ExecContext)
+	nodeExecutionID, err := getParentNodeExecIDForTask(input.TaskExecID, input.ExecContext)
 	if err != nil {
 		return nil, err
 	}
 	tev := &event.TaskExecutionEvent{
-		TaskId:                taskExecID.TaskId,
+		TaskId:                input.TaskExecID.TaskId,
 		ParentNodeExecutionId: nodeExecutionID,
-		RetryAttempt:          taskExecID.RetryAttempt,
+		RetryAttempt:          input.TaskExecID.RetryAttempt,
 		Phase:                 ToTaskEventPhase(input.Info.Phase()),
 		PhaseVersion:          input.Info.Version(),
 		ProducerId:            "propeller",
 		OccurredAt:            tm,
-		InputUri:              input.In.GetInputPath().String(),
+		InputUri:              input.InputReader.GetInputPath().String(),
 		TaskType:              input.TaskType,
 		Reason:                input.Info.Reason(),
 		Metadata:              input.Info.Info().Metadata,
 	}
 
-	if input.Info.Phase().IsSuccess() && input.Out != nil {
-		if input.Out.GetOutputPath() != "" {
-			tev.OutputResult = &event.TaskExecutionEvent_OutputUri{OutputUri: input.Out.GetOutputPath().String()}
+	if input.Info.Phase().IsSuccess() && input.OutputWriter != nil {
+		if input.OutputWriter.GetOutputPath() != "" {
+			tev.OutputResult = &event.TaskExecutionEvent_OutputUri{OutputUri: input.OutputWriter.GetOutputPath().String()}
 		}
 	}
 

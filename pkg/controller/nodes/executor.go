@@ -140,7 +140,7 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 	return err
 }
 
-// In this method we check if the queue is ready to be processed and if so, we prime it in Admin as queued
+// InputReader this method we check if the queue is ready to be processed and if so, we prime it in Admin as queued
 // Before we start the node execution, we need to transition this Node status to Queued.
 // This is because a node execution has to exist before task/wf executions can start.
 func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructure, nCtx handler.NodeExecutionContext) (handler.PhaseInfo, error) {
@@ -441,7 +441,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
 		}
 
-		// We reach here only when transitioning from Queued to Running. In this case, the startedAt is not set.
+		// We reach here only when transitioning from Queued to Running. InputReader this case, the startedAt is not set.
 		if np == v1alpha1.NodePhaseRunning {
 			if nodeStatus.GetQueuedAt() != nil {
 				c.metrics.QueuingLatency.Observe(ctx, nodeStatus.GetQueuedAt().Time, time.Now())
@@ -722,7 +722,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 		return c.handleNode(currentNodeCtx, dag, nCtx, h)
 
 		// TODO we can optimize skip state handling by iterating down the graph and marking all as skipped
-		// Currently we treat either Skip or Success the same way. In this approach only one node will be skipped
+		// Currently we treat either Skip or Success the same way. InputReader this approach only one node will be skipped
 		// at a time. As we iterate down, further nodes will be skipped
 	} else if nodePhase == v1alpha1.NodePhaseSucceeded || nodePhase == v1alpha1.NodePhaseSkipped {
 		logger.Debugf(currentNodeCtx, "Node has [%v], traversing downstream.", nodePhase)

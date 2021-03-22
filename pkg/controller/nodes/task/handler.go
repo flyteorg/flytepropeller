@@ -574,16 +574,17 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "plugin transition is not observed and no error as well.")
 	}
 
+	execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	// STEP 4: Send buffered events!
 	logger.Debugf(ctx, "Sending buffered Task events.")
 	for _, ev := range tCtx.ber.GetAll(ctx) {
 		evInfo, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
-			In:                    nCtx.InputReader(),
-			Out:                   tCtx.ow,
+			TaskExecID:            &execID,
+			InputReader:           nCtx.InputReader(),
+			OutputWriter:          tCtx.ow,
 			Info:                  ev,
 			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 			ExecContext:           nCtx.ExecutionContext(),
-			TaskExecutionContext:  tCtx,
 			TaskType:              ttype,
 		})
 		if err != nil {
@@ -600,11 +601,11 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// STEP 5: Send Transition events
 	logger.Debugf(ctx, "Sending transition event for plugin phase [%s]", pluginTrns.pInfo.Phase().String())
 	evInfo, err := pluginTrns.FinalTaskEvent(ToTaskExecutionEventInputs{
-		In:                    nCtx.InputReader(),
-		Out:                   tCtx.ow,
+		TaskExecID:            &execID,
+		InputReader:           nCtx.InputReader(),
+		OutputWriter:          tCtx.ow,
 		NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 		ExecContext:           nCtx.ExecutionContext(),
-		TaskExecutionContext:  tCtx,
 		TaskType:              ttype,
 	})
 	if err != nil {
