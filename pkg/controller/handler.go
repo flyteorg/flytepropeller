@@ -1,5 +1,3 @@
-// This module contains the K8s controller logic. This does not contain the actual workflow re-conciliation.
-// It is then entrypoint into the K8s based Flyte controller.
 package controller
 
 import (
@@ -277,7 +275,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	return nil
 }
 
-// Creates a new Propeller and initializes metrics
+// NewPropellerHandler creates a new Propeller and initializes metrics
 func NewPropellerHandler(_ context.Context, cfg *config.Config, wfStore workflowstore.FlyteWorkflow, executor executors.Workflow, scope promutils.Scope) *Propeller {
 
 	metrics := newPropellerMetrics(scope)
