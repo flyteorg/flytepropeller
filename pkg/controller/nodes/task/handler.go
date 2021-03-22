@@ -586,6 +586,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 			ExecContext:           nCtx.ExecutionContext(),
 			TaskType:              ttype,
+			PluginID:              p.GetID(),
 		})
 		if err != nil {
 			return handler.UnknownTransition, err
@@ -607,6 +608,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 		ExecContext:           nCtx.ExecutionContext(),
 		TaskType:              ttype,
+		PluginID:              p.GetID(),
 	})
 	if err != nil {
 		logger.Errorf(ctx, "failed to convert plugin transition to TaskExecutionEvent. Error: %s", err.Error())

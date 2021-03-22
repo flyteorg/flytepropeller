@@ -77,6 +77,7 @@ type ToTaskExecutionEventInputs struct {
 	NodeExecutionMetadata handler.NodeExecutionMetadata
 	ExecContext           executors.ExecutionContext
 	TaskType              string
+	PluginID              string
 }
 
 func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutionEvent, error) {
@@ -95,6 +96,11 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 	if err != nil {
 		return nil, err
 	}
+	metadata := input.Info.Info().Metadata
+	if metadata == nil {
+		metadata = &event.TaskExecutionMetadata{}
+	}
+	metadata.PluginIdentifier = input.PluginID
 	tev := &event.TaskExecutionEvent{
 		TaskId:                input.TaskExecID.TaskId,
 		ParentNodeExecutionId: nodeExecutionID,
@@ -106,7 +112,7 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		InputUri:              input.InputReader.GetInputPath().String(),
 		TaskType:              input.TaskType,
 		Reason:                input.Info.Reason(),
-		Metadata:              input.Info.Info().Metadata,
+		Metadata:              metadata,
 	}
 
 	if input.Info.Phase().IsSuccess() && input.OutputWriter != nil {
@@ -127,9 +133,9 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 	}
 
 	if input.NodeExecutionMetadata.IsInterruptible() {
-		tev.Metadata = &event.TaskExecutionMetadata{InstanceClass: event.TaskExecutionMetadata_INTERRUPTIBLE}
+		tev.Metadata.InstanceClass = event.TaskExecutionMetadata_INTERRUPTIBLE
 	} else {
-		tev.Metadata = &event.TaskExecutionMetadata{InstanceClass: event.TaskExecutionMetadata_DEFAULT}
+		tev.Metadata.InstanceClass = event.TaskExecutionMetadata_DEFAULT
 	}
 
 	return tev, nil

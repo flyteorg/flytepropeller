@@ -22,6 +22,7 @@ import (
 )
 
 const containerTaskType = "container"
+const containerPluginIdentifier = "container_plugin"
 
 func TestToTaskEventPhase(t *testing.T) {
 	assert.Equal(t, core.TaskExecution_UNDEFINED, ToTaskEventPhase(pluginCore.PhaseUndefined))
@@ -91,6 +92,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 		NodeExecutionMetadata: &nodeExecutionMetadata,
 		ExecContext:           mockExecContext,
 		TaskType:              containerTaskType,
+		PluginID:              containerPluginIdentifier,
 	})
 	assert.NoError(t, err)
 	assert.Nil(t, tev.Logs)
@@ -104,6 +106,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceClass)
 	assert.Equal(t, containerTaskType, tev.TaskType)
 	assert.Equal(t, "reason", tev.Reason)
+	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
 
 	l := []*core.TaskLog{
 		{Uri: "x", Name: "y", MessageFormat: core.TaskLog_JSON},
@@ -121,6 +124,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 		NodeExecutionMetadata: &nodeExecutionMetadata,
 		ExecContext:           mockExecContext,
 		TaskType:              containerTaskType,
+		PluginID:              containerPluginIdentifier,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_RUNNING, tev.Phase)
@@ -134,6 +138,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Nil(t, tev.OutputResult)
 	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceClass)
 	assert.Equal(t, containerTaskType, tev.TaskType)
+	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
 
 	defaultNodeExecutionMetadata := handlerMocks.NodeExecutionMetadata{}
 	defaultNodeExecutionMetadata.OnIsInterruptible().Return(false)
@@ -149,6 +154,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 		NodeExecutionMetadata: &defaultNodeExecutionMetadata,
 		ExecContext:           mockExecContext,
 		TaskType:              containerTaskType,
+		PluginID:              containerPluginIdentifier,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_SUCCEEDED, tev.Phase)
@@ -164,6 +170,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, outputPath, tev.GetOutputUri())
 	assert.Empty(t, event.TaskExecutionMetadata_DEFAULT, tev.Metadata.InstanceClass)
 	assert.Equal(t, containerTaskType, tev.TaskType)
+	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
 }
 
 func TestToTransitionType(t *testing.T) {
@@ -209,6 +216,7 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 		ExecContext:           mockExecContext,
 		TaskExecID:            id,
 		TaskType:              containerTaskType,
+		PluginID:              containerPluginIdentifier,
 	})
 	assert.NoError(t, err)
 	expectedNodeID := &core.NodeExecutionIdentifier{
@@ -225,6 +233,7 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceClass)
 	assert.Equal(t, containerTaskType, tev.TaskType)
 	assert.Equal(t, "reason", tev.Reason)
+	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
 
 	l := []*core.TaskLog{
 		{Uri: "x", Name: "y", MessageFormat: core.TaskLog_JSON},
@@ -242,6 +251,7 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 		NodeExecutionMetadata: &nodeExecutionMetadata,
 		ExecContext:           mockExecContext,
 		TaskType:              containerTaskType,
+		PluginID:              containerPluginIdentifier,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_RUNNING, tev.Phase)
@@ -255,4 +265,5 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 	assert.Nil(t, tev.OutputResult)
 	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceClass)
 	assert.Equal(t, containerTaskType, tev.TaskType)
+	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
 }
