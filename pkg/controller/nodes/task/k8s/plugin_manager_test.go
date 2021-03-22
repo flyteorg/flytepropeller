@@ -662,6 +662,19 @@ func TestPluginManager_AddObjectMetadata(t *testing.T) {
 		assert.Equal(t, 0, len(o.GetFinalizers()))
 	})
 
+	t.Run("Respect name and namespace", func(t *testing.T) {
+		pluginManager := PluginManager{}
+		o := &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "custom-name",
+				Namespace: "custom-ns",
+			},
+		}
+		pluginManager.AddObjectMetadata(tm, o, cfg)
+		assert.Equal(t, "custom-name", o.GetName())
+		assert.Equal(t, "custom-ns", o.GetNamespace())
+	})
+
 }
 
 func TestResourceManagerConstruction(t *testing.T) {
