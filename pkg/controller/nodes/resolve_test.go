@@ -22,6 +22,7 @@ import (
 var testScope = promutils.NewScope("test")
 
 type dummyBaseWorkflow struct {
+	executors.ControlFlow
 	DummyStartNode v1alpha1.ExecutableNode
 	ID             v1alpha1.WorkflowID
 	ToNodeCb       func(name v1alpha1.NodeID) ([]v1alpha1.NodeID, error)
@@ -116,6 +117,10 @@ func (d *dummyBaseWorkflow) GetName() string {
 
 func (d *dummyBaseWorkflow) GetServiceAccountName() string {
 	return ""
+}
+
+func (d *dummyBaseWorkflow) GetSecurityContext() core.SecurityContext {
+	return core.SecurityContext{}
 }
 
 func (d *dummyBaseWorkflow) GetTask(id v1alpha1.TaskID) (v1alpha1.ExecutableTask, error) {
