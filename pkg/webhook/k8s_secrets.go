@@ -40,7 +40,8 @@ func (i K8sSecretInjector) ID() string {
 
 func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
 	if len(secret.Group) == 0 || len(secret.Key) == 0 {
-		return nil, false, fmt.Errorf("k8s Secrets Webhook require both key and group to be set")
+		return nil, false, fmt.Errorf("k8s Secrets Webhook require both key and group to be set. "+
+			"Secret: [%v]", secret)
 	}
 
 	switch secret.MountRequirement {

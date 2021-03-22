@@ -32,6 +32,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -117,10 +118,10 @@ func (pm PodMutator) Mutate(ctx context.Context, p *corev1.Pod) (newP *corev1.Po
 				err = fmt.Errorf("failed to mutate using [%v]. Since it's a required mutator, failing early. Error: %v", m.Mutator.ID(), err)
 				logger.Info(ctx, err)
 				return p, false, err
-			} else {
-				logger.Infof(ctx, "Failed to mutate using [%v]. Since it's not a required mutator, skipping. Error: %v", m.Mutator.ID(), err)
-				continue
 			}
+
+			logger.Infof(ctx, "Failed to mutate using [%v]. Since it's not a required mutator, skipping. Error: %v", m.Mutator.ID(), err)
+			continue
 		}
 
 		newP = tempP
@@ -160,7 +161,13 @@ func generateMutatePath(gvk schema.GroupVersionKind) string {
 func (pm PodMutator) CreateMutationWebhookConfiguration(namespace string) (*admissionregistrationv1.MutatingWebhookConfiguration, error) {
 	caBytes, err := ioutil.ReadFile(filepath.Join(pm.cfg.CertDir, "ca.crt"))
 	if err != nil {
-		return nil, err
+		// ca.crt is optional. If not provided, API Server will assume the webhook is serving SSL using a certificate
+		// issued by a known Cert Authority.
+		if os.IsNotExist(err) {
+			caBytes = make([]byte, 0)
+		} else {
+			return nil, err
+		}
 	}
 
 	path := pm.GetMutatePath()

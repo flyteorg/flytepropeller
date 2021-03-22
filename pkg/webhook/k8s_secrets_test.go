@@ -54,7 +54,7 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 		Spec: corev1.PodSpec{
 			Volumes: []corev1.Volume{
 				{
-					Name: "group_hello",
+					Name: "m4zg54lql4ugk2dmn4pq",
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
 							SecretName: "group",
@@ -74,7 +74,7 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 					Name: "container1",
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:      "group_hello",
+							Name:      "m4zg54lql4ugk2dmn4pq",
 							MountPath: "/etc/flyte/secrets/group",
 							ReadOnly:  true,
 						},

@@ -1,10 +1,11 @@
 package secrets
 
 import (
-	"encoding/base32"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/flyteorg/flytepropeller/pkg/utils"
 
 	"github.com/golang/protobuf/proto"
 
@@ -21,15 +22,13 @@ const (
 // https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/validation/objectmeta.go#L36
 const totalAnnotationSizeLimitB int = 256 * (1 << 10) // 256 kB
 
-var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)
-
 func encodeSecret(secretAsString string) string {
-	res := strings.ToLower(encoding.EncodeToString([]byte(secretAsString)))
+	res := utils.Base32Encoder.EncodeToString([]byte(secretAsString))
 	return strings.TrimSuffix(res, "=")
 }
 
 func decodeSecret(encoded string) (string, error) {
-	decodedRaw, err := encoding.DecodeString(strings.ToUpper(encoded))
+	decodedRaw, err := utils.Base32Encoder.DecodeString(encoded)
 	if err != nil {
 		return encoded, err
 	}
@@ -38,7 +37,7 @@ func decodeSecret(encoded string) (string, error) {
 }
 
 func marshalSecret(s *core.Secret) string {
-	return encodeSecret(s.String())
+	return encodeSecret(proto.MarshalTextString(s))
 }
 
 func unmarshalSecret(encoded string) (*core.Secret, error) {

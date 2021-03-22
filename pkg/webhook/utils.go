@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/flyteorg/flytepropeller/pkg/utils"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	corev1 "k8s.io/api/core/v1"
@@ -35,7 +37,7 @@ func CreateEnvVarForSecret(secret *core.Secret) corev1.EnvVar {
 
 func CreateVolumeForSecret(secret *core.Secret) corev1.Volume {
 	return corev1.Volume{
-		Name: secret.Group + EnvVarGroupKeySeparator + secret.Key,
+		Name: utils.Base32Encoder.EncodeToString([]byte(secret.Group + EnvVarGroupKeySeparator + secret.Key + EnvVarGroupKeySeparator + secret.GroupVersion)),
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: secret.Group,

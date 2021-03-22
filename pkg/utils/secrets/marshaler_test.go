@@ -35,14 +35,14 @@ func TestMarshalSecretsToMapStrings(t *testing.T) {
 				Group: ";':/\\",
 			},
 		}}, want: map[string]string{
-			"flyte.secrets/s0": "m5zg65lqhirdwjz2f5ofyira",
+			"flyte.secrets/s0": "m4zg54lqhiqceozhhixvyxbcbi",
 		}, wantErr: false},
 		{name: "Without group", args: args{secrets: []*core.Secret{
 			{
 				Key: "my_key",
 			},
 		}}, want: map[string]string{
-			"flyte.secrets/s0": "nnsxsorcnv4v623fperca",
+			"flyte.secrets/s0": "nnsxsoraejwxsx2lmv3secq",
 		}, wantErr: false},
 	}
 	for _, tt := range tests {

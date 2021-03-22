@@ -45,8 +45,8 @@ func (t TaskExecutionMetadata) GetAnnotations() map[string]string {
 // to trigger the flyte pod webhook
 func newTaskExecutionMetadata(tCtx pluginsCore.TaskExecutionMetadata, taskTmpl *core.TaskTemplate) (TaskExecutionMetadata, error) {
 	var err error
-	secretsMap := make(map[string]string, 0)
-	injectSecretsLabel := make(map[string]string, 0)
+	secretsMap := make(map[string]string)
+	injectSecretsLabel := make(map[string]string)
 	if taskTmpl.SecurityContext != nil && len(taskTmpl.SecurityContext.Secrets) > 0 {
 		secretsMap, err = secrets.MarshalSecretsToMapStrings(taskTmpl.SecurityContext.Secrets)
 		if err != nil {
