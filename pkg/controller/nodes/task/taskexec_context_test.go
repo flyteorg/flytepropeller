@@ -156,7 +156,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	// TODO @kumare fix this test
 	assert.NotNil(t, got.rm)
 
-	_, err = got.AllocateResource(context.TODO(), pluginCore.ResourceNamespace("foo"), "token", pluginCore.ResourceConstraintsSpec{})
+	_, err = got.rm.AllocateResource(context.TODO(), "foo", "token", pluginCore.ResourceConstraintsSpec{})
 	assert.NoError(t, err)
 	assert.EqualValues(t, []*event.ResourcePoolInfo{
 		{
