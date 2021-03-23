@@ -103,7 +103,7 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 	}
 	metadata.PluginIdentifier = input.PluginID
 	metadata.GeneratedName = input.TaskExecContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	metadata.ResourcePoolInfo = input.TaskExecContext.TaskExecutionMetadata().GetResourcePoolInfo()
+	metadata.ResourcePoolInfo = input.TaskExecContext.GetResourcePoolInfo()
 	tev := &event.TaskExecutionEvent{
 		TaskId:                taskExecID.TaskId,
 		ParentNodeExecutionId: nodeExecutionID,

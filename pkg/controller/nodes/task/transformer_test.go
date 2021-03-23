@@ -92,16 +92,16 @@ func TestToTaskExecutionEvent(t *testing.T) {
 
 	tMeta := &pluginMocks.TaskExecutionMetadata{}
 	tMeta.OnGetTaskExecutionID().Return(tID)
+
+	tCtx := &pluginMocks.TaskExecutionContext{}
+	tCtx.OnTaskExecutionMetadata().Return(tMeta)
 	resourcePoolInfo := []*event.ResourcePoolInfo{
 		{
 			Namespace:       "ns",
 			AllocationToken: "alloc_token",
 		},
 	}
-	tMeta.OnGetResourcePoolInfo().Return(resourcePoolInfo)
-
-	tCtx := &pluginMocks.TaskExecutionContext{}
-	tCtx.OnTaskExecutionMetadata().Return(tMeta)
+	tCtx.OnGetResourcePoolInfo().Return(resourcePoolInfo)
 
 	tev, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
 		TaskExecContext:       tCtx,
@@ -241,16 +241,16 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 
 	tMeta := &pluginMocks.TaskExecutionMetadata{}
 	tMeta.OnGetTaskExecutionID().Return(tID)
+
+	tCtx := &pluginMocks.TaskExecutionContext{}
+	tCtx.OnTaskExecutionMetadata().Return(tMeta)
 	resourcePoolInfo := []*event.ResourcePoolInfo{
 		{
 			Namespace:       "ns",
 			AllocationToken: "alloc_token",
 		},
 	}
-	tMeta.OnGetResourcePoolInfo().Return(resourcePoolInfo)
-
-	tCtx := &pluginMocks.TaskExecutionContext{}
-	tCtx.OnTaskExecutionMetadata().Return(tMeta)
+	tCtx.OnGetResourcePoolInfo().Return(resourcePoolInfo)
 
 	tev, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
 		TaskExecContext:       tCtx,

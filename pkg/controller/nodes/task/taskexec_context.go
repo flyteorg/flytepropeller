@@ -49,10 +49,9 @@ func (te taskExecutionID) GetGeneratedName() string {
 
 type taskExecutionMetadata struct {
 	handler.NodeExecutionMetadata
-	taskExecID       taskExecutionID
-	o                pluginCore.TaskOverrides
-	maxAttempts      uint32
-	resourcePoolInfo map[string]*event.ResourcePoolInfo
+	taskExecID  taskExecutionID
+	o           pluginCore.TaskOverrides
+	maxAttempts uint32
 }
 
 func (t taskExecutionMetadata) GetTaskExecutionID() pluginCore.TaskExecutionID {
@@ -67,18 +66,10 @@ func (t taskExecutionMetadata) GetMaxAttempts() uint32 {
 	return t.maxAttempts
 }
 
-func (t taskExecutionMetadata) GetResourcePoolInfo() []*event.ResourcePoolInfo {
-	response := make([]*event.ResourcePoolInfo, 0, len(t.resourcePoolInfo))
-	for _, resourcePoolInfo := range t.resourcePoolInfo {
-		response = append(response, resourcePoolInfo)
-	}
-	return response
-}
-
 type taskExecutionContext struct {
 	handler.NodeExecutionContext
 	tm  taskExecutionMetadata
-	rm  pluginCore.ResourceManager
+	rm  resourcemanager.TaskResourceManager
 	psm *pluginStateManager
 	tr  handler.TaskReader
 	ow  *ioutils.BufferedOutputWriter
@@ -109,15 +100,7 @@ func (t taskExecutionContext) EventsRecorder() pluginCore.EventsRecorder {
 
 // During execution time, plugins can call AllocateResource() to register a token to the token pool associated with a resource with the resource manager.
 func (t taskExecutionContext) AllocateResource(ctx context.Context, namespace pluginCore.ResourceNamespace, allocationToken string, constraintsSpec pluginCore.ResourceConstraintsSpec) (pluginCore.AllocationStatus, error) {
-	allocationStatus, err := t.rm.AllocateResource(ctx, namespace, allocationToken, constraintsSpec)
-	if err != nil {
-		return allocationStatus, err
-	}
-	t.tm.resourcePoolInfo[allocationToken] = &event.ResourcePoolInfo{
-		AllocationToken: allocationToken,
-		Namespace:       string(namespace),
-	}
-	return allocationStatus, nil
+	return t.rm.AllocateResource(ctx, namespace, allocationToken, constraintsSpec)
 }
 
 // During execution time, after an outstanding request is completed, the plugin needs to use ReleaseResource() to release the allocation of the corresponding token
@@ -148,6 +131,14 @@ func (t *taskExecutionContext) PluginStateWriter() pluginCore.PluginStateWriter 
 
 func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 	return t.sm
+}
+
+func (t taskExecutionContext) ResourceManager() pluginCore.ResourceManager {
+	return t.rm
+}
+
+func (t taskExecutionContext) GetResourcePoolInfo() []*event.ResourcePoolInfo {
+	return t.rm.GetResourcePoolInfo()
 }
 
 func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.NodeExecutionContext, pluginID string) (*taskExecutionContext, error) {
@@ -196,7 +187,6 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
 			o:                     nCtx.Node(),
 			maxAttempts:           maxAttempts,
-			resourcePoolInfo:      make(map[string]*event.ResourcePoolInfo),
 		},
 		rm: resourcemanager.GetTaskResourceManager(
 			t.resourceManager, resourceNamespacePrefix, id),

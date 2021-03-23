@@ -151,7 +151,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	assert.Equal(t, got.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetNodeId(), nodeID)
 	assert.Equal(t, got.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId(), wfExecID)
 
-	assert.EqualValues(t, got.TaskExecutionMetadata().GetResourcePoolInfo(), make([]*event.ResourcePoolInfo, 0))
+	assert.EqualValues(t, got.GetResourcePoolInfo(), make([]*event.ResourcePoolInfo, 0))
 
 	// TODO @kumare fix this test
 	assert.NotNil(t, got.rm)
@@ -163,7 +163,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 			Namespace:       "foo",
 			AllocationToken: "token",
 		},
-	}, got.TaskExecutionMetadata().GetResourcePoolInfo())
+	}, got.GetResourcePoolInfo())
 	assert.Nil(t, got.Catalog())
 	// assert.Equal(t, got.InputReader(), ir)
 }
