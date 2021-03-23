@@ -1173,7 +1173,10 @@ func Test_task_Handle_Barrier(t *testing.T) {
 			assert.NoError(t, err)
 			tk.resourceManager = noopRm
 
-			tctx, err := tk.newTaskExecutionContext(context.TODO(), nCtx, "plugin1")
+			p := &pluginCoreMocks.Plugin{}
+			p.On("GetID").Return("plugin1")
+			p.OnGetProperties().Return(pluginCore.PluginProperties{})
+			tctx, err := tk.newTaskExecutionContext(context.TODO(), nCtx, p)
 			assert.NoError(t, err)
 			id := tctx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
@@ -1322,12 +1325,14 @@ func Test_task_Abort(t *testing.T) {
 		{"abort-fails", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
 			p.On("GetID").Return("id")
+			p.OnGetProperties().Return(pluginCore.PluginProperties{})
 			p.On("Abort", mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
 			return p
 		}}, args{nil}, true, true},
 		{"abort-success", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
 			p.On("GetID").Return("id")
+			p.OnGetProperties().Return(pluginCore.PluginProperties{})
 			p.On("Abort", mock.Anything, mock.Anything).Return(nil)
 			return p
 		}}, args{ev: &fakeBufferedTaskEventRecorder{}}, false, true},
@@ -1464,12 +1469,14 @@ func Test_task_Abort_v1(t *testing.T) {
 		{"abort-fails", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
 			p.On("GetID").Return("id")
+			p.OnGetProperties().Return(pluginCore.PluginProperties{})
 			p.On("Abort", mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
 			return p
 		}}, args{nil}, true, true},
 		{"abort-success", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
 			p.On("GetID").Return("id")
+			p.OnGetProperties().Return(pluginCore.PluginProperties{})
 			p.On("Abort", mock.Anything, mock.Anything).Return(nil)
 			return p
 		}}, args{ev: &fakeBufferedTaskEventRecorder{}}, false, true},
@@ -1603,12 +1610,14 @@ func Test_task_Finalize(t *testing.T) {
 		{"finalize-fails", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
 			p.On("GetID").Return("id")
+			p.OnGetProperties().Return(pluginCore.PluginProperties{})
 			p.On("Finalize", mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
 			return p
 		}}, args{nCtx: nCtx}, true, true},
 		{"finalize-success", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
 			p.On("GetID").Return("id")
+			p.OnGetProperties().Return(pluginCore.PluginProperties{})
 			p.On("Finalize", mock.Anything, mock.Anything).Return(nil)
 			return p
 		}}, args{nCtx: nCtx}, false, true},

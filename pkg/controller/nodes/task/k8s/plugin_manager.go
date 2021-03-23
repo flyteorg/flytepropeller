@@ -101,6 +101,7 @@ type PluginManager struct {
 	resourceLevelMonitor         *ResourceLevelMonitor
 	disableInjectOwnerReferences bool
 	disableInjectFinalizer       bool
+	GeneratedNameMaxLength       *int
 }
 
 func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o client.Object, cfg *config.K8sPluginConfig) {
@@ -120,7 +121,9 @@ func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetad
 }
 
 func (e *PluginManager) GetProperties() pluginsCore.PluginProperties {
-	return pluginsCore.PluginProperties{}
+	return pluginsCore.PluginProperties{
+		GeneratedNameMaxLength: e.GeneratedNameMaxLength,
+	}
 }
 
 func (e *PluginManager) GetID() string {
@@ -534,6 +537,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		resourceLevelMonitor:         rm,
 		disableInjectOwnerReferences: entry.DisableInjectOwnerReferences,
 		disableInjectFinalizer:       entry.DisableInjectFinalizer,
+		GeneratedNameMaxLength:       entry.GeneratedNameMaxLength,
 	}, nil
 }
 
