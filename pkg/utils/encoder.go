@@ -31,7 +31,7 @@ func FixedLengthUniqueID(inputID string, maxLength int) (string, error) {
 }
 
 // Creates a new uniqueID using the parts concatenated using `-` and ensures that the uniqueID is not longer than the
-// maxLength. InputReader case a simple concatenation yields a longer string, a new hashed ID is created which is always
+// maxLength. In case a simple concatenation yields a longer string, a new hashed ID is created which is always
 // around 8 characters in length
 func FixedLengthUniqueIDForParts(maxLength int, parts ...string) (string, error) {
 	b := strings.Builder{}

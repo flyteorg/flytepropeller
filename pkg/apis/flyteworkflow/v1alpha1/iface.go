@@ -111,7 +111,7 @@ const (
 	// when handling a workflow event which might yield to seemingly random failures. This phase ensure we are handling,
 	// and only so, the failure node until it's done executing or it fails itself.
 	// If a failure node fails to execute (a real possibility), the final failure output of the workflow will only include
-	// its failure reason. InputReader other words, its failure will mask the original failure for the workflow. It's imperative
+	// its failure reason. In other words, its failure will mask the original failure for the workflow. It's imperative
 	// failure nodes should be very simple, very resilient and very well tested.
 	WorkflowPhaseHandlingFailureNode
 )

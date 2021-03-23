@@ -11,7 +11,7 @@ import (
 const maxUniqueIDLength = 20
 
 // The UniqueId of a node is unique within a given workflow execution.
-// InputReader order to achieve that we track the lineage of the node.
+// In order to achieve that we track the lineage of the node.
 // To compute the uniqueID of a node, we use the uniqueID and retry attempt of the parent node
 // For nodes in level 0, there is no parent, and parentInfo is nil
 func GenerateUniqueID(parentInfo executors.ImmutableParentInfo, nodeID string) (string, error) {
