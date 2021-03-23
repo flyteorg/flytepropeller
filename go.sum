@@ -237,6 +237,8 @@ github.com/flyteorg/flyteplugins v0.5.38-0.20210322195434-e97acce4a543 h1:bRWTEr
 github.com/flyteorg/flyteplugins v0.5.38-0.20210322195434-e97acce4a543/go.mod h1:ireF+bYk8xjw9BfcMbPN/hN5aZeBJpP0CoQYHkSRL+w=
 github.com/flyteorg/flyteplugins v0.5.39-0.20210322202107-51b9713edaba h1:+h7TjqLY78Ht3oQj4rIOOTvAJL0BeUlLLiqpxkEFTxE=
 github.com/flyteorg/flyteplugins v0.5.39-0.20210322202107-51b9713edaba/go.mod h1:ireF+bYk8xjw9BfcMbPN/hN5aZeBJpP0CoQYHkSRL+w=
+github.com/flyteorg/flyteplugins v0.5.39-0.20210323003259-f356ddf426ec h1:mnwspOdMclDfUCie9whCTtoej8pTAj+FO+LlnVJDiRg=
+github.com/flyteorg/flyteplugins v0.5.39-0.20210323003259-f356ddf426ec/go.mod h1:ireF+bYk8xjw9BfcMbPN/hN5aZeBJpP0CoQYHkSRL+w=
 github.com/flyteorg/flytestdlib v0.3.13 h1:5ioA/q3ixlyqkFh5kDaHgmPyTP/AHtqq1K/TIbVLUzM=
 github.com/flyteorg/flytestdlib v0.3.13/go.mod h1:Tz8JCECAbX6VWGwFT6cmEQ+RJpZ/6L9pswu3fzWs220=
 github.com/form3tech-oss/jwt-go v3.2.2+incompatible h1:TcekIExNqud5crz4xD2pavyTgWiPvpYe4Xau31I0PRk=

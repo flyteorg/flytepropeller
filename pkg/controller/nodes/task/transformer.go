@@ -70,7 +70,7 @@ func getParentNodeExecIDForTask(taskExecID *core.TaskExecutionIdentifier, execCo
 }
 
 type ToTaskExecutionEventInputs struct {
-	TaskExecID            *core.TaskExecutionIdentifier
+	TaskExecContext       pluginCore.TaskExecutionContext
 	InputReader           io.InputFilePaths
 	OutputWriter          io.OutputFilePaths
 	Info                  pluginCore.PhaseInfo
@@ -92,7 +92,8 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		}
 	}
 
-	nodeExecutionID, err := getParentNodeExecIDForTask(input.TaskExecID, input.ExecContext)
+	taskExecID := input.TaskExecContext.TaskExecutionMetadata().GetTaskExecutionID().GetID()
+	nodeExecutionID, err := getParentNodeExecIDForTask(&taskExecID, input.ExecContext)
 	if err != nil {
 		return nil, err
 	}
@@ -101,10 +102,12 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		metadata = &event.TaskExecutionMetadata{}
 	}
 	metadata.PluginIdentifier = input.PluginID
+	metadata.GeneratedName = input.TaskExecContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	metadata.ResourcePoolInfo = input.TaskExecContext.TaskExecutionMetadata().GetResourcePoolInfo()
 	tev := &event.TaskExecutionEvent{
-		TaskId:                input.TaskExecID.TaskId,
+		TaskId:                taskExecID.TaskId,
 		ParentNodeExecutionId: nodeExecutionID,
-		RetryAttempt:          input.TaskExecID.RetryAttempt,
+		RetryAttempt:          taskExecID.RetryAttempt,
 		Phase:                 ToTaskEventPhase(input.Info.Phase()),
 		PhaseVersion:          input.Info.Version(),
 		ProducerId:            "propeller",

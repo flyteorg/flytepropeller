@@ -5,6 +5,8 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
@@ -47,9 +49,10 @@ func (te taskExecutionID) GetGeneratedName() string {
 
 type taskExecutionMetadata struct {
 	handler.NodeExecutionMetadata
-	taskExecID  taskExecutionID
-	o           pluginCore.TaskOverrides
-	maxAttempts uint32
+	taskExecID       taskExecutionID
+	o                pluginCore.TaskOverrides
+	maxAttempts      uint32
+	resourcePoolInfo map[string]*event.ResourcePoolInfo
 }
 
 func (t taskExecutionMetadata) GetTaskExecutionID() pluginCore.TaskExecutionID {
@@ -62,6 +65,14 @@ func (t taskExecutionMetadata) GetOverrides() pluginCore.TaskOverrides {
 
 func (t taskExecutionMetadata) GetMaxAttempts() uint32 {
 	return t.maxAttempts
+}
+
+func (t taskExecutionMetadata) GetResourcePoolInfo() []*event.ResourcePoolInfo {
+	response := make([]*event.ResourcePoolInfo, 0, len(t.resourcePoolInfo))
+	for _, resourcePoolInfo := range t.resourcePoolInfo {
+		response = append(response, resourcePoolInfo)
+	}
+	return response
 }
 
 type taskExecutionContext struct {
@@ -96,8 +107,22 @@ func (t taskExecutionContext) EventsRecorder() pluginCore.EventsRecorder {
 	return t.ber
 }
 
-func (t taskExecutionContext) ResourceManager() pluginCore.ResourceManager {
-	return t.rm
+func (t taskExecutionContext) AllocateResource(ctx context.Context, namespace pluginCore.ResourceNamespace, allocationToken string, constraintsSpec pluginCore.ResourceConstraintsSpec) (pluginCore.AllocationStatus, error) {
+	allocationStatus, err := t.rm.AllocateResource(ctx, namespace, allocationToken, constraintsSpec)
+	if err != nil {
+		return allocationStatus, err
+	}
+	t.tm.resourcePoolInfo[allocationToken] = &event.ResourcePoolInfo{
+		AllocationToken: allocationToken,
+		Namespace:       string(namespace),
+	}
+	return allocationStatus, nil
+}
+
+// During execution time, after an outstanding request is completed, the plugin need to use ReleaseResource() to release the allocation of the corresponding token
+// from the token pool in order to gain back the quota taken by the token
+func (t taskExecutionContext) ReleaseResource(ctx context.Context, namespace pluginCore.ResourceNamespace, allocationToken string) error {
+	return t.rm.ReleaseResource(ctx, namespace, allocationToken)
 }
 
 func (t taskExecutionContext) PluginStateReader() pluginCore.PluginStateReader {
@@ -170,6 +195,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
 			o:                     nCtx.Node(),
 			maxAttempts:           maxAttempts,
+			resourcePoolInfo:      make(map[string]*event.ResourcePoolInfo),
 		},
 		rm: resourcemanager.GetTaskResourceManager(
 			t.resourceManager, resourceNamespacePrefix, id),

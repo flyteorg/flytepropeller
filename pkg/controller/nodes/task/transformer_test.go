@@ -17,6 +17,7 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
 
+	pluginMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	handlerMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
 )
@@ -84,8 +85,26 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	mockExecContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
 	mockExecContext.OnGetParentInfo().Return(nil)
 
+	tID := &pluginMocks.TaskExecutionID{}
+	generatedName := "generated_name"
+	tID.OnGetGeneratedName().Return(generatedName)
+	tID.OnGetID().Return(*id)
+
+	tMeta := &pluginMocks.TaskExecutionMetadata{}
+	tMeta.OnGetTaskExecutionID().Return(tID)
+	resourcePoolInfo := []*event.ResourcePoolInfo{
+		{
+			Namespace:       "ns",
+			AllocationToken: "alloc_token",
+		},
+	}
+	tMeta.OnGetResourcePoolInfo().Return(resourcePoolInfo)
+
+	tCtx := &pluginMocks.TaskExecutionContext{}
+	tCtx.OnTaskExecutionMetadata().Return(tMeta)
+
 	tev, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
-		TaskExecID:            id,
+		TaskExecContext:       tCtx,
 		InputReader:           in,
 		OutputWriter:          out,
 		Info:                  pluginCore.PhaseInfoWaitingForResources(n, 0, "reason"),
@@ -107,15 +126,17 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, containerTaskType, tev.TaskType)
 	assert.Equal(t, "reason", tev.Reason)
 	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
+	assert.Equal(t, generatedName, tev.Metadata.GeneratedName)
+	assert.EqualValues(t, resourcePoolInfo, tev.Metadata.ResourcePoolInfo)
 
 	l := []*core.TaskLog{
 		{Uri: "x", Name: "y", MessageFormat: core.TaskLog_JSON},
 	}
 	c := &structpb.Struct{}
 	tev, err = ToTaskExecutionEvent(ToTaskExecutionEventInputs{
-		TaskExecID:   id,
-		InputReader:  in,
-		OutputWriter: out,
+		TaskExecContext: tCtx,
+		InputReader:     in,
+		OutputWriter:    out,
 		Info: pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{
 			OccurredAt: &n,
 			Logs:       l,
@@ -139,13 +160,15 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceClass)
 	assert.Equal(t, containerTaskType, tev.TaskType)
 	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
+	assert.Equal(t, generatedName, tev.Metadata.GeneratedName)
+	assert.EqualValues(t, resourcePoolInfo, tev.Metadata.ResourcePoolInfo)
 
 	defaultNodeExecutionMetadata := handlerMocks.NodeExecutionMetadata{}
 	defaultNodeExecutionMetadata.OnIsInterruptible().Return(false)
 	tev, err = ToTaskExecutionEvent(ToTaskExecutionEventInputs{
-		TaskExecID:   id,
-		InputReader:  in,
-		OutputWriter: out,
+		TaskExecContext: tCtx,
+		InputReader:     in,
+		OutputWriter:    out,
 		Info: pluginCore.PhaseInfoSuccess(&pluginCore.TaskInfo{
 			OccurredAt: &n,
 			Logs:       l,
@@ -171,6 +194,8 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Empty(t, event.TaskExecutionMetadata_DEFAULT, tev.Metadata.InstanceClass)
 	assert.Equal(t, containerTaskType, tev.TaskType)
 	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
+	assert.Equal(t, generatedName, tev.Metadata.GeneratedName)
+	assert.EqualValues(t, resourcePoolInfo, tev.Metadata.ResourcePoolInfo)
 }
 
 func TestToTransitionType(t *testing.T) {
@@ -180,6 +205,7 @@ func TestToTransitionType(t *testing.T) {
 
 func TestToTaskExecutionEventWithParent(t *testing.T) {
 	tkID := &core.Identifier{}
+
 	nodeID := &core.NodeExecutionIdentifier{
 		NodeId: "n1234567812345678123344568",
 	}
@@ -208,13 +234,31 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 	mockParentInfo.OnCurrentAttempt().Return(uint32(2))
 	mockExecContext.OnGetParentInfo().Return(mockParentInfo)
 
+	tID := &pluginMocks.TaskExecutionID{}
+	generatedName := "generated_name"
+	tID.OnGetGeneratedName().Return(generatedName)
+	tID.OnGetID().Return(*id)
+
+	tMeta := &pluginMocks.TaskExecutionMetadata{}
+	tMeta.OnGetTaskExecutionID().Return(tID)
+	resourcePoolInfo := []*event.ResourcePoolInfo{
+		{
+			Namespace:       "ns",
+			AllocationToken: "alloc_token",
+		},
+	}
+	tMeta.OnGetResourcePoolInfo().Return(resourcePoolInfo)
+
+	tCtx := &pluginMocks.TaskExecutionContext{}
+	tCtx.OnTaskExecutionMetadata().Return(tMeta)
+
 	tev, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
+		TaskExecContext:       tCtx,
 		InputReader:           in,
 		OutputWriter:          out,
 		Info:                  pluginCore.PhaseInfoWaitingForResources(n, 0, "reason"),
 		NodeExecutionMetadata: &nodeExecutionMetadata,
 		ExecContext:           mockExecContext,
-		TaskExecID:            id,
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
 	})
@@ -234,15 +278,17 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 	assert.Equal(t, containerTaskType, tev.TaskType)
 	assert.Equal(t, "reason", tev.Reason)
 	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
+	assert.Equal(t, generatedName, tev.Metadata.GeneratedName)
+	assert.EqualValues(t, resourcePoolInfo, tev.Metadata.ResourcePoolInfo)
 
 	l := []*core.TaskLog{
 		{Uri: "x", Name: "y", MessageFormat: core.TaskLog_JSON},
 	}
 	c := &structpb.Struct{}
 	tev, err = ToTaskExecutionEvent(ToTaskExecutionEventInputs{
-		TaskExecID:   id,
-		InputReader:  in,
-		OutputWriter: out,
+		TaskExecContext: tCtx,
+		InputReader:     in,
+		OutputWriter:    out,
 		Info: pluginCore.PhaseInfoRunning(1, &pluginCore.TaskInfo{
 			OccurredAt: &n,
 			Logs:       l,
@@ -266,4 +312,6 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 	assert.Equal(t, event.TaskExecutionMetadata_INTERRUPTIBLE, tev.Metadata.InstanceClass)
 	assert.Equal(t, containerTaskType, tev.TaskType)
 	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
+	assert.Equal(t, generatedName, tev.Metadata.GeneratedName)
+	assert.EqualValues(t, resourcePoolInfo, tev.Metadata.ResourcePoolInfo)
 }
