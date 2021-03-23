@@ -107,6 +107,7 @@ func (t taskExecutionContext) EventsRecorder() pluginCore.EventsRecorder {
 	return t.ber
 }
 
+// During execution time, plugins can call AllocateResource() to register a token to the token pool associated with a resource with the resource manager.
 func (t taskExecutionContext) AllocateResource(ctx context.Context, namespace pluginCore.ResourceNamespace, allocationToken string, constraintsSpec pluginCore.ResourceConstraintsSpec) (pluginCore.AllocationStatus, error) {
 	allocationStatus, err := t.rm.AllocateResource(ctx, namespace, allocationToken, constraintsSpec)
 	if err != nil {
@@ -119,7 +120,7 @@ func (t taskExecutionContext) AllocateResource(ctx context.Context, namespace pl
 	return allocationStatus, nil
 }
 
-// During execution time, after an outstanding request is completed, the plugin need to use ReleaseResource() to release the allocation of the corresponding token
+// During execution time, after an outstanding request is completed, the plugin needs to use ReleaseResource() to release the allocation of the corresponding token
 // from the token pool in order to gain back the quota taken by the token
 func (t taskExecutionContext) ReleaseResource(ctx context.Context, namespace pluginCore.ResourceNamespace, allocationToken string) error {
 	return t.rm.ReleaseResource(ctx, namespace, allocationToken)

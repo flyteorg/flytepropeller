@@ -180,7 +180,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 		return dynamicWorkflowContext{}, err
 	}
 
-	// TODO: InputReader addition to querying Admin for launch plans, we also need to get all the tasks that are missing from the dynamic job spec.
+	// TODO: In addition to querying Admin for launch plans, we also need to get all the tasks that are missing from the dynamic job spec.
 	// 	 	 The reason they might be missing is because if a user yields a task that is SdkTask.fetch'ed, it should not be included
 	// 	     See https://github.com/flyteorg/flyte/issues/219 for more information.
 

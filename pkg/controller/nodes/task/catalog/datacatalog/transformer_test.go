@@ -256,7 +256,7 @@ func TestGetSourceFromMetadata(t *testing.T) {
 			},
 			RetryAttempt: 0,
 		}},
-		// InputReader legacy only taskVersionKey is available
+		// In legacy only taskVersionKey is available
 		{"legacy", args{datasetMd: GetDatasetMetadataForSource(&tID).KeyMap, currentID: currentTaskID}, &core.TaskExecutionIdentifier{
 			TaskId: &core.Identifier{
 				ResourceType: core.ResourceType_TASK,

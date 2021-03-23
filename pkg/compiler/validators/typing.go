@@ -77,7 +77,7 @@ func (t collectionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 // Schemas are more complex types in the Flyte ecosystem. A schema is considered castable in the following
 // cases.
 //
-//    1. The downstream schema has no column types specified.  InputReader such a case, it accepts all schema input since it is
+//    1. The downstream schema has no column types specified.  In such a case, it accepts all schema input since it is
 //       generic.
 //
 //    2. The downstream schema has a subset of the upstream columns and they match perfectly.
