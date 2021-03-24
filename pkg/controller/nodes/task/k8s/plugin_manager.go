@@ -97,11 +97,8 @@ type PluginManager struct {
 	kubeClient      pluginsCore.KubeClient
 	metrics         PluginMetrics
 	// Per namespace-resource
-	backOffController            *backoff.Controller
-	resourceLevelMonitor         *ResourceLevelMonitor
-	disableInjectOwnerReferences bool
-	disableInjectFinalizer       bool
-	GeneratedNameMaxLength       *int
+	backOffController    *backoff.Controller
+	resourceLevelMonitor *ResourceLevelMonitor
 }
 
 func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o client.Object, cfg *config.K8sPluginConfig) {
@@ -110,19 +107,20 @@ func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetad
 	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
 	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
 
-	if !e.disableInjectOwnerReferences {
+	if !e.plugin.GetProperties().DisableInjectOwnerReferences {
 		o.SetOwnerReferences([]metav1.OwnerReference{taskCtx.GetOwnerReference()})
 	}
 
-	if cfg.InjectFinalizer && !e.disableInjectFinalizer {
+	if cfg.InjectFinalizer && !e.plugin.GetProperties().DisableInjectFinalizer {
 		f := append(o.GetFinalizers(), finalizer)
 		o.SetFinalizers(f)
 	}
 }
 
 func (e *PluginManager) GetProperties() pluginsCore.PluginProperties {
+	props := e.plugin.GetProperties()
 	return pluginsCore.PluginProperties{
-		GeneratedNameMaxLength: e.GeneratedNameMaxLength,
+		GeneratedNameMaxLength: props.GeneratedNameMaxLength,
 	}
 }
 
@@ -435,7 +433,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	}
 
 	workflowParentPredicate := func(o metav1.Object) bool {
-		if entry.DisableInjectOwnerReferences {
+		if entry.Plugin.GetProperties().DisableInjectOwnerReferences {
 			return true
 		}
 
@@ -529,15 +527,12 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	rm.RunCollectorOnce(ctx)
 
 	return &PluginManager{
-		id:                           entry.ID,
-		plugin:                       entry.Plugin,
-		resourceToWatch:              entry.ResourceToWatch,
-		metrics:                      newPluginMetrics(metricsScope),
-		kubeClient:                   kubeClient,
-		resourceLevelMonitor:         rm,
-		disableInjectOwnerReferences: entry.DisableInjectOwnerReferences,
-		disableInjectFinalizer:       entry.DisableInjectFinalizer,
-		GeneratedNameMaxLength:       entry.GeneratedNameMaxLength,
+		id:                   entry.ID,
+		plugin:               entry.Plugin,
+		resourceToWatch:      entry.ResourceToWatch,
+		metrics:              newPluginMetrics(metricsScope),
+		kubeClient:           kubeClient,
+		resourceLevelMonitor: rm,
 	}, nil
 }
 

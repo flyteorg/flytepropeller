@@ -106,16 +106,20 @@ func Test_task_Setup(t *testing.T) {
 	corePluginType := "core"
 	corePlugin := &pluginCoreMocks.Plugin{}
 	corePlugin.On("GetID").Return(corePluginType)
+	corePlugin.OnGetProperties().Return(pluginCore.PluginProperties{})
 
 	corePluginDefaultType := "coredefault"
 	corePluginDefault := &pluginCoreMocks.Plugin{}
 	corePluginDefault.On("GetID").Return(corePluginDefaultType)
+	corePluginDefault.OnGetProperties().Return(pluginCore.PluginProperties{})
 
 	k8sPluginType := "k8s"
 	k8sPlugin := &pluginK8sMocks.Plugin{}
+	k8sPlugin.OnGetProperties().Return(pluginK8s.PluginProperties{})
 
 	k8sPluginDefaultType := "k8sdefault"
 	k8sPluginDefault := &pluginK8sMocks.Plugin{}
+	k8sPluginDefault.OnGetProperties().Return(pluginK8s.PluginProperties{})
 
 	corePluginEntry := pluginCore.PluginEntry{
 		ID:                  corePluginType,

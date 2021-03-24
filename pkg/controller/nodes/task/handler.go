@@ -214,7 +214,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		sCtxFinal := newNameSpacedSetupCtx(
 			tSCtx, newResourceManagerBuilder.GetResourceRegistrar(pluginResourceNamespacePrefix))
 		logger.Infof(ctx, "Loading Plugin [%s] ENABLED", p.ID)
-		cp, err := p.LoadPlugin(ctx, sCtxFinal)
+		cp, err := pluginCore.LoadPlugin(ctx, sCtxFinal, p)
 		if err != nil {
 			return regErrors.Wrapf(err, "failed to load plugin - %s", p.ID)
 		}

@@ -139,9 +139,6 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 	length := IDMaxLength
 	if l := plugin.GetProperties().GeneratedNameMaxLength; l != nil {
 		length = *l
-		if length <= 0 {
-			return nil, errors.Errorf(errors.RuntimeExecutionError, nCtx.NodeID(), "GeneratedNameMaxLength shoud greater then 0")
-		}
 	}
 
 	uniqueID, err := utils.FixedLengthUniqueIDForParts(length, nCtx.NodeExecutionMetadata().GetOwnerID().Name, currentNodeUniqueID, strconv.Itoa(int(id.RetryAttempt)))
