@@ -77,8 +77,6 @@ type Proxy struct {
 	ResourcePoolInfo        map[string]*event.ResourcePoolInfo
 }
 
-//go:generate mockery -name TaskResourceManager -case=underscore
-
 type TaskResourceManager interface {
 	pluginCore.ResourceManager
 	GetResourcePoolInfo() []*event.ResourcePoolInfo
