@@ -101,7 +101,6 @@ func TestToTaskExecutionEvent(t *testing.T) {
 			AllocationToken: "alloc_token",
 		},
 	}
-	tCtx.OnGetResourcePoolInfo().Return(resourcePoolInfo)
 
 	tev, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
 		TaskExecContext:       tCtx,
@@ -112,6 +111,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 		ExecContext:           mockExecContext,
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
+		ResourcePoolInfo:      resourcePoolInfo,
 	})
 	assert.NoError(t, err)
 	assert.Nil(t, tev.Logs)
@@ -146,6 +146,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 		ExecContext:           mockExecContext,
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
+		ResourcePoolInfo:      resourcePoolInfo,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_RUNNING, tev.Phase)
@@ -178,6 +179,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 		ExecContext:           mockExecContext,
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
+		ResourcePoolInfo:      resourcePoolInfo,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_SUCCEEDED, tev.Phase)
@@ -250,7 +252,6 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 			AllocationToken: "alloc_token",
 		},
 	}
-	tCtx.OnGetResourcePoolInfo().Return(resourcePoolInfo)
 
 	tev, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
 		TaskExecContext:       tCtx,
@@ -261,6 +262,7 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 		ExecContext:           mockExecContext,
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
+		ResourcePoolInfo:      resourcePoolInfo,
 	})
 	assert.NoError(t, err)
 	expectedNodeID := &core.NodeExecutionIdentifier{
@@ -298,6 +300,7 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 		ExecContext:           mockExecContext,
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
+		ResourcePoolInfo:      resourcePoolInfo,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_RUNNING, tev.Phase)

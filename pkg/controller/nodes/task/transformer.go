@@ -78,6 +78,7 @@ type ToTaskExecutionEventInputs struct {
 	ExecContext           executors.ExecutionContext
 	TaskType              string
 	PluginID              string
+	ResourcePoolInfo      []*event.ResourcePoolInfo
 }
 
 func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutionEvent, error) {
@@ -103,7 +104,7 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 	}
 	metadata.PluginIdentifier = input.PluginID
 	metadata.GeneratedName = input.TaskExecContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	metadata.ResourcePoolInfo = input.TaskExecContext.GetResourcePoolInfo()
+	metadata.ResourcePoolInfo = input.ResourcePoolInfo
 	tev := &event.TaskExecutionEvent{
 		TaskId:                taskExecID.TaskId,
 		ParentNodeExecutionId: nodeExecutionID,

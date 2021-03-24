@@ -5,8 +5,6 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
@@ -124,10 +122,6 @@ func (t *taskExecutionContext) PluginStateWriter() pluginCore.PluginStateWriter 
 
 func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 	return t.sm
-}
-
-func (t taskExecutionContext) GetResourcePoolInfo() []*event.ResourcePoolInfo {
-	return t.rm.GetResourcePoolInfo()
 }
 
 func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.NodeExecutionContext, pluginID string) (*taskExecutionContext, error) {

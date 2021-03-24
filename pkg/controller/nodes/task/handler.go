@@ -586,6 +586,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			ExecContext:           nCtx.ExecutionContext(),
 			TaskType:              ttype,
 			PluginID:              p.GetID(),
+			ResourcePoolInfo:      tCtx.rm.GetResourcePoolInfo(),
 		})
 		if err != nil {
 			return handler.UnknownTransition, err
