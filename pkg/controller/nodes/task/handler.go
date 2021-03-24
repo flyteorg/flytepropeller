@@ -609,6 +609,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		ExecContext:           nCtx.ExecutionContext(),
 		TaskType:              ttype,
 		PluginID:              p.GetID(),
+		ResourcePoolInfo:      tCtx.rm.GetResourcePoolInfo(),
 	})
 	if err != nil {
 		logger.Errorf(ctx, "failed to convert plugin transition to TaskExecutionEvent. Error: %s", err.Error())
