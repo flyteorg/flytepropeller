@@ -112,13 +112,12 @@ func (p *pluginRequestedTransition) TransitionPreviouslyRecorded() {
 	p.previouslyObserved = true
 }
 
-func (p *pluginRequestedTransition) FinalTaskEvent(id *core.TaskExecutionIdentifier, in io.InputFilePaths, out io.OutputFilePaths,
-	nodeExecutionMetadata handler.NodeExecutionMetadata, execContext executors.ExecutionContext) (*event.TaskExecutionEvent, error) {
+func (p *pluginRequestedTransition) FinalTaskEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutionEvent, error) {
 	if p.previouslyObserved {
 		return nil, nil
 	}
-
-	return ToTaskExecutionEvent(id, in, out, p.pInfo, nodeExecutionMetadata, execContext)
+	input.Info = p.pInfo
+	return ToTaskExecutionEvent(input)
 }
 
 func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference, taskMetadata *event.TaskNodeMetadata) {
@@ -215,7 +214,7 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 		sCtxFinal := newNameSpacedSetupCtx(
 			tSCtx, newResourceManagerBuilder.GetResourceRegistrar(pluginResourceNamespacePrefix))
 		logger.Infof(ctx, "Loading Plugin [%s] ENABLED", p.ID)
-		cp, err := p.LoadPlugin(ctx, sCtxFinal)
+		cp, err := pluginCore.LoadPlugin(ctx, sCtxFinal, p)
 		if err != nil {
 			return regErrors.Wrapf(err, "failed to load plugin - %s", p.ID)
 		}
@@ -477,7 +476,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		logger.Infof(ctx, "Node level caching is disabled. Skipping catalog read.")
 	}
 
-	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p.GetID())
+	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p)
 	if err != nil {
 		return handler.UnknownTransition, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
 	}
@@ -575,11 +574,20 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "plugin transition is not observed and no error as well.")
 	}
 
-	execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	// STEP 4: Send buffered events!
 	logger.Debugf(ctx, "Sending buffered Task events.")
 	for _, ev := range tCtx.ber.GetAll(ctx) {
-		evInfo, err := ToTaskExecutionEvent(&execID, nCtx.InputReader(), tCtx.ow, ev, nCtx.NodeExecutionMetadata(), nCtx.ExecutionContext())
+		evInfo, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
+			TaskExecContext:       tCtx,
+			InputReader:           nCtx.InputReader(),
+			OutputWriter:          tCtx.ow,
+			Info:                  ev,
+			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
+			ExecContext:           nCtx.ExecutionContext(),
+			TaskType:              ttype,
+			PluginID:              p.GetID(),
+			ResourcePoolInfo:      tCtx.rm.GetResourcePoolInfo(),
+		})
 		if err != nil {
 			return handler.UnknownTransition, err
 		}
@@ -593,7 +601,16 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 	// STEP 5: Send Transition events
 	logger.Debugf(ctx, "Sending transition event for plugin phase [%s]", pluginTrns.pInfo.Phase().String())
-	evInfo, err := pluginTrns.FinalTaskEvent(&execID, nCtx.InputReader(), tCtx.ow, nCtx.NodeExecutionMetadata(), nCtx.ExecutionContext())
+	evInfo, err := pluginTrns.FinalTaskEvent(ToTaskExecutionEventInputs{
+		TaskExecContext:       tCtx,
+		InputReader:           nCtx.InputReader(),
+		OutputWriter:          tCtx.ow,
+		NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
+		ExecContext:           nCtx.ExecutionContext(),
+		TaskType:              ttype,
+		PluginID:              p.GetID(),
+		ResourcePoolInfo:      tCtx.rm.GetResourcePoolInfo(),
+	})
 	if err != nil {
 		logger.Errorf(ctx, "failed to convert plugin transition to TaskExecutionEvent. Error: %s", err.Error())
 		return handler.UnknownTransition, err
@@ -645,7 +662,7 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 		return errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
 	}
 
-	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p.GetID())
+	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p)
 	if err != nil {
 		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
 	}
@@ -655,8 +672,8 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 			if r := recover(); r != nil {
 				t.metrics.pluginPanics.Inc(ctx)
 				stack := debug.Stack()
-				logger.Errorf(ctx, "Panic in plugin.Abort for TaskType [%s]", tCtx.tr.GetTaskType())
-				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", tCtx.tr.GetTaskType(), string(stack))
+				logger.Errorf(ctx, "Panic in plugin.Abort for TaskType [%s]", ttype)
+				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", ttype, string(stack))
 			}
 		}()
 
@@ -701,7 +718,7 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 		return errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
 	}
 
-	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p.GetID())
+	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p)
 	if err != nil {
 		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
 	}
@@ -711,8 +728,8 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 			if r := recover(); r != nil {
 				t.metrics.pluginPanics.Inc(ctx)
 				stack := debug.Stack()
-				logger.Errorf(ctx, "Panic in plugin.Finalize for TaskType [%s]", tCtx.tr.GetTaskType())
-				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", tCtx.tr.GetTaskType(), string(stack))
+				logger.Errorf(ctx, "Panic in plugin.Finalize for TaskType [%s]", ttype)
+				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", ttype, string(stack))
 			}
 		}()
 		childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
