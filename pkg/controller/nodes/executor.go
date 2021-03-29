@@ -684,6 +684,9 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 		// has been queued already
 		if currentNode.GetKind() == v1alpha1.NodeKindTask && nodeStatus.GetPhase() == v1alpha1.NodePhaseQueued {
 			maxParallelism := execContext.GetExecutionConfig().MaxParallelism
+			if maxParallelism == 0 {
+				maxParallelism = 25
+			}
 			if maxParallelism > 0 {
 				// If we are queued, let us see if we can proceed within the node parallelism bounds
 				if execContext.CurrentParallelism() >= maxParallelism {

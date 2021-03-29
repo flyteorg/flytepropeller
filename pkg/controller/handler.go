@@ -269,7 +269,8 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		}
 		logger.Infof(ctx, "FastFollow Enabled. Detected State change, we will try another round. StreakLength [%d]", streak)
 		w = newWf
-		t.Stop()
+		logger.Warnf(ctx, "TOTAL TIME FOR ROUND: %f ms", t.Stop())
+		// t.Stop()
 	}
 	logger.Infof(ctx, "Streak ended at [%d]/Max: [%d]", streak, maxLength)
 	return nil
