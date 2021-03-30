@@ -22,6 +22,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// IsWorkflowTerminated returns a true if the Workflow Phase is in a Terminal Phase, else returns a false
+func IsWorkflowTerminated(p core.WorkflowExecution_Phase) bool {
+	return p == core.WorkflowExecution_ABORTED || p == core.WorkflowExecution_FAILED || p == core.WorkflowExecution_SUCCEEDED
+}
+
 // Executor for Launchplans that executes on a remote FlyteAdmin service (if configured)
 type adminLaunchPlanExecutor struct {
 	adminClient service.AdminServiceClient
@@ -141,6 +146,16 @@ func (a *adminLaunchPlanExecutor) syncItem(ctx context.Context, batch cache.Batc
 	resp = make([]cache.ItemSyncResponse, 0, len(batch))
 	for _, obj := range batch {
 		exec := obj.GetItem().(executionCacheItem)
+
+		// Is workflow already terminated, then no need to fetch information, also the item can be dropped from the cache
+		if exec.ExecutionClosure != nil {
+			if IsWorkflowTerminated(exec.ExecutionClosure.Phase) {
+				logger.Debugf(ctx, "Workflow [%s] is already completed, will not fetch execution information", exec.ExecutionClosure.WorkflowId)
+				continue
+			}
+		}
+
+		// Workflow is not already terminated, lets check the status
 		req := &admin.WorkflowExecutionGetRequest{
 			Id: &exec.WorkflowExecutionIdentifier,
 		}
@@ -167,6 +182,7 @@ func (a *adminLaunchPlanExecutor) syncItem(ctx context.Context, batch cache.Batc
 			continue
 		}
 
+		// Update the cache with the retrieved status
 		resp = append(resp, cache.ItemSyncResponse{
 			ID: obj.GetID(),
 			Item: executionCacheItem{
