@@ -153,8 +153,8 @@ func (a *adminLaunchPlanExecutor) syncItem(ctx context.Context, batch cache.Batc
 			if IsWorkflowTerminated(exec.ExecutionClosure.Phase) {
 				logger.Debugf(ctx, "Workflow [%s] is already completed, will not fetch execution information", exec.ExecutionClosure.WorkflowId)
 				resp = append(resp, cache.ItemSyncResponse{
-					ID: obj.GetID(),
-					Item: exec,
+					ID:     obj.GetID(),
+					Item:   exec,
 					Action: cache.Unchanged,
 				})
 				continue
