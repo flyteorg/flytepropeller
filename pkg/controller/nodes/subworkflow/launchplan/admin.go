@@ -24,7 +24,8 @@ import (
 
 // IsWorkflowTerminated returns a true if the Workflow Phase is in a Terminal Phase, else returns a false
 func IsWorkflowTerminated(p core.WorkflowExecution_Phase) bool {
-	return p == core.WorkflowExecution_ABORTED || p == core.WorkflowExecution_FAILED || p == core.WorkflowExecution_SUCCEEDED
+	return p == core.WorkflowExecution_ABORTED || p == core.WorkflowExecution_FAILED ||
+		p == core.WorkflowExecution_SUCCEEDED || p == core.WorkflowExecution_TIMED_OUT
 }
 
 // Executor for Launchplans that executes on a remote FlyteAdmin service (if configured)
@@ -151,6 +152,11 @@ func (a *adminLaunchPlanExecutor) syncItem(ctx context.Context, batch cache.Batc
 		if exec.ExecutionClosure != nil {
 			if IsWorkflowTerminated(exec.ExecutionClosure.Phase) {
 				logger.Debugf(ctx, "Workflow [%s] is already completed, will not fetch execution information", exec.ExecutionClosure.WorkflowId)
+				resp = append(resp, cache.ItemSyncResponse{
+					ID: obj.GetID(),
+					Item: exec,
+					Action: cache.Unchanged,
+				})
 				continue
 			}
 		}
