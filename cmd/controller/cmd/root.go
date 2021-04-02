@@ -4,7 +4,7 @@ package cmd
 import (
 	"context"
 	"flag"
-	"fmt"
+	"github.com/sirupsen/logrus"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -70,9 +70,9 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	version.LogBuildInformation(appName)
-	fmt.Printf("Detected: %d CPU's", runtime.NumCPU())
+	logrus.Infof("Detected: %d CPU's\n", runtime.NumCPU())
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		logrus.Error(err)
 		os.Exit(1)
 	}
 }
