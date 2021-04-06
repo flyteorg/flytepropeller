@@ -9,8 +9,6 @@ import (
 	"runtime/pprof"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/flyteorg/flytestdlib/contextutils"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
@@ -71,9 +69,9 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	version.LogBuildInformation(appName)
-	logrus.Infof("Detected: %d CPU's\n", runtime.NumCPU())
+	logger.Infof(context.TODO(), "Detected: %d CPU's\n", runtime.NumCPU())
 	if err := rootCmd.Execute(); err != nil {
-		logrus.Error(err)
+		logger.Error(context.TODO(), err)
 		os.Exit(1)
 	}
 }
