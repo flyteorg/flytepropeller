@@ -132,23 +132,32 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	dynamicNodeStatus.SetOutputDir(nCtx.NodeStatus().GetOutputDir())
 	dynamicNodeStatus.SetParentTaskID(execID)
 
-	// cacheHitStopWatch := d.metrics.CacheHit.Start(ctx)
+	cacheHitStopWatch := d.metrics.CacheHit.Start(ctx)
 	// Check if we have compiled the workflow before:
 	// If there is a cached compiled Workflow, load and return it.
-	// if ok, err := f.CacheExists(ctx); err != nil {
-	//	logger.Warnf(ctx, "Failed to call head on compiled futures file. Error: %v", err)
-	//	return nil, false, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to do HEAD on compiled futures file.")
-	// } else if ok {
-	//	// It exists, load and return it
-	//	compiledWf, err := f.RetrieveCache(ctx)
-	//	if err != nil {
-	//		logger.Warnf(ctx, "Failed to load cached flyte workflow , this will cause the dynamic workflow to be recompiled. Error: %v", err)
-	//		d.metrics.CacheError.Inc(ctx)
-	//	} else {
-	//		cacheHitStopWatch.Stop()
-	//		return newContextualWorkflow(nCtx.Workflow(), compiledWf, dynamicNodeStatus, compiledWf.Tasks, compiledWf.SubWorkflows), true, nil
-	//	}
-	// }
+	if ok, err := f.CacheExists(ctx); err != nil {
+		logger.Warnf(ctx, "Failed to call head on compiled futures file. Error: %v", err)
+		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem,  err, "Failed to do HEAD on compiled futures file.")
+	} else if ok {
+		// It exists, load and return it
+		compiledWf, err := f.RetrieveCache(ctx)
+		if err != nil {
+			logger.Warnf(ctx, "Failed to load cached flyte workflow , this will cause the dynamic workflow to be recompiled. Error: %v", err)
+			d.metrics.CacheError.Inc(ctx)
+		} else {
+			cacheHitStopWatch.Stop()
+			newParentInfo, err := node_common.CreateParentInfo(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID(), nCtx.CurrentAttempt())
+			if err != nil {
+				return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "failed to generate uniqueID")
+			}
+			return dynamicWorkflowContext{
+				isDynamic:   true,
+				subWorkflow: compiledWf,
+				execContext: executors.NewExecutionContext(nCtx.ExecutionContext(), compiledWf, compiledWf, newParentInfo, nCtx.ExecutionContext()),
+				nodeLookup:  executors.NewNodeLookup(compiledWf, dynamicNodeStatus),
+			}, nil
+		}
+	}
 
 	// We know for sure that futures file was generated. Lets read it
 	djSpec, err := f.Read(ctx)
