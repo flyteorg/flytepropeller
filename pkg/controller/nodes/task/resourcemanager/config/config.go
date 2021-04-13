@@ -18,8 +18,7 @@ const (
 var (
 	defaultConfig = Config{
 		Type: TypeNoop,
-		// TODO: Noop Resource Manager doesn't use MaxQuota. Maybe we can remove it?
-		ResourceMaxQuota: 1000,
+		ResourceMaxQuota: 10000,
 	}
 
 	configSection = config.MustRegisterSubSection(configSectionKey, &defaultConfig)

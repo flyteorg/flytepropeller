@@ -79,7 +79,11 @@ var (
 			Timeout: config.Duration{Duration: 30 * time.Second},
 		},
 		LeaderElection: LeaderElectionConfig{
-			Enabled:       false,
+			Enabled:       true,
+			LockConfigMap: types.NamespacedName{
+				Name: "propeller-leader",
+				Namespace: "flyte",
+			},
 			LeaseDuration: config.Duration{Duration: time.Second * 15},
 			RenewDeadline: config.Duration{Duration: time.Second * 10},
 			RetryPeriod:   config.Duration{Duration: time.Second * 2},
