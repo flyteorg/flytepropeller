@@ -25,10 +25,11 @@ import (
 )
 
 type dynamicWorkflowContext struct {
-	execContext executors.ExecutionContext
-	subWorkflow v1alpha1.ExecutableWorkflow
-	nodeLookup  executors.NodeLookup
-	isDynamic   bool
+	execContext        executors.ExecutionContext
+	subWorkflow        v1alpha1.ExecutableWorkflow
+	subWorkflowClosure *core.CompiledWorkflowClosure
+	nodeLookup         executors.NodeLookup
+	isDynamic          bool
 }
 
 func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Context, djSpec *core.DynamicJobSpec,
@@ -137,7 +138,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	// If there is a cached compiled Workflow, load and return it.
 	if ok, err := f.CacheExists(ctx); err != nil {
 		logger.Warnf(ctx, "Failed to call head on compiled futures file. Error: %v", err)
-		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem,  err, "Failed to do HEAD on compiled futures file.")
+		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "Failed to do HEAD on compiled futures file.")
 	} else if ok {
 		// It exists, load and return it
 		compiledWf, err := f.RetrieveCache(ctx)
@@ -214,10 +215,11 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "failed to generate uniqueID")
 	}
 	return dynamicWorkflowContext{
-		isDynamic:   true,
-		subWorkflow: dynamicWf,
-		execContext: executors.NewExecutionContext(nCtx.ExecutionContext(), dynamicWf, dynamicWf, newParentInfo, nCtx.ExecutionContext()),
-		nodeLookup:  executors.NewNodeLookup(dynamicWf, dynamicNodeStatus),
+		isDynamic:          true,
+		subWorkflow:        dynamicWf,
+		subWorkflowClosure: closure,
+		execContext:        executors.NewExecutionContext(nCtx.ExecutionContext(), dynamicWf, dynamicWf, newParentInfo, nCtx.ExecutionContext()),
+		nodeLookup:         executors.NewNodeLookup(dynamicWf, dynamicNodeStatus),
 	}, nil
 }
 
