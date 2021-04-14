@@ -1,7 +1,9 @@
 package dynamic
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/flyteorg/flytepropeller/pkg/utils"
@@ -330,5 +332,88 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		_, err = d.buildContextualDynamicWorkflow(ctx, nCtx)
 		assert.Error(t, err)
 		assert.True(t, callsAdmin)
+	})
+	t.Run("dynamic wf cached", func(t *testing.T) {
+		ctx := context.Background()
+		lpID := &core.Identifier{
+			ResourceType: core.ResourceType_LAUNCH_PLAN,
+			Name:         "my_plan",
+			Project:      "p",
+			Domain:       "d",
+		}
+		djSpec := createDynamicJobSpecWithLaunchPlans()
+		finalOutput := storage.DataReference("/subnode")
+		nCtx := createNodeContext("test", finalOutput)
+
+		s := &dynamicNodeStateHolder{}
+		nCtx.On("NodeStateWriter").Return(s)
+
+		// Create a k8s Flyte workflow and store that in the cache
+		dynamicWf := &v1alpha1.FlyteWorkflow{
+			ServiceAccountName: "sa",
+		}
+
+		rawDynamicWf, err := json.Marshal(dynamicWf)
+		assert.NoError(t, err)
+		_, err = nCtx.DataStore().ConstructReference(ctx, nCtx.NodeStatus().GetOutputDir(), "futures_compiled.pb")
+		assert.NoError(t, err)
+		assert.NoError(t, nCtx.DataStore().WriteRaw(context.TODO(), storage.DataReference("/output-dir/futures_compiled.pb"), int64(len(rawDynamicWf)), storage.Options{}, bytes.NewReader(rawDynamicWf)))
+
+		f, err := nCtx.DataStore().ConstructReference(ctx, nCtx.NodeStatus().GetOutputDir(), "futures.pb")
+		assert.NoError(t, err)
+		assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, djSpec))
+
+		mockLPLauncher := &mocks5.Reader{}
+		var callsAdmin = false
+		mockLPLauncher.OnGetLaunchPlanMatch(ctx, lpID).Run(func(args mock.Arguments) {
+			// When a launch plan node is detected, a call should be made to Admin to fetch the interface for the LP
+			callsAdmin = true
+		}).Return(&admin.LaunchPlan{
+			Id: lpID,
+			Closure: &admin.LaunchPlanClosure{
+				ExpectedInputs: &core.ParameterMap{},
+				ExpectedOutputs: &core.VariableMap{
+					Variables: map[string]*core.Variable{
+						"x": {
+							Type: &core.LiteralType{
+								Type: &core.LiteralType_Simple{
+									Simple: core.SimpleType_INTEGER,
+								},
+							},
+							Description: "output of the launch plan",
+						},
+					},
+				},
+			},
+		}, nil)
+		h := &mocks6.TaskNodeHandler{}
+		n := &mocks4.Node{}
+		d := dynamicNodeTaskNodeHandler{
+			TaskNodeHandler: h,
+			nodeExecutor:    n,
+			lpReader:        mockLPLauncher,
+			metrics:         newMetrics(promutils.NewTestScope()),
+		}
+
+		execContext := &mocks4.ExecutionContext{}
+		immutableParentInfo := mocks4.ImmutableParentInfo{}
+		immutableParentInfo.OnGetUniqueID().Return("c1")
+		immutableParentInfo.OnCurrentAttempt().Return(uint32(2))
+		execContext.OnGetParentInfo().Return(&immutableParentInfo)
+		execContext.OnGetEventVersion().Return(v1alpha1.EventVersion1)
+		nCtx.OnExecutionContext().Return(execContext)
+
+		dCtx, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
+		assert.NoError(t, err)
+		assert.False(t, callsAdmin)
+		assert.True(t, dCtx.isDynamic)
+		assert.NotNil(t, dCtx.subWorkflow)
+		assert.NotNil(t, dCtx.execContext)
+		assert.NotNil(t, dCtx.execContext.GetParentInfo())
+		expectedParentUniqueID, err := utils.FixedLengthUniqueIDForParts(20, "c1", "2", "n1")
+		assert.Nil(t, err)
+		assert.Equal(t, expectedParentUniqueID, dCtx.execContext.GetParentInfo().GetUniqueID())
+		assert.Equal(t, uint32(1), dCtx.execContext.GetParentInfo().CurrentAttempt())
+		assert.NotNil(t, dCtx.nodeLookup)
 	})
 }
