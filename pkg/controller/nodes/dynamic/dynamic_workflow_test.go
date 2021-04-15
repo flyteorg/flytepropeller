@@ -366,7 +366,8 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		mockLPLauncher := &mocks5.Reader{}
 		var callsAdmin = false
 		mockLPLauncher.OnGetLaunchPlanMatch(ctx, lpID).Run(func(args mock.Arguments) {
-			// When a launch plan node is detected, a call should be made to Admin to fetch the interface for the LP
+			// When a launch plan node is detected, a call should be made to Admin to fetch the interface for the LP.
+			// However in the cached case no such call should be necessary.
 			callsAdmin = true
 		}).Return(&admin.LaunchPlan{
 			Id: lpID,
