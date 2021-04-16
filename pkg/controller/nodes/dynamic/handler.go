@@ -42,6 +42,7 @@ type metrics struct {
 	retrieveDynamicJobSpec labeled.StopWatch
 	CacheHit               labeled.StopWatch
 	CacheError             labeled.Counter
+	CacheMiss              labeled.Counter
 }
 
 func newMetrics(scope promutils.Scope) metrics {
@@ -50,6 +51,7 @@ func newMetrics(scope promutils.Scope) metrics {
 		retrieveDynamicJobSpec: labeled.NewStopWatch("retrieve_dynamic_spec", "Overhead of downloading and un-marshaling dynamic job spec", time.Microsecond, scope),
 		CacheHit:               labeled.NewStopWatch("dynamic_workflow_cache_hit", "A dynamic workflow was loaded from store.", time.Microsecond, scope),
 		CacheError:             labeled.NewCounter("cache_err", "A dynamic workflow failed to store or load from data store.", scope),
+		CacheMiss:              labeled.NewCounter("cache_miss", "A dynamic workflow did not already exist in the data store.", scope),
 	}
 }
 

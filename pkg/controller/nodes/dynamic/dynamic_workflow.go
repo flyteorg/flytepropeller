@@ -159,6 +159,7 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 			}, nil
 		}
 	}
+	d.metrics.CacheMiss.Inc(ctx)
 
 	// We know for sure that futures file was generated. Lets read it
 	djSpec, err := f.Read(ctx)
