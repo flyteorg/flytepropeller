@@ -127,6 +127,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 			if v != nil {
 				nev.TargetMetadata = v
 			}
+			logger.Warnf(context.TODO(), "+++sending event with task node info [%+v]", eInfo.TaskNodeInfo)
 		}
 	}
 	if eInfo != nil && eInfo.OutputInfo != nil {
