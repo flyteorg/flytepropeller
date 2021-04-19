@@ -116,7 +116,11 @@ func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, 
 	}
 
 	nextState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}
-	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil).WithPhaseVersion(sendingDynamicWorkflowPhaseVersion)), nextState, nil
+	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{
+		TaskNodeInfo: &handler.TaskNodeInfo{
+			TaskNodeMetadata: taskNodeInfoMetadata,
+		},
+	}).WithPhaseVersion(sendingDynamicWorkflowPhaseVersion)), nextState, nil
 }
 
 func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, nCtx handler.NodeExecutionContext, prevState handler.DynamicNodeState) (handler.Transition, handler.DynamicNodeState, error) {
