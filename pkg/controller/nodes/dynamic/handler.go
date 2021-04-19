@@ -98,17 +98,13 @@ func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, 
 	handler.Transition, handler.DynamicNodeState, error) {
 	// The first time this is called we go ahead and evaluate the dynamic node to build the workflow. We then cache
 	// this workflow definition and send it to be persisted by flyteadmin so that users can observe the structure.
-	logger.Warnf(ctx, "+++Producing dynamic workflow")
 	dCtx, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 	if err != nil {
-		logger.Warnf(ctx, "+++ 1")
 		if stdErrors.IsCausedBy(err, utils.ErrorCodeUser) {
-			logger.Warnf(ctx, "+++ 2")
 			return handler.DoTransition(handler.TransitionTypeEphemeral,
 				handler.PhaseInfoFailure(core.ExecutionError_USER, "DynamicWorkflowBuildFailed", err.Error(), nil),
 			), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: err.Error()}, nil
 		}
-		logger.Warnf(ctx, "+++ 3")
 		return handler.Transition{}, handler.DynamicNodeState{}, err
 	}
 	taskNodeInfoMetadata := &event.TaskNodeMetadata{}
@@ -118,7 +114,6 @@ func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, 
 			CompiledWorkflow: dCtx.subWorkflowClosure,
 		}
 	}
-	logger.Warnf(ctx, "++Produced dynamic workflow [%+v]", taskNodeInfoMetadata)
 
 	nextState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{
@@ -224,6 +219,7 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 			logger.Errorf(ctx, "handling producing dynamic workflow definition failed with error: %s", err.Error())
 			return trns, err
 		}
+		logger.Warnf(ctx, "++ produced dynamic workflow")
 	default:
 		trns, newState, err = d.handleParentNode(ctx, ds, nCtx)
 		if err != nil {
@@ -233,9 +229,11 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 	}
 
 	if err := nCtx.NodeStateWriter().PutDynamicNodeState(newState); err != nil {
+		logger.Warnf(ctx, "++ uh oh, failed to put dynamic node state")
 		return handler.UnknownTransition, err
 	}
 
+	logger.Warnf(ctx, "produced trns [%+v]", trns)
 	return trns, nil
 }
 

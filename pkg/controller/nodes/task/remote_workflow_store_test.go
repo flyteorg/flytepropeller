@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"github.com/golang/protobuf/proto"
 	"testing"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -69,6 +70,6 @@ func Test_cacheFlyteWorkflow(t *testing.T) {
 		assert.NoError(t, r.PutCompiledFlyteWorkflow(ctx, expected, location))
 		actual, err := r.GetCompiledWorkflow(ctx, location)
 		assert.NoError(t, err)
-		assert.Equal(t, expected, actual)
+		assert.True(t, proto.Equal(expected, actual))
 	})
 }
