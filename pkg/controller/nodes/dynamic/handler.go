@@ -116,7 +116,7 @@ func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, 
 	}
 
 	nextState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}
-	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{
+	return handler.DoTransition(handler.TransitionTypeBarrier, handler.PhaseInfoRunning(&handler.ExecutionInfo{
 		TaskNodeInfo: &handler.TaskNodeInfo{
 			TaskNodeMetadata: taskNodeInfoMetadata,
 		},
@@ -233,7 +233,7 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 		return handler.UnknownTransition, err
 	}
 
-	logger.Warnf(ctx, "produced trns [%+v]", trns)
+	logger.Warnf(ctx, "++ produced trns [%+v]", trns)
 	return trns, nil
 }
 
