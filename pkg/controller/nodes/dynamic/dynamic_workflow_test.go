@@ -436,6 +436,8 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 			storage.DataReference("s3://my-s3-bucket/foo/bar/futures.pb"), nil)
 		referenceConstructor.On("ConstructReference", mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("output-dir"), "futures_compiled.pb").Return(
 			storage.DataReference("s3://my-s3-bucket/foo/bar/futures_compiled.pb"), nil)
+		referenceConstructor.On("ConstructReference", mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("output-dir"), "dynamic_compiled.pb").Return(
+			storage.DataReference("s3://my-s3-bucket/foo/bar/dynamic_compiled.pb"), nil)
 		dataStore := &storage.DataStore{
 			ComposedProtobufStore: &composedPBStore,
 			ReferenceConstructor:  &referenceConstructor,
@@ -463,7 +465,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		nCtx.OnExecutionContext().Return(execContext)
 
 		_, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
-		assert.EqualError(t, err, "[system] Failed to do HEAD on compiled futures file., caused by: Failed to do HEAD on futures file.: foo")
+		assert.EqualError(t, err, "[system] Failed to do HEAD on compiled workflow files., caused by: Failed to do HEAD on futures file.: foo")
 	})
 	t.Run("dynamic wf cache write fails", func(t *testing.T) {
 		ctx := context.Background()
@@ -490,6 +492,8 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		referenceConstructor := storageMocks.ReferenceConstructor{}
 		referenceConstructor.On("ConstructReference", mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("output-dir"), "futures.pb").Return(
 			storage.DataReference("s3://my-s3-bucket/foo/bar/futures.pb"), nil)
+		referenceConstructor.On("ConstructReference", mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("output-dir"), "dynamic_compiled.pb").Return(
+			storage.DataReference("s3://my-s3-bucket/foo/bar/dynamic_compiled.pb"), nil)
 		referenceConstructor.On("ConstructReference", mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("output-dir"), "Node_1").Return(
 			storage.DataReference("s3://my-s3-bucket/foo/bar/Node_1"), nil)
 		referenceConstructor.On("ConstructReference", mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("s3://my-s3-bucket/foo/bar/Node_1"), "0").Return(

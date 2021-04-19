@@ -86,10 +86,11 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	}
 
 	nev := &event.NodeExecutionEvent{
-		Id:         nodeExecID,
-		Phase:      ToNodeExecEventPhase(info.GetPhase()),
-		InputUri:   reader.GetInputPath().String(),
-		OccurredAt: occurredTime,
+		Id:           nodeExecID,
+		Phase:        ToNodeExecEventPhase(info.GetPhase()),
+		InputUri:     reader.GetInputPath().String(),
+		OccurredAt:   occurredTime,
+		PhaseVersion: uint32(info.GetPhaseVersion()),
 	}
 
 	if eventVersion == v1alpha1.EventVersion0 && status.GetParentTaskID() != nil {
