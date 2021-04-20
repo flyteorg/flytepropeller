@@ -113,6 +113,7 @@ func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, 
 			Id:               dCtx.subWorkflowClosure.Primary.Template.Id,
 			CompiledWorkflow: dCtx.subWorkflowClosure,
 		}
+		logger.Warnf(ctx, "++ would send dynamic workflow [%+v]", dCtx.subWorkflowClosure.Primary.Template.Id)
 	}
 
 	nextState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}

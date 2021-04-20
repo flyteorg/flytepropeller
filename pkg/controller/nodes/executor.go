@@ -274,7 +274,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeEx
 	}
 
 	if phase.GetPhase() == handler.EPhaseRunning &&  phase.GetInfo() != nil && phase.GetInfo().TaskNodeInfo != nil {
-		logger.Warnf(ctx, "++ handled phase [%+v]", phase.GetInfo())
+		logger.Warnf(ctx, "++ handled phase [%+v]", phase.GetInfo().TaskNodeInfo)
 	}
 	return phase, nil
 }
