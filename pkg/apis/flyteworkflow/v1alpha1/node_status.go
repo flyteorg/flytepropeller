@@ -186,7 +186,6 @@ func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
 type NodeStatus struct {
 	MutableStruct
 	Phase                NodePhase     `json:"phase"`
-	PhaseVersion         int           `jsong:"phaseVersion"`
 	QueuedAt             *metav1.Time  `json:"queuedAt,omitempty"`
 	StartedAt            *metav1.Time  `json:"startedAt,omitempty"`
 	StoppedAt            *metav1.Time  `json:"stoppedAt,omitempty"`
@@ -393,10 +392,6 @@ func (in *NodeStatus) GetPhase() NodePhase {
 	return in.Phase
 }
 
-func (in *NodeStatus) GetPhaseVersion() int {
-	return in.PhaseVersion
-}
-
 func (in *NodeStatus) GetMessage() string {
 	return in.Message
 }
@@ -416,7 +411,7 @@ func (in *NodeStatus) GetOrCreateTaskStatus() MutableTaskNodeStatus {
 	return in.TaskNodeStatus
 }
 
-func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason string, err *core.ExecutionError, phaseVersion int) {
+func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason string, err *core.ExecutionError) {
 	if in.Phase == p {
 		// We will not update the phase multiple times. This prevents the comparison from returning false positive
 		return
@@ -458,7 +453,6 @@ func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason st
 	}
 
 	in.LastUpdatedAt = &n
-	in.PhaseVersion = phaseVersion
 	in.SetDirty()
 }
 

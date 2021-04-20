@@ -60,12 +60,11 @@ type ExecutionInfo struct {
 }
 
 type PhaseInfo struct {
-	p            EPhase
-	occurredAt   time.Time
-	err          *core.ExecutionError
-	info         *ExecutionInfo
-	reason       string
-	phaseVersion int
+	p          EPhase
+	occurredAt time.Time
+	err        *core.ExecutionError
+	info       *ExecutionInfo
+	reason     string
 }
 
 func (p PhaseInfo) GetPhase() EPhase {
@@ -88,29 +87,13 @@ func (p PhaseInfo) GetReason() string {
 	return p.reason
 }
 
-func (p PhaseInfo) GetPhaseVersion() int {
-	return p.phaseVersion
-}
-
 func (p PhaseInfo) WithInfo(i *ExecutionInfo) PhaseInfo {
 	return PhaseInfo{
-		p:            p.p,
-		occurredAt:   p.occurredAt,
-		err:          p.err,
-		info:         i,
-		reason:       p.reason,
-		phaseVersion: p.phaseVersion,
-	}
-}
-
-func (p PhaseInfo) WithPhaseVersion(phaseVersion int) PhaseInfo {
-	return PhaseInfo{
-		p:            p.p,
-		occurredAt:   p.occurredAt,
-		err:          p.err,
-		info:         p.info,
-		reason:       p.reason,
-		phaseVersion: phaseVersion,
+		p:          p.p,
+		occurredAt: p.occurredAt,
+		err:        p.err,
+		info:       i,
+		reason:     p.reason,
 	}
 }
 

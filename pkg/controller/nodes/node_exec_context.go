@@ -22,7 +22,6 @@ import (
 const NodeIDLabel = "node-id"
 const TaskNameLabel = "task-name"
 const NodeInterruptibleLabel = "interruptible"
-const defaultEventVersion = 0
 
 type nodeExecMetadata struct {
 	v1alpha1.Meta
@@ -52,21 +51,20 @@ func (e nodeExecMetadata) GetLabels() map[string]string {
 }
 
 type nodeExecContext struct {
-	store                  *storage.DataStore
-	tr                     handler.TaskReader
-	md                     handler.NodeExecutionMetadata
-	er                     events.TaskEventRecorder
-	inputs                 io.InputReader
-	node                   v1alpha1.ExecutableNode
-	nodeStatus             v1alpha1.ExecutableNodeStatus
-	nodeStatusEventVersion int
-	maxDatasetSizeBytes    int64
-	nsm                    *nodeStateManager
-	enqueueOwner           func() error
-	rawOutputPrefix        storage.DataReference
-	shardSelector          ioutils.ShardSelector
-	nl                     executors.NodeLookup
-	ic                     executors.ExecutionContext
+	store               *storage.DataStore
+	tr                  handler.TaskReader
+	md                  handler.NodeExecutionMetadata
+	er                  events.TaskEventRecorder
+	inputs              io.InputReader
+	node                v1alpha1.ExecutableNode
+	nodeStatus          v1alpha1.ExecutableNodeStatus
+	maxDatasetSizeBytes int64
+	nsm                 *nodeStateManager
+	enqueueOwner        func() error
+	rawOutputPrefix     storage.DataReference
+	shardSelector       ioutils.ShardSelector
+	nl                  executors.NodeLookup
+	ic                  executors.ExecutionContext
 }
 
 func (e nodeExecContext) ExecutionContext() executors.ExecutionContext {
@@ -129,10 +127,6 @@ func (e nodeExecContext) NodeStatus() v1alpha1.ExecutableNodeStatus {
 	return e.nodeStatus
 }
 
-func (e nodeExecContext) NodeStatusEventVersion() int {
-	return e.nodeStatusEventVersion
-}
-
 func (e nodeExecContext) NodeExecutionMetadata() handler.NodeExecutionMetadata {
 	return e.md
 }
@@ -142,7 +136,7 @@ func (e nodeExecContext) MaxDatasetSizeBytes() int64 {
 }
 
 func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup,
-	node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, nodeStatusEventVersion int, inputs io.InputReader, interruptible bool,
+	node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool,
 	maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager,
 	enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
 
@@ -168,21 +162,20 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 	md.nodeLabels = nodeLabels
 
 	return &nodeExecContext{
-		md:                     md,
-		store:                  store,
-		node:                   node,
-		nodeStatus:             nodeStatus,
-		nodeStatusEventVersion: nodeStatusEventVersion,
-		inputs:                 inputs,
-		er:                     er,
-		maxDatasetSizeBytes:    maxDatasetSize,
-		tr:                     tr,
-		nsm:                    nsm,
-		enqueueOwner:           enqueueOwner,
-		rawOutputPrefix:        rawOutputPrefix,
-		shardSelector:          outputShardSelector,
-		nl:                     nl,
-		ic:                     execContext,
+		md:                  md,
+		store:               store,
+		node:                node,
+		nodeStatus:          nodeStatus,
+		inputs:              inputs,
+		er:                  er,
+		maxDatasetSizeBytes: maxDatasetSize,
+		tr:                  tr,
+		nsm:                 nsm,
+		enqueueOwner:        enqueueOwner,
+		rawOutputPrefix:     rawOutputPrefix,
+		shardSelector:       outputShardSelector,
+		nl:                  nl,
+		ic:                  execContext,
 	}
 }
 
@@ -228,7 +221,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		rawOutputPrefix = storage.DataReference(executionContext.GetRawOutputDataConfig().OutputLocationPrefix)
 	}
 
-	return newNodeExecContext(ctx, c.store, executionContext, nl, n, s, defaultEventVersion,
+	return newNodeExecContext(ctx, c.store, executionContext, nl, n, s,
 		ioutils.NewCachedInputReader(
 			ctx,
 			ioutils.NewRemoteFileInputReader(

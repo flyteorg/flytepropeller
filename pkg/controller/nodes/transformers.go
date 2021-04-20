@@ -86,11 +86,10 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	}
 
 	nev := &event.NodeExecutionEvent{
-		Id:           nodeExecID,
-		Phase:        ToNodeExecEventPhase(info.GetPhase()),
-		InputUri:     reader.GetInputPath().String(),
-		OccurredAt:   occurredTime,
-		PhaseVersion: uint32(info.GetPhaseVersion()),
+		Id:         nodeExecID,
+		Phase:      ToNodeExecEventPhase(info.GetPhase()),
+		InputUri:   reader.GetInputPath().String(),
+		OccurredAt: occurredTime,
 	}
 
 	if eventVersion == v1alpha1.EventVersion0 && status.GetParentTaskID() != nil {
@@ -168,7 +167,7 @@ func ToK8sTime(t time.Time) v1.Time {
 func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateManager, s v1alpha1.ExecutableNodeStatus) {
 	// We update the phase only if it is not already updated
 	if np != s.GetPhase() {
-		s.UpdatePhase(np, ToK8sTime(p.GetOccurredAt()), p.GetReason(), p.GetErr(), p.GetPhaseVersion())
+		s.UpdatePhase(np, ToK8sTime(p.GetOccurredAt()), p.GetReason(), p.GetErr())
 	}
 	// Update TaskStatus
 	if n.t != nil {

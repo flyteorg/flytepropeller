@@ -613,38 +613,6 @@ func (_m *ExecutableNodeStatus) GetPhase() v1alpha1.NodePhase {
 	return r0
 }
 
-type ExecutableNodeStatus_GetPhaseVersion struct {
-	*mock.Call
-}
-
-func (_m ExecutableNodeStatus_GetPhaseVersion) Return(_a0 int) *ExecutableNodeStatus_GetPhaseVersion {
-	return &ExecutableNodeStatus_GetPhaseVersion{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *ExecutableNodeStatus) OnGetPhaseVersion() *ExecutableNodeStatus_GetPhaseVersion {
-	c := _m.On("GetPhaseVersion")
-	return &ExecutableNodeStatus_GetPhaseVersion{Call: c}
-}
-
-func (_m *ExecutableNodeStatus) OnGetPhaseVersionMatch(matchers ...interface{}) *ExecutableNodeStatus_GetPhaseVersion {
-	c := _m.On("GetPhaseVersion", matchers...)
-	return &ExecutableNodeStatus_GetPhaseVersion{Call: c}
-}
-
-// GetPhaseVersion provides a mock function with given fields:
-func (_m *ExecutableNodeStatus) GetPhaseVersion() int {
-	ret := _m.Called()
-
-	var r0 int
-	if rf, ok := ret.Get(0).(func() int); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(int)
-	}
-
-	return r0
-}
-
 type ExecutableNodeStatus_GetQueuedAt struct {
 	*mock.Call
 }
@@ -1073,9 +1041,9 @@ func (_m *ExecutableNodeStatus) SetParentTaskID(t *core.TaskExecutionIdentifier)
 	_m.Called(t)
 }
 
-// UpdatePhase provides a mock function with given fields: phase, occurredAt, reason, err, phaseVersion
-func (_m *ExecutableNodeStatus) UpdatePhase(phase v1alpha1.NodePhase, occurredAt v1.Time, reason string, err *core.ExecutionError, phaseVersion int) {
-	_m.Called(phase, occurredAt, reason, err, phaseVersion)
+// UpdatePhase provides a mock function with given fields: phase, occurredAt, reason, err
+func (_m *ExecutableNodeStatus) UpdatePhase(phase v1alpha1.NodePhase, occurredAt v1.Time, reason string, err *core.ExecutionError) {
+	_m.Called(phase, occurredAt, reason, err)
 }
 
 // VisitNodeStatuses provides a mock function with given fields: visitor

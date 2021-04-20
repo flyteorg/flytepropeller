@@ -29,8 +29,6 @@ import (
 //go:generate mockery -all -case=underscore
 
 const dynamicNodeID = "dynamic-node"
-const sendingDynamicWorkflowPhaseVersion = 1
-const handlingDynamicSubNodesPhaseVersion = 2
 
 type TaskNodeHandler interface {
 	handler.Node
@@ -120,7 +118,7 @@ func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, 
 		TaskNodeInfo: &handler.TaskNodeInfo{
 			TaskNodeMetadata: taskNodeInfoMetadata,
 		},
-	}).WithPhaseVersion(sendingDynamicWorkflowPhaseVersion)), nextState, nil
+	})), nextState, nil
 }
 
 func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, nCtx handler.NodeExecutionContext, prevState handler.DynamicNodeState) (handler.Transition, handler.DynamicNodeState, error) {
@@ -164,7 +162,7 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 			return trns.WithInfo(handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
 		}
 		taskNodeInfoMetadata := &event.TaskNodeMetadata{CacheStatus: status.GetCacheStatus(), CatalogKey: status.GetMetadata()}
-		trns.WithInfo(trns.Info().WithInfo(&handler.ExecutionInfo{TaskNodeInfo: &handler.TaskNodeInfo{TaskNodeMetadata: taskNodeInfoMetadata}}).WithPhaseVersion(handlingDynamicSubNodesPhaseVersion))
+		trns.WithInfo(trns.Info().WithInfo(&handler.ExecutionInfo{TaskNodeInfo: &handler.TaskNodeInfo{TaskNodeMetadata: taskNodeInfoMetadata}}))
 	}
 
 	return trns, newState, nil
