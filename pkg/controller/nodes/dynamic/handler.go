@@ -170,6 +170,7 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 				CompiledWorkflow: dCtx.subWorkflowClosure,
 			}
 		}
+		logger.Warnf(ctx, "++ Would send running with phaseVersion 1")
 		trns.WithInfo(trns.Info().WithInfo(&handler.ExecutionInfo{TaskNodeInfo: &handler.TaskNodeInfo{TaskNodeMetadata: taskNodeInfoMetadata}}).WithPhaseVersion(handlingDynamicSubNodesPhaseVersion))
 	}
 
@@ -189,7 +190,6 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 	logger.Infof(ctx, "Dynamic handler.Handle's called with phase %v.", ds.Phase)
 	switch ds.Phase {
 	case v1alpha1.DynamicNodePhaseExecuting:
-		logger.Warnf(ctx, "++ executing dynamic workflow")
 		trns, newState, err = d.handleDynamicSubNodes(ctx, nCtx, ds)
 		if err != nil {
 			logger.Errorf(ctx, "handling dynamic subnodes failed with error: %s", err.Error())
@@ -220,8 +220,6 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 			logger.Errorf(ctx, "handling producing dynamic workflow definition failed with error: %s", err.Error())
 			return trns, err
 		}
-		logger.Warnf(ctx, "++ produced dynamic workflow")
-		logger.Warnf(ctx, "++ produced trns [%+v]", trns)
 	default:
 		trns, newState, err = d.handleParentNode(ctx, ds, nCtx)
 		if err != nil {
