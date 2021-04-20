@@ -116,7 +116,7 @@ func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, 
 	}
 
 	nextState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}
-	return handler.DoTransition(handler.TransitionTypeBarrier, handler.PhaseInfoRunning(&handler.ExecutionInfo{
+	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{
 		TaskNodeInfo: &handler.TaskNodeInfo{
 			TaskNodeMetadata: taskNodeInfoMetadata,
 		},
@@ -189,6 +189,7 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 	logger.Infof(ctx, "Dynamic handler.Handle's called with phase %v.", ds.Phase)
 	switch ds.Phase {
 	case v1alpha1.DynamicNodePhaseExecuting:
+		logger.Warnf(ctx, "++ executing dynamic workflow")
 		trns, newState, err = d.handleDynamicSubNodes(ctx, nCtx, ds)
 		if err != nil {
 			logger.Errorf(ctx, "handling dynamic subnodes failed with error: %s", err.Error())
@@ -220,6 +221,7 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 			return trns, err
 		}
 		logger.Warnf(ctx, "++ produced dynamic workflow")
+		logger.Warnf(ctx, "++ produced trns [%+v]", trns)
 	default:
 		trns, newState, err = d.handleParentNode(ctx, ds, nCtx)
 		if err != nil {
@@ -229,11 +231,9 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 	}
 
 	if err := nCtx.NodeStateWriter().PutDynamicNodeState(newState); err != nil {
-		logger.Warnf(ctx, "++ uh oh, failed to put dynamic node state")
 		return handler.UnknownTransition, err
 	}
 
-	logger.Warnf(ctx, "++ produced trns [%+v]", trns)
 	return trns, nil
 }
 

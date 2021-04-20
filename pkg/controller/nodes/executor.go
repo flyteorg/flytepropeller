@@ -273,6 +273,9 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeEx
 		nCtx.nsm.clearNodeStatus()
 	}
 
+	if phase.GetPhase() == handler.EPhaseRunning {
+		logger.Warnf(ctx, "++ handled phase ", phase.GetInfo())
+	}
 	return phase, nil
 }
 
@@ -363,6 +366,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 		logger.Errorf(ctx, "failed Execute for node. Error: %s", err.Error())
 		return executors.NodeStatusUndefined, err
 	}
+	logger.Warnf(ctx, "handling phase [%+v]", p.GetInfo())
 
 	if p.GetPhase() == handler.EPhaseUndefined {
 		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "received undefined phase.")
@@ -447,6 +451,8 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 				c.metrics.QueuingLatency.Observe(ctx, nodeStatus.GetQueuedAt().Time, time.Now())
 			}
 		}
+	} else {
+		logger.Warnf(ctx, "++ not sending event, np [%+v], nodeStatus phase [%+v]", np, nodeStatus.GetPhase())
 	}
 
 	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
