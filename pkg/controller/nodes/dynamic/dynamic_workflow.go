@@ -2,6 +2,7 @@ package dynamic
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strconv"
 
@@ -125,7 +126,8 @@ func setDeterministicVersion(ctx context.Context, workflowClosure *core.Compiled
 	if err != nil {
 		return err
 	}
-	workflowClosure.Primary.Template.Id.Version = string(workflowDigest)
+	sanitizedDigest := base64.StdEncoding.EncodeToString(workflowDigest)
+	workflowClosure.Primary.Template.Id.Version = sanitizedDigest
 	return nil
 }
 
