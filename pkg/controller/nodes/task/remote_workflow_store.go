@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/golang/protobuf/proto"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/logger"
@@ -39,12 +37,7 @@ func (r RemoteFileWorkflowStore) PutFlyteWorkflowCRD(ctx context.Context, wf *v1
 }
 
 func (r RemoteFileWorkflowStore) PutCompiledFlyteWorkflow(ctx context.Context, workflow *core.CompiledWorkflowClosure, target storage.DataReference) error {
-	raw, err := proto.Marshal(workflow)
-	if err != nil {
-		return err
-	}
-
-	return r.store.WriteRaw(ctx, target, int64(len(raw)), storage.Options{}, bytes.NewReader(raw))
+	return r.store.WriteProtobuf(ctx, target, storage.Options{}, workflow)
 }
 
 func (r RemoteFileWorkflowStore) getRawBytes(ctx context.Context, source storage.DataReference) ([]byte, error) {
@@ -78,13 +71,9 @@ func (r RemoteFileWorkflowStore) GetWorkflowCRD(ctx context.Context, source stor
 }
 
 func (r RemoteFileWorkflowStore) GetCompiledWorkflow(ctx context.Context, source storage.DataReference) (*core.CompiledWorkflowClosure, error) {
-	wfBytes, err := r.getRawBytes(ctx, source)
-	if err != nil {
-		return nil, err
-	}
-
-	wf := &core.CompiledWorkflowClosure{}
-	return wf, proto.Unmarshal(wfBytes, wf)
+	var closure core.CompiledWorkflowClosure
+	err := r.store.ReadProtobuf(ctx, source, &closure)
+	return &closure, err
 }
 
 func NewRemoteWorkflowStore(store *storage.DataStore) RemoteFileWorkflowStore {

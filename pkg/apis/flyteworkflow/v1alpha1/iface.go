@@ -262,7 +262,7 @@ type MutableNodeStatus interface {
 	SetOutputDir(d DataReference)
 	SetParentNodeID(n *NodeID)
 	SetParentTaskID(t *core.TaskExecutionIdentifier)
-	UpdatePhase(phase NodePhase, occurredAt metav1.Time, reason string, err *core.ExecutionError)
+	UpdatePhase(phase NodePhase, occurredAt metav1.Time, reason string, err *core.ExecutionError, phaseVersion int)
 	IncrementAttempts() uint32
 	IncrementSystemFailures() uint32
 	SetCached()
@@ -297,6 +297,7 @@ type ExecutableNodeStatus interface {
 	NodeStatusVisitor
 	ExecutionTimeInfo
 	GetPhase() NodePhase
+	GetPhaseVersion() int
 	GetQueuedAt() *metav1.Time
 	GetLastAttemptStartedAt() *metav1.Time
 	GetParentNodeID() *NodeID

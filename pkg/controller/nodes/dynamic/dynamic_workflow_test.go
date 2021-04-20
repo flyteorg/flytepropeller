@@ -369,6 +369,18 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		assert.NoError(t, err)
 		assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, djSpec))
 
+		f, err = nCtx.DataStore().ConstructReference(ctx, nCtx.NodeStatus().GetOutputDir(), "dynamic_compiled.pb")
+		assert.NoError(t, err)
+		assert.NoError(t, nCtx.DataStore().WriteProtobuf(context.TODO(), f, storage.Options{}, &core.CompiledWorkflowClosure{
+			Primary: &core.CompiledWorkflow{
+				Template: &core.WorkflowTemplate{
+					Id: &core.Identifier{
+						ResourceType: core.ResourceType_WORKFLOW,
+					},
+				},
+			},
+		}))
+
 		mockLPLauncher := &mocks5.Reader{}
 		var callsAdmin = false
 		mockLPLauncher.OnGetLaunchPlanMatch(ctx, lpID).Run(func(args mock.Arguments) {

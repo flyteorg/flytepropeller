@@ -29,8 +29,8 @@ import (
 //go:generate mockery -all -case=underscore
 
 const dynamicNodeID = "dynamic-node"
-const sendingDynamicWorkflowPhaseVersion = 0
-const handlingDynamicSubNodesPhaseVersion = 1
+const sendingDynamicWorkflowPhaseVersion = 1
+const handlingDynamicSubNodesPhaseVersion = 2
 
 type TaskNodeHandler interface {
 	handler.Node
@@ -165,13 +165,7 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 			return trns.WithInfo(handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
 		}
 		taskNodeInfoMetadata := &event.TaskNodeMetadata{CacheStatus: status.GetCacheStatus(), CatalogKey: status.GetMetadata()}
-		if dCtx.subWorkflowClosure != nil && dCtx.subWorkflowClosure.Primary != nil && dCtx.subWorkflowClosure.Primary.Template != nil {
-			taskNodeInfoMetadata.DynamicWorkflow = &event.DynamicWorkflowNodeMetadata{
-				Id:               dCtx.subWorkflowClosure.Primary.Template.Id,
-				CompiledWorkflow: dCtx.subWorkflowClosure,
-			}
-		}
-		logger.Warnf(ctx, "++ Would send running with phaseVersion 1")
+		logger.Warnf(ctx, "++ Transitioning with dynamic workflow")
 		trns.WithInfo(trns.Info().WithInfo(&handler.ExecutionInfo{TaskNodeInfo: &handler.TaskNodeInfo{TaskNodeMetadata: taskNodeInfoMetadata}}).WithPhaseVersion(handlingDynamicSubNodesPhaseVersion))
 	}
 

@@ -168,7 +168,7 @@ func ToK8sTime(t time.Time) v1.Time {
 func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateManager, s v1alpha1.ExecutableNodeStatus) {
 	// We update the phase only if it is not already updated
 	if np != s.GetPhase() {
-		s.UpdatePhase(np, ToK8sTime(p.GetOccurredAt()), p.GetReason(), p.GetErr())
+		s.UpdatePhase(np, ToK8sTime(p.GetOccurredAt()), p.GetReason(), p.GetErr(), p.GetPhaseVersion())
 	}
 	// Update TaskStatus
 	if n.t != nil {
