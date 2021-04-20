@@ -126,6 +126,8 @@ func setDeterministicVersion(ctx context.Context, workflowClosure *core.Compiled
 	if err != nil {
 		return err
 	}
+	// base64 encode the digest because the raw digest byte array means some non UTF-8 characters can be
+	// incorporated in the version, which are incompatible with string types.
 	sanitizedDigest := base64.StdEncoding.EncodeToString(workflowDigest)
 	workflowClosure.Primary.Template.Id.Version = sanitizedDigest
 	return nil

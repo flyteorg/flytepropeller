@@ -186,7 +186,7 @@ func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
 type NodeStatus struct {
 	MutableStruct
 	Phase                NodePhase     `json:"phase"`
-	PhaseVersion int `jsong:"phaseVersion"`
+	PhaseVersion         int           `jsong:"phaseVersion"`
 	QueuedAt             *metav1.Time  `json:"queuedAt,omitempty"`
 	StartedAt            *metav1.Time  `json:"startedAt,omitempty"`
 	StoppedAt            *metav1.Time  `json:"stoppedAt,omitempty"`

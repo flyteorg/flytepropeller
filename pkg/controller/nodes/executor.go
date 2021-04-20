@@ -274,10 +274,6 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeEx
 		// Retrying to clearing all status
 		nCtx.nsm.clearNodeStatus()
 	}
-
-	if phase.GetPhase() == handler.EPhaseRunning &&  phase.GetInfo() != nil && phase.GetInfo().TaskNodeInfo != nil {
-		logger.Warnf(ctx, "++ handled phase [%+v]", phase.GetInfo().TaskNodeInfo)
-	}
 	return phase, nil
 }
 
@@ -454,8 +450,6 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 				c.metrics.QueuingLatency.Observe(ctx, nodeStatus.GetQueuedAt().Time, time.Now())
 			}
 		}
-	} else {
-		logger.Warnf(ctx, "++ not sending event, np [%+v], p [%+v]", np, p)
 	}
 
 	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)

@@ -2,8 +2,9 @@ package task
 
 import (
 	"context"
-	"github.com/golang/protobuf/proto"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
