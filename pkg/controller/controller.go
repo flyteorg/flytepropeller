@@ -4,8 +4,12 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"runtime/pprof"
 	"time"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+	"google.golang.org/grpc"
 
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
@@ -301,17 +305,41 @@ func newK8sEventRecorder(ctx context.Context, kubeclientset kubernetes.Interface
 	return eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName}), nil
 }
 
+func getAdminClient(ctx context.Context) (client service.AdminServiceClient, err error) {
+	cfg := admin.GetConfig(ctx)
+	var opts []grpc.DialOption
+	if cfg.UseAuth {
+		authMetadataClient, err := admin.InitializeAuthMetadataClient(ctx, cfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize auth metadata client. Error: %w", err)
+		}
+
+		opts, err = admin.NewServiceAuthDialOptions(ctx, cfg, authMetadataClient)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build service auth dial options. Error: %w", err)
+		}
+	}
+
+	clients, err := admin.InitializeClients(ctx, cfg, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize clientset. Error: %w", err)
+	}
+
+	return clients.AdminClient(), nil
+}
+
 // NewController returns a new FlyteWorkflow controller
 func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Interface, flytepropellerClientset clientset.Interface,
 	flyteworkflowInformerFactory informers.SharedInformerFactory, kubeClient executors.Client, scope promutils.Scope) (*Controller, error) {
 
 	var launchPlanActor launchplan.FlyteAdmin
 	if cfg.EnableAdminLauncher {
-		adminClient, err := admin.InitializeAdminClientFromConfig(ctx)
+		adminClient, err := getAdminClient(ctx)
 		if err != nil {
 			logger.Errorf(ctx, "failed to initialize Admin client, err :%s", err.Error())
 			return nil, err
 		}
+
 		launchPlanActor, err = launchplan.NewAdminLaunchPlanExecutor(ctx, adminClient, cfg.DownstreamEval.Duration,
 			launchplan.GetAdminConfig(), scope.NewSubScope("admin_launcher"))
 		if err != nil {
