@@ -114,7 +114,7 @@ func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, 
 	}
 
 	nextState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}
-	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{
+	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoDynamicRunning(&handler.ExecutionInfo{
 		TaskNodeInfo: &handler.TaskNodeInfo{
 			TaskNodeMetadata: taskNodeInfoMetadata,
 		},
