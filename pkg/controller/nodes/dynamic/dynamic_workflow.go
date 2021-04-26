@@ -2,11 +2,10 @@ package dynamic
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strconv"
 
-	"github.com/flyteorg/flytestdlib/pbhash"
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	node_common "github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
 
@@ -108,29 +107,16 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 	}
 	return &core.WorkflowTemplate{
 		Id: &core.Identifier{
-			Project: nCtx.NodeExecutionMetadata().GetNodeExecutionID().GetExecutionId().Project,
-			Domain:  nCtx.NodeExecutionMetadata().GetNodeExecutionID().GetExecutionId().Domain,
-			Name:    fmt.Sprintf(dynamicWfNameTemplate, nCtx.NodeExecutionMetadata().GetNodeExecutionID().NodeId),
-			// The Version will be set after the workflow closure has been computed.
+			Project:      nCtx.NodeExecutionMetadata().GetNodeExecutionID().GetExecutionId().Project,
+			Domain:       nCtx.NodeExecutionMetadata().GetNodeExecutionID().GetExecutionId().Domain,
+			Name:         fmt.Sprintf(dynamicWfNameTemplate, nCtx.NodeExecutionMetadata().GetNodeExecutionID().NodeId),
+			Version:      rand.String(10),
 			ResourceType: core.ResourceType_WORKFLOW,
 		},
 		Nodes:     djSpec.Nodes,
 		Outputs:   djSpec.Outputs,
 		Interface: iface,
 	}, nil
-}
-
-// Updates a dynamically generated subworkflow version to be deterministically generated from the computed closure.
-func setDeterministicVersion(ctx context.Context, workflowClosure *core.CompiledWorkflowClosure) error {
-	workflowDigest, err := pbhash.ComputeHash(ctx, workflowClosure)
-	if err != nil {
-		return err
-	}
-	// base64 encode the digest because the raw digest byte array means some non UTF-8 characters can be
-	// incorporated in the version, which are incompatible with string types.
-	sanitizedDigest := base64.StdEncoding.EncodeToString(workflowDigest)
-	workflowClosure.Primary.Template.Id.Version = sanitizedDigest
-	return nil
 }
 
 func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext) (dynamicWorkflowContext, error) {
@@ -216,11 +202,6 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	closure, err = compiler.CompileWorkflow(wf, djSpec.Subworkflows, compiledTasks, launchPlanInterfaces)
 	if err != nil {
 		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeUser, err, "malformed dynamic workflow")
-	}
-
-	err = setDeterministicVersion(ctx, closure)
-	if err != nil {
-		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "failed to assign deterministic dynamic workflow name")
 	}
 
 	dynamicWf, err := k8s.BuildFlyteWorkflow(closure, &core.LiteralMap{}, nil, "")
