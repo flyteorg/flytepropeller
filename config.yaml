@@ -95,9 +95,8 @@ event:
   rate: 500
   capacity: 1000
 admin:
-  endpoint: localhost:8089
+  endpoint: localhost:30081
   insecure: true
-  useAuth: false
 catalog-cache:
   type: noop
   endpoint: datacatalog:8089

@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
-	"google.golang.org/grpc"
-
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
@@ -307,20 +305,7 @@ func newK8sEventRecorder(ctx context.Context, kubeclientset kubernetes.Interface
 
 func getAdminClient(ctx context.Context) (client service.AdminServiceClient, err error) {
 	cfg := admin.GetConfig(ctx)
-	var opts []grpc.DialOption
-	if cfg.UseAuth {
-		authMetadataClient, err := admin.InitializeAuthMetadataClient(ctx, cfg)
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize auth metadata client. Error: %w", err)
-		}
-
-		opts, err = admin.NewServiceAuthDialOptions(ctx, cfg, authMetadataClient)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build service auth dial options. Error: %w", err)
-		}
-	}
-
-	clients, err := admin.InitializeClients(ctx, cfg, opts...)
+	clients, err := admin.InitializeClients(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize clientset. Error: %w", err)
 	}
