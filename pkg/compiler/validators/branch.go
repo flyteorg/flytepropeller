@@ -67,20 +67,20 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 			if iface, ok = ValidateUnderlyingInterface(w, n, errs.NewScope()); ok {
 				// Clear out the Inputs. We do not care if the inputs of each of the underlying nodes
 				// match. We will pull the inputs needed for the underlying branch node at runtime.
-				iface = &flyte.TypedInterface{
-					Inputs:  &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
-					Outputs: iface.Outputs,
-				}
+				// iface = &flyte.TypedInterface{
+				// 	Inputs:  &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
+				// 	Outputs: iface.Outputs,
+				// }
 
 				outputs, outputsSet = buildVariablesIndex(iface.Outputs)
 				finalOutputParameterNames = finalOutputParameterNames.Union(outputsSet)
 			}
 		} else {
 			if iface2, ok2 := ValidateUnderlyingInterface(w, n, errs.NewScope()); ok2 {
-				iface2 = &flyte.TypedInterface{
-					Inputs:  &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
-					Outputs: iface2.Outputs,
-				}
+				//iface2 = &flyte.TypedInterface{
+				//	Inputs:  &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
+				//	Outputs: iface2.Outputs,
+				//}
 
 				validateIfaceMatch(n.GetId(), iface2, errs.NewScope())
 			}
@@ -88,10 +88,15 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 	}
 
 	if !errs.HasErrors() && iface != nil {
+		print(finalOutputParameterNames)
+		print(finalInputParameterNames)
+		/*
 		iface = &flyte.TypedInterface{
 			Inputs:  filterVariables(iface.Inputs, finalInputParameterNames),
 			Outputs: filterVariables(iface.Outputs, finalOutputParameterNames),
 		}
+		 */
+		iface = iface
 	} else {
 		iface = nil
 	}
