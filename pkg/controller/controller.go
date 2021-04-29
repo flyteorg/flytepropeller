@@ -305,7 +305,7 @@ func newK8sEventRecorder(ctx context.Context, kubeclientset kubernetes.Interface
 
 func getAdminClient(ctx context.Context) (client service.AdminServiceClient, err error) {
 	cfg := admin.GetConfig(ctx)
-	clients, err := admin.InitializeClients(ctx, cfg)
+	clients, err := admin.NewClientsetBuilder().WithConfig(cfg).Build(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize clientset. Error: %w", err)
 	}
