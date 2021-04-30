@@ -232,6 +232,8 @@ github.com/fatih/structtag v1.2.0/go.mod h1:mBJUNpUnHmRKrKlQQlmCrh5PuhftFbNv8Ys4
 github.com/flyteorg/flyteidl v0.18.25/go.mod h1:b5Fq4Z8a5b0mF6pEwTd48ufvikUGVkWSjZiMT0ZtqKI=
 github.com/flyteorg/flyteidl v0.18.40 h1:YuLBNpIotOFwyLSXSs0aj3B9N9vwPhzLRAQTWxYSI/w=
 github.com/flyteorg/flyteidl v0.18.40/go.mod h1:IJD02cc/95QMkGDBJNibsr5aWd6V7TlQiJ8Iz5mVZ28=
+github.com/flyteorg/flyteidl v0.18.41 h1:aVDpCIhzab5iPpJZXofvQLKJvpLnZdWl/zdkU0SiQXI=
+github.com/flyteorg/flyteidl v0.18.41/go.mod h1:IJD02cc/95QMkGDBJNibsr5aWd6V7TlQiJ8Iz5mVZ28=
 github.com/flyteorg/flyteplugins v0.5.42 h1:G4DRR2r8LlmkV+orXloDi1ly+M5WuvAaNlWFgGGyy3A=
 github.com/flyteorg/flyteplugins v0.5.42/go.mod h1:ireF+bYk8xjw9BfcMbPN/hN5aZeBJpP0CoQYHkSRL+w=
 github.com/flyteorg/flytestdlib v0.3.13/go.mod h1:Tz8JCECAbX6VWGwFT6cmEQ+RJpZ/6L9pswu3fzWs220=
