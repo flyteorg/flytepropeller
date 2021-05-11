@@ -127,10 +127,13 @@ func createWebhookSecret(ctx context.Context, namespace string, cfg *webhook.Con
 			return err
 		}
 
-		// If any key is missing from the secret, replace all of them. There is no value in only filling in the missing
-		// keys since they all need to work in tandem.
+		// If ServerCertKey or ServerCertPrivateKey are missing, update
 		requiresUpdate := false
 		for key := range secretData {
+			if key == CaCertKey {
+				continue
+			}
+
 			if _, exists := s.Data[key]; !exists {
 				requiresUpdate = true
 				break
@@ -138,6 +141,10 @@ func createWebhookSecret(ctx context.Context, namespace string, cfg *webhook.Con
 		}
 
 		if requiresUpdate {
+			logger.Infof(ctx, "The existing secret is missing one or more keys.")
+			secret.Annotations["flyteLastUpdate"] = "system-updated"
+			secret.Annotations["flyteUpdatedAt"] = time.Now().String()
+
 			_, err = secretsClient.Update(ctx, secret, v12.UpdateOptions{})
 			if err != nil && kubeErrors.IsConflict(err) {
 				logger.Infof(ctx, "Another instance of flyteadmin has updated the same secret. Ignoring this update")
