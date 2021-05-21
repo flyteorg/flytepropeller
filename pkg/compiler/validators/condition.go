@@ -8,7 +8,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
 )
 
-func validateOperand(node c.NodeBuilder, paramName string, operand *flyte.Operand,
+func validateOperand(w c.WorkflowBuilder, node c.NodeBuilder, paramName string, operand *flyte.Operand,
 	requireParamType bool, errs errors.CompileErrors) (literalType *flyte.LiteralType, ok bool) {
 	if operand == nil {
 		errs.Collect(errors.NewValueRequiredErr(node.GetId(), paramName))
@@ -32,14 +32,14 @@ func validateOperand(node c.NodeBuilder, paramName string, operand *flyte.Operan
 	return literalType, !errs.HasErrors()
 }
 
-func ValidateBooleanExpression(node c.NodeBuilder, expr *flyte.BooleanExpression, requireParamType bool, errs errors.CompileErrors) (ok bool) {
+func ValidateBooleanExpression(w c.WorkflowBuilder, node c.NodeBuilder, expr *flyte.BooleanExpression, requireParamType bool, errs errors.CompileErrors) (ok bool) {
 	if expr == nil {
 		errs.Collect(errors.NewBranchNodeHasNoCondition(node.GetId()))
 	} else {
 		if expr.GetComparison() != nil {
-			op1Type, op1Valid := validateOperand(node, "RightValue",
+			op1Type, op1Valid := validateOperand(w, node, "RightValue",
 				expr.GetComparison().GetRightValue(), requireParamType, errs.NewScope())
-			op2Type, op2Valid := validateOperand(node, "LeftValue",
+			op2Type, op2Valid := validateOperand(w, node, "LeftValue",
 				expr.GetComparison().GetLeftValue(), requireParamType, errs.NewScope())
 			if op1Valid && op2Valid && op1Type != nil && op2Type != nil {
 				if op1Type.String() != op2Type.String() {
@@ -48,8 +48,8 @@ func ValidateBooleanExpression(node c.NodeBuilder, expr *flyte.BooleanExpression
 				}
 			}
 		} else if expr.GetConjunction() != nil {
-			ValidateBooleanExpression(node, expr.GetConjunction().LeftExpression, requireParamType, errs.NewScope())
-			ValidateBooleanExpression(node, expr.GetConjunction().RightExpression, requireParamType, errs.NewScope())
+			ValidateBooleanExpression(w, node, expr.GetConjunction().LeftExpression, requireParamType, errs.NewScope())
+			ValidateBooleanExpression(w, node, expr.GetConjunction().RightExpression, requireParamType, errs.NewScope())
 		} else {
 			errs.Collect(errors.NewValueRequiredErr(node.GetId(), "Expr"))
 		}
