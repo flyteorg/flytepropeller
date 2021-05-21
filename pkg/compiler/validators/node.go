@@ -73,7 +73,7 @@ func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType b
 	subNodes := make([]c.NodeBuilder, 0, len(cases)+1)
 	for _, block := range cases {
 		// Validate condition
-		ValidateBooleanExpression(n, block.Condition, requireParamType, errs.NewScope())
+		ValidateBooleanExpression(w, n, block.Condition, requireParamType, errs.NewScope())
 
 		if block.GetThenNode() == nil {
 			errs.Collect(errors.NewBranchNodeNotSpecified(n.GetId()))
