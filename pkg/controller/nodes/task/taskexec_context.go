@@ -67,9 +67,9 @@ func (t taskExecutionMetadata) GetMaxAttempts() uint32 {
 type taskExecutionContext struct {
 	handler.NodeExecutionContext
 	tm  taskExecutionMetadata
-	rm  pluginCore.ResourceManager
+	rm  resourcemanager.TaskResourceManager
 	psm *pluginStateManager
-	tr  handler.TaskReader
+	tr  pluginCore.TaskReader
 	ow  *ioutils.BufferedOutputWriter
 	ber *bufferedEventRecorder
 	sm  pluginCore.SecretManager
@@ -124,7 +124,7 @@ func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 	return t.sm
 }
 
-func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.NodeExecutionContext, pluginID string) (*taskExecutionContext, error) {
+func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.NodeExecutionContext, plugin pluginCore.Plugin) (*taskExecutionContext, error) {
 	id := GetTaskExecutionIdentifier(nCtx)
 
 	currentNodeUniqueID := nCtx.NodeID()
@@ -136,7 +136,12 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		}
 	}
 
-	uniqueID, err := utils.FixedLengthUniqueIDForParts(IDMaxLength, nCtx.NodeExecutionMetadata().GetOwnerID().Name, currentNodeUniqueID, strconv.Itoa(int(id.RetryAttempt)))
+	length := IDMaxLength
+	if l := plugin.GetProperties().GeneratedNameMaxLength; l != nil {
+		length = *l
+	}
+
+	uniqueID, err := utils.FixedLengthUniqueIDForParts(length, nCtx.NodeExecutionMetadata().GetOwnerID().Name, currentNodeUniqueID, strconv.Itoa(int(id.RetryAttempt)))
 	if err != nil {
 		// SHOULD never really happen
 		return nil, err
@@ -157,10 +162,15 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to initialize plugin state manager")
 	}
 
-	resourceNamespacePrefix := pluginCore.ResourceNamespace(t.resourceManager.GetID()).CreateSubNamespace(pluginCore.ResourceNamespace(pluginID))
+	resourceNamespacePrefix := pluginCore.ResourceNamespace(t.resourceManager.GetID()).CreateSubNamespace(pluginCore.ResourceNamespace(plugin.GetID()))
 	maxAttempts := uint32(DefaultMaxAttempts)
 	if nCtx.Node().GetRetryStrategy() != nil && nCtx.Node().GetRetryStrategy().MinAttempts != nil {
 		maxAttempts = uint32(*nCtx.Node().GetRetryStrategy().MinAttempts)
+	}
+
+	taskTemplatePath, err := ioutils.GetTaskTemplatePath(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetDataDir())
+	if err != nil {
+		return nil, err
 	}
 
 	return &taskExecutionContext{
@@ -174,7 +184,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		rm: resourcemanager.GetTaskResourceManager(
 			t.resourceManager, resourceNamespacePrefix, id),
 		psm: psm,
-		tr:  nCtx.TaskReader(),
+		tr:  ioutils.NewLazyUploadingTaskReader(nCtx.TaskReader(), taskTemplatePath, nCtx.DataStore()),
 		ow:  ow,
 		ber: newBufferedEventRecorder(),
 		c:   t.asyncCatalog,

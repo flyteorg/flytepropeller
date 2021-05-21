@@ -1,10 +1,11 @@
+// Commands for FlytePropeller controller.
 package cmd
 
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"strings"
 
@@ -58,7 +59,7 @@ var rootCmd = &cobra.Command{
 	Short: "Operator for running Flyte Workflows",
 	Long: `Flyte Propeller runs a workflow to completion by recursing through the nodes, 
 			handling their tasks to completion and propagating their status upstream.`,
-	PreRunE: initConfig,
+	PersistentPreRunE: initConfig,
 	Run: func(cmd *cobra.Command, args []string) {
 		executeRootCmd(config2.GetConfig())
 	},
@@ -68,8 +69,9 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	version.LogBuildInformation(appName)
+	logger.Infof(context.TODO(), "Detected: %d CPU's\n", runtime.NumCPU())
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		logger.Error(context.TODO(), err)
 		os.Exit(1)
 	}
 }
@@ -93,18 +95,19 @@ func init() {
 	rootCmd.AddCommand(viper.GetConfigCommand())
 }
 
-func initConfig(_ *cobra.Command, _ []string) error {
+func initConfig(cmd *cobra.Command, _ []string) error {
 	configAccessor = viper.NewAccessor(config.Options{
-		StrictMode:  true,
+		StrictMode:  false,
 		SearchPaths: []string{cfgFile},
 	})
+
+	configAccessor.InitializePflags(cmd.PersistentFlags())
 
 	err := configAccessor.UpdateConfig(context.TODO())
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Started in-cluster mode\n")
 	return nil
 }
 

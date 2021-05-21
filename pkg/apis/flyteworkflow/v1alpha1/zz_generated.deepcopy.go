@@ -151,6 +151,7 @@ func (in *ExecutionConfig) DeepCopyInto(out *ExecutionConfig) {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
+	out.MaxParallelism = in.MaxParallelism
 	return
 }
 
@@ -233,6 +234,7 @@ func (in *FlyteWorkflow) DeepCopyInto(out *FlyteWorkflow) {
 		in, out := &in.AcceptedAt, &out.AcceptedAt
 		*out = (*in).DeepCopy()
 	}
+	out.SecurityContext = in.SecurityContext
 	in.Status.DeepCopyInto(&out.Status)
 	in.RawOutputDataConfig.DeepCopyInto(&out.RawOutputDataConfig)
 	in.ExecutionConfig.DeepCopyInto(&out.ExecutionConfig)

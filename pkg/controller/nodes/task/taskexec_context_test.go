@@ -5,10 +5,16 @@ import (
 	"context"
 	"testing"
 
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog/mocks"
+	pluginCoreMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	ioMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -116,7 +122,10 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 		resourceManager: noopRm,
 	}
 
-	got, err := tk.newTaskExecutionContext(context.TODO(), nCtx, "plugin1")
+	p := &pluginCoreMocks.Plugin{}
+	p.On("GetID").Return("plugin1")
+	p.OnGetProperties().Return(pluginCore.PluginProperties{})
+	got, err := tk.newTaskExecutionContext(context.TODO(), nCtx, p)
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 
@@ -135,7 +144,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	assert.Equal(t, got.psm.newStateVersion, uint8(10))
 	assert.NotNil(t, got.psm.newState)
 
-	assert.Equal(t, got.TaskReader(), tr)
+	assert.NotNil(t, got.TaskReader())
 	assert.Equal(t, got.MaxDatasetSizeBytes(), int64(1))
 	assert.NotNil(t, got.SecretManager())
 
@@ -148,8 +157,27 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	assert.Equal(t, got.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetNodeId(), nodeID)
 	assert.Equal(t, got.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId(), wfExecID)
 
-	// TODO @kumare fix this test
-	assert.NotNil(t, got.ResourceManager())
+	assert.EqualValues(t, got.ResourceManager().(resourcemanager.TaskResourceManager).GetResourcePoolInfo(), make([]*event.ResourcePoolInfo, 0))
+
+	assert.NotNil(t, got.rm)
+
+	_, err = got.rm.AllocateResource(context.TODO(), "foo", "token", pluginCore.ResourceConstraintsSpec{})
+	assert.NoError(t, err)
+	assert.EqualValues(t, []*event.ResourcePoolInfo{
+		{
+			Namespace:       "foo",
+			AllocationToken: "token",
+		},
+	}, got.ResourceManager().(resourcemanager.TaskResourceManager).GetResourcePoolInfo())
 	assert.Nil(t, got.Catalog())
 	// assert.Equal(t, got.InputReader(), ir)
+
+	anotherPlugin := &pluginCoreMocks.Plugin{}
+	anotherPlugin.On("GetID").Return("plugin2")
+	maxLength := 8
+	anotherPlugin.OnGetProperties().Return(pluginCore.PluginProperties{
+		GeneratedNameMaxLength: &maxLength,
+	})
+	anotherTaskExecCtx, _ := tk.newTaskExecutionContext(context.TODO(), nCtx, anotherPlugin)
+	assert.Equal(t, anotherTaskExecCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), "fpmmhh6q")
 }

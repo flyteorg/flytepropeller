@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
-	datacatalog "github.com/flyteorg/datacatalog/protos/gen"
+	"github.com/flyteorg/flyteidl/clients/go/datacatalog/mocks"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
@@ -23,8 +25,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/golang/protobuf/ptypes"
-
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog/datacatalog/mocks"
 )
 
 func init() {

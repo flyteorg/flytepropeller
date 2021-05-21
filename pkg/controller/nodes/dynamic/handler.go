@@ -6,7 +6,6 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
-	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -35,7 +34,7 @@ type TaskNodeHandler interface {
 	handler.Node
 	ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader,
 		r io.OutputReader, outputCommitter io.OutputWriter, executionConfig v1alpha1.ExecutionConfig,
-		tr pluginCore.TaskReader, m catalog.Metadata) (catalog.Status, *io.ExecutionError, error)
+		tr ioutils.SimpleTaskReader, m catalog.Metadata) (catalog.Status, *io.ExecutionError, error)
 }
 
 type metrics struct {
@@ -43,6 +42,7 @@ type metrics struct {
 	retrieveDynamicJobSpec labeled.StopWatch
 	CacheHit               labeled.StopWatch
 	CacheError             labeled.Counter
+	CacheMiss              labeled.Counter
 }
 
 func newMetrics(scope promutils.Scope) metrics {
@@ -51,6 +51,7 @@ func newMetrics(scope promutils.Scope) metrics {
 		retrieveDynamicJobSpec: labeled.NewStopWatch("retrieve_dynamic_spec", "Overhead of downloading and un-marshaling dynamic job spec", time.Microsecond, scope),
 		CacheHit:               labeled.NewStopWatch("dynamic_workflow_cache_hit", "A dynamic workflow was loaded from store.", time.Microsecond, scope),
 		CacheError:             labeled.NewCounter("cache_err", "A dynamic workflow failed to store or load from data store.", scope),
+		CacheMiss:              labeled.NewCounter("cache_miss", "A dynamic workflow did not already exist in the data store.", scope),
 	}
 }
 
@@ -80,7 +81,7 @@ func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevSt
 		}
 		if ok {
 			// Mark the node that parent node has completed and a dynamic node executing its child nodes. Next time check node status is called, it'll go
-			// directly to progress the dynamically generated workflow.
+			// directly to record, and then progress the dynamically generated workflow.
 			logger.Infof(ctx, "future file detected, assuming dynamic node")
 			// There is a futures file, so we need to continue running the node with the modified state
 			return trns.WithInfo(handler.PhaseInfoRunning(trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalizing}, nil
@@ -91,18 +92,45 @@ func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevSt
 	return trns, prevState, nil
 }
 
+func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, nCtx handler.NodeExecutionContext) (
+	handler.Transition, handler.DynamicNodeState, error) {
+	// The first time this is called we go ahead and evaluate the dynamic node to build the workflow. We then cache
+	// this workflow definition and send it to be persisted by flyteadmin so that users can observe the structure.
+	dCtx, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
+	if err != nil {
+		if stdErrors.IsCausedBy(err, utils.ErrorCodeUser) {
+			return handler.DoTransition(handler.TransitionTypeEphemeral,
+				handler.PhaseInfoFailure(core.ExecutionError_USER, "DynamicWorkflowBuildFailed", err.Error(), nil),
+			), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: err.Error()}, nil
+		}
+		return handler.Transition{}, handler.DynamicNodeState{}, err
+	}
+	taskNodeInfoMetadata := &event.TaskNodeMetadata{}
+	if dCtx.subWorkflowClosure != nil && dCtx.subWorkflowClosure.Primary != nil && dCtx.subWorkflowClosure.Primary.Template != nil {
+		taskNodeInfoMetadata.DynamicWorkflow = &event.DynamicWorkflowNodeMetadata{
+			Id:               dCtx.subWorkflowClosure.Primary.Template.Id,
+			CompiledWorkflow: dCtx.subWorkflowClosure,
+		}
+	}
+
+	nextState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}
+	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoDynamicRunning(&handler.ExecutionInfo{
+		TaskNodeInfo: &handler.TaskNodeInfo{
+			TaskNodeMetadata: taskNodeInfoMetadata,
+		},
+	})), nextState, nil
+}
+
 func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, nCtx handler.NodeExecutionContext, prevState handler.DynamicNodeState) (handler.Transition, handler.DynamicNodeState, error) {
 	dCtx, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 	if err != nil {
-		kind := core.ExecutionError_UNKNOWN
 		if stdErrors.IsCausedBy(err, utils.ErrorCodeUser) {
-			kind = core.ExecutionError_USER
-		} else if stdErrors.IsCausedBy(err, utils.ErrorCodeSystem) {
-			kind = core.ExecutionError_SYSTEM
+			return handler.DoTransition(handler.TransitionTypeEphemeral,
+				handler.PhaseInfoFailure(core.ExecutionError_USER, "DynamicWorkflowBuildFailed", err.Error(), nil),
+			), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: err.Error()}, nil
 		}
-		return handler.DoTransition(handler.TransitionTypeEphemeral,
-			handler.PhaseInfoFailure(kind, "DynamicWorkflowBuildFailed", err.Error(), nil),
-		), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: err.Error()}, nil
+		// Mostly a system error or unknown
+		return handler.Transition{}, handler.DynamicNodeState{}, err
 	}
 
 	trns, newState, err := d.progressDynamicWorkflow(ctx, dCtx.execContext, dCtx.subWorkflow, dCtx.nodeLookup, nCtx, prevState)
@@ -133,7 +161,8 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 
 			return trns.WithInfo(handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
 		}
-		trns.WithInfo(trns.Info().WithInfo(&handler.ExecutionInfo{TaskNodeInfo: &handler.TaskNodeInfo{TaskNodeMetadata: &event.TaskNodeMetadata{CacheStatus: status.GetCacheStatus(), CatalogKey: status.GetMetadata()}}}))
+		taskNodeInfoMetadata := &event.TaskNodeMetadata{CacheStatus: status.GetCacheStatus(), CatalogKey: status.GetMetadata()}
+		trns.WithInfo(trns.Info().WithInfo(&handler.ExecutionInfo{TaskNodeInfo: &handler.TaskNodeInfo{TaskNodeMetadata: taskNodeInfoMetadata}}))
 	}
 
 	return trns, newState, nil
@@ -142,6 +171,7 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 // The State machine for a dynamic node is as follows
 // DynamicNodePhaseNone: The parent node is being handled
 // DynamicNodePhaseParentFinalizing: The parent node has completes successfully and sub-nodes exist (futures file found). Parent node is being finalized.
+// DynamicNodePhaseParentFinalized: The parent has node completed successfully and the generated dynamic sub workflow has been serialized and sent as an event.
 // DynamicNodePhaseExecuting: The parent node has completed and finalized successfully, the sub-nodes are being handled
 // DynamicNodePhaseFailing: one or more of sub-nodes have failed and the failure is being handled
 func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
@@ -174,8 +204,14 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx handler.Nod
 		if err := d.finalizeParentNode(ctx, nCtx); err != nil {
 			return handler.UnknownTransition, err
 		}
-		newState = handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}
+		newState = handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalized}
 		trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(trns.Info().GetInfo()))
+	case v1alpha1.DynamicNodePhaseParentFinalized:
+		trns, newState, err = d.produceDynamicWorkflow(ctx, nCtx)
+		if err != nil {
+			logger.Errorf(ctx, "handling producing dynamic workflow definition failed with error: %s", err.Error())
+			return trns, err
+		}
 	default:
 		trns, newState, err = d.handleParentNode(ctx, ds, nCtx)
 		if err != nil {
