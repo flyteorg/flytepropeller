@@ -90,7 +90,7 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 	// When we come to validate the conditions themselves, we will look up these variables and fail if a variable is used
 	// in a condition but doesn't have a node input binding.
 	inputVarsFromBindings, _ := ValidateBindings(w, node, node.GetInputs(), &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
-		false, EdgeDirectionBidirectional, errs.NewScope())
+		false, EdgeDirectionUpstream, errs.NewScope())
 
 	if !errs.HasErrors() && iface != nil {
 		iface = &flyte.TypedInterface{
