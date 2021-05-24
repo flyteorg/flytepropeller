@@ -53,11 +53,6 @@ func branchNodeIDFormatter(parentNodeID, thenNodeID string) string {
 	return fmt.Sprintf("%v-%v", parentNodeID, thenNodeID)
 }
 
-type EdgeInfo struct {
-	from string
-	to   string
-}
-
 func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType bool, errs errors.CompileErrors) (
 	discoveredNodes []c.NodeBuilder, ok bool) {
 

@@ -739,7 +739,7 @@ func (in *WorkflowSpec) DeepCopyInto(out *WorkflowSpec) {
 			(*out)[key] = outVal
 		}
 	}
-	in.Connections.DeepCopyInto(&out.Connections)
+	in.DeprecatedConnections.DeepCopyInto(&out.DeprecatedConnections)
 	if in.OnFailure != nil {
 		in, out := &in.OnFailure, &out.OnFailure
 		*out = new(NodeSpec)

@@ -97,14 +97,16 @@ func buildFlyteWorkflowSpec(wf *core.CompiledWorkflow, tasks []*core.CompiledTas
 		failurePolicy = v1alpha1.WorkflowOnFailurePolicy(wf.Template.Metadata.OnFailure)
 	}
 
+	connections := buildConnections(wf)
 	return &v1alpha1.WorkflowSpec{
-		ID:              WorkflowIDAsString(wf.Template.Id),
-		OnFailure:       failureN,
-		Nodes:           nodes,
-		Connections:     buildConnections(wf),
-		Outputs:         outputs,
-		OutputBindings:  outputBindings,
-		OnFailurePolicy: failurePolicy,
+		ID:                    WorkflowIDAsString(wf.Template.Id),
+		OnFailure:             failureN,
+		Nodes:                 nodes,
+		Connections:           connections,
+		DeprecatedConnections: v1alpha1.DeprecatedConnections(connections),
+		Outputs:               outputs,
+		OutputBindings:        outputBindings,
+		OnFailurePolicy:       failurePolicy,
 	}, nil
 }
 
@@ -206,7 +208,7 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 	}
 	obj.ObjectMeta.Labels[WorkflowNameLabel] = utils.SanitizeLabelValue(WorkflowNameFromID(primarySpec.ID))
 
-	if obj.Nodes == nil || obj.Connections.DownstreamEdges == nil {
+	if obj.Nodes == nil || obj.DeprecatedConnections.DownstreamEdges == nil {
 		// If we come here, we'd better have an error generated earlier. Otherwise, add one to make sure build fails.
 		if !errs.HasErrors() {
 			errs.Collect(errors.NewWorkflowBuildError(fmt.Errorf("failed to build workflow for unknown reason." +

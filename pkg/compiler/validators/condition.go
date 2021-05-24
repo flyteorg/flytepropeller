@@ -8,7 +8,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
 )
 
-func validateOperand(w c.WorkflowBuilder, node c.NodeBuilder, paramName string, operand *flyte.Operand,
+func validateOperand(node c.NodeBuilder, paramName string, operand *flyte.Operand,
 	requireParamType bool, errs errors.CompileErrors) (literalType *flyte.LiteralType, ok bool) {
 	if operand == nil {
 		errs.Collect(errors.NewValueRequiredErr(node.GetId(), paramName))
@@ -37,9 +37,9 @@ func ValidateBooleanExpression(w c.WorkflowBuilder, node c.NodeBuilder, expr *fl
 		errs.Collect(errors.NewBranchNodeHasNoCondition(node.GetId()))
 	} else {
 		if expr.GetComparison() != nil {
-			op1Type, op1Valid := validateOperand(w, node, "RightValue",
+			op1Type, op1Valid := validateOperand(node, "RightValue",
 				expr.GetComparison().GetRightValue(), requireParamType, errs.NewScope())
-			op2Type, op2Valid := validateOperand(w, node, "LeftValue",
+			op2Type, op2Valid := validateOperand(node, "LeftValue",
 				expr.GetComparison().GetLeftValue(), requireParamType, errs.NewScope())
 			if op1Valid && op2Valid && op1Type != nil && op2Type != nil {
 				if op1Type.String() != op2Type.String() {
