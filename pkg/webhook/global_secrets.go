@@ -23,8 +23,8 @@ type GlobalSecrets struct {
 	envSecretManager GlobalSecretProvider
 }
 
-func (g GlobalSecrets) ID() string {
-	return "global"
+func (g GlobalSecrets) Type() SecretManagerType {
+	return SecretManagerTypeGlobal
 }
 
 func (g GlobalSecrets) Inject(ctx context.Context, secret *coreIdl.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
@@ -51,7 +51,7 @@ func (g GlobalSecrets) Inject(ctx context.Context, secret *coreIdl.Secret, p *co
 		}
 
 		prefixEnvVar := corev1.EnvVar{
-			Name:  K8sEnvVarPrefix,
+			Name:  SecretEnvVarPrefix,
 			Value: K8sDefaultEnvVarPrefix,
 		}
 

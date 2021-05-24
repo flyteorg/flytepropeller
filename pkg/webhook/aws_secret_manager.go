@@ -3,6 +3,7 @@ package webhook
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -15,7 +16,10 @@ const (
 	AWSSecretArnEnvVar       = "secrets.k8s.aws/secret-arn"
 	AWSSecretMountPathEnvVar = "secrets.k8s.aws/mount-path"
 	AWSSecretFileNameEnvVar  = "secrets.k8s.aws/secret-filename"
-	AWSSecretMountPathPrefix = "/etc/flyte/secrets/"
+)
+
+var (
+	AWSSecretMountPathPrefix = []string{string(os.PathSeparator), "etc", "flyte", "secrets"}
 )
 
 // AWSSecretManagerInjector allows injecting of secrets into pods by specifying annotations on the Pod that either EnvVarSource or SecretVolumeSource in
@@ -34,11 +38,11 @@ func formatAWSSecretArn(secret *core.Secret) string {
 }
 
 func formatAWSSecretMount(secret *core.Secret) string {
-	return AWSSecretMountPathPrefix + secret.Group
+	return filepath.Join(append(AWSSecretMountPathPrefix, secret.Group)...)
 }
 
-func (i AWSSecretManagerInjector) ID() string {
-	return "K8s"
+func (i AWSSecretManagerInjector) Type() SecretManagerType {
+	return SecretManagerTypeAWS
 }
 
 func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
@@ -51,9 +55,7 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 	case core.Secret_ANY:
 		fallthrough
 	case core.Secret_FILE:
-		// Inject a Volume that to the pod and all of its containers and init containers that mounts the secret into a
-		// file.
-
+		// Inject AWS secret-inject webhook annotations to mount the secret in a predictable location.
 		envVars := []corev1.EnvVar{
 			{
 				Name:  AWSSecretArnEnvVar,
@@ -67,33 +69,22 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 				Name:  AWSSecretFileNameEnvVar,
 				Value: secret.Key,
 			},
+			// Set environment variable to let the container know where to find the mounted files.
+			{
+				Name:  SecretPathDefaultDirEnvVar,
+				Value: filepath.Join(AWSSecretMountPathPrefix...),
+			},
+			// Sets an empty prefix to let the containers know the file names will match the secret keys as-is.
+			{
+				Name:  SecretPathFilePrefixEnvVar,
+				Value: "",
+			},
 		}
 
-		volume := CreateVolumeForSecret(secret)
-		p.Spec.Volumes = append(p.Spec.Volumes, volume)
-
-		// Mount the secret to all containers in the given pod.
-		mount := CreateVolumeMountForSecret(volume.Name, secret)
-		p.Spec.InitContainers = UpdateVolumeMounts(p.Spec.InitContainers, mount)
-		p.Spec.Containers = UpdateVolumeMounts(p.Spec.Containers, mount)
-
-		// Set environment variable to let the container know where to find the mounted files.
-		defaultDirEnvVar := corev1.EnvVar{
-			Name:  K8sPathDefaultDirEnvVar,
-			Value: filepath.Join(K8sSecretPathPrefix...),
+		for _, envVar := range envVars {
+			p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, envVar)
+			p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, envVar)
 		}
-
-		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, defaultDirEnvVar)
-		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, defaultDirEnvVar)
-
-		// Sets an empty prefix to let the containers know the file names will match the secret keys as-is.
-		prefixEnvVar := corev1.EnvVar{
-			Name:  K8sPathFilePrefixEnvVar,
-			Value: "",
-		}
-
-		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, prefixEnvVar)
-		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, prefixEnvVar)
 	case core.Secret_ENV_VAR:
 		fallthrough
 	default:

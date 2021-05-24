@@ -12,9 +12,6 @@ import (
 )
 
 const (
-	K8sPathDefaultDirEnvVar = "FLYTE_SECRETS_DEFAULT_DIR"
-	K8sPathFilePrefixEnvVar = "FLYTE_SECRETS_FILE_PREFIX"
-	K8sEnvVarPrefix         = "FLYTE_SECRETS_ENV_PREFIX"
 	K8sDefaultEnvVarPrefix  = "_FSEC_"
 	EnvVarGroupKeySeparator = "_"
 )
@@ -34,8 +31,8 @@ var (
 type K8sSecretInjector struct {
 }
 
-func (i K8sSecretInjector) ID() string {
-	return "K8s"
+func (i K8sSecretInjector) Type() SecretManagerType {
+	return SecretManagerTypeK8s
 }
 
 func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
@@ -61,7 +58,7 @@ func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *c
 
 		// Set environment variable to let the container know where to find the mounted files.
 		defaultDirEnvVar := corev1.EnvVar{
-			Name:  K8sPathDefaultDirEnvVar,
+			Name:  SecretPathDefaultDirEnvVar,
 			Value: filepath.Join(K8sSecretPathPrefix...),
 		}
 
@@ -70,7 +67,7 @@ func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *c
 
 		// Sets an empty prefix to let the containers know the file names will match the secret keys as-is.
 		prefixEnvVar := corev1.EnvVar{
-			Name:  K8sPathFilePrefixEnvVar,
+			Name:  SecretPathFilePrefixEnvVar,
 			Value: "",
 		}
 
@@ -82,7 +79,7 @@ func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *c
 		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, envVar)
 
 		prefixEnvVar := corev1.EnvVar{
-			Name:  K8sEnvVarPrefix,
+			Name:  SecretEnvVarPrefix,
 			Value: K8sDefaultEnvVarPrefix,
 		}
 
