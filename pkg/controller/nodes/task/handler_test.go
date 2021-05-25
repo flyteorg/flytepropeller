@@ -213,7 +213,7 @@ func Test_task_Setup(t *testing.T) {
 			pluginIDs:       map[pluginCore.TaskType]string{corePluginType: corePluginType, corePluginDefaultType: corePluginDefaultType, k8sPluginType: k8sPluginType, k8sPluginDefaultType: k8sPluginDefaultType},
 			defaultPluginID: corePluginDefaultType,
 		}, false},
-		{"incomplete-default-task-types",
+		{"partial-default-task-types",
 			testPluginRegistry{
 				core: []pluginCore.PluginEntry{corePluginEntry},
 				k8s:  []pluginK8s.PluginEntry{k8sPluginEntry},
