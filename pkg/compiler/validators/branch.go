@@ -61,28 +61,28 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 
 	for _, block := range cases {
 		n := w.NewNodeBuilder(block)
+		iface2, ok := ValidateUnderlyingInterface(w, n, errs.NewScope())
+
+		if !ok {
+			continue
+		}
+
+		ValidateBindings(w, n, n.GetInputs(), &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
+			false, EdgeDirectionUpstream, errs.NewScope())
+
+		// Clear out the Inputs. We do not care if the inputs of each of the underlying nodes
+		// match. We will pull the inputs needed for the underlying branch node at runtime.
+		iface2 = &flyte.TypedInterface{
+			Inputs:  &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
+			Outputs: iface2.Outputs,
+		}
+
 		if iface == nil {
-			// if this is the first node to validate, just assume all other nodes will match the interface
-			if iface, ok = ValidateUnderlyingInterface(w, n, errs.NewScope()); ok {
-				// Clear out the Inputs. We do not care if the inputs of each of the underlying nodes
-				// match. We will pull the inputs needed for the underlying branch node at runtime.
-				iface = &flyte.TypedInterface{
-					Inputs:  &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
-					Outputs: iface.Outputs,
-				}
-
-				outputs, outputsSet = buildVariablesIndex(iface.Outputs)
-				finalOutputParameterNames = finalOutputParameterNames.Union(outputsSet)
-			}
+			iface = iface2
+			outputs, outputsSet = buildVariablesIndex(iface.Outputs)
+			finalOutputParameterNames = finalOutputParameterNames.Union(outputsSet)
 		} else {
-			if iface2, ok2 := ValidateUnderlyingInterface(w, n, errs.NewScope()); ok2 {
-				iface2 = &flyte.TypedInterface{
-					Inputs:  &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
-					Outputs: iface2.Outputs,
-				}
-
-				validateIfaceMatch(n.GetId(), iface2, errs.NewScope())
-			}
+			validateIfaceMatch(n.GetId(), iface2, errs.NewScope())
 		}
 	}
 
