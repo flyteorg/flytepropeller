@@ -69,7 +69,11 @@ func buildFlyteWorkflowSpec(wf *core.CompiledWorkflow, tasks []*core.CompiledTas
 	spec *v1alpha1.WorkflowSpec, err error) {
 	var failureN *v1alpha1.NodeSpec
 	if n := wf.Template.GetFailureNode(); n != nil {
-		failureN, _ = buildNodeSpec(n, tasks, errs.NewScope())
+		nodes, ok := buildNodeSpec(n, tasks, errs.NewScope())
+		if !ok {
+			return
+		}
+		failureN = nodes[0]
 	}
 
 	nodes, _ := buildNodes(wf.Template.GetNodes(), tasks, errs.NewScope())
@@ -97,14 +101,16 @@ func buildFlyteWorkflowSpec(wf *core.CompiledWorkflow, tasks []*core.CompiledTas
 		failurePolicy = v1alpha1.WorkflowOnFailurePolicy(wf.Template.Metadata.OnFailure)
 	}
 
+	connections := buildConnections(wf)
 	return &v1alpha1.WorkflowSpec{
-		ID:              WorkflowIDAsString(wf.Template.Id),
-		OnFailure:       failureN,
-		Nodes:           nodes,
-		Connections:     buildConnections(wf),
-		Outputs:         outputs,
-		OutputBindings:  outputBindings,
-		OnFailurePolicy: failurePolicy,
+		ID:                    WorkflowIDAsString(wf.Template.Id),
+		OnFailure:             failureN,
+		Nodes:                 nodes,
+		Connections:           connections,
+		DeprecatedConnections: v1alpha1.DeprecatedConnections(connections),
+		Outputs:               outputs,
+		OutputBindings:        outputBindings,
+		OnFailurePolicy:       failurePolicy,
 	}, nil
 }
 

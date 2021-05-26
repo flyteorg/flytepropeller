@@ -38,7 +38,9 @@ func (p PredicatePhase) String() string {
 	return "undefined"
 }
 
-func CanExecute(ctx context.Context, dag executors.DAGStructure, nl executors.NodeLookup, node v1alpha1.BaseNode) (PredicatePhase, error) {
+func CanExecute(ctx context.Context, dag executors.DAGStructure, nl executors.NodeLookup, node v1alpha1.BaseNode) (
+	PredicatePhase, error) {
+
 	nodeID := node.GetID()
 	if nodeID == v1alpha1.StartNodeID {
 		logger.Debugf(ctx, "Start Node id is assumed to be ready.")
@@ -61,15 +63,9 @@ func CanExecute(ctx context.Context, dag executors.DAGStructure, nl executors.No
 		}
 
 		if parentNodeID != nil && *parentNodeID == upstreamNodeID {
-			upstreamNode, ok := nl.GetNode(upstreamNodeID)
+			_, ok := nl.GetNode(upstreamNodeID)
 			if !ok {
 				return PredicatePhaseUndefined, errors.Errorf(errors.BadSpecificationError, nodeID, "Upstream node [%v] of node [%v] not defined", upstreamNodeID, nodeID)
-			}
-
-			// This only happens if current node is the child node of a branch node
-			if upstreamNode.GetBranchNode() == nil || upstreamNodeStatus.GetBranchStatus().GetPhase() != v1alpha1.BranchNodeSuccess {
-				logger.Debugf(ctx, "Branch sub node is expected to have parent branch node in succeeded state")
-				return PredicatePhaseUndefined, errors.Errorf(errors.IllegalStateError, nodeID, "Upstream node [%v] is set as parent, but is not a branch node of [%v] or in illegal state.", upstreamNodeID, nodeID)
 			}
 
 			continue
@@ -110,15 +106,9 @@ func GetParentNodeMaxEndTime(ctx context.Context, dag executors.DAGStructure, nl
 	for _, upstreamNodeID := range upstreamNodes {
 		upstreamNodeStatus := nl.GetNodeExecutionStatus(ctx, upstreamNodeID)
 		if parentNodeID != nil && *parentNodeID == upstreamNodeID {
-			upstreamNode, ok := nl.GetNode(upstreamNodeID)
+			_, ok := nl.GetNode(upstreamNodeID)
 			if !ok {
 				return zeroTime, errors.Errorf(errors.BadSpecificationError, nodeID, "Upstream node [%v] of node [%v] not defined", upstreamNodeID, nodeID)
-			}
-
-			// This only happens if current node is the child node of a branch node
-			if upstreamNode.GetBranchNode() == nil || upstreamNodeStatus.GetBranchStatus().GetPhase() != v1alpha1.BranchNodeSuccess {
-				logger.Debugf(ctx, "Branch sub node is expected to have parent branch node in succeeded state")
-				return zeroTime, errors.Errorf(errors.IllegalStateError, nodeID, "Upstream node [%v] is set as parent, but is not a branch node of [%v] or in illegal state.", upstreamNodeID, nodeID)
 			}
 
 			continue
