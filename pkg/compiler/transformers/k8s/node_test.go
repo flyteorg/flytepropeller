@@ -61,7 +61,9 @@ func TestBuildNodeSpec(t *testing.T) {
 	errs := errors.NewCompileErrors()
 
 	mustBuild := func(n common.Node, errs errors.CompileErrors) *v1alpha1.NodeSpec {
-		spec, ok := buildNodeSpec(n.GetCoreNode(), tasks, errs)
+		specs, ok := buildNodeSpec(n.GetCoreNode(), tasks, errs)
+		assert.Len(t, specs, 1)
+		spec := specs[0]
 		assert.Nil(t, spec.Interruptibe)
 		assert.False(t, errs.HasErrors())
 		assert.True(t, ok)
