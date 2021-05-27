@@ -277,7 +277,7 @@ func (in *WorkflowSpec) ToNode(name NodeID) ([]NodeID, error) {
 	if _, ok := in.Nodes[name]; !ok {
 		return nil, errors.Errorf("Bad Node [%v], is not defined in the Workflow [%v]", name, in.ID)
 	}
-	upstreamNodes := in.DeprecatedConnections.UpstreamEdges[name]
+	upstreamNodes := in.GetConnections().Upstream[name]
 	return upstreamNodes, nil
 }
 
@@ -286,7 +286,7 @@ func (in *WorkflowSpec) FromNode(name NodeID) ([]NodeID, error) {
 		return nil, errors.Errorf("Bad Node [%v], is not defined in the Workflow [%v]", name, in.ID)
 	}
 
-	downstreamNodes := in.DeprecatedConnections.DownstreamEdges[name]
+	downstreamNodes := in.GetConnections().Downstream[name]
 	return downstreamNodes, nil
 }
 

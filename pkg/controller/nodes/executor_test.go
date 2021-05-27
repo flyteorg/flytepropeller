@@ -322,7 +322,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 		}
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				hf := &mocks2.HandlerFactory{}
+ 				hf := &mocks2.HandlerFactory{}
 				exec.nodeHandlerFactory = hf
 				h := &nodeHandlerMocks.Node{}
 				hf.On("GetHandler", v1alpha1.NodeKindEnd).Return(h, nil)
