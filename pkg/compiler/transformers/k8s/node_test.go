@@ -60,9 +60,9 @@ func TestBuildNodeSpec(t *testing.T) {
 	errors.SetConfig(errors.Config{IncludeSource: true})
 	errs := errors.NewCompileErrors()
 
-	mustBuild := func(n common.Node, errs errors.CompileErrors) *v1alpha1.NodeSpec {
+	mustBuild := func(t testing.TB, n common.Node, expectedInnerNodesCount int, errs errors.CompileErrors) *v1alpha1.NodeSpec {
 		specs, ok := buildNodeSpec(n.GetCoreNode(), tasks, errs)
-		assert.Len(t, specs, 1)
+		assert.Len(t, specs, expectedInnerNodesCount)
 		spec := specs[0]
 		assert.Nil(t, spec.Interruptibe)
 		assert.False(t, errs.HasErrors())
@@ -85,7 +85,7 @@ func TestBuildNodeSpec(t *testing.T) {
 			},
 		}
 
-		mustBuild(n, errs.NewScope())
+		mustBuild(t, n, 1, errs.NewScope())
 	})
 
 	t.Run("Task with resources", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestBuildNodeSpec(t *testing.T) {
 			},
 		}
 
-		spec := mustBuild(n, errs.NewScope())
+		spec := mustBuild(t, n, 1, errs.NewScope())
 		assert.NotNil(t, spec.Resources)
 		assert.NotNil(t, spec.Resources.Requests.Cpu())
 		assert.Equal(t, expectedCPU.Value(), spec.Resources.Requests.Cpu().Value())
@@ -113,7 +113,7 @@ func TestBuildNodeSpec(t *testing.T) {
 			},
 		}
 
-		mustBuild(n, errs.NewScope())
+		mustBuild(t, n, 1, errs.NewScope())
 	})
 
 	t.Run("Workflow", func(t *testing.T) {
@@ -126,7 +126,7 @@ func TestBuildNodeSpec(t *testing.T) {
 			},
 		}
 
-		mustBuild(n, errs.NewScope())
+		mustBuild(t, n, 1, errs.NewScope())
 	})
 
 	t.Run("Branch", func(t *testing.T) {
@@ -179,7 +179,7 @@ func TestBuildNodeSpec(t *testing.T) {
 			},
 		}
 
-		mustBuild(n, errs.NewScope())
+		mustBuild(t, n, 2, errs.NewScope())
 	})
 
 }
