@@ -48,6 +48,6 @@ func TestWorkflowSpec(t *testing.T) {
 
 	assert.NotNil(t, w.WorkflowSpec)
 	assert.Nil(t, w.GetOnFailureNode())
-	assert.Equal(t, 7, len(w.GetConnections().DownstreamEdges))
-	assert.Equal(t, 8, len(w.GetConnections().UpstreamEdges))
+	assert.Equal(t, 7, len(w.GetConnections().Downstream))
+	assert.Equal(t, 8, len(w.GetConnections().Upstream))
 }
