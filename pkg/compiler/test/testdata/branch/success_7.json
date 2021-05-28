@@ -1,0 +1,214 @@
+{
+  "workflow": {
+    "id": {
+      "resourceType": "WORKFLOW",
+      "project": "project",
+      "domain": "domain",
+      "name": "name",
+      "version": "version"
+    },
+    "metadata": {},
+    "interface": {
+      "inputs": {
+        "variables": {
+          "my_input": {
+            "type": {
+              "simple": "FLOAT"
+            },
+            "description": "my_input"
+          }
+        }
+      },
+      "outputs": {
+        "variables": {
+          "o0": {
+            "type": {
+              "simple": "FLOAT"
+            },
+            "description": "o0"
+          }
+        }
+      }
+    },
+    "nodes": [
+      {
+        "id": "node-0",
+        "metadata": {},
+        "inputs": [
+          {
+            "var": ".var-1",
+            "binding": {
+              "promise": {
+                "var": "my_input",
+                "nodeId": "start-node"
+              }
+            }
+          },
+          {
+            "var": ".var-2",
+            "binding": {
+              "promise": {
+                "var": "my_input",
+                "nodeId": "start-node"
+              }
+            }
+          },
+          {
+            "var": "n",
+            "binding": {
+              "promise": {
+                "var": "my_input",
+                "nodeId": "start-node"
+              }
+            }
+          }
+        ],
+        "branchNode": {
+          "ifElse": {
+            "case": {
+              "condition": {
+                "comparison": {
+                  "operator": "EQ",
+                  "leftValue": {
+                    "var": ".var-1"
+                  },
+                  "rightValue": {
+                    "var": ".var-1"
+                  }
+                }
+              },
+              "thenNode": {
+                "id": "thenNode-1",
+                "metadata": {},
+                "inputs": [
+                  {
+                    "var": ".var-1",
+                    "binding": {
+                      "promise": {
+                        "var": "my_input",
+                        "nodeId": "start-node"
+                      }
+                    }
+                  }
+                ],
+                "branchNode": {
+                  "ifElse": {
+                    "case": {
+                      "condition": {
+                        "comparison": {
+                          "operator": "EQ",
+                          "leftValue": {
+                            "var": ".var-2"
+                          },
+                          "rightValue": {
+                            "var": ".var-2"
+                          }
+                        }
+                      },
+                      "thenNode": {
+                        "id": "thenNode-2",
+                        "metadata": {},
+                        "inputs": [
+                          {
+                            "var": "n",
+                            "binding": {
+                              "promise": {
+                                "var": "my_input",
+                                "nodeId": "start-node"
+                              }
+                            }
+                          }
+                        ],
+                        "taskNode": {
+                          "referenceId": {
+                            "resourceType": "TASK",
+                            "project": "project",
+                            "domain": "domain",
+                            "name": "name",
+                            "version": "version"
+                          }
+                        }
+                      }
+                    },
+                    "error": {
+                      "message": "",
+                      "failedNodeId": ""
+                    }
+                  }
+                }
+              }
+            },
+            "error": {
+              "message": "",
+              "failedNodeId": ""
+            }
+          }
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "var": "o0",
+        "binding": {
+          "promise": {
+            "nodeId": "node-0",
+            "var": "o0"
+          }
+        }
+      }
+    ],
+    "metadataDefaults": {}
+  },
+  "tasks": [
+    {
+      "id": {
+        "resourceType": "TASK",
+        "project": "project",
+        "domain": "domain",
+        "name": "name",
+        "version": "version"
+      },
+      "type": "python-task",
+      "metadata": {},
+      "interface": {
+        "inputs": {
+          "variables": {
+            "n": {
+              "type": {
+                "simple": "FLOAT"
+              },
+              "description": "n"
+            },
+            ".var-1": {
+              "type": {
+                "simple": "FLOAT"
+              },
+              "description": ".var-1"
+            },
+            ".var-2": {
+              "type": {
+                "simple": "FLOAT"
+              },
+              "description": ".var-2"
+            }
+          }
+        },
+        "outputs": {
+          "variables": {
+            "o0": {
+              "type": {
+                "simple": "FLOAT"
+              },
+              "description": "o0"
+            }
+          }
+        }
+      },
+      "container": {
+        "image": "image:name",
+        "args": ["command"],
+        "resources": {}
+      }
+    }
+  ]
+}
