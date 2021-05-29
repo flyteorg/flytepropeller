@@ -515,6 +515,11 @@ func (_m *WorkflowBuilder) NewNodeBuilder(n *core.Node) common.NodeBuilder {
 	return r0
 }
 
+// ReplaceNodeId provides a mock function with given fields: oldID, newID
+func (_m *WorkflowBuilder) ReplaceNodeId(oldID string, newID string) {
+	_m.Called(oldID, newID)
+}
+
 // StoreCompiledSubWorkflow provides a mock function with given fields: id, compiledWorkflow
 func (_m *WorkflowBuilder) StoreCompiledSubWorkflow(id core.Identifier, compiledWorkflow *core.CompiledWorkflow) {
 	_m.Called(id, compiledWorkflow)

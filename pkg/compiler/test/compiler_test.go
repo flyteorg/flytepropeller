@@ -195,9 +195,9 @@ func TestBranches(t *testing.T) {
 
 		t.Run(path, func(t *testing.T) {
 			// If you want to debug a single use-case. Uncomment this line.
-			//if !strings.HasSuffix(path, "success_1.json") {
-			//	t.SkipNow()
-			//}
+			if !strings.HasSuffix(path, "success_7_nested.json") {
+				t.SkipNow()
+			}
 
 			raw, err := ioutil.ReadFile(path)
 			assert.NoError(t, err)

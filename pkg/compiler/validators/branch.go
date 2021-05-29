@@ -67,9 +67,6 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 			continue
 		}
 
-		ValidateBindings(w, n, n.GetInputs(), &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
-			false, EdgeDirectionUpstream, errs.NewScope())
-
 		// Clear out the Inputs. We do not care if the inputs of each of the underlying nodes
 		// match. We will pull the inputs needed for the underlying branch node at runtime.
 		iface2 = &flyte.TypedInterface{

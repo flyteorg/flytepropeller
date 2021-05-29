@@ -124,6 +124,39 @@ func (w workflowBuilder) AddUpstreamEdge(nodeProvider, nodeDependent c.NodeID) {
 	w.CoreWorkflow.Connections.Upstream[nodeDependent].Ids = w.upstreamNodes[nodeDependent].List()
 }
 
+func (w workflowBuilder) ReplaceNodeId(oldID, newID string) {
+	if existingVal, found := w.upstreamNodes[oldID]; found {
+		w.upstreamNodes[newID] = existingVal
+		delete(w.upstreamNodes, oldID)
+		delete(w.CoreWorkflow.Connections.Upstream, oldID)
+		w.CoreWorkflow.Connections.Upstream[newID] = &core.ConnectionSet_IdList{
+			Ids: make([]string, 1),
+		}
+	}
+
+	for key, val := range w.upstreamNodes {
+		if key != oldID && val.Has(oldID) {
+			val.Delete(oldID)
+			val.Insert(newID)
+			w.CoreWorkflow.Connections.Upstream[key].Ids = val.List()
+		}
+	}
+
+	if existingVal, found := w.downstreamNodes[oldID]; found {
+		w.downstreamNodes[newID] = existingVal
+		delete(w.CoreWorkflow.Connections.Downstream, oldID)
+		delete(w.downstreamNodes, oldID)
+	}
+
+	for key, val := range w.downstreamNodes {
+		if key != oldID && val.Has(oldID) {
+			val.Delete(oldID)
+			val.Insert(newID)
+			w.CoreWorkflow.Connections.Downstream[key].Ids = val.List()
+		}
+	}
+}
+
 func (w workflowBuilder) AddDownstreamEdge(nodeProvider, nodeDependent c.NodeID) {
 	if nodeProvider == "" {
 		nodeProvider = c.StartNodeID
