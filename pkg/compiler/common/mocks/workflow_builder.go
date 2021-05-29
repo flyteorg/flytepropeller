@@ -516,7 +516,7 @@ func (_m *WorkflowBuilder) NewNodeBuilder(n *core.Node) common.NodeBuilder {
 }
 
 // ReplaceNodeId provides a mock function with given fields: oldID, newID
-func (_m *WorkflowBuilder) ReplaceNodeId(oldID string, newID string) {
+func (_m *WorkflowBuilder) ReplaceNodeID(oldID string, newID string) {
 	_m.Called(oldID, newID)
 }
 

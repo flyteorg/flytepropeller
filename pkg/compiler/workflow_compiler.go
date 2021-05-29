@@ -124,7 +124,7 @@ func (w workflowBuilder) AddUpstreamEdge(nodeProvider, nodeDependent c.NodeID) {
 	w.CoreWorkflow.Connections.Upstream[nodeDependent].Ids = w.upstreamNodes[nodeDependent].List()
 }
 
-func (w workflowBuilder) ReplaceNodeId(oldID, newID string) {
+func (w workflowBuilder) ReplaceNodeID(oldID, newID string) {
 	if existingVal, found := w.upstreamNodes[oldID]; found {
 		w.upstreamNodes[newID] = existingVal
 		delete(w.upstreamNodes, oldID)

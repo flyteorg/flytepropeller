@@ -126,7 +126,7 @@ func ValidateNode(w c.WorkflowBuilder, n c.NodeBuilder, validateConditionTypes b
 			for _, subNode := range nodes {
 				oldID := subNode.GetId()
 				subNode.SetID(branchNodeIDFormatter(n.GetId(), subNode.GetId()))
-				w.ReplaceNodeId(oldID, subNode.GetId())
+				w.ReplaceNodeID(oldID, subNode.GetId())
 			}
 		}
 	} else if workflowN := n.GetWorkflowNode(); workflowN != nil && workflowN.GetSubWorkflowRef() != nil {
