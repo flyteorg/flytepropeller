@@ -1,6 +1,7 @@
 package validators
 
 import (
+	"fmt"
 	flyte "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	c "github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
@@ -59,6 +60,7 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 		cases = append(cases, elseNode)
 	}
 
+	fmt.Printf("Validating Interface for [%s]:[%s]\n", node.GetId(), node.GetMetadata().Name)
 	for _, block := range cases {
 		n := w.NewNodeBuilder(block)
 		iface2, ok := ValidateUnderlyingInterface(w, n, errs.NewScope())
@@ -67,7 +69,8 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 			continue
 		}
 
-		ValidateBindings(w, n, n.GetInputs(), &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
+		replacedSubNodeID := branchNodeIDFormatter(node.GetId(), n.GetId())
+		ValidateBindings(w, replacedSubNodeID, n, n.GetInputs(), &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
 			false, EdgeDirectionUpstream, errs.NewScope())
 
 		// Clear out the Inputs. We do not care if the inputs of each of the underlying nodes
@@ -89,7 +92,7 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 	// Discover inputs from bindings... these should include all the variables used in the conditional statements.
 	// When we come to validate the conditions themselves, we will look up these variables and fail if a variable is used
 	// in a condition but doesn't have a node input binding.
-	inputVarsFromBindings, _ := ValidateBindings(w, node, node.GetInputs(), &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
+	inputVarsFromBindings, _ := ValidateBindings(w, node.GetId(), node, node.GetInputs(), &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
 		false, EdgeDirectionUpstream, errs.NewScope())
 
 	if !errs.HasErrors() && iface != nil {

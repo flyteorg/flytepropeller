@@ -32,6 +32,7 @@
 package compiler
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -139,6 +140,7 @@ func (w workflowBuilder) AddDownstreamEdge(nodeProvider, nodeDependent c.NodeID)
 }
 
 func (w workflowBuilder) AddExecutionEdge(nodeFrom, nodeTo c.NodeID) {
+	fmt.Printf("Adding Edge for %s -> %s \n", nodeFrom, nodeTo)
 	w.AddDownstreamEdge(nodeFrom, nodeTo)
 	w.AddUpstreamEdge(nodeFrom, nodeTo)
 }
@@ -157,7 +159,7 @@ func (w workflowBuilder) AddEdges(n c.NodeBuilder, errs errors.CompileErrors) (o
 	}
 
 	// Add implicit Edges
-	_, ok = v.ValidateBindings(&w, n, n.GetInputs(), n.GetInterface().GetInputs(),
+	_, ok = v.ValidateBindings(&w, n.GetId(), n, n.GetInputs(), n.GetInterface().GetInputs(),
 		true /* validateParamTypes */, v.EdgeDirectionBidirectional, errs.NewScope())
 	return
 }
@@ -220,7 +222,7 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 	if !errs.HasErrors() {
 		for _, n := range wf.Nodes {
 			if n.GetBranchNode() != nil {
-				if inputVars, ok := v.ValidateBindings(&wf, n, n.GetInputs(), n.GetInterface().GetInputs(),
+				if inputVars, ok := v.ValidateBindings(&wf, n.GetId(), n, n.GetInputs(), n.GetInterface().GetInputs(),
 					false /* validateParamTypes */, v.EdgeDirectionUpstream, errs.NewScope()); ok {
 					merge, err := v.UnionDistinctVariableMaps(n.GetInterface().Inputs.Variables, inputVars.Variables)
 					if err != nil {
@@ -229,7 +231,7 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 
 					n.GetInterface().Inputs = &core.VariableMap{Variables: merge}
 
-					v.ValidateBranchNode(&wf, n, true /* validateConditionTypes */, errs.NewScope())
+					// v.ValidateBranchNode(&wf, n, true /* validateConditionTypes */, errs.NewScope())
 				}
 			}
 		}
@@ -272,7 +274,7 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 
 	// Validate workflow outputs are bound
 	if _, wfIfaceOk := v.ValidateInterface(globalOutputNode.GetId(), globalOutputNode.GetInterface(), errs.NewScope()); wfIfaceOk {
-		v.ValidateBindings(&wf, globalOutputNode, globalOutputNode.GetInputs(),
+		v.ValidateBindings(&wf, globalOutputNode.GetId(), globalOutputNode, globalOutputNode.GetInputs(),
 			globalOutputNode.GetInterface().GetInputs(), true, /* validateParamTypes */
 			v.EdgeDirectionBidirectional, errs.NewScope())
 	}

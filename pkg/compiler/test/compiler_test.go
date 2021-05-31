@@ -184,7 +184,7 @@ func TestDynamic(t *testing.T) {
 
 func TestBranches(t *testing.T) {
 	errors.SetConfig(errors.Config{IncludeSource: true})
-	assert.NoError(t, filepath.Walk("testdata/branch", func(path string, info os.FileInfo, err error) error {
+	assert.NoError(t, filepath.Walk("testdata/branch/success_7_nested.json", func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			if filepath.Base(info.Name()) != "branch" {
 				return filepath.SkipDir

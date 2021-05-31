@@ -1,6 +1,7 @@
 package validators
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/flyteorg/flytepropeller/pkg/compiler/typing"
@@ -107,8 +108,19 @@ const (
 	EdgeDirectionUpstream
 )
 
-func ValidateBindings(w c.WorkflowBuilder, node c.Node, bindings []*flyte.Binding, params *flyte.VariableMap,
+func ValidateBindings(w c.WorkflowBuilder, replaceNodeID string, node c.Node, bindings []*flyte.Binding, params *flyte.VariableMap,
 	validateParamTypes bool, edgeDirection EdgeDirection, errs errors.CompileErrors) (resolved *flyte.VariableMap, ok bool) {
+
+	// HACK!
+	if replaceNodeID != node.GetId() {
+		node.(c.NodeBuilder).SetID(replaceNodeID)
+	}
+	name := "unknown"
+	if node.GetMetadata() != nil {
+		name = node.GetMetadata().Name
+	}
+	fmt.Printf("\tValidating bindings for [%s]:[%s], direction [%d]\n", node.GetId(), name, edgeDirection)
+	// HACK End
 
 	resolved = &flyte.VariableMap{
 		Variables: make(map[string]*flyte.Variable, len(bindings)),

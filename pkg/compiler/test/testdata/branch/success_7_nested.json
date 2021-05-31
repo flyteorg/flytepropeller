@@ -7,8 +7,7 @@
       "name": "core.control_flow.run_conditions.so_nested",
       "version": "abc"
     },
-    "metadata": {
-    },
+    "metadata": {},
     "interface": {
       "inputs": {
         "variables": {
@@ -33,11 +32,10 @@
     },
     "nodes": [
       {
-        "id": "branchnode-2",
+        "id": "n0",
         "metadata": {
           "name": "fractions",
-          "retries": {
-          },
+          "retries": {},
           "interruptible": false
         },
         "inputs": [
@@ -76,7 +74,7 @@
                       },
                       "rightValue": {
                         "primitive": {
-                          "floatValue": 1
+                          "floatValue": 1.0
                         }
                       }
                     }
@@ -84,11 +82,10 @@
                 }
               },
               "thenNode": {
-                "id": "branchbranchnode-1",
+                "id": "n0",
                 "metadata": {
                   "name": "inner_fractions",
-                  "retries": {
-                  },
+                  "retries": {},
                   "interruptible": false
                 },
                 "inputs": [
@@ -118,11 +115,10 @@
                         }
                       },
                       "thenNode": {
-                        "id": "branchbranchn0",
+                        "id": "n0",
                         "metadata": {
                           "name": "flytekit.core.python_function_task.core.control_flow.run_conditions.double",
-                          "retries": {
-                          },
+                          "retries": {},
                           "interruptible": false
                         },
                         "inputs": [
@@ -146,9 +142,70 @@
                         }
                       }
                     },
+                    "other": [
+                      {
+                        "condition": {
+                          "conjunction": {
+                            "leftExpression": {
+                              "comparison": {
+                                "operator": "GT",
+                                "leftValue": {
+                                  "var": ".my_input"
+                                },
+                                "rightValue": {
+                                  "primitive": {
+                                    "floatValue": 0.5
+                                  }
+                                }
+                              }
+                            },
+                            "rightExpression": {
+                              "comparison": {
+                                "operator": "LT",
+                                "leftValue": {
+                                  "var": ".my_input"
+                                },
+                                "rightValue": {
+                                  "primitive": {
+                                    "floatValue": 0.7
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "thenNode": {
+                          "id": "n1",
+                          "metadata": {
+                            "name": "flytekit.core.python_function_task.core.control_flow.run_conditions.square",
+                            "retries": {},
+                            "interruptible": false
+                          },
+                          "inputs": [
+                            {
+                              "var": "n",
+                              "binding": {
+                                "promise": {
+                                  "var": "my_input"
+                                }
+                              }
+                            }
+                          ],
+                          "taskNode": {
+                            "referenceId": {
+                              "resourceType": "TASK",
+                              "project": "test_proj",
+                              "domain": "test_domain",
+                              "name": "core.control_flow.run_conditions.square",
+                              "version": "abc"
+                            }
+                          }
+                        }
+                      }
+                    ],
                     "error": {
                       "failedNodeId": "inner_fractions",
-                      "message": "Only <0.5 allowed"
+                      "message": "Only <0.7 allowed"
                     }
                   }
                 }
@@ -166,7 +223,7 @@
                         },
                         "rightValue": {
                           "primitive": {
-                            "floatValue": 1
+                            "floatValue": 1.0
                           }
                         }
                       }
@@ -179,7 +236,7 @@
                         },
                         "rightValue": {
                           "primitive": {
-                            "floatValue": 10
+                            "floatValue": 10.0
                           }
                         }
                       }
@@ -187,11 +244,10 @@
                   }
                 },
                 "thenNode": {
-                  "id": "branchn1",
+                  "id": "n1",
                   "metadata": {
                     "name": "flytekit.core.python_function_task.core.control_flow.run_conditions.square",
-                    "retries": {
-                    },
+                    "retries": {},
                     "interruptible": false
                   },
                   "inputs": [
@@ -216,9 +272,32 @@
                 }
               }
             ],
-            "error": {
-              "failedNodeId": "fractions",
-              "message": "The input must be between 0 and 10"
+            "elseNode": {
+              "id": "n2",
+              "metadata": {
+                "name": "flytekit.core.python_function_task.core.control_flow.run_conditions.double",
+                "retries": {},
+                "interruptible": false
+              },
+              "inputs": [
+                {
+                  "var": "n",
+                  "binding": {
+                    "promise": {
+                      "var": "my_input"
+                    }
+                  }
+                }
+              ],
+              "taskNode": {
+                "referenceId": {
+                  "resourceType": "TASK",
+                  "project": "test_proj",
+                  "domain": "test_domain",
+                  "name": "core.control_flow.run_conditions.double",
+                  "version": "abc"
+                }
+              }
             }
           }
         }
@@ -229,75 +308,87 @@
         "var": "o0",
         "binding": {
           "promise": {
-            "nodeId": "branchnode-2",
+            "nodeId": "n0",
             "var": "o0"
           }
         }
       }
     ],
-    "metadataDefaults": {
-    }
+    "metadataDefaults": {}
   },
   "tasks": [
     {
+      "container": {
+        "args": [
+          "pyflyte-execute",
+          "--inputs",
+          "{{.input}}",
+          "--output-prefix",
+          "{{.outputPrefix}}",
+          "--raw-output-data-prefix",
+          "{{.rawOutputDataPrefix}}",
+          "--resolver",
+          "flytekit.core.python_auto_container.default_task_resolver",
+          "--",
+          "task-module",
+          "core.control_flow.run_conditions",
+          "task-name",
+          "double"
+        ],
+        "env": [
+          {
+            "key": "FLYTE_INTERNAL_CONFIGURATION_PATH",
+            "value": "/root/sandbox.config"
+          },
+          {
+            "key": "FLYTE_INTERNAL_IMAGE",
+            "value": "flytecookbook:core-d5fa3ecfaca02f9b83957c68fd5fe3c9082ccc59"
+          }
+        ],
+        "image": "flytecookbook:core-d5fa3ecfaca02f9b83957c68fd5fe3c9082ccc59",
+        "resources": {
+        }
+      },
       "id": {
-        "resourceType": "TASK",
-        "project": "test_proj",
         "domain": "test_domain",
         "name": "core.control_flow.run_conditions.double",
+        "project": "test_proj",
+        "resourceType": "TASK",
         "version": "abc"
-      },
-      "type": "python-task",
-      "metadata": {
-        "runtime": {
-          "type": "FLYTE_SDK",
-          "version": "0.16.0",
-          "flavor": "python"
-        },
-        "retries": {
-        },
-        "interruptible": false
       },
       "interface": {
         "inputs": {
           "variables": {
             "n": {
+              "description": "n",
               "type": {
                 "simple": "FLOAT"
-              },
-              "description": "n"
+              }
             }
           }
         },
         "outputs": {
           "variables": {
             "o0": {
+              "description": "o0",
               "type": {
                 "simple": "FLOAT"
-              },
-              "description": "o0"
+              }
             }
           }
         }
       },
-      "container": {
-        "image": "image:name",
-        "args": [
-          "pyflyte-execute",
-          "--task-module",
-          "core.control_flow.run_conditions",
-          "--task-name",
-          "double",
-          "--inputs",
-          "{{.input}}",
-          "--output-prefix",
-          "{{.outputPrefix}}",
-          "--raw-output-data-prefix",
-          "{{.rawOutputDataPrefix}}"
-        ],
-        "resources": {
+      "metadata": {
+        "interruptible": false,
+        "retries": {
+        },
+        "runtime": {
+          "flavor": "python",
+          "type": "FLYTE_SDK",
+          "version": "0.0.0+develop"
         }
-      }
+      },
+      "type": "python-task"
     },
     {
       "id": {
@@ -311,11 +402,10 @@
       "metadata": {
         "runtime": {
           "type": "FLYTE_SDK",
-          "version": "0.16.0",
+          "version": "0.0.0+develop",
           "flavor": "python"
         },
-        "retries": {
-        },
+        "retries": {},
         "interruptible": false
       },
       "interface": {
@@ -341,22 +431,34 @@
         }
       },
       "container": {
-        "image": "image:name",
+        "image": "flytecookbook:core-d5fa3ecfaca02f9b83957c68fd5fe3c9082ccc59",
         "args": [
           "pyflyte-execute",
-          "--task-module",
-          "core.control_flow.run_conditions",
-          "--task-name",
-          "square",
           "--inputs",
           "{{.input}}",
           "--output-prefix",
           "{{.outputPrefix}}",
           "--raw-output-data-prefix",
-          "{{.rawOutputDataPrefix}}"
+          "{{.rawOutputDataPrefix}}",
+          "--resolver",
+          "flytekit.core.python_auto_container.default_task_resolver",
+          "--",
+          "task-module",
+          "core.control_flow.run_conditions",
+          "task-name",
+          "square"
         ],
-        "resources": {
-        }
+        "resources": {},
+        "env": [
+          {
+            "key": "FLYTE_INTERNAL_CONFIGURATION_PATH",
+            "value": "/root/sandbox.config"
+          },
+          {
+            "key": "FLYTE_INTERNAL_IMAGE",
+            "value": "flytecookbook:core-d5fa3ecfaca02f9b83957c68fd5fe3c9082ccc59"
+          }
+        ]
       }
     }
   ]

@@ -124,10 +124,13 @@ func ValidateNode(w c.WorkflowBuilder, n c.NodeBuilder, validateConditionTypes b
 	if n.GetBranchNode() != nil {
 		if nodes, ok := ValidateBranchNode(w, n, validateConditionTypes, errs.NewScope()); ok {
 			renamedNodes := make(map[c.NodeID]c.NodeID, len(nodes))
+			fmt.Printf("Validate node [%s] [%s], discovered \n", n.GetId(), n.GetMetadata().Name)
 			for _, subNode := range nodes {
+				fmt.Printf("\t %s ", subNode.GetId())
 				oldID := subNode.GetId()
-				subNode.SetID(branchNodeIDFormatter(n.GetId(), subNode.GetId()))
+				// subNode.SetID(branchNodeIDFormatter(n.GetId(), subNode.GetId()))
 				renamedNodes[oldID] = subNode.GetId()
+				fmt.Printf(" modified to %s \n", subNode.GetId())
 			}
 		}
 	} else if workflowN := n.GetWorkflowNode(); workflowN != nil && workflowN.GetSubWorkflowRef() != nil {
