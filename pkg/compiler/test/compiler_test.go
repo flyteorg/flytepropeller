@@ -195,16 +195,34 @@ func TestBranches(t *testing.T) {
 
 		t.Run(path, func(t *testing.T) {
 			// If you want to debug a single use-case. Uncomment this line.
-			if !strings.HasSuffix(path, "success_7_nested.json") {
-				t.SkipNow()
-			}
+			//if !strings.HasSuffix(path, "success_7_nested.json") {
+			//	t.SkipNow()
+			//}
 
 			raw, err := ioutil.ReadFile(path)
 			assert.NoError(t, err)
 			wf := &core.WorkflowClosure{}
-			err = jsonpb.UnmarshalString(string(raw), wf)
-			if !assert.NoError(t, err) {
-				t.FailNow()
+			if filepath.Ext(path) == ".json" {
+				err = jsonpb.UnmarshalString(string(raw), wf)
+				if !assert.NoError(t, err) {
+					t.FailNow()
+				}
+			} else if filepath.Ext(path) == ".pb" {
+				err = proto.Unmarshal(raw, wf)
+				if !assert.NoError(t, err) {
+					t.FailNow()
+				}
+
+				m := &jsonpb.Marshaler{}
+				raw, err := m.MarshalToString(wf)
+				if !assert.NoError(t, err) {
+					t.FailNow()
+				}
+
+				err = ioutil.WriteFile(strings.TrimSuffix(path, filepath.Ext(path))+".json", []byte(raw), os.ModePerm)
+				if !assert.NoError(t, err) {
+					t.FailNow()
+				}
 			}
 
 			t.Log("Compiling Workflow")

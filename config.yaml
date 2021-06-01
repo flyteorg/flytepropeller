@@ -1,7 +1,7 @@
 # This is a sample configuration file.
 # Real configuration when running inside K8s (local or otherwise) lives in a ConfigMap
 propeller:
-  rawoutput-prefix: s3://my-container/test/
+  rawoutput-prefix: s3://flyte/test/
   metadata-prefix: metadata/propeller/sandbox
   workers: 4
   workflow-reeval-duration: 10s
@@ -23,7 +23,7 @@ propeller:
       rate: 100
       capacity: 1000
   # This config assumes using `make start` in flytesnacks repo to startup a DinD k3s container
-  kube-config: "$HOME/kubeconfig/k3s/k3s.yaml"
+  kube-config: "$HOME/.kube/config"
   publish-k8s-events: true
   workflowStore:
     policy: "ResourceVersionCache"
@@ -85,7 +85,7 @@ storage:
     access-key: minio
     auth-type: accesskey
     disable-ssl: true
-    endpoint: http://localhost:30084
+    endpoint: http://localhost:9000
     region: us-east-1
     secret-key: miniostorage
   type: minio
