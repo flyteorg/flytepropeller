@@ -21,6 +21,38 @@ func (_m *WorkflowBuilder) AddDownstreamEdge(nodeProvider string, nodeDependent 
 	_m.Called(nodeProvider, nodeDependent)
 }
 
+type WorkflowBuilder_AddEdges struct {
+	*mock.Call
+}
+
+func (_m WorkflowBuilder_AddEdges) Return(ok bool) *WorkflowBuilder_AddEdges {
+	return &WorkflowBuilder_AddEdges{Call: _m.Call.Return(ok)}
+}
+
+func (_m *WorkflowBuilder) OnAddEdges(n common.NodeBuilder, edgeDirection common.EdgeDirection, errs errors.CompileErrors) *WorkflowBuilder_AddEdges {
+	c := _m.On("AddEdges", n, edgeDirection, errs)
+	return &WorkflowBuilder_AddEdges{Call: c}
+}
+
+func (_m *WorkflowBuilder) OnAddEdgesMatch(matchers ...interface{}) *WorkflowBuilder_AddEdges {
+	c := _m.On("AddEdges", matchers...)
+	return &WorkflowBuilder_AddEdges{Call: c}
+}
+
+// AddEdges provides a mock function with given fields: n, edgeDirection, errs
+func (_m *WorkflowBuilder) AddEdges(n common.NodeBuilder, edgeDirection common.EdgeDirection, errs errors.CompileErrors) bool {
+	ret := _m.Called(n, edgeDirection, errs)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(common.NodeBuilder, common.EdgeDirection, errors.CompileErrors) bool); ok {
+		r0 = rf(n, edgeDirection, errs)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 // AddExecutionEdge provides a mock function with given fields: nodeFrom, nodeTo
 func (_m *WorkflowBuilder) AddExecutionEdge(nodeFrom string, nodeTo string) {
 	_m.Called(nodeFrom, nodeTo)
@@ -515,7 +547,7 @@ func (_m *WorkflowBuilder) NewNodeBuilder(n *core.Node) common.NodeBuilder {
 	return r0
 }
 
-// ReplaceNodeId provides a mock function with given fields: oldID, newID
+// ReplaceNodeID provides a mock function with given fields: oldID, newID
 func (_m *WorkflowBuilder) ReplaceNodeID(oldID string, newID string) {
 	_m.Called(oldID, newID)
 }

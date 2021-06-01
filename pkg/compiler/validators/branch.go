@@ -60,15 +60,12 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 	}
 
 	for _, block := range cases {
+		// TODO: This should use a compiler type to carry over the already-computed interface in the previous pass.
 		n := w.NewNodeBuilder(block)
 		iface2, ok := ValidateUnderlyingInterface(w, n, errs.NewScope())
-
 		if !ok {
 			continue
 		}
-
-		ValidateBindings(w, n, n.GetInputs(), &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
-			false, EdgeDirectionUpstream, errs.NewScope())
 
 		// Clear out the Inputs. We do not care if the inputs of each of the underlying nodes
 		// match. We will pull the inputs needed for the underlying branch node at runtime.
@@ -90,7 +87,7 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 	// When we come to validate the conditions themselves, we will look up these variables and fail if a variable is used
 	// in a condition but doesn't have a node input binding.
 	inputVarsFromBindings, _ := ValidateBindings(w, node, node.GetInputs(), &flyte.VariableMap{Variables: map[string]*flyte.Variable{}},
-		false, EdgeDirectionUpstream, errs.NewScope())
+		false, c.EdgeDirectionUpstream, errs.NewScope())
 
 	if !errs.HasErrors() && iface != nil {
 		iface = &flyte.TypedInterface{
