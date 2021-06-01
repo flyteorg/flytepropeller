@@ -216,10 +216,20 @@ func getAllSubNodeIDs(n *core.Node) sets.String {
 	return res
 }
 
-func getAllNodeIDsWithPromiseInputs(wf *core.CompiledWorkflow) sets.String {
+type nodePredicate func(n *core.Node) bool
+
+var hasPromiseNodePredicate = func(n *core.Node) bool {
+	return hasPromiseInputs(n.GetInputs())
+}
+
+var allNodesPredicate = func(n *core.Node) bool {
+	return true
+}
+
+func getAllMatchingNodes(wf *core.CompiledWorkflow, predicate nodePredicate) sets.String {
 	s := sets.NewString()
 	for _, n := range wf.Template.Nodes {
-		if hasPromiseInputs(n.GetInputs()) {
+		if predicate(n) {
 			s.Insert(n.GetId())
 		}
 
@@ -260,7 +270,7 @@ func hasPromiseInputs(bindings []*core.Binding) bool {
 	return false
 }
 
-func assertNotIDsInConnections(t testing.TB, expectedNodeIDs sets.String, connections *core.ConnectionSet) bool {
+func assertNotIDsInConnections(t testing.TB, nodeIDsWithDeps, allNodeIDs sets.String, connections *core.ConnectionSet) bool {
 	actualNodeIDs := sets.NewString()
 	for id, lst := range connections.Downstream {
 		actualNodeIDs.Insert(id)
@@ -272,11 +282,10 @@ func assertNotIDsInConnections(t testing.TB, expectedNodeIDs sets.String, connec
 		actualNodeIDs.Insert(lst.Ids...)
 	}
 
-	notFoundInConnections := expectedNodeIDs.Difference(actualNodeIDs)
+	notFoundInConnections := nodeIDsWithDeps.Difference(actualNodeIDs)
 	correct := assert.Empty(t, notFoundInConnections, "All nodes must appear in connections")
 
-	notFoundInNodes := actualNodeIDs.Difference(expectedNodeIDs)
-	notFoundInNodes.Delete("start-node")
+	notFoundInNodes := actualNodeIDs.Difference(allNodeIDs)
 	correct = correct && assert.Empty(t, notFoundInNodes, "All connections must correspond to existing nodes")
 
 	return correct
@@ -295,7 +304,7 @@ func TestBranches(t *testing.T) {
 
 		t.Run(path, func(t *testing.T) {
 			// If you want to debug a single use-case. Uncomment this line.
-			//if !strings.HasSuffix(path, "success_8_nested.json") {
+			//if !strings.HasSuffix(path, "success_9_nested.json") {
 			//	t.SkipNow()
 			//}
 
@@ -360,8 +369,9 @@ func TestBranches(t *testing.T) {
 				}
 			}
 
-			nodeIDs := getAllNodeIDsWithPromiseInputs(compiledWfc.Primary)
-			if !assertNotIDsInConnections(t, nodeIDs, compiledWfc.Primary.Connections) {
+			allNodeIDs := getAllMatchingNodes(compiledWfc.Primary, allNodesPredicate)
+			nodeIDsWithDeps := getAllMatchingNodes(compiledWfc.Primary, hasPromiseNodePredicate)
+			if !assertNotIDsInConnections(t, nodeIDsWithDeps, allNodeIDs, compiledWfc.Primary.Connections) {
 				t.FailNow()
 			}
 

@@ -28,15 +28,18 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 		return
 	}
 
-	finalOutputParameterNames := sets.NewString()
-
 	var outputs map[string]*flyte.Variable
-	outputsSet := sets.NewString()
+	finalOutputParameterNames := sets.NewString()
 
 	validateIfaceMatch := func(nodeId string, iface2 *flyte.TypedInterface, errsScope errors.CompileErrors) (match bool) {
 		outputs2, outputs2Set := buildVariablesIndex(iface2.Outputs)
-		validateVarsSetMatch(nodeId, outputs, outputs2, outputsSet, outputs2Set, errsScope.NewScope())
+		// Validate that parameters that exist in both interfaces have compatible types.
 		finalOutputParameterNames = finalOutputParameterNames.Intersection(outputs2Set)
+		for paramName := range finalOutputParameterNames {
+			if validateVarType(nodeId, paramName, outputs[paramName], outputs2[paramName].Type, errs.NewScope()) {
+				validateVarType(nodeId, paramName, outputs2[paramName], outputs[paramName].Type, errs.NewScope())
+			}
+		}
 
 		return !errsScope.HasErrors()
 	}
@@ -76,8 +79,7 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 
 		if iface == nil {
 			iface = iface2
-			outputs, outputsSet = buildVariablesIndex(iface.Outputs)
-			finalOutputParameterNames = finalOutputParameterNames.Union(outputsSet)
+			outputs, finalOutputParameterNames = buildVariablesIndex(iface.Outputs)
 		} else {
 			validateIfaceMatch(n.GetId(), iface2, errs.NewScope())
 		}
