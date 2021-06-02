@@ -213,28 +213,6 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 		}
 	}
 
-	// At this point, all nodes except branch nodes have populated all their input and output interfaces,
-	// Because conditions in branch nodes do not carry type information with them for the variables involved (e.g.
-	// if x == y), we need to wait till all nodes have populated their interfaces before we can resolve x and y to their
-	// original types and then validate whether they are compatible for comparison.
-	//if !errs.HasErrors() {
-	//	for _, n := range wf.Nodes {
-	//		if n.GetBranchNode() != nil {
-	//			if inputVars, ok := v.ValidateBindings(&wf, n, n.GetInputs(), n.GetInterface().GetInputs(),
-	//				false /* validateParamTypes */, c.EdgeDirectionUpstream, errs.NewScope()); ok {
-	//				merge, err := v.UnionDistinctVariableMaps(n.GetInterface().Inputs.Variables, inputVars.Variables)
-	//				if err != nil {
-	//					errs.Collect(errors.NewWorkflowBuildError(err))
-	//				}
-	//
-	//				n.GetInterface().Inputs = &core.VariableMap{Variables: merge}
-	//
-	//				v.ValidateBranchNode(&wf, n, true /* validateConditionTypes */, errs.NewScope())
-	//			}
-	//		}
-	//	}
-	//}
-
 	// Add explicitly and implicitly declared edges
 	for nodeID, n := range wf.Nodes {
 		if nodeID == c.StartNodeID {
