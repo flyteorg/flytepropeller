@@ -135,6 +135,7 @@ github.com/aws/aws-sdk-go-v2/credentials v1.0.0 h1:0M7netgZ8gCV4v7z1km+Fbl7j6KQY
 github.com/aws/aws-sdk-go-v2/credentials v1.0.0/go.mod h1:/SvsiqBf509hG4Bddigr3NB12MIpfHhZapyBurJe8aY=
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.0.0 h1:lO7fH5n7Q1dKcDBpuTmwJylD1bOQiRig8LI6TD9yVQk=
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.0.0/go.mod h1:wpMHDCXvOXZxGCRSidyepa8uJHY4vaBGfY2/+oKU/Bc=
+github.com/aws/aws-sdk-go-v2/service/athena v1.0.0 h1:UfrZP3NMTTKpOsf/P8uCaOxz3U2CNGEizdQKcObY7Ds=
 github.com/aws/aws-sdk-go-v2/service/athena v1.0.0/go.mod h1:qY8QFbemf2ceqweXcS6hQqiiIe1z42WqTvHsK2Lb0rE=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.0.0 h1:IAutMPSrynpvKOpHG6HyWHmh1xmxWAmYOK84NrQVqVQ=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.0.0/go.mod h1:3jExOmpbjgPnz2FJaMOfbSk1heTkZ66aD3yNtVhnjvI=
