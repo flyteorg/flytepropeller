@@ -30,7 +30,6 @@ type WorkflowBuilder interface {
 	AddDownstreamEdge(nodeProvider, nodeDependent NodeID)
 	AddNode(n NodeBuilder, errs errors.CompileErrors) (node NodeBuilder, ok bool)
 	AddEdges(n NodeBuilder, edgeDirection EdgeDirection, errs errors.CompileErrors) (ok bool)
-	ReplaceNodeID(oldID, newID string)
 	ValidateWorkflow(fg *core.CompiledWorkflow, errs errors.CompileErrors) (Workflow, bool)
 	NewNodeBuilder(n *core.Node) NodeBuilder
 }

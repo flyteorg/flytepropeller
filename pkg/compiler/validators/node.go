@@ -86,9 +86,6 @@ func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType b
 	}
 
 	for _, wrapperNode := range subNodes {
-		oldID := wrapperNode.GetId()
-		wrapperNode.SetID(branchNodeIDFormatter(n.GetId(), wrapperNode.GetId()))
-		w.ReplaceNodeID(oldID, wrapperNode.GetId())
 		if ValidateNode(w, wrapperNode, requireParamType, errs.NewScope()) {
 			// Add to the global nodes to be able to reference it later
 			discoveredNodes = append(discoveredNodes, wrapperNode)
@@ -128,9 +125,6 @@ func ValidateNode(w c.WorkflowBuilder, n c.NodeBuilder, validateConditionTypes b
 		if nodes, ok := ValidateBranchNode(w, n, validateConditionTypes, errs.NewScope()); ok {
 			for _, subNode := range nodes {
 				w.AddEdges(subNode, c.EdgeDirectionUpstream, errs.NewScope())
-				//	oldID := subNode.GetId()
-				//	subNode.SetID(branchNodeIDFormatter(n.GetId(), subNode.GetId()))
-				//	w.ReplaceNodeID(oldID, subNode.GetId())
 			}
 		}
 	} else if workflowN := n.GetWorkflowNode(); workflowN != nil && workflowN.GetSubWorkflowRef() != nil {
