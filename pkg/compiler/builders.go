@@ -1,6 +1,8 @@
 package compiler
 
 import (
+	"fmt"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	c "github.com/flyteorg/flytepropeller/pkg/compiler/common"
 )
@@ -12,12 +14,13 @@ type flyteNode = core.Node
 // A builder object for the Graph struct. This contains information the compiler uses while building the final Graph
 // struct.
 type workflowBuilder struct {
-	CoreWorkflow    *flyteWorkflow
-	LaunchPlans     map[c.WorkflowIDKey]c.InterfaceProvider
-	Tasks           c.TaskIndex
-	downstreamNodes c.StringAdjacencyList
-	upstreamNodes   c.StringAdjacencyList
-	Nodes           c.NodeIndex
+	CoreWorkflow     *flyteWorkflow
+	LaunchPlans      map[c.WorkflowIDKey]c.InterfaceProvider
+	Tasks            c.TaskIndex
+	downstreamNodes  c.StringAdjacencyList
+	upstreamNodes    c.StringAdjacencyList
+	Nodes            c.NodeIndex
+	NodeBuilderIndex c.NodeIndex
 
 	// These are references to all subgraphs and tasks passed to CompileWorkflow. They will be passed around but will
 	// not show in their entirety in the final Graph. The required subset of these will be added to each subgraph as
@@ -53,7 +56,14 @@ func (w workflowBuilder) GetUpstreamNodes() c.StringAdjacencyList {
 }
 
 func (w workflowBuilder) NewNodeBuilder(n *flyteNode) c.NodeBuilder {
-	return &nodeBuilder{flyteNode: n}
+	address := fmt.Sprintf("%p", n)
+	if existingBuilder, found := w.NodeBuilderIndex[address]; found {
+		return existingBuilder
+	}
+
+	newObj := &nodeBuilder{flyteNode: n}
+	w.NodeBuilderIndex[address] = newObj
+	return newObj
 }
 
 func (w workflowBuilder) GetNode(id c.NodeID) (node c.NodeBuilder, found bool) {

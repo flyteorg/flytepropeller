@@ -141,7 +141,7 @@
                           }
                         },
                         "thenNode": {
-                          "id": "n0-n0-n0-n0-n0",
+                          "id": "n0-n0-n0",
                           "metadata": {
                             "name": "flytekit.core.python_function_task.core.control_flow.run_conditions.double",
                             "retries": {
@@ -204,7 +204,7 @@
                             }
                           },
                           "thenNode": {
-                            "id": "n0-n0-n0-n0-n1",
+                            "id": "n0-n0-n1",
                             "metadata": {
                               "name": "flytekit.core.python_function_task.core.control_flow.run_conditions.square",
                               "retries": {
@@ -385,12 +385,12 @@
             "start-node"
           ]
         },
-        "n0-n0-n0-n0-n0": {
+        "n0-n0-n0": {
           "ids": [
             "start-node"
           ]
         },
-        "n0-n0-n0-n0-n1": {
+        "n0-n0-n1": {
           "ids": [
             "start-node"
           ]

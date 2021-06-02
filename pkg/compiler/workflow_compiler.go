@@ -383,6 +383,7 @@ func newWorkflowBuilder(fg *flyteWorkflow, wfIndex c.WorkflowIndex, tasks c.Task
 		CoreWorkflow:            fg,
 		LaunchPlans:             map[string]c.InterfaceProvider{},
 		Nodes:                   c.NewNodeIndex(),
+		NodeBuilderIndex:        c.NewNodeIndex(),
 		Tasks:                   c.NewTaskIndex(),
 		downstreamNodes:         c.StringAdjacencyList{},
 		upstreamNodes:           c.StringAdjacencyList{},

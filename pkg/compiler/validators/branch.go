@@ -8,6 +8,10 @@ import (
 )
 
 func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs errors.CompileErrors) (iface *flyte.TypedInterface, ok bool) {
+	if node.GetInterface() != nil {
+		return node.GetInterface(), true
+	}
+
 	if branch := node.GetBranchNode(); branch == nil {
 		errs.Collect(errors.NewValueRequiredErr(node.GetId(), "Branch"))
 		return

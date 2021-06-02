@@ -128,7 +128,7 @@
                 }
               }
             },
-            "then": "branchnode-2-branchbranchnode-1-branchnode-2-branchbranchnode-1-branchbranchn0"
+            "then": "branchnode-2-branchbranchnode-1-branchbranchn0"
           },
           "elseFail": {
             "failedNodeId": "inner_fractions",
@@ -151,8 +151,8 @@
         },
         "interruptible": false
       },
-      "branchnode-2-branchbranchnode-1-branchnode-2-branchbranchnode-1-branchbranchn0": {
-        "id": "branchnode-2-branchbranchnode-1-branchnode-2-branchbranchnode-1-branchbranchn0",
+      "branchnode-2-branchbranchnode-1-branchbranchn0": {
+        "id": "branchnode-2-branchbranchnode-1-branchbranchn0",
         "name": "flytekit.core.python_function_task.core.control_flow.run_conditions.double",
         "resources": {},
         "kind": "task",
@@ -241,7 +241,7 @@
         "branchnode-2-branchbranchnode-1": [
           "start-node"
         ],
-        "branchnode-2-branchbranchnode-1-branchnode-2-branchbranchnode-1-branchbranchn0": [
+        "branchnode-2-branchbranchnode-1-branchbranchn0": [
           "start-node"
         ],
         "branchnode-2-branchn1": [

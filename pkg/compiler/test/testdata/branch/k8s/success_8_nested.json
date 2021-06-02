@@ -141,7 +141,7 @@
                 }
               }
             },
-            "then": "n0-n0-n0-n0-n0"
+            "then": "n0-n0-n0"
           },
           "elseIf": [
             {
@@ -175,7 +175,7 @@
                   }
                 }
               },
-              "then": "n0-n0-n0-n0-n1"
+              "then": "n0-n0-n1"
             }
           ],
           "elseFail": {
@@ -199,8 +199,8 @@
         },
         "interruptible": false
       },
-      "n0-n0-n0-n0-n0": {
-        "id": "n0-n0-n0-n0-n0",
+      "n0-n0-n0": {
+        "id": "n0-n0-n0",
         "name": "flytekit.core.python_function_task.core.control_flow.run_conditions.double",
         "resources": {},
         "kind": "task",
@@ -221,8 +221,8 @@
         },
         "interruptible": false
       },
-      "n0-n0-n0-n0-n1": {
-        "id": "n0-n0-n0-n0-n1",
+      "n0-n0-n1": {
+        "id": "n0-n0-n1",
         "name": "flytekit.core.python_function_task.core.control_flow.run_conditions.square",
         "resources": {},
         "kind": "task",
@@ -320,10 +320,10 @@
         "n0-n0": [
           "start-node"
         ],
-        "n0-n0-n0-n0-n0": [
+        "n0-n0-n0": [
           "start-node"
         ],
-        "n0-n0-n0-n0-n1": [
+        "n0-n0-n1": [
           "start-node"
         ],
         "n0-n1": [
