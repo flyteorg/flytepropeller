@@ -513,26 +513,26 @@ func (_m *WorkflowBuilder) GetUpstreamNodes() common.StringAdjacencyList {
 	return r0
 }
 
-type WorkflowBuilder_NewNodeBuilder struct {
+type WorkflowBuilder_GetOrCreateNodeBuilder struct {
 	*mock.Call
 }
 
-func (_m WorkflowBuilder_NewNodeBuilder) Return(_a0 common.NodeBuilder) *WorkflowBuilder_NewNodeBuilder {
-	return &WorkflowBuilder_NewNodeBuilder{Call: _m.Call.Return(_a0)}
+func (_m WorkflowBuilder_GetOrCreateNodeBuilder) Return(_a0 common.NodeBuilder) *WorkflowBuilder_GetOrCreateNodeBuilder {
+	return &WorkflowBuilder_GetOrCreateNodeBuilder{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *WorkflowBuilder) OnNewNodeBuilder(n *core.Node) *WorkflowBuilder_NewNodeBuilder {
-	c := _m.On("NewNodeBuilder", n)
-	return &WorkflowBuilder_NewNodeBuilder{Call: c}
+func (_m *WorkflowBuilder) OnGetOrCreateNodeBuilder(n *core.Node) *WorkflowBuilder_GetOrCreateNodeBuilder {
+	c := _m.On("GetOrCreateNodeBuilder", n)
+	return &WorkflowBuilder_GetOrCreateNodeBuilder{Call: c}
 }
 
-func (_m *WorkflowBuilder) OnNewNodeBuilderMatch(matchers ...interface{}) *WorkflowBuilder_NewNodeBuilder {
-	c := _m.On("NewNodeBuilder", matchers...)
-	return &WorkflowBuilder_NewNodeBuilder{Call: c}
+func (_m *WorkflowBuilder) OnGetOrCreateNodeBuilderMatch(matchers ...interface{}) *WorkflowBuilder_GetOrCreateNodeBuilder {
+	c := _m.On("GetOrCreateNodeBuilder", matchers...)
+	return &WorkflowBuilder_GetOrCreateNodeBuilder{Call: c}
 }
 
-// NewNodeBuilder provides a mock function with given fields: n
-func (_m *WorkflowBuilder) NewNodeBuilder(n *core.Node) common.NodeBuilder {
+// GetOrCreateNodeBuilder provides a mock function with given fields: n
+func (_m *WorkflowBuilder) GetOrCreateNodeBuilder(n *core.Node) common.NodeBuilder {
 	ret := _m.Called(n)
 
 	var r0 common.NodeBuilder

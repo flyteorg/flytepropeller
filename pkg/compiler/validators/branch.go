@@ -67,8 +67,7 @@ func validateBranchInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs error
 	}
 
 	for _, block := range cases {
-		// TODO: This should use a compiler type to carry over the already-computed interface in the previous pass.
-		n := w.NewNodeBuilder(block)
+		n := w.GetOrCreateNodeBuilder(block)
 		n.SetID(branchNodeIDFormatter(node.GetId(), n.GetId()))
 		iface2, ok := ValidateUnderlyingInterface(w, n, errs.NewScope())
 		if !ok {

@@ -73,13 +73,13 @@ func ValidateBranchNode(w c.WorkflowBuilder, n c.NodeBuilder, requireParamType b
 		if block.GetThenNode() == nil {
 			errs.Collect(errors.NewBranchNodeNotSpecified(n.GetId()))
 		} else {
-			wrapperNode := w.NewNodeBuilder(block.GetThenNode())
+			wrapperNode := w.GetOrCreateNodeBuilder(block.GetThenNode())
 			subNodes = append(subNodes, wrapperNode)
 		}
 	}
 
 	if elseNode := n.GetBranchNode().IfElse.GetElseNode(); elseNode != nil {
-		wrapperNode := w.NewNodeBuilder(elseNode)
+		wrapperNode := w.GetOrCreateNodeBuilder(elseNode)
 		subNodes = append(subNodes, wrapperNode)
 	} else if defaultElse := n.GetBranchNode().IfElse.GetDefault(); defaultElse == nil {
 		errs.Collect(errors.NewBranchNodeHasNoDefault(n.GetId()))

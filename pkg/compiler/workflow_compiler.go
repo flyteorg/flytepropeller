@@ -192,11 +192,11 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 		Upstream:   make(map[string]*core.ConnectionSet_IdList),
 	}
 
-	globalInputNode, _ := wf.AddNode(wf.NewNodeBuilder(startNode), errs)
+	globalInputNode, _ := wf.AddNode(wf.GetOrCreateNodeBuilder(startNode), errs)
 	globalInputNode.SetInterface(&core.TypedInterface{Outputs: wf.CoreWorkflow.Template.Interface.Inputs})
 
 	endNode := &core.Node{Id: c.EndNodeID}
-	globalOutputNode, _ := wf.AddNode(wf.NewNodeBuilder(endNode), errs)
+	globalOutputNode, _ := wf.AddNode(wf.GetOrCreateNodeBuilder(endNode), errs)
 	globalOutputNode.SetInterface(&core.TypedInterface{Inputs: wf.CoreWorkflow.Template.Interface.Outputs})
 	globalOutputNode.SetInputs(wf.CoreWorkflow.Template.Outputs)
 
@@ -208,7 +208,7 @@ func (w workflowBuilder) ValidateWorkflow(fg *flyteWorkflow, errs errors.Compile
 	// Add and validate all other nodes
 	for _, n := range checkpoint {
 		topLevelNodes.Insert(n.Id)
-		if node, addOk := wf.AddNode(wf.NewNodeBuilder(n), errs.NewScope()); addOk {
+		if node, addOk := wf.AddNode(wf.GetOrCreateNodeBuilder(n), errs.NewScope()); addOk {
 			v.ValidateNode(&wf, node, false /* validateConditionTypes */, errs.NewScope())
 		}
 	}
