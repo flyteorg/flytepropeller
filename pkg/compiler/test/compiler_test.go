@@ -270,7 +270,7 @@ func hasPromiseInputs(bindings []*core.Binding) bool {
 	return false
 }
 
-func assertNotIDsInConnections(t testing.TB, nodeIDsWithDeps, allNodeIDs sets.String, connections *core.ConnectionSet) bool {
+func assertNodeIDsInConnections(t testing.TB, nodeIDsWithDeps, allNodeIDs sets.String, connections *core.ConnectionSet) bool {
 	actualNodeIDs := sets.NewString()
 	for id, lst := range connections.Downstream {
 		actualNodeIDs.Insert(id)
@@ -371,7 +371,7 @@ func TestBranches(t *testing.T) {
 
 			allNodeIDs := getAllMatchingNodes(compiledWfc.Primary, allNodesPredicate)
 			nodeIDsWithDeps := getAllMatchingNodes(compiledWfc.Primary, hasPromiseNodePredicate)
-			if !assertNotIDsInConnections(t, nodeIDsWithDeps, allNodeIDs, compiledWfc.Primary.Connections) {
+			if !assertNodeIDsInConnections(t, nodeIDsWithDeps, allNodeIDs, compiledWfc.Primary.Connections) {
 				t.FailNow()
 			}
 
