@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	AWSSecretArnEnvVar       = "secrets.k8s.aws/secret-arn"
-	AWSSecretMountPathEnvVar = "secrets.k8s.aws/mount-path"
-	AWSSecretFileNameEnvVar  = "secrets.k8s.aws/secret-filename"
+	AWSSecretArnAnnotation       = "secrets.k8s.aws/secret-arn"
+	AWSSecretMountPathAnnotation = "secrets.k8s.aws/mount-path"
+	AWSSecretFileNameAnnotation  = "secrets.k8s.aws/secret-filename"
 )
 
 var (
@@ -55,20 +55,12 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 	case core.Secret_ANY:
 		fallthrough
 	case core.Secret_FILE:
+		p.Annotations[AWSSecretArnAnnotation] = formatAWSSecretArn(secret)
+		p.Annotations[AWSSecretMountPathAnnotation] = formatAWSSecretMount(secret)
+		p.Annotations[AWSSecretFileNameAnnotation] = secret.Key
+
 		// Inject AWS secret-inject webhook annotations to mount the secret in a predictable location.
 		envVars := []corev1.EnvVar{
-			{
-				Name:  AWSSecretArnEnvVar,
-				Value: formatAWSSecretArn(secret),
-			},
-			{
-				Name:  AWSSecretMountPathEnvVar,
-				Value: formatAWSSecretMount(secret),
-			},
-			{
-				Name:  AWSSecretFileNameEnvVar,
-				Value: secret.Key,
-			},
 			// Set environment variable to let the container know where to find the mounted files.
 			{
 				Name:  SecretPathDefaultDirEnvVar,

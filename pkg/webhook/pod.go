@@ -224,7 +224,7 @@ func NewPodMutator(cfg *Config, scope promutils.Scope) *PodMutator {
 		cfg: cfg,
 		Mutators: []MutatorConfig{
 			{
-				Mutator: NewSecretsMutator(scope.NewSubScope("secrets")),
+				Mutator: NewSecretsMutator(cfg, scope.NewSubScope("secrets")),
 			},
 		},
 	}
