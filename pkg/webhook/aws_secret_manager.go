@@ -90,12 +90,11 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 		p.Spec.Volumes = appendVolumeIfNotExists(p.Spec.Volumes, vol)
 
 		p.Spec.InitContainers = append(p.Spec.InitContainers, corev1.Container{
-			Image: "docker.io/amazon/aws-secrets-manager-secret-sidecar:v0.1.1",
+			Image: "docker.io/amazon/aws-secrets-manager-secret-sidecar:v0.1.4",
 			Name:  fmt.Sprintf("aws-pull-secret-%v", len(p.Spec.InitContainers)),
 			VolumeMounts: []corev1.VolumeMount{
 				{
-					Name:     "secret-vol",
-					ReadOnly: true,
+					Name: "secret-vol",
 					// The aws secret sidecar expects the mount to be in /tmp
 					MountPath: "/tmp",
 				},
@@ -107,7 +106,7 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 				},
 				{
 					Name:  "SECRET_FILENAME",
-					Value: filepath.Join(secret.Group, secret.Key),
+					Value: filepath.Join(string(filepath.Separator), secret.Group, secret.Key),
 				},
 			},
 			Resources: corev1.ResourceRequirements{
