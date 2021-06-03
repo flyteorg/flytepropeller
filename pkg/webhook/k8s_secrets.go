@@ -3,6 +3,7 @@ package webhook
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"os"
 	"path/filepath"
 
@@ -31,8 +32,8 @@ var (
 type K8sSecretInjector struct {
 }
 
-func (i K8sSecretInjector) Type() SecretManagerType {
-	return SecretManagerTypeK8s
+func (i K8sSecretInjector) Type() config.SecretManagerType {
+	return config.SecretManagerTypeK8s
 }
 
 func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {

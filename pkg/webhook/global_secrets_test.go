@@ -81,7 +81,7 @@ func TestGlobalSecrets_Inject(t *testing.T) {
 				envSecretManager: tt.envSecretManager,
 			}
 
-			assert.NotEmpty(t, g.ID())
+			assert.NotEmpty(t, g.Type())
 
 			got, _, err := g.Inject(context.Background(), tt.args.secret, tt.args.p)
 			if (err != nil) != tt.wantErr {

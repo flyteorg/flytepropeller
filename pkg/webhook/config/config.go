@@ -1,4 +1,4 @@
-package webhook
+package config
 
 import "github.com/flyteorg/flytestdlib/config"
 

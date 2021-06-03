@@ -3,6 +3,7 @@ package webhook
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,8 +42,18 @@ func formatAWSSecretMount(secret *core.Secret) string {
 	return filepath.Join(append(AWSSecretMountPathPrefix, secret.Group)...)
 }
 
-func (i AWSSecretManagerInjector) Type() SecretManagerType {
-	return SecretManagerTypeAWS
+func (i AWSSecretManagerInjector) Type() config.SecretManagerType {
+	return config.SecretManagerTypeAWS
+}
+
+func appendIfNotExists(volumes []corev1.Volume, vol corev1.Volume) []corev1.Volume {
+	for _, v := range volumes {
+		if v.Name == vol.Name {
+			return volumes
+		}
+	}
+
+	return append(volumes, vol)
 }
 
 func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
@@ -55,9 +66,38 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 	case core.Secret_ANY:
 		fallthrough
 	case core.Secret_FILE:
-		p.Annotations[AWSSecretArnAnnotation] = formatAWSSecretArn(secret)
-		p.Annotations[AWSSecretMountPathAnnotation] = formatAWSSecretMount(secret)
-		p.Annotations[AWSSecretFileNameAnnotation] = secret.Key
+		vol := corev1.Volume{
+			Name: "secret-vol",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{
+					Medium: corev1.StorageMediumMemory,
+				},
+			},
+		}
+
+		p.Spec.Volumes = appendIfNotExists(p.Spec.Volumes, vol)
+
+		p.Spec.InitContainers = append(p.Spec.InitContainers, corev1.Container{
+			Image: "docker.io/amazon/aws-secrets-manager-secret-sidecar:v0.1.1",
+			Name:  fmt.Sprintf("aws-pull-secret-%v", len(p.Spec.InitContainers)),
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "secret-vol",
+					ReadOnly:  true,
+					MountPath: filepath.Join(AWSSecretMountPathPrefix...),
+				},
+			},
+			Env: []corev1.EnvVar{
+				{
+					Name:  "SECRET_ARN",
+					Value: formatAWSSecretArn(secret),
+				},
+				{
+					Name:  "SECRET_FILENAME",
+					Value: filepath.Join(secret.Group, secret.Key),
+				},
+			},
+		})
 
 		// Inject AWS secret-inject webhook annotations to mount the secret in a predictable location.
 		envVars := []corev1.EnvVar{

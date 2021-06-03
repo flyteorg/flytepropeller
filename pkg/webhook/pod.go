@@ -30,6 +30,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -57,7 +58,7 @@ const webhookName = "flyte-pod-webhook.flyte.org"
 // PodMutator implements controller-runtime WebHook interface.
 type PodMutator struct {
 	decoder  *admission.Decoder
-	cfg      *Config
+	cfg      *config.Config
 	Mutators []MutatorConfig
 }
 
@@ -219,7 +220,7 @@ func (pm PodMutator) CreateMutationWebhookConfiguration(namespace string) (*admi
 	return mutateConfig, nil
 }
 
-func NewPodMutator(cfg *Config, scope promutils.Scope) *PodMutator {
+func NewPodMutator(cfg *config.Config, scope promutils.Scope) *PodMutator {
 	return &PodMutator{
 		cfg: cfg,
 		Mutators: []MutatorConfig{

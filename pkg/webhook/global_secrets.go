@@ -3,6 +3,7 @@ package webhook
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"strings"
 
 	coreIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -23,8 +24,8 @@ type GlobalSecrets struct {
 	envSecretManager GlobalSecretProvider
 }
 
-func (g GlobalSecrets) Type() SecretManagerType {
-	return SecretManagerTypeGlobal
+func (g GlobalSecrets) Type() config.SecretManagerType {
+	return config.SecretManagerTypeGlobal
 }
 
 func (g GlobalSecrets) Inject(ctx context.Context, secret *coreIdl.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
