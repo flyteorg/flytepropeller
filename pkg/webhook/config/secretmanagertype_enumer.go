@@ -8,9 +8,9 @@ import (
 	"fmt"
 )
 
-const _SecretManagerTypeName = "K8sAWS"
+const _SecretManagerTypeName = "GlobalK8sAWS"
 
-var _SecretManagerTypeIndex = [...]uint8{0, 3, 6}
+var _SecretManagerTypeIndex = [...]uint8{0, 6, 9, 12}
 
 func (i SecretManagerType) String() string {
 	if i < 0 || i >= SecretManagerType(len(_SecretManagerTypeIndex)-1) {
@@ -19,11 +19,12 @@ func (i SecretManagerType) String() string {
 	return _SecretManagerTypeName[_SecretManagerTypeIndex[i]:_SecretManagerTypeIndex[i+1]]
 }
 
-var _SecretManagerTypeValues = []SecretManagerType{0, 1}
+var _SecretManagerTypeValues = []SecretManagerType{0, 1, 2}
 
 var _SecretManagerTypeNameToValueMap = map[string]SecretManagerType{
-	_SecretManagerTypeName[0:3]: 0,
-	_SecretManagerTypeName[3:6]: 1,
+	_SecretManagerTypeName[0:6]:  0,
+	_SecretManagerTypeName[6:9]:  1,
+	_SecretManagerTypeName[9:12]: 2,
 }
 
 // SecretManagerTypeString retrieves an enum value from the enum constants string name.
