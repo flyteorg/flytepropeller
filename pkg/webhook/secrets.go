@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"context"
+
 	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
@@ -44,7 +45,7 @@ func (s *SecretsMutator) Mutate(ctx context.Context, p *corev1.Pod) (newP *corev
 
 	for _, secret := range secrets {
 		for _, injector := range s.injectors {
-			if injector.Type() != config.SecretManagerTypeGlobal && injector.Type() == s.cfg.SecretManagerType {
+			if injector.Type() != config.SecretManagerTypeGlobal && injector.Type() != s.cfg.SecretManagerType {
 				logger.Infof(ctx, "Skipping SecretManager [%v] since it's not enabled.", injector.Type())
 				continue
 			}
