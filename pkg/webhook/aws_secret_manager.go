@@ -90,7 +90,7 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 		p.Spec.Volumes = appendVolumeIfNotExists(p.Spec.Volumes, vol)
 
 		p.Spec.InitContainers = append(p.Spec.InitContainers, corev1.Container{
-			Image: "docker.io/amazon/aws-secrets-manager-secret-sidecar:v0.1.4",
+			Image: "ghcr.io/unionai/aws-secret-sidecar:v0.1.6",
 			Name:  fmt.Sprintf("aws-pull-secret-%v", len(p.Spec.InitContainers)),
 			VolumeMounts: []corev1.VolumeMount{
 				{
