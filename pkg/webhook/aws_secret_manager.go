@@ -48,7 +48,17 @@ func (i AWSSecretManagerInjector) Type() config.SecretManagerType {
 	return config.SecretManagerTypeAWS
 }
 
-func appendIfNotExists(volumes []corev1.Volume, vol corev1.Volume) []corev1.Volume {
+func appendVolumeIfNotExists(volumes []corev1.Volume, vol corev1.Volume) []corev1.Volume {
+	for _, v := range volumes {
+		if v.Name == vol.Name {
+			return volumes
+		}
+	}
+
+	return append(volumes, vol)
+}
+
+func appendVolumeMountIfNotExists(volumes []corev1.VolumeMount, vol corev1.VolumeMount) []corev1.VolumeMount {
 	for _, v := range volumes {
 		if v.Name == vol.Name {
 			return volumes
@@ -77,16 +87,17 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 			},
 		}
 
-		p.Spec.Volumes = appendIfNotExists(p.Spec.Volumes, vol)
+		p.Spec.Volumes = appendVolumeIfNotExists(p.Spec.Volumes, vol)
 
 		p.Spec.InitContainers = append(p.Spec.InitContainers, corev1.Container{
 			Image: "docker.io/amazon/aws-secrets-manager-secret-sidecar:v0.1.1",
 			Name:  fmt.Sprintf("aws-pull-secret-%v", len(p.Spec.InitContainers)),
 			VolumeMounts: []corev1.VolumeMount{
 				{
-					Name:      "secret-vol",
-					ReadOnly:  true,
-					MountPath: filepath.Join(AWSSecretMountPathPrefix...),
+					Name:     "secret-vol",
+					ReadOnly: true,
+					// The aws secret sidecar expects the mount to be in /tmp
+					MountPath: "/tmp",
 				},
 			},
 			Env: []corev1.EnvVar{
@@ -109,6 +120,18 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 					corev1.ResourceCPU:    resource.MustParse("200m"),
 				},
 			},
+		})
+
+		p.Spec.Containers = UpdateVolumeMounts(p.Spec.Containers, corev1.VolumeMount{
+			Name:      "secret-vol",
+			ReadOnly:  true,
+			MountPath: filepath.Join(AWSSecretMountPathPrefix...),
+		})
+
+		p.Spec.Containers = UpdateVolumeMounts(p.Spec.InitContainers, corev1.VolumeMount{
+			Name:      "secret-vol",
+			ReadOnly:  true,
+			MountPath: filepath.Join(AWSSecretMountPathPrefix...),
 		})
 
 		// Inject AWS secret-inject webhook annotations to mount the secret in a predictable location.

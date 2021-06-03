@@ -63,7 +63,7 @@ func CreateVolumeMountForSecret(volumeName string, secret *core.Secret) corev1.V
 func UpdateVolumeMounts(containers []corev1.Container, mount corev1.VolumeMount) []corev1.Container {
 	res := make([]corev1.Container, 0, len(containers))
 	for _, c := range containers {
-		c.VolumeMounts = append(c.VolumeMounts, mount)
+		c.VolumeMounts = appendVolumeMountIfNotExists(c.VolumeMounts, mount)
 		res = append(res, c)
 	}
 
