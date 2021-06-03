@@ -128,7 +128,7 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 			MountPath: filepath.Join(AWSSecretMountPathPrefix...),
 		})
 
-		p.Spec.Containers = UpdateVolumeMounts(p.Spec.InitContainers, corev1.VolumeMount{
+		p.Spec.InitContainers = UpdateVolumeMounts(p.Spec.InitContainers, corev1.VolumeMount{
 			Name:      "secret-vol",
 			ReadOnly:  true,
 			MountPath: filepath.Join(AWSSecretMountPathPrefix...),
