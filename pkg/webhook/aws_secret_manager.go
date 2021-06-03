@@ -3,10 +3,12 @@ package webhook
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -95,6 +97,16 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 				{
 					Name:  "SECRET_FILENAME",
 					Value: filepath.Join(secret.Group, secret.Key),
+				},
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("500Mi"),
+					corev1.ResourceCPU:    resource.MustParse("200m"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("500Mi"),
+					corev1.ResourceCPU:    resource.MustParse("200m"),
 				},
 			},
 		})
