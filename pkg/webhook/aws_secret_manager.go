@@ -106,7 +106,7 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 				},
 				{
 					Name:  "SECRET_FILENAME",
-					Value: filepath.Join(string(filepath.Separator), secret.Group, secret.Key),
+					Value: filepath.Join(string(filepath.Separator), strings.ToLower(secret.Group), strings.ToLower(secret.Key)),
 				},
 			},
 			Resources: corev1.ResourceRequirements{
