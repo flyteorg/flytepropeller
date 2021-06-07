@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
+
 	"github.com/go-test/deep"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -12,7 +14,7 @@ import (
 )
 
 func TestAWSSecretManagerInjector_Inject(t *testing.T) {
-	injector := NewAWSSecretManagerInjector()
+	injector := NewAWSSecretManagerInjector(config.DefaultConfig.AWSSecretManagerConfig)
 	p := &corev1.Pod{
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{},
@@ -27,7 +29,7 @@ func TestAWSSecretManagerInjector_Inject(t *testing.T) {
 		Spec: corev1.PodSpec{
 			Volumes: []corev1.Volume{
 				{
-					Name: "secret-vol",
+					Name: "aws-secret-vol",
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{
 							Medium: corev1.StorageMediumMemory,
@@ -39,7 +41,7 @@ func TestAWSSecretManagerInjector_Inject(t *testing.T) {
 			InitContainers: []corev1.Container{
 				{
 					Name:  "aws-pull-secret-0",
-					Image: "docker.io/amazon/aws-secrets-manager-secret-sidecar:v0.1.1",
+					Image: "docker.io/amazon/aws-secrets-manager-secret-sidecar:v0.1.5",
 					Env: []corev1.EnvVar{
 						{
 							Name:  "SECRET_ARN",
@@ -47,7 +49,7 @@ func TestAWSSecretManagerInjector_Inject(t *testing.T) {
 						},
 						{
 							Name:  "SECRET_FILENAME",
-							Value: inputSecret.Group + "/" + inputSecret.Key,
+							Value: "/" + inputSecret.Group + "/" + inputSecret.Key,
 						},
 						{
 							Name:  "FLYTE_SECRETS_DEFAULT_DIR",
@@ -60,11 +62,11 @@ func TestAWSSecretManagerInjector_Inject(t *testing.T) {
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:      "secret-vol",
-							ReadOnly:  true,
-							MountPath: "/etc/flyte/secrets",
+							Name:      "aws-secret-vol",
+							MountPath: "/tmp",
 						},
 					},
+					Resources: config.DefaultConfig.AWSSecretManagerConfig.Resources,
 				},
 			},
 			Containers: []corev1.Container{},

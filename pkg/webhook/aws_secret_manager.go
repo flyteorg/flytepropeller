@@ -7,70 +7,59 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"github.com/flyteorg/flytestdlib/logger"
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
-	AWSSecretArnAnnotation       = "secrets.k8s.aws/secret-arn"
-	AWSSecretMountPathAnnotation = "secrets.k8s.aws/mount-path"
-	AWSSecretFileNameAnnotation  = "secrets.k8s.aws/secret-filename"
+	// AWSSecretArnEnvVar defines the environment variable name to use to specify to the sidecar container which secret
+	// to pull.
+	AWSSecretArnEnvVar = "SECRET_ARN"
+
+	// AWSSecretFilenameEnvVar defines the environment variable name to use to specify to the sidecar container where
+	// to store the secret.
+	AWSSecretFilenameEnvVar = "SECRET_FILENAME"
+
+	// AWSSecretsVolumeName defines the static name of the volume used for mounting/sharing secrets between init-container
+	// sidecar and the rest of the containers in the pod.
+	AWSSecretsVolumeName = "aws-secret-vol"
+
+	// AWS SideCar Docker Container expects the mount to always be under /tmp
+	AWSInitContainerMountPath = "/tmp"
 )
 
 var (
+	// AWSSecretMountPathPrefix defins the default mount path for secrets
 	AWSSecretMountPathPrefix = []string{string(os.PathSeparator), "etc", "flyte", "secrets"}
 )
 
-// AWSSecretManagerInjector allows injecting of secrets into pods by specifying annotations on the Pod that either EnvVarSource or SecretVolumeSource in
-// the Pod Spec. It'll, by default, mount secrets as files into pods.
-// The current version does not allow mounting an entire secret object (with all keys inside it). It only supports mounting
-// a single key from the referenced secret object.
-// The secret.Group will be used to reference the k8s secret object, the Secret.Key will be used to reference a key inside
-// and the secret.Version will be ignored.
-// Environment variables will be named _FSEC_<SecretGroup>_<SecretKey>. Files will be mounted on
-// /etc/flyte/secrets/<SecretGroup>/<SecretKey>
+// AWSSecretManagerInjector allows injecting of secrets from AWS Secret Manager as files. It uses AWS-provided SideCar
+// as an init-container to download the secret and save it to a local volume shared with all other containers in the pod.
+// It supports multiple secrets to be mounted but that will result into adding an init container for each secret.
+// The role/serviceaccount used to run the Pod must have permissions to pull the secret from AWS Secret Manager.
+// Otherwise, the Pod will fail with an init-error.
+// Files will be mounted on /etc/flyte/secrets/<SecretGroup>/<SecretKey>
 type AWSSecretManagerInjector struct {
+	cfg config.AWSSecretManagerConfig
 }
 
 func formatAWSSecretArn(secret *core.Secret) string {
 	return strings.TrimRight(secret.Group, ":") + ":" + strings.TrimLeft(secret.Key, ":")
 }
 
-func formatAWSSecretMount(secret *core.Secret) string {
-	return filepath.Join(append(AWSSecretMountPathPrefix, secret.Group)...)
+func formatAWSInitContainerName(index int) string {
+	return fmt.Sprintf("aws-pull-secret-%v", index)
 }
 
 func (i AWSSecretManagerInjector) Type() config.SecretManagerType {
 	return config.SecretManagerTypeAWS
 }
 
-func appendVolumeIfNotExists(volumes []corev1.Volume, vol corev1.Volume) []corev1.Volume {
-	for _, v := range volumes {
-		if v.Name == vol.Name {
-			return volumes
-		}
-	}
-
-	return append(volumes, vol)
-}
-
-func appendVolumeMountIfNotExists(volumes []corev1.VolumeMount, vol corev1.VolumeMount) []corev1.VolumeMount {
-	for _, v := range volumes {
-		if v.Name == vol.Name {
-			return volumes
-		}
-	}
-
-	return append(volumes, vol)
-}
-
 func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
 	if len(secret.Group) == 0 || len(secret.Key) == 0 {
-		return nil, false, fmt.Errorf("k8s Secrets Webhook require both key and group to be set. "+
+		return nil, false, fmt.Errorf("AWS Secrets Webhook require both key and group to be set. "+
 			"Secret: [%v]", secret)
 	}
 
@@ -78,8 +67,10 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 	case core.Secret_ANY:
 		fallthrough
 	case core.Secret_FILE:
+		// A Volume with a static name so that if we try to inject multiple secrets, we won't mount multiple volumes.
+		// We use Memory as the storage medium for volume source to avoid
 		vol := corev1.Volume{
-			Name: "secret-vol",
+			Name: AWSSecretsVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{
 					Medium: corev1.StorageMediumMemory,
@@ -88,50 +79,16 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 		}
 
 		p.Spec.Volumes = appendVolumeIfNotExists(p.Spec.Volumes, vol)
+		p.Spec.InitContainers = append(p.Spec.InitContainers, createAWSSidecarContainer(i.cfg, p, secret))
 
-		p.Spec.InitContainers = append(p.Spec.InitContainers, corev1.Container{
-			Image: "ghcr.io/unionai/aws-secret-sidecar:v0.1.6",
-			Name:  fmt.Sprintf("aws-pull-secret-%v", len(p.Spec.InitContainers)),
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name: "secret-vol",
-					// The aws secret sidecar expects the mount to be in /tmp
-					MountPath: "/tmp",
-				},
-			},
-			Env: []corev1.EnvVar{
-				{
-					Name:  "SECRET_ARN",
-					Value: formatAWSSecretArn(secret),
-				},
-				{
-					Name:  "SECRET_FILENAME",
-					Value: filepath.Join(string(filepath.Separator), strings.ToLower(secret.Group), strings.ToLower(secret.Key)),
-				},
-			},
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceMemory: resource.MustParse("500Mi"),
-					corev1.ResourceCPU:    resource.MustParse("200m"),
-				},
-				Limits: corev1.ResourceList{
-					corev1.ResourceMemory: resource.MustParse("500Mi"),
-					corev1.ResourceCPU:    resource.MustParse("200m"),
-				},
-			},
-		})
-
-		p.Spec.Containers = UpdateVolumeMounts(p.Spec.Containers, corev1.VolumeMount{
-			Name:      "secret-vol",
+		secretVolumeMount := corev1.VolumeMount{
+			Name:      AWSSecretsVolumeName,
 			ReadOnly:  true,
 			MountPath: filepath.Join(AWSSecretMountPathPrefix...),
-		})
+		}
 
-		p.Spec.InitContainers = UpdateVolumeMounts(p.Spec.InitContainers, corev1.VolumeMount{
-			Name:      "secret-vol",
-			ReadOnly:  true,
-			MountPath: filepath.Join(AWSSecretMountPathPrefix...),
-		})
+		p.Spec.Containers = AppendVolumeMounts(p.Spec.Containers, secretVolumeMount)
+		p.Spec.InitContainers = AppendVolumeMounts(p.Spec.InitContainers, secretVolumeMount)
 
 		// Inject AWS secret-inject webhook annotations to mount the secret in a predictable location.
 		envVars := []corev1.EnvVar{
@@ -148,8 +105,8 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 		}
 
 		for _, envVar := range envVars {
-			p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, envVar)
-			p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, envVar)
+			p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, envVar)
+			p.Spec.Containers = AppendEnvVars(p.Spec.Containers, envVar)
 		}
 	case core.Secret_ENV_VAR:
 		fallthrough
@@ -162,6 +119,34 @@ func (i AWSSecretManagerInjector) Inject(ctx context.Context, secret *core.Secre
 	return p, true, nil
 }
 
-func NewAWSSecretManagerInjector() AWSSecretManagerInjector {
-	return AWSSecretManagerInjector{}
+func createAWSSidecarContainer(cfg config.AWSSecretManagerConfig, p *corev1.Pod, secret *core.Secret) corev1.Container {
+	return corev1.Container{
+		Image: cfg.SidecarImage,
+		// Create a unique name to allow multiple secrets to be mounted.
+		Name: formatAWSInitContainerName(len(p.Spec.InitContainers)),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      AWSSecretsVolumeName,
+				MountPath: AWSInitContainerMountPath,
+			},
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name:  AWSSecretArnEnvVar,
+				Value: formatAWSSecretArn(secret),
+			},
+			{
+				Name:  AWSSecretFilenameEnvVar,
+				Value: filepath.Join(string(filepath.Separator), strings.ToLower(secret.Group), strings.ToLower(secret.Key)),
+			},
+		},
+		Resources: cfg.Resources,
+	}
+}
+
+// NewAWSSecretManagerInjector creates a SecretInjector that's able to mount secrets from AWS Secret Manager.
+func NewAWSSecretManagerInjector(cfg config.AWSSecretManagerConfig) AWSSecretManagerInjector {
+	return AWSSecretManagerInjector{
+		cfg: cfg,
+	}
 }

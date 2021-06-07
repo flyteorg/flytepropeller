@@ -56,11 +56,11 @@ func (g GlobalSecrets) Inject(ctx context.Context, secret *coreIdl.Secret, p *co
 			Value: K8sDefaultEnvVarPrefix,
 		}
 
-		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, prefixEnvVar)
-		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, prefixEnvVar)
+		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, prefixEnvVar)
+		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, prefixEnvVar)
 
-		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, envVar)
-		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, envVar)
+		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, envVar)
+		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, envVar)
 	default:
 		err := fmt.Errorf("unrecognized mount requirement [%v] for secret [%v]", secret.MountRequirement.String(), secret.Key)
 		logger.Error(ctx, err)

@@ -103,7 +103,7 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("metrics-prefix"); err == nil {
-				assert.Equal(t, string(defaultConfig.MetricsPrefix), vString)
+				assert.Equal(t, string(DefaultConfig.MetricsPrefix), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -125,7 +125,7 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("certDir"); err == nil {
-				assert.Equal(t, string(defaultConfig.CertDir), vString)
+				assert.Equal(t, string(DefaultConfig.CertDir), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -147,7 +147,7 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vInt, err := cmdFlags.GetInt("listenPort"); err == nil {
-				assert.Equal(t, int(defaultConfig.ListenPort), vInt)
+				assert.Equal(t, int(DefaultConfig.ListenPort), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -169,7 +169,7 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("serviceName"); err == nil {
-				assert.Equal(t, string(defaultConfig.ServiceName), vString)
+				assert.Equal(t, string(DefaultConfig.ServiceName), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -191,7 +191,7 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("secretName"); err == nil {
-				assert.Equal(t, string(defaultConfig.SecretName), vString)
+				assert.Equal(t, string(DefaultConfig.SecretName), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}

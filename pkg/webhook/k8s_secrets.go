@@ -54,8 +54,8 @@ func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *c
 
 		// Mount the secret to all containers in the given pod.
 		mount := CreateVolumeMountForSecret(volume.Name, secret)
-		p.Spec.InitContainers = UpdateVolumeMounts(p.Spec.InitContainers, mount)
-		p.Spec.Containers = UpdateVolumeMounts(p.Spec.Containers, mount)
+		p.Spec.InitContainers = AppendVolumeMounts(p.Spec.InitContainers, mount)
+		p.Spec.Containers = AppendVolumeMounts(p.Spec.Containers, mount)
 
 		// Set environment variable to let the container know where to find the mounted files.
 		defaultDirEnvVar := corev1.EnvVar{
@@ -63,8 +63,8 @@ func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *c
 			Value: filepath.Join(K8sSecretPathPrefix...),
 		}
 
-		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, defaultDirEnvVar)
-		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, defaultDirEnvVar)
+		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, defaultDirEnvVar)
+		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, defaultDirEnvVar)
 
 		// Sets an empty prefix to let the containers know the file names will match the secret keys as-is.
 		prefixEnvVar := corev1.EnvVar{
@@ -72,20 +72,20 @@ func (i K8sSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *c
 			Value: "",
 		}
 
-		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, prefixEnvVar)
-		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, prefixEnvVar)
+		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, prefixEnvVar)
+		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, prefixEnvVar)
 	case core.Secret_ENV_VAR:
 		envVar := CreateEnvVarForSecret(secret)
-		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, envVar)
-		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, envVar)
+		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, envVar)
+		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, envVar)
 
 		prefixEnvVar := corev1.EnvVar{
 			Name:  SecretEnvVarPrefix,
 			Value: K8sDefaultEnvVarPrefix,
 		}
 
-		p.Spec.InitContainers = UpdateEnvVars(p.Spec.InitContainers, prefixEnvVar)
-		p.Spec.Containers = UpdateEnvVars(p.Spec.Containers, prefixEnvVar)
+		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, prefixEnvVar)
+		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, prefixEnvVar)
 	default:
 		err := fmt.Errorf("unrecognized mount requirement [%v] for secret [%v]", secret.MountRequirement.String(), secret.Key)
 		logger.Error(ctx, err)
