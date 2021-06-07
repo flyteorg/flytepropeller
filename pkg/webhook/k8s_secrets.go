@@ -3,9 +3,10 @@ package webhook
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"os"
 	"path/filepath"
+
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"

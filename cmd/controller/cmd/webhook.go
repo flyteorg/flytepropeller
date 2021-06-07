@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	webhookConfig "github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"os"
+
+	webhookConfig "github.com/flyteorg/flytepropeller/pkg/webhook/config"
 
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 

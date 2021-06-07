@@ -24,7 +24,7 @@ const (
 
 	// AWSSecretsVolumeName defines the static name of the volume used for mounting/sharing secrets between init-container
 	// sidecar and the rest of the containers in the pod.
-	AWSSecretsVolumeName = "aws-secret-vol"
+	AWSSecretsVolumeName = "aws-secret-vol" // #nosec
 
 	// AWS SideCar Docker Container expects the mount to always be under /tmp
 	AWSInitContainerMountPath = "/tmp"

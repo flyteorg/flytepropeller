@@ -3,8 +3,9 @@ package webhook
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"testing"
+
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 
 	"k8s.io/client-go/tools/clientcmd/api/latest"
 

@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	SecretPathDefaultDirEnvVar = "FLYTE_SECRETS_DEFAULT_DIR"
-	SecretPathFilePrefixEnvVar = "FLYTE_SECRETS_FILE_PREFIX"
-	SecretEnvVarPrefix         = "FLYTE_SECRETS_ENV_PREFIX"
+	SecretPathDefaultDirEnvVar = "FLYTE_SECRETS_DEFAULT_DIR" // #nosec
+	SecretPathFilePrefixEnvVar = "FLYTE_SECRETS_FILE_PREFIX" // #nosec
+	SecretEnvVarPrefix         = "FLYTE_SECRETS_ENV_PREFIX"  // #nosec
 )
 
 type SecretsMutator struct {

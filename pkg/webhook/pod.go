@@ -30,12 +30,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 
 	"github.com/flyteorg/flytepropeller/pkg/utils/secrets"
 
