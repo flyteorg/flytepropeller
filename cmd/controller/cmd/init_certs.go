@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	cryptorand "crypto/rand"
-	config2 "github.com/flyteorg/flytepropeller/pkg/webhook/config"
+	webhookConfig "github.com/flyteorg/flytepropeller/pkg/webhook/config"
 
 	"github.com/flyteorg/flytestdlib/logger"
 	kubeErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -54,7 +54,7 @@ for the Webhook command to mount and read correctly.
 `,
 	Example: "flytepropeller webhook init-certs",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCertsCmd(context.Background(), config.GetConfig(), config2.GetConfig())
+		return runCertsCmd(context.Background(), config.GetConfig(), webhookConfig.GetConfig())
 	},
 }
 
@@ -71,7 +71,7 @@ func init() {
 	webhookCmd.AddCommand(initCertsCmd)
 }
 
-func runCertsCmd(ctx context.Context, propellerCfg *config.Config, cfg *config2.Config) error {
+func runCertsCmd(ctx context.Context, propellerCfg *config.Config, cfg *webhookConfig.Config) error {
 	podNamespace, found := os.LookupEnv(PodNamespaceEnvVar)
 	if !found {
 		podNamespace = podDefaultNamespace
@@ -97,7 +97,7 @@ func runCertsCmd(ctx context.Context, propellerCfg *config.Config, cfg *config2.
 	return nil
 }
 
-func createWebhookSecret(ctx context.Context, namespace string, cfg *config2.Config, certs webhookCerts, secretsClient v1.SecretInterface) error {
+func createWebhookSecret(ctx context.Context, namespace string, cfg *webhookConfig.Config, certs webhookCerts, secretsClient v1.SecretInterface) error {
 	isImmutable := true
 	secretData := map[string][]byte{
 		CaCertKey:            certs.CaPEM.Bytes(),

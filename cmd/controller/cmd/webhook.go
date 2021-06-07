@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	config2 "github.com/flyteorg/flytepropeller/pkg/webhook/config"
+	webhookConfig "github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"os"
 
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -85,7 +85,7 @@ A sample Container for this webhook might look like this:
               readOnly: true
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runWebhook(context.Background(), config.GetConfig(), config2.GetConfig())
+		return runWebhook(context.Background(), config.GetConfig(), webhookConfig.GetConfig())
 	},
 }
 
@@ -93,7 +93,7 @@ func init() {
 	rootCmd.AddCommand(webhookCmd)
 }
 
-func runWebhook(origContext context.Context, propellerCfg *config.Config, cfg *config2.Config) error {
+func runWebhook(origContext context.Context, propellerCfg *config.Config, cfg *webhookConfig.Config) error {
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler(origContext)
 
