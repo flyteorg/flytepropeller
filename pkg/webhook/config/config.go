@@ -18,7 +18,7 @@ var (
 		ListenPort:        9443,
 		SecretManagerType: SecretManagerTypeK8s,
 		AWSSecretManagerConfig: AWSSecretManagerConfig{
-			SidecarImage: "docker.io/amazon/aws-secrets-manager-secret-sidecar:v0.1.5",
+			SidecarImage: "docker.io/amazon/aws-secrets-manager-secret-sidecar:v0.1.4",
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceMemory: resource.MustParse("500Mi"),
@@ -62,8 +62,8 @@ type Config struct {
 }
 
 type AWSSecretManagerConfig struct {
-	SidecarImage string `json:"sidecarImage" pflag:",Specifies the sidecar docker image to use"`
-	Resources    corev1.ResourceRequirements
+	SidecarImage string                      `json:"sidecarImage" pflag:",Specifies the sidecar docker image to use"`
+	Resources    corev1.ResourceRequirements `json:"resources" pflag:"-,Specifies resource requirements for the init container."`
 }
 
 func GetConfig() *Config {

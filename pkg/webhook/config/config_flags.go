@@ -46,5 +46,6 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "listenPort"), DefaultConfig.ListenPort, "The port to use to listen to webhook calls. Defaults to 9443")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "serviceName"), DefaultConfig.ServiceName, "The name of the webhook service.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "secretName"), DefaultConfig.SecretName, "Secret name to write generated certs to.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "awsSecretManager.sidecarImage"), DefaultConfig.AWSSecretManagerConfig.SidecarImage, "Specifies the sidecar docker image to use")
 	return cmdFlags
 }

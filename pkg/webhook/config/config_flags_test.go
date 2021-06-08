@@ -209,4 +209,26 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_awsSecretManager.sidecarImage", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("awsSecretManager.sidecarImage"); err == nil {
+				assert.Equal(t, string(DefaultConfig.AWSSecretManagerConfig.SidecarImage), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("awsSecretManager.sidecarImage", testValue)
+			if vString, err := cmdFlags.GetString("awsSecretManager.sidecarImage"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AWSSecretManagerConfig.SidecarImage)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }
