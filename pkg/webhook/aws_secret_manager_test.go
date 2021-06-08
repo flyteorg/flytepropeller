@@ -41,7 +41,7 @@ func TestAWSSecretManagerInjector_Inject(t *testing.T) {
 			InitContainers: []corev1.Container{
 				{
 					Name:  "aws-pull-secret-0",
-					Image: "docker.io/amazon/aws-secrets-manager-secret-sidecar:v0.1.5",
+					Image: "docker.io/amazon/aws-secrets-manager-secret-sidecar:v0.1.4",
 					Env: []corev1.EnvVar{
 						{
 							Name:  "SECRET_ARN",
