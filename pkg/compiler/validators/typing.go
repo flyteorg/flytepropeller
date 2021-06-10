@@ -33,6 +33,14 @@ func (t trivialChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	if isVoid(upstreamType) {
 		return true
 	}
+
+	// If upstream is an enum, it can be consumed as a string downstream
+	if upstreamType.GetEnumType() != nil {
+		if t.literalType.GetSimple() == flyte.SimpleType_STRING {
+			return true
+		}
+	}
+
 	// Ignore metadata when comparing types.
 	upstreamTypeCopy := *upstreamType
 	downstreamTypeCopy := *t.literalType

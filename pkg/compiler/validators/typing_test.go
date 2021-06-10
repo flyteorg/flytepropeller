@@ -74,6 +74,50 @@ func TestSimpleLiteralCasting(t *testing.T) {
 		)
 		assert.True(t, castable, "Metadata should be ignored")
 	})
+
+	t.Run("EnumToString", func(t *testing.T) {
+		castable := AreTypesCastable(
+			&core.LiteralType{
+				Type: &core.LiteralType_EnumType{EnumType: &core.EnumType{
+					Values: []string{"x", "y"},
+				}},
+			},
+			&core.LiteralType{
+				Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+			},
+		)
+		assert.True(t, castable, "Integers should be castable to other integers")
+	})
+
+	t.Run("EnumToEnum", func(t *testing.T) {
+		castable := AreTypesCastable(
+			&core.LiteralType{
+				Type: &core.LiteralType_EnumType{EnumType: &core.EnumType{
+					Values: []string{"x", "y"},
+				}},
+			},
+			&core.LiteralType{
+				Type: &core.LiteralType_EnumType{EnumType: &core.EnumType{
+					Values: []string{"x", "y"},
+				}},
+			},
+		)
+		assert.True(t, castable, "Integers should be castable to other integers")
+	})
+
+	t.Run("StringToEnum", func(t *testing.T) {
+		castable := AreTypesCastable(
+			&core.LiteralType{
+				Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+			},
+			&core.LiteralType{
+				Type: &core.LiteralType_EnumType{EnumType: &core.EnumType{
+					Values: []string{"x", "y"},
+				}},
+			},
+		)
+		assert.False(t, castable, "Integers should be castable to other integers")
+	})
 }
 
 func TestCollectionCasting(t *testing.T) {
