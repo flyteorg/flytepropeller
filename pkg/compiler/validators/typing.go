@@ -40,6 +40,12 @@ func (t trivialChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 			return true
 		}
 	}
+	// If t is an enum, it can be created from a string as Enums as just constrained String aliases
+	if t.literalType.GetEnumType() != nil {
+		if upstreamType.GetSimple() == flyte.SimpleType_STRING {
+			return true
+		}
+	}
 
 	// Ignore metadata when comparing types.
 	upstreamTypeCopy := *upstreamType
