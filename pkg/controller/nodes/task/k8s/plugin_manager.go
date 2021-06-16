@@ -378,7 +378,10 @@ func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecu
 		nsName = k8stypes.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
 	}
 
-	// If you change InjectFinalizer on the
+	// In InjectFinalizer is on, it means we may have added the finalizers when we launched this resource. Attempt to
+	// clear them to allow the object to be deleted/garbage collected. If InjectFinalizer was turned on (through config)
+	// after the resource was created, we will not find any finalizers to clear and the object may have already been
+	// deleted at this point. Therefore, account for these cases and do not consider them errors.
 	if cfg.InjectFinalizer {
 		// Attempt to get resource from informer cache, if not found, retrieve it from API server.
 		if err := e.kubeClient.GetClient().Get(ctx, nsName, o); err != nil {
@@ -401,7 +404,7 @@ func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecu
 	}
 
 	// If we should delete the resource when finalize is called, do a best effort delete.
-	if config.GetK8sPluginConfig().DeleteResourceOnFinalize {
+	if cfg.DeleteResourceOnFinalize && !e.plugin.GetProperties().DisableDeleteResourceOnFinalize {
 		// Attempt to delete resource, if not found, return success.
 		if err := e.kubeClient.GetClient().Delete(ctx, o); err != nil {
 			if IsK8sObjectNotExists(err) {
