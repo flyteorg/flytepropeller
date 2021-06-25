@@ -35,6 +35,8 @@ const (
 	NodePhaseTimingOut
 	// Node failed because execution timed out
 	NodePhaseTimedOut
+	// Node recovered from a prior execution.
+	NodePhaseRecovered
 )
 
 func (p NodePhase) String() string {
@@ -55,6 +57,8 @@ func (p NodePhase) String() string {
 		return "Undefined"
 	case NodePhaseTimedOut:
 		return "NodePhaseTimedOut"
+	case NodePhaseRecovered:
+		return "NodePhaseRecovered"
 	}
 	return fmt.Sprintf("Unknown - %d", p)
 }
