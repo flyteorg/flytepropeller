@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
 	"reflect"
 	"testing"
 	"time"
+
+	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
 
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -1845,8 +1846,8 @@ func Test_nodeExecutor_IdempotentRecordEvent(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		rec  events.NodeEventRecorder
-		p    core.NodeExecution_Phase
+		rec     events.NodeEventRecorder
+		p       core.NodeExecution_Phase
 		wantErr bool
 	}{
 		{"aborted-success", noErrRecorder, core.NodeExecution_ABORTED, false},
@@ -1858,10 +1859,10 @@ func Test_nodeExecutor_IdempotentRecordEvent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &nodeExecutor{
-				nodeRecorder:                    tt.rec,
+				nodeRecorder: tt.rec,
 			}
 			ev := &event.NodeExecutionEvent{
-				Id: &core.NodeExecutionIdentifier{},
+				Id:    &core.NodeExecutionIdentifier{},
 				Phase: tt.p,
 			}
 			if err := c.IdempotentRecordEvent(context.TODO(), ev); (err != nil) != tt.wantErr {

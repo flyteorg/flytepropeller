@@ -3,11 +3,12 @@ package nodes
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/flyteorg/flyteidl/clients/go/events"
 	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	"testing"
 )
 
 type fakeTaskEventsRecorder struct {
@@ -29,8 +30,8 @@ func Test_taskEventRecorder_RecordTaskEvent(t1 *testing.T) {
 
 	tests := []struct {
 		name    string
-		rec  events.TaskEventRecorder
-		p core.TaskExecution_Phase
+		rec     events.TaskEventRecorder
+		p       core.TaskExecution_Phase
 		wantErr bool
 	}{
 		{"aborted-success", noErrRecorder, core.TaskExecution_ABORTED, false},
