@@ -135,35 +135,35 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	dynamicNodeStatus.SetOutputDir(nCtx.NodeStatus().GetOutputDir())
 	dynamicNodeStatus.SetParentTaskID(execID)
 
-	cacheHitStopWatch := d.metrics.CacheHit.Start(ctx)
+	//cacheHitStopWatch := d.metrics.CacheHit.Start(ctx)
 	// Check if we have compiled the workflow before:
 	// If there is a cached compiled Workflow, load and return it.
-	if ok, err := f.CacheExists(ctx); err != nil {
-		logger.Warnf(ctx, "Failed to call head on compiled workflow files. Error: %v", err)
-		return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "Failed to do HEAD on compiled workflow files.")
-	} else if ok {
-		// It exists, load and return it
-		workflowCacheContents, err := f.RetrieveCache(ctx)
-		if err != nil {
-			logger.Warnf(ctx, "Failed to load cached flyte workflow, this will cause the dynamic workflow to be recompiled. Error: %v", err)
-			d.metrics.CacheError.Inc(ctx)
-		} else {
-			cacheHitStopWatch.Stop()
-			newParentInfo, err := node_common.CreateParentInfo(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID(), nCtx.CurrentAttempt())
-			if err != nil {
-				return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "failed to generate uniqueID")
-			}
-			compiledWf := workflowCacheContents.WorkflowCRD
-			return dynamicWorkflowContext{
-				isDynamic:          true,
-				subWorkflow:        compiledWf,
-				subWorkflowClosure: workflowCacheContents.CompiledWorkflow,
-				execContext:        executors.NewExecutionContext(nCtx.ExecutionContext(), compiledWf, compiledWf, newParentInfo, nCtx.ExecutionContext()),
-				nodeLookup:         executors.NewNodeLookup(compiledWf, dynamicNodeStatus),
-			}, nil
-		}
-	}
-	d.metrics.CacheMiss.Inc(ctx)
+	//if ok, err := f.CacheExists(ctx); err != nil {
+	//	logger.Warnf(ctx, "Failed to call head on compiled workflow files. Error: %v", err)
+	//	return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "Failed to do HEAD on compiled workflow files.")
+	//} else if ok {
+	//	// It exists, load and return it
+	//	workflowCacheContents, err := f.RetrieveCache(ctx)
+	//	if err != nil {
+	//		logger.Warnf(ctx, "Failed to load cached flyte workflow, this will cause the dynamic workflow to be recompiled. Error: %v", err)
+	//		d.metrics.CacheError.Inc(ctx)
+	//	} else {
+	//		cacheHitStopWatch.Stop()
+	//		newParentInfo, err := node_common.CreateParentInfo(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID(), nCtx.CurrentAttempt())
+	//		if err != nil {
+	//			return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "failed to generate uniqueID")
+	//		}
+	//		compiledWf := workflowCacheContents.WorkflowCRD
+	//		return dynamicWorkflowContext{
+	//			isDynamic:          true,
+	//			subWorkflow:        compiledWf,
+	//			subWorkflowClosure: workflowCacheContents.CompiledWorkflow,
+	//			execContext:        executors.NewExecutionContext(nCtx.ExecutionContext(), compiledWf, compiledWf, newParentInfo, nCtx.ExecutionContext()),
+	//			nodeLookup:         executors.NewNodeLookup(compiledWf, dynamicNodeStatus),
+	//		}, nil
+	//	}
+	//}
+	//d.metrics.CacheMiss.Inc(ctx)
 
 	// We know for sure that futures file was generated. Lets read it
 	djSpec, err := f.Read(ctx)
