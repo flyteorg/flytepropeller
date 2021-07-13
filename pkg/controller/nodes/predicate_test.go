@@ -43,6 +43,24 @@ func TestCanExecute(t *testing.T) {
 		assert.Equal(t, PredicatePhaseUndefined, p)
 	})
 
+	t.Run("upstreamNodeNotFound", func(t *testing.T) {
+		// Setup
+		mockN2Status := &mocks.ExecutableNodeStatus{}
+
+		mockNode := &mocks.BaseNode{}
+		mockNode.OnGetID().Return(nodeN2)
+
+		mockWf := &mocks.ExecutableWorkflow{}
+		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
+		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
+		mockWf.OnGetID().Return("w1")
+		mockWf.OnGetNode(nodeN0).Return(nil, false)
+
+		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)
+		assert.Error(t, err)
+		assert.Equal(t, PredicatePhaseUndefined, p)
+	})
+
 	t.Run("upstreamConnectionsNotReady", func(t *testing.T) {
 		// Setup
 		mockN2Status := &mocks.ExecutableNodeStatus{}
@@ -86,10 +104,14 @@ func TestCanExecute(t *testing.T) {
 		mockNode := &mocks.BaseNode{}
 		mockNode.OnGetID().Return(nodeN2)
 
+		mockN0 := &mocks.ExecutableNode{}
+		mockN0.OnGetBranchNode().Return(nil)
 		mockN0Status := &mocks.ExecutableNodeStatus{}
 		mockN0Status.OnGetPhase().Return(v1alpha1.NodePhaseRunning)
 		mockN0Status.OnIsDirty().Return(false)
 
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
 		mockN1Status := &mocks.ExecutableNodeStatus{}
 		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseSucceeded)
 		mockN1Status.OnIsDirty().Return(false)
@@ -99,6 +121,8 @@ func TestCanExecute(t *testing.T) {
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN1).Return(mockN1Status)
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
 		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
+		mockWf.OnGetNode(nodeN0).Return(mockN0, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
 		mockWf.OnGetID().Return("w1")
 
 		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)
@@ -115,10 +139,14 @@ func TestCanExecute(t *testing.T) {
 		mockNode := &mocks.BaseNode{}
 		mockNode.OnGetID().Return(nodeN2)
 
+		mockN0 := &mocks.ExecutableNode{}
+		mockN0.OnGetBranchNode().Return(nil)
 		mockN0Status := &mocks.ExecutableNodeStatus{}
 		mockN0Status.OnGetPhase().Return(v1alpha1.NodePhaseSucceeded)
 		mockN0Status.OnIsDirty().Return(false)
 
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
 		mockN1Status := &mocks.ExecutableNodeStatus{}
 		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseSucceeded)
 		mockN1Status.OnIsDirty().Return(false)
@@ -127,6 +155,8 @@ func TestCanExecute(t *testing.T) {
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN0).Return(mockN0Status)
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN1).Return(mockN1Status)
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
+		mockWf.OnGetNode(nodeN0).Return(mockN0, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
 		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
 
 		mockWf.OnGetID().Return("w1")
@@ -145,10 +175,14 @@ func TestCanExecute(t *testing.T) {
 		mockNode := &mocks.BaseNode{}
 		mockNode.OnGetID().Return(nodeN2)
 
+		mockN0 := &mocks.ExecutableNode{}
+		mockN0.OnGetBranchNode().Return(nil)
 		mockN0Status := &mocks.ExecutableNodeStatus{}
 		mockN0Status.OnGetPhase().Return(v1alpha1.NodePhaseSucceeded)
 		mockN0Status.OnIsDirty().Return(false)
 
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
 		mockN1Status := &mocks.ExecutableNodeStatus{}
 		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseSucceeded)
 		mockN1Status.OnIsDirty().Return(true)
@@ -158,6 +192,8 @@ func TestCanExecute(t *testing.T) {
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN1).Return(mockN1Status)
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
 		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
+		mockWf.OnGetNode(nodeN0).Return(mockN0, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
 		mockWf.OnGetID().Return("w1")
 
 		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)
@@ -174,10 +210,14 @@ func TestCanExecute(t *testing.T) {
 		mockNode := &mocks.BaseNode{}
 		mockNode.OnGetID().Return(nodeN2)
 
+		mockN0 := &mocks.ExecutableNode{}
+		mockN0.OnGetBranchNode().Return(nil)
 		mockN0Status := &mocks.ExecutableNodeStatus{}
 		mockN0Status.OnGetPhase().Return(v1alpha1.NodePhaseRunning)
 		mockN0Status.OnIsDirty().Return(false)
 
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
 		mockN1Status := &mocks.ExecutableNodeStatus{}
 		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseSkipped)
 		mockN1Status.OnIsDirty().Return(false)
@@ -187,6 +227,8 @@ func TestCanExecute(t *testing.T) {
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN1).Return(mockN1Status)
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
 		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
+		mockWf.OnGetNode(nodeN0).Return(mockN0, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
 		mockWf.OnGetID().Return("w1")
 
 		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)
@@ -203,10 +245,14 @@ func TestCanExecute(t *testing.T) {
 		mockNode := &mocks.BaseNode{}
 		mockNode.OnGetID().Return(nodeN2)
 
+		mockN0 := &mocks.ExecutableNode{}
+		mockN0.OnGetBranchNode().Return(nil)
 		mockN0Status := &mocks.ExecutableNodeStatus{}
 		mockN0Status.OnGetPhase().Return(v1alpha1.NodePhaseSucceeded)
 		mockN0Status.OnIsDirty().Return(false)
 
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
 		mockN1Status := &mocks.ExecutableNodeStatus{}
 		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseSkipped)
 		mockN1Status.OnIsDirty().Return(false)
@@ -216,6 +262,8 @@ func TestCanExecute(t *testing.T) {
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN1).Return(mockN1Status)
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
 		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
+		mockWf.OnGetNode(nodeN0).Return(mockN0, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
 		mockWf.OnGetID().Return("w1")
 
 		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)
@@ -232,10 +280,14 @@ func TestCanExecute(t *testing.T) {
 		mockNode := &mocks.BaseNode{}
 		mockNode.OnGetID().Return(nodeN2)
 
+		mockN0 := &mocks.ExecutableNode{}
+		mockN0.OnGetBranchNode().Return(nil)
 		mockN0Status := &mocks.ExecutableNodeStatus{}
 		mockN0Status.OnGetPhase().Return(v1alpha1.NodePhaseSkipped)
 		mockN0Status.OnIsDirty().Return(false)
 
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
 		mockN1Status := &mocks.ExecutableNodeStatus{}
 		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseSkipped)
 		mockN1Status.OnIsDirty().Return(false)
@@ -245,6 +297,8 @@ func TestCanExecute(t *testing.T) {
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN1).Return(mockN1Status)
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
 		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
+		mockWf.OnGetNode(nodeN0).Return(mockN0, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
 		mockWf.OnGetID().Return("w1")
 
 		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)
@@ -262,10 +316,14 @@ func TestCanExecute(t *testing.T) {
 		mockNode := &mocks.BaseNode{}
 		mockNode.OnGetID().Return(nodeN2)
 
+		mockN0 := &mocks.ExecutableNode{}
+		mockN0.OnGetBranchNode().Return(nil)
 		mockN0Status := &mocks.ExecutableNodeStatus{}
 		mockN0Status.OnGetPhase().Return(v1alpha1.NodePhaseFailed)
 		mockN0Status.OnIsDirty().Return(false)
 
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
 		mockN1Status := &mocks.ExecutableNodeStatus{}
 		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseFailed)
 		mockN1Status.OnIsDirty().Return(false)
@@ -275,6 +333,8 @@ func TestCanExecute(t *testing.T) {
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN1).Return(mockN1Status)
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
 		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
+		mockWf.OnGetNode(nodeN0).Return(mockN0, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
 		mockWf.OnGetID().Return("w1")
 
 		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)
@@ -288,6 +348,7 @@ func TestCanExecute(t *testing.T) {
 		mockN2Status := &mocks.ExecutableNodeStatus{}
 		// No parent node
 		mockN2Status.OnIsDirty().Return(false)
+		mockN2Status.OnGetParentNodeID().Return(&nodeN0)
 
 		mockNode := &mocks.BaseNode{}
 		mockNode.OnGetID().Return(nodeN2)
@@ -303,6 +364,8 @@ func TestCanExecute(t *testing.T) {
 		mockN0Status.OnGetBranchStatus().Return(mockN0BranchStatus)
 		mockN0Status.OnIsDirty().Return(false)
 
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
 		mockN1Status := &mocks.ExecutableNodeStatus{}
 		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseSucceeded)
 		mockN1Status.OnIsDirty().Return(false)
@@ -313,6 +376,7 @@ func TestCanExecute(t *testing.T) {
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
 		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
 		mockWf.OnGetNode(nodeN0).Return(mockN0Node, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
 		mockWf.OnGetID().Return("w1")
 
 		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)
@@ -326,6 +390,7 @@ func TestCanExecute(t *testing.T) {
 		mockN2Status := &mocks.ExecutableNodeStatus{}
 		// No parent node
 		mockN2Status.OnIsDirty().Return(false)
+		mockN2Status.OnGetParentNodeID().Return(&nodeN0)
 
 		mockNode := &mocks.BaseNode{}
 		mockNode.OnGetID().Return(nodeN2)
@@ -341,6 +406,8 @@ func TestCanExecute(t *testing.T) {
 		mockN0Status.OnGetBranchStatus().Return(mockN0BranchStatus)
 		mockN0Status.OnIsDirty().Return(false)
 
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
 		mockN1Status := &mocks.ExecutableNodeStatus{}
 		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseSkipped)
 		mockN1Status.OnIsDirty().Return(false)
@@ -351,6 +418,7 @@ func TestCanExecute(t *testing.T) {
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
 		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
 		mockWf.OnGetNode(nodeN0).Return(mockN0Node, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
 		mockWf.OnGetID().Return("w1")
 
 		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)
@@ -364,6 +432,7 @@ func TestCanExecute(t *testing.T) {
 		mockN2Status := &mocks.ExecutableNodeStatus{}
 		// No parent node
 		mockN2Status.OnIsDirty().Return(false)
+		mockN2Status.OnGetParentNodeID().Return(&nodeN0)
 
 		mockNode := &mocks.BaseNode{}
 		mockNode.OnGetID().Return(nodeN2)
@@ -379,6 +448,8 @@ func TestCanExecute(t *testing.T) {
 		mockN0Status.OnGetBranchStatus().Return(mockN0BranchStatus)
 		mockN0Status.OnIsDirty().Return(false)
 
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
 		mockN1Status := &mocks.ExecutableNodeStatus{}
 		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseRunning)
 		mockN1Status.OnIsDirty().Return(false)
@@ -389,6 +460,129 @@ func TestCanExecute(t *testing.T) {
 		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
 		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
 		mockWf.OnGetNode(nodeN0).Return(mockN0Node, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
+		mockWf.OnGetID().Return("w1")
+
+		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)
+		assert.NoError(t, err)
+		assert.Equal(t, PredicatePhaseNotReady, p)
+	})
+
+	t.Run("upstreamConnectionsBranchNotYetEvaluated", func(t *testing.T) {
+		// Setup
+		mockN2Status := &mocks.ExecutableNodeStatus{}
+		// No parent node
+		mockN2Status.OnIsDirty().Return(false)
+		mockN2Status.OnGetParentNodeID().Return(&nodeN0)
+
+		mockNode := &mocks.BaseNode{}
+		mockNode.OnGetID().Return(nodeN2)
+
+		mockN0BranchStatus := &mocks.MutableBranchNodeStatus{}
+		mockN0BranchStatus.OnGetPhase().Return(v1alpha1.BranchNodeNotYetEvaluated)
+
+		mockN0BranchNode := &mocks.ExecutableBranchNode{}
+		mockN0Node := &mocks.ExecutableNode{}
+		mockN0Node.OnGetBranchNode().Return(mockN0BranchNode)
+		mockN0Status := &mocks.ExecutableNodeStatus{}
+		mockN0Status.OnGetBranchStatus().Return(mockN0BranchStatus)
+		mockN0Status.OnIsDirty().Return(false)
+
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
+		mockN1Status := &mocks.ExecutableNodeStatus{}
+		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseSucceeded)
+		mockN1Status.OnIsDirty().Return(false)
+
+		mockWf := &mocks.ExecutableWorkflow{}
+		mockWf.OnGetNodeExecutionStatus(ctx, nodeN0).Return(mockN0Status)
+		mockWf.OnGetNodeExecutionStatus(ctx, nodeN1).Return(mockN1Status)
+		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
+		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
+		mockWf.OnGetNode(nodeN0).Return(mockN0Node, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
+		mockWf.OnGetID().Return("w1")
+
+		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)
+		assert.NoError(t, err)
+		assert.Equal(t, PredicatePhaseNotReady, p)
+	})
+
+	t.Run("upstreamConnectionsBranchFailed", func(t *testing.T) {
+		// Setup
+		mockN2Status := &mocks.ExecutableNodeStatus{}
+		// No parent node
+		mockN2Status.OnIsDirty().Return(false)
+		mockN2Status.OnGetParentNodeID().Return(&nodeN0)
+
+		mockNode := &mocks.BaseNode{}
+		mockNode.OnGetID().Return(nodeN2)
+
+		mockN0BranchStatus := &mocks.MutableBranchNodeStatus{}
+		mockN0BranchStatus.OnGetPhase().Return(v1alpha1.BranchNodeError)
+
+		mockN0BranchNode := &mocks.ExecutableBranchNode{}
+		mockN0Node := &mocks.ExecutableNode{}
+		mockN0Node.OnGetBranchNode().Return(mockN0BranchNode)
+		mockN0Status := &mocks.ExecutableNodeStatus{}
+		mockN0Status.OnGetBranchStatus().Return(mockN0BranchStatus)
+		mockN0Status.OnIsDirty().Return(false)
+
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
+		mockN1Status := &mocks.ExecutableNodeStatus{}
+		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseSucceeded)
+		mockN1Status.OnIsDirty().Return(false)
+
+		mockWf := &mocks.ExecutableWorkflow{}
+		mockWf.OnGetNodeExecutionStatus(ctx, nodeN0).Return(mockN0Status)
+		mockWf.OnGetNodeExecutionStatus(ctx, nodeN1).Return(mockN1Status)
+		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
+		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
+		mockWf.OnGetNode(nodeN0).Return(mockN0Node, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
+		mockWf.OnGetID().Return("w1")
+
+		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)
+		assert.NoError(t, err)
+		assert.Equal(t, PredicatePhaseNotReady, p)
+	})
+
+	// ParentNode branch ready
+	t.Run("upstreamConnectionsBranchSuccessBranchNodeRunning", func(t *testing.T) {
+		// Setup
+		mockN2Status := &mocks.ExecutableNodeStatus{}
+		// No parent node
+		mockN2Status.OnIsDirty().Return(false)
+		mockN2Status.OnGetParentNodeID().Return(nil)
+
+		mockNode := &mocks.BaseNode{}
+		mockNode.OnGetID().Return(nodeN2)
+
+		mockN0BranchStatus := &mocks.MutableBranchNodeStatus{}
+		mockN0BranchStatus.OnGetPhase().Return(v1alpha1.BranchNodeSuccess)
+		mockN0BranchNode := &mocks.ExecutableBranchNode{}
+
+		mockN0Node := &mocks.ExecutableNode{}
+		mockN0Node.OnGetBranchNode().Return(mockN0BranchNode)
+		mockN0Status := &mocks.ExecutableNodeStatus{}
+		mockN0Status.OnGetPhase().Return(v1alpha1.NodePhaseRunning)
+		mockN0Status.OnGetBranchStatus().Return(mockN0BranchStatus)
+		mockN0Status.OnIsDirty().Return(false)
+
+		mockN1 := &mocks.ExecutableNode{}
+		mockN1.OnGetBranchNode().Return(nil)
+		mockN1Status := &mocks.ExecutableNodeStatus{}
+		mockN1Status.OnGetPhase().Return(v1alpha1.NodePhaseSucceeded)
+		mockN1Status.OnIsDirty().Return(false)
+
+		mockWf := &mocks.ExecutableWorkflow{}
+		mockWf.OnGetNodeExecutionStatus(ctx, nodeN0).Return(mockN0Status)
+		mockWf.OnGetNodeExecutionStatus(ctx, nodeN1).Return(mockN1Status)
+		mockWf.OnGetNodeExecutionStatus(ctx, nodeN2).Return(mockN2Status)
+		mockWf.OnToNode(nodeN2).Return(upstreamN2, nil)
+		mockWf.OnGetNode(nodeN0).Return(mockN0Node, true)
+		mockWf.OnGetNode(nodeN1).Return(mockN1, true)
 		mockWf.OnGetID().Return("w1")
 
 		p, err := CanExecute(ctx, mockWf, mockWf, mockNode)

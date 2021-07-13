@@ -56,15 +56,15 @@ func CanExecute(ctx context.Context, dag executors.DAGStructure, nl executors.No
 
 	skipped := false
 	for _, upstreamNodeID := range upstreamNodes {
+		upstreamNode, ok := nl.GetNode(upstreamNodeID)
+		if !ok {
+			return PredicatePhaseUndefined, errors.Errorf(errors.BadSpecificationError, nodeID, "Upstream node [%v] of node [%v] not defined", upstreamNodeID, nodeID)
+		}
+
 		upstreamNodeStatus := nl.GetNodeExecutionStatus(ctx, upstreamNodeID)
 
 		if upstreamNodeStatus.IsDirty() {
 			return PredicatePhaseNotReady, nil
-		}
-
-		upstreamNode, ok := nl.GetNode(upstreamNodeID)
-		if !ok {
-			return PredicatePhaseUndefined, errors.Errorf(errors.BadSpecificationError, nodeID, "Upstream node [%v] of node [%v] not defined", upstreamNodeID, nodeID)
 		}
 
 		if upstreamNode.GetBranchNode() != nil && upstreamNodeStatus.GetBranchStatus() != nil {
