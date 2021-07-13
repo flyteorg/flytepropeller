@@ -19,10 +19,11 @@ package nodes
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"time"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
 
@@ -58,7 +59,7 @@ type nodeMetrics struct {
 	Scope                         promutils.Scope
 	FailureDuration               labeled.StopWatch
 	SuccessDuration               labeled.StopWatch
-	RecoveryDuration labeled.StopWatch
+	RecoveryDuration              labeled.StopWatch
 	UserErrorDuration             labeled.StopWatch
 	SystemErrorDuration           labeled.StopWatch
 	UnknownErrorDuration          labeled.StopWatch
@@ -98,7 +99,7 @@ type nodeExecutor struct {
 	interruptibleFailureThreshold   uint32
 	defaultDataSandbox              storage.DataReference
 	shardSelector                   ioutils.ShardSelector
-	recoveryClient recovery.RecoveryClient
+	recoveryClient                  recovery.RecoveryClient
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, dag executors.DAGStructure, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -152,64 +153,115 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 }
 
 func (c *nodeExecutor) recover(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.PhaseInfo, error) {
-	recovered, err := c.recoveryClient.RecoverNodeExecution(nCtx.NodeExecutionMetadata().GetNodeExecutionID())
+	recovered, err := c.recoveryClient.RecoverNodeExecution(ctx, nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution, nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 	if err != nil {
 		st, ok := status.FromError(err)
-		if !ok || st.Code() != codes.NotFound{
+		if !ok || st.Code() != codes.NotFound {
 			logger.Warnf(ctx, "Failed to recover node [%+v] with err [%+v]", nCtx.NodeExecutionMetadata().GetNodeExecutionID(), err)
 		}
 		// The node is not recoverable when it's not found in the parent execution
 		return handler.PhaseInfoUndefined, nil
 	}
-	recoveredData, err := c.recoveryClient.RecoverNodeExecutionData(nCtx.NodeExecutionMetadata().GetNodeExecutionID())
-	if err != nil {
-		st, ok := status.FromError(err)
-		if !ok || st.Code() != codes.NotFound{
-			logger.Warnf(ctx, "Failed to recover node execution data [%+v] with err [%+v]", nCtx.NodeExecutionMetadata().GetNodeExecutionID(), err)
-		}
-		// The node is not recoverable when it's not found in the parent execution
+	if recovered == nil {
+		logger.Warnf(ctx, "call to recover node [%+v] returned no error but also no node", nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 		return handler.PhaseInfoUndefined, nil
 	}
-
 	if recovered.Closure == nil {
-		logger.Warnf(ctx, "Fetched node execution [%+v] but was missing closure. Will not attempt to recover",
+		logger.Warnf(ctx, "Fetched node execution [%+v] data but was missing closure. Will not attempt to recover",
 			nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 		return handler.PhaseInfoUndefined, nil
 	}
-	// No need to otherwise check the phase here, a recoverable node execution should always be in a terminal phase
-	if recovered.Closure.Phase == core.NodeExecution_SKIPPED {
-		return
+	// A recoverable node execution should always be in a terminal phase
+	switch recovered.Closure.Phase {
+	case core.NodeExecution_SKIPPED:
+		return handler.PhaseInfoSkip(nil, "node execution recovery indicated original node was skipped"), nil
+	case core.NodeExecution_SUCCEEDED:
+		logger.Debugf(ctx, "Node [%+v] can be recovered. Proceeding to copy inputs and outputs", nCtx.NodeExecutionMetadata().GetNodeExecutionID())
+		break
+	default:
+		logger.Debugf(ctx, "Node [%+v] phase [%v] is not recoverable", nCtx.NodeExecutionMetadata().GetNodeExecutionID(), recovered.Closure.Phase)
+		return handler.PhaseInfoUndefined, nil
 	}
-	// Copy inputs to this node's expected location (this can and should be optimized)
-	if len(recovered.InputUri) > 0 {
-		nodeInputs := &core.LiteralMap{}
-		if recoveredData.FullInputs == nil {
-			if err := c.store.ReadProtobuf(ctx, storage.DataReference(recovered.InputUri), nodeInputs); err != nil {
-				// TODO change flytestdlib to return protobuf unmarshal errors separately. As this can indicate malformed output and we should catch that
-				return handler.PhaseInfoUndefined, errors.Wrapf(errors.InputsNotFoundError, nCtx.NodeID(), err, "failed to read data from dataDir [%v].", recovered.InputUri)
-			}
+
+	recoveredData, err := c.recoveryClient.RecoverNodeExecutionData(ctx, nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution, nCtx.NodeExecutionMetadata().GetNodeExecutionID())
+	if err != nil {
+		st, ok := status.FromError(err)
+		if !ok || st.Code() != codes.NotFound {
+			logger.Warnf(ctx, "Failed to recover node execution data for [%+v] although back-end indicated node was recoverable with err [%+v]",
+				nCtx.NodeExecutionMetadata().GetNodeExecutionID(), err)
 		}
-		if err := c.store.WriteProtobuf(ctx, nCtx.InputReader().GetInputPath(), storage.Options{}, nodeInputs); err != nil {
+		return handler.PhaseInfoUndefined, nil
+	}
+	if recoveredData == nil {
+		logger.Warnf(ctx, "call to recover node [%+v] data returned no error but also no data", nCtx.NodeExecutionMetadata().GetNodeExecutionID())
+		return handler.PhaseInfoUndefined, nil
+	}
+	// Copy inputs to this node's expected location
+	if recoveredData.FullInputs != nil {
+		if err := c.store.WriteProtobuf(ctx, nCtx.InputReader().GetInputPath(), storage.Options{}, recoveredData.FullInputs); err != nil {
 			c.metrics.InputsWriteFailure.Inc(ctx)
 			logger.Errorf(ctx, "Failed to move recovered inputs for Node. Error [%v]. InputsFile [%s]", err, nCtx.InputReader().GetInputPath())
 			return handler.PhaseInfoUndefined, errors.Wrapf(
 				errors.StorageError, nCtx.NodeID(), err, "Failed to store inputs for Node. InputsFile [%s]", nCtx.InputReader().GetInputPath())
 		}
+	} else if len(recovered.InputUri) > 0 {
+		// If the inputs are too large they won't be returned inline in the RecoverData call. We must fetch them before copying them.
+		nodeInputs := &core.LiteralMap{}
+		if recoveredData.FullInputs == nil {
+			if err := c.store.ReadProtobuf(ctx, storage.DataReference(recovered.InputUri), nodeInputs); err != nil {
+				return handler.PhaseInfoUndefined, errors.Wrapf(errors.InputsNotFoundError, nCtx.NodeID(), err, "failed to read data from dataDir [%v].", recovered.InputUri)
+			}
+		}
 
+		if err := c.store.WriteProtobuf(ctx, nCtx.InputReader().GetInputPath(), storage.Options{}, recoveredData.FullInputs); err != nil {
+			c.metrics.InputsWriteFailure.Inc(ctx)
+			logger.Errorf(ctx, "Failed to move recovered inputs for Node. Error [%v]. InputsFile [%s]", err, nCtx.InputReader().GetInputPath())
+			return handler.PhaseInfoUndefined, errors.Wrapf(
+				errors.StorageError, nCtx.NodeID(), err, "Failed to store inputs for Node. InputsFile [%s]", nCtx.InputReader().GetInputPath())
+		}
 	}
-	// Likewise, copy outputs
+	// Similarly, copy outputs' reference
+	so := storage.Options{}
+	var outputs = &core.LiteralMap{}
+	if recoveredData.FullOutputs != nil {
+		outputs = recoveredData.FullOutputs
+	} else if len(recovered.Closure.GetOutputUri()) > 0 {
+		if err := c.store.ReadProtobuf(ctx, storage.DataReference(recovered.Closure.GetOutputUri()), outputs); err != nil {
+			return handler.PhaseInfoUndefined, errors.Wrapf(errors.InputsNotFoundError, nCtx.NodeID(), err, "failed to read output data [%v].", recovered.Closure.GetOutputUri())
+		}
+	} else {
+		logger.Debugf(ctx, "No outputs found for recovered node [%+v]", nCtx.NodeExecutionMetadata().GetNodeExecutionID())
+	}
+	outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
+	if err := c.store.WriteProtobuf(ctx, outputFile, so, outputs); err != nil {
+		logger.Errorf(ctx, "Failed to write protobuf (metadata). Error [%v]", err)
+		return handler.PhaseInfoUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to store recovered node execution outputs")
+	}
+
 	info := &handler.ExecutionInfo{
 		OutputInfo: &handler.OutputInfo{
-			OutputURI: storage.DataReference(recovered.Closure.GetOutputUri()),
+			OutputURI: outputFile,
 		},
 	}
 	if recovered.Closure.GetTaskNodeMetadata() != nil {
-		info.TaskNodeInfo = handler.TaskNodeInfo{
+		taskNodeInfo := &handler.TaskNodeInfo{
 			TaskNodeMetadata: &event.TaskNodeMetadata{
-				CatalogKey: recovered.Closure.GetTaskNodeMetadata().CatalogKey,
+				CatalogKey:  recovered.Closure.GetTaskNodeMetadata().CatalogKey,
 				CacheStatus: recovered.Closure.GetTaskNodeMetadata().CacheStatus,
-				DynamicWorkflow: recovered.Closure.GetTaskNodeMetadata().
 			},
+		}
+		if recoveredData.DynamicWorkflow != nil {
+			taskNodeInfo.TaskNodeMetadata.DynamicWorkflow = &event.DynamicWorkflowNodeMetadata{
+				Id:               recoveredData.DynamicWorkflow.Id,
+				CompiledWorkflow: recoveredData.DynamicWorkflow.CompiledWorkflow,
+			}
+		}
+		info.TaskNodeInfo = taskNodeInfo
+	} else if recovered.Closure.GetWorkflowNodeMetadata() != nil {
+		// TODO: this node should be of type workflow node then, and we shouldn't even be processing it in this handler..
+		// TODO: what if this launched execution itself needs to be partially recovered?
+		info.WorkflowNodeInfo = &handler.WorkflowNodeInfo{
+			LaunchedWorkflowID: recovered.Closure.GetWorkflowNodeMetadata().ExecutionId,
 		}
 	}
 	return handler.PhaseInfoRecovered(info), nil
@@ -235,11 +287,8 @@ func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructur
 		if !node.IsStartNode() {
 			if nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution != nil {
 				phaseInfo, err := c.recover(ctx, nCtx)
-				if err != nil {
+				if err != nil || phaseInfo.GetPhase() == handler.EPhaseRecovered {
 					return phaseInfo, err
-				}
-				if phaseInfo.GetPhase() == handler.EPhaseRecovered {
-					return phaseInfo, nil
 				}
 			}
 			nodeStatus := nCtx.NodeStatus()
@@ -1018,7 +1067,7 @@ func (c *nodeExecutor) Initialize(ctx context.Context) error {
 func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink,
 	workflowLauncher launchplan.Executor, launchPlanReader launchplan.Reader, maxDatasetSize int64,
 	defaultRawOutputPrefix storage.DataReference, kubeClient executors.Client,
-	catalogClient catalog.Client, scope promutils.Scope) (executors.Node, error) {
+	catalogClient catalog.Client, recoveryClient recovery.RecoveryClient, scope promutils.Scope) (executors.Node, error) {
 
 	// TODO we may want to make this configurable.
 	shardSelector, err := ioutils.NewBase36PrefixShardSelector(ctx)
@@ -1037,7 +1086,7 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 			Scope:                         nodeScope,
 			FailureDuration:               labeled.NewStopWatch("failure_duration", "Indicates the total execution time of a failed workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			SuccessDuration:               labeled.NewStopWatch("success_duration", "Indicates the total execution time of a successful workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
-			RecoveryDuration:               labeled.NewStopWatch("recovery_duration", "Indicates the total execution time of a recovered workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
+			RecoveryDuration:              labeled.NewStopWatch("recovery_duration", "Indicates the total execution time of a recovered workflow.", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			UserErrorDuration:             labeled.NewStopWatch("user_error_duration", "Indicates the total execution time before user error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			SystemErrorDuration:           labeled.NewStopWatch("system_error_duration", "Indicates the total execution time before system error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			UnknownErrorDuration:          labeled.NewStopWatch("unknown_error_duration", "Indicates the total execution time before unknown error", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
@@ -1062,8 +1111,9 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		interruptibleFailureThreshold:   uint32(nodeConfig.InterruptibleFailureThreshold),
 		defaultDataSandbox:              defaultRawOutputPrefix,
 		shardSelector:                   shardSelector,
+		recoveryClient:                  recoveryClient,
 	}
-	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, nodeScope)
+	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, recoveryClient, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory
 	return exec, err
 }

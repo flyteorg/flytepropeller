@@ -21,7 +21,7 @@ const (
 	RemoteChildWorkflowExecutionFailed ErrorCode = "RemoteChildWorkflowExecutionFailed"
 	NoBranchTakenError                 ErrorCode = "NoBranchTakenError"
 	OutputsNotFoundError               ErrorCode = "OutputsNotFoundError"
-	InputsNotFoundError ErrorCode = "InputsNotFoundError"
+	InputsNotFoundError                ErrorCode = "InputsNotFoundError"
 	StorageError                       ErrorCode = "StorageError"
 	EventRecordingFailed               ErrorCode = "EventRecordingFailed"
 	CatalogCallFailed                  ErrorCode = "CatalogCallFailed"

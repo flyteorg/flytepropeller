@@ -46,23 +46,31 @@ func (e executionCacheItem) ID() string {
 
 func (a *adminLaunchPlanExecutor) Launch(ctx context.Context, launchCtx LaunchContext,
 	executionID *core.WorkflowExecutionIdentifier, launchPlanRef *core.Identifier, inputs *core.LiteralMap) error {
-
-	req := &admin.ExecutionCreateRequest{
-		Project: executionID.Project,
-		Domain:  executionID.Domain,
-		Name:    executionID.Name,
-		Spec: &admin.ExecutionSpec{
-			LaunchPlan: launchPlanRef,
-			Metadata: &admin.ExecutionMetadata{
-				Mode:                admin.ExecutionMetadata_CHILD_WORKFLOW,
-				Nesting:             launchCtx.NestingLevel + 1,
-				Principal:           launchCtx.Principal,
-				ParentNodeExecution: launchCtx.ParentNodeExecution,
+	var err error
+	if launchCtx.RecoveryExecution != nil {
+		_, err = a.adminClient.RecoverExecution(ctx, &admin.ExecutionRecoverRequest{
+			Id:                  launchCtx.RecoveryExecution,
+			Name:                executionID.Name,
+			ParentNodeExecution: launchCtx.ParentNodeExecution,
+		})
+	} else {
+		req := &admin.ExecutionCreateRequest{
+			Project: executionID.Project,
+			Domain:  executionID.Domain,
+			Name:    executionID.Name,
+			Spec: &admin.ExecutionSpec{
+				LaunchPlan: launchPlanRef,
+				Metadata: &admin.ExecutionMetadata{
+					Mode:                admin.ExecutionMetadata_CHILD_WORKFLOW,
+					Nesting:             launchCtx.NestingLevel + 1,
+					Principal:           launchCtx.Principal,
+					ParentNodeExecution: launchCtx.ParentNodeExecution,
+				},
+				Inputs: inputs,
 			},
-			Inputs: inputs,
-		},
+		}
+		_, err = a.adminClient.CreateExecution(ctx, req)
 	}
-	_, err := a.adminClient.CreateExecution(ctx, req)
 	if err != nil {
 		statusCode := status.Code(err)
 		switch statusCode {

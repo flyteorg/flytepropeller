@@ -8,11 +8,13 @@ import (
 	"testing"
 	"time"
 
+	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	storageMocks "github.com/flyteorg/flytestdlib/storage/mocks"
+
 	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
 
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
@@ -36,12 +38,14 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
+	recoveryMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	flyteassert "github.com/flyteorg/flytepropeller/pkg/utils/assert"
 )
 
 var fakeKubeClient = mocks4.NewFakeKubeClient()
 var catalogClient = catalog.NOOPCatalog{}
+var recoveryClient = &recoveryMocks.RecoveryClient{}
 
 const taskID = "tID"
 
@@ -52,7 +56,7 @@ func TestSetInputsForStartNode(t *testing.T) {
 
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 	exec, err := NewExecutor(ctx, config.GetConfig().NodeConfig, mockStorage, enQWf, events.NewMockEventSink(), adminClient,
-		adminClient, 10, "s3://bucket/", fakeKubeClient, catalogClient, promutils.NewTestScope())
+		adminClient, 10, "s3://bucket/", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	inputs := &core.LiteralMap{
 		Literals: map[string]*core.Literal{
@@ -99,7 +103,7 @@ func TestSetInputsForStartNode(t *testing.T) {
 
 	failStorage := createFailingDatastore(t, testScope.NewSubScope("failing"))
 	execFail, err := NewExecutor(ctx, config.GetConfig().NodeConfig, failStorage, enQWf, events.NewMockEventSink(), adminClient,
-		adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+		adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	t.Run("StorageFailure", func(t *testing.T) {
 		w := createDummyBaseWorkflow(mockStorage)
@@ -125,7 +129,7 @@ func TestNodeExecutor_Initialize(t *testing.T) {
 
 	t.Run("happy", func(t *testing.T) {
 		execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, memStore, enQWf, mockEventSink, adminClient,
-			adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+			adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 		assert.NoError(t, err)
 		exec := execIface.(*nodeExecutor)
 
@@ -139,7 +143,7 @@ func TestNodeExecutor_Initialize(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, memStore, enQWf, mockEventSink, adminClient,
-			adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+			adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 		assert.NoError(t, err)
 		exec := execIface.(*nodeExecutor)
 
@@ -162,7 +166,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
-		10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+		10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
 
@@ -266,7 +270,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
-		10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+		10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
 
@@ -626,6 +630,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockWf.OnGetRawOutputDataConfig().Return(v1alpha1.RawOutputDataConfig{
 				RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
 			})
+			mockWf.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
 			mockWfStatus.OnGetDataDir().Return(storage.DataReference("x"))
 			mockWfStatus.OnConstructNodeDataDirMatch(mock.Anything, mock.Anything, mock.Anything).Return("x", nil)
 			return mockWf, mockN2Status
@@ -662,7 +667,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 
 				adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 				execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink,
-					adminClient, adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+					adminClient, adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 				assert.NoError(t, err)
 				exec := execIface.(*nodeExecutor)
 				exec.nodeHandlerFactory = hf
@@ -737,7 +742,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				store := createInmemoryDataStore(t, promutils.NewTestScope())
 				adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 				execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient,
-					adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+					adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 				assert.NoError(t, err)
 				exec := execIface.(*nodeExecutor)
 				exec.nodeHandlerFactory = hf
@@ -847,7 +852,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				store := createInmemoryDataStore(t, promutils.NewTestScope())
 				adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 				execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient,
-					adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+					adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 				assert.NoError(t, err)
 				exec := execIface.(*nodeExecutor)
 				exec.nodeHandlerFactory = hf
@@ -911,7 +916,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		store := createInmemoryDataStore(t, promutils.NewTestScope())
 		adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 		execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient,
-			adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+			adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 		assert.NoError(t, err)
 		exec := execIface.(*nodeExecutor)
 		exec.nodeHandlerFactory = hf
@@ -942,7 +947,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		store := createInmemoryDataStore(t, promutils.NewTestScope())
 		adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 		execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient,
-			adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+			adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 		assert.NoError(t, err)
 		exec := execIface.(*nodeExecutor)
 		exec.nodeHandlerFactory = hf
@@ -976,7 +981,7 @@ func TestNodeExecutor_RecursiveNodeHandler_NoDownstream(t *testing.T) {
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient,
-		adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+		adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
 
@@ -1087,7 +1092,7 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
-		10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+		10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
 
@@ -1196,7 +1201,7 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
-		10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+		10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
 	// Node not yet started
@@ -1254,6 +1259,7 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 					RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
 				})
 				eCtx.OnCurrentParallelism().Return(0)
+				eCtx.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
 
 				branchTakenNodeID := "branchTakenNode"
 				branchTakenNode := &mocks.ExecutableNode{}
@@ -1621,8 +1627,6 @@ func TestNodeExecutionEventV0(t *testing.T) {
 		NodeExecutionId: nID,
 	}
 	p := handler.PhaseInfoQueued("r")
-	inputReader := &mocks3.InputReader{}
-	inputReader.OnGetInputPath().Return("reference")
 	parentInfo := &mocks4.ImmutableParentInfo{}
 	parentInfo.OnGetUniqueID().Return("np1")
 	parentInfo.OnCurrentAttempt().Return(uint32(2))
@@ -1636,7 +1640,7 @@ func TestNodeExecutionEventV0(t *testing.T) {
 	ns.OnGetPhase().Return(v1alpha1.NodePhaseNotYetStarted)
 	nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
 	ns.OnGetParentTaskID().Return(tID)
-	ev, err := ToNodeExecutionEvent(nID, p, inputReader, ns, v1alpha1.EventVersion0, parentInfo, n)
+	ev, err := ToNodeExecutionEvent(nID, p, "reference", ns, v1alpha1.EventVersion0, parentInfo, n)
 	assert.NoError(t, err)
 	assert.Equal(t, "n1", ev.Id.NodeId)
 	assert.Equal(t, execID, ev.Id.ExecutionId)
@@ -1661,8 +1665,8 @@ func TestNodeExecutionEventV1(t *testing.T) {
 		NodeExecutionId: nID,
 	}
 	p := handler.PhaseInfoQueued("r")
-	inputReader := &mocks3.InputReader{}
-	inputReader.OnGetInputPath().Return("reference")
+	//inputReader := &mocks3.InputReader{}
+	//inputReader.OnGetInputPath().Return("reference")
 	parentInfo := &mocks4.ImmutableParentInfo{}
 	parentInfo.OnGetUniqueID().Return("np1")
 	parentInfo.OnCurrentAttempt().Return(uint32(2))
@@ -1676,7 +1680,7 @@ func TestNodeExecutionEventV1(t *testing.T) {
 	ns.OnGetPhase().Return(v1alpha1.NodePhaseNotYetStarted)
 	nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
 	ns.OnGetParentTaskID().Return(tID)
-	eventOpt, err := ToNodeExecutionEvent(nID, p, inputReader, ns, v1alpha1.EventVersion1, parentInfo, n)
+	eventOpt, err := ToNodeExecutionEvent(nID, p, "reference", ns, v1alpha1.EventVersion1, parentInfo, n)
 	assert.NoError(t, err)
 	assert.Equal(t, "np1-2-n1", eventOpt.Id.NodeId)
 	assert.Equal(t, execID, eventOpt.Id.ExecutionId)
@@ -1700,7 +1704,7 @@ func TestNodeExecutor_RecursiveNodeHandler_ParallelismLimit(t *testing.T) {
 
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
-		10, "s3://bucket", fakeKubeClient, catalogClient, promutils.NewTestScope())
+		10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, promutils.NewTestScope())
 	assert.NoError(t, err)
 	exec := execIface.(*nodeExecutor)
 
@@ -1870,4 +1874,216 @@ func Test_nodeExecutor_IdempotentRecordEvent(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRecover(t *testing.T) {
+	recoveryID := &core.WorkflowExecutionIdentifier{
+		Project: "p",
+		Domain:  "d",
+		Name:    "orig",
+	}
+	wfExecID := &core.WorkflowExecutionIdentifier{
+		Project: "project",
+		Domain:  "domain",
+		Name:    "name",
+	}
+	nodeID := "recovering"
+	nodeExecID := &core.NodeExecutionIdentifier{
+		ExecutionId: wfExecID,
+		NodeId:      nodeID,
+	}
+
+	fullInputs := &core.LiteralMap{
+		Literals: map[string]*core.Literal{
+			"innie": {
+				Value: &core.Literal_Scalar{
+					Scalar: &core.Scalar{
+						Value: &core.Scalar_Primitive{
+							Primitive: &core.Primitive{
+								Value: &core.Primitive_Integer{
+									Integer: 2,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	fullOutputs := &core.LiteralMap{
+		Literals: map[string]*core.Literal{
+			"outie": {
+				Value: &core.Literal_Scalar{
+					Scalar: &core.Scalar{
+						Value: &core.Scalar_Primitive{
+							Primitive: &core.Primitive{
+								Value: &core.Primitive_StringValue{
+									StringValue: "foo",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	execContext := &mocks4.ExecutionContext{}
+	execContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{
+		RecoveryExecution: recoveryID,
+	})
+
+	nm := &nodeHandlerMocks.NodeExecutionMetadata{}
+	nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
+		ExecutionId: wfExecID,
+		NodeId:      nodeID,
+	})
+
+	ir := &mocks3.InputReader{}
+	ir.OnGetInputPath().Return("inputs.pb")
+
+	ns := &mocks.ExecutableNodeStatus{}
+	ns.OnGetOutputDir().Return(storage.DataReference("out"))
+
+	nCtx := &nodeHandlerMocks.NodeExecutionContext{}
+	nCtx.OnExecutionContext().Return(execContext)
+	nCtx.OnNodeExecutionMetadata().Return(nm)
+	nCtx.OnInputReader().Return(ir)
+	nCtx.OnNodeStatus().Return(ns)
+
+	t.Run("recover successfully", func(t *testing.T) {
+		recoveryClient := &recoveryMocks.RecoveryClient{}
+		recoveryClient.On("RecoverNodeExecution", mock.Anything, recoveryID, nodeExecID).Return(
+			&admin.NodeExecution{
+				Closure: &admin.NodeExecutionClosure{
+					Phase: core.NodeExecution_SUCCEEDED,
+					OutputResult: &admin.NodeExecutionClosure_OutputUri{
+						OutputUri: "outputuri.pb",
+					},
+				},
+			}, nil)
+
+		recoveryClient.On("RecoverNodeExecutionData", mock.Anything, recoveryID, nodeExecID).Return(
+			&admin.NodeExecutionGetDataResponse{
+				FullInputs:  fullInputs,
+				FullOutputs: fullOutputs,
+			}, nil)
+
+		mockPBStore := &storageMocks.ComposedProtobufStore{}
+		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
+			return reference.String() == "inputs.pb" || reference.String() == "out/outputs.pb"
+		}), mock.Anything,
+			mock.Anything).Return(nil)
+		storageClient := &storage.DataStore{
+			ComposedProtobufStore: mockPBStore,
+			ReferenceConstructor:  &storageMocks.ReferenceConstructor{},
+		}
+
+		executor := nodeExecutor{
+			recoveryClient: recoveryClient,
+			store:          storageClient,
+		}
+
+		phaseInfo, err := executor.recover(context.TODO(), nCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, phaseInfo.GetPhase(), handler.EPhaseRecovered)
+	})
+
+	t.Run("nothing to recover", func(t *testing.T) {
+		recoveryClient := &recoveryMocks.RecoveryClient{}
+		recoveryClient.On("RecoverNodeExecution", mock.Anything, recoveryID, nodeExecID).Return(
+			&admin.NodeExecution{
+				Closure: &admin.NodeExecutionClosure{
+					Phase: core.NodeExecution_FAILED,
+				},
+			}, nil)
+
+		executor := nodeExecutor{
+			recoveryClient: recoveryClient,
+		}
+
+		phaseInfo, err := executor.recover(context.TODO(), nCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, phaseInfo.GetPhase(), handler.EPhaseUndefined)
+	})
+
+	t.Run("Fetch inputs", func(t *testing.T) {
+		recoveryClient := &recoveryMocks.RecoveryClient{}
+		recoveryClient.On("RecoverNodeExecution", mock.Anything, recoveryID, nodeExecID).Return(
+			&admin.NodeExecution{
+				InputUri: "inputuri",
+				Closure: &admin.NodeExecutionClosure{
+					Phase: core.NodeExecution_SUCCEEDED,
+					OutputResult: &admin.NodeExecutionClosure_OutputUri{
+						OutputUri: "outputuri.pb",
+					},
+				},
+			}, nil)
+
+		recoveryClient.On("RecoverNodeExecutionData", mock.Anything, recoveryID, nodeExecID).Return(
+			&admin.NodeExecutionGetDataResponse{
+				FullOutputs: fullOutputs,
+			}, nil)
+
+		mockPBStore := &storageMocks.ComposedProtobufStore{}
+		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
+			return reference.String() == "inputs.pb" || reference.String() == "out/outputs.pb"
+		}), mock.Anything,
+			mock.Anything).Return(nil)
+		mockPBStore.On("ReadProtobuf", mock.Anything, storage.DataReference("inputuri"), &core.LiteralMap{}).Return(nil)
+
+		storageClient := &storage.DataStore{
+			ComposedProtobufStore: mockPBStore,
+			ReferenceConstructor:  &storageMocks.ReferenceConstructor{},
+		}
+
+		executor := nodeExecutor{
+			recoveryClient: recoveryClient,
+			store:          storageClient,
+		}
+
+		phaseInfo, err := executor.recover(context.TODO(), nCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, phaseInfo.GetPhase(), handler.EPhaseRecovered)
+		mockPBStore.AssertNumberOfCalls(t, "ReadProtobuf", 1)
+	})
+	t.Run("Fetch outputs", func(t *testing.T) {
+		recoveryClient := &recoveryMocks.RecoveryClient{}
+		recoveryClient.On("RecoverNodeExecution", mock.Anything, recoveryID, nodeExecID).Return(
+			&admin.NodeExecution{
+				Closure: &admin.NodeExecutionClosure{
+					Phase: core.NodeExecution_SUCCEEDED,
+					OutputResult: &admin.NodeExecutionClosure_OutputUri{
+						OutputUri: "outputuri.pb",
+					},
+				},
+			}, nil)
+
+		recoveryClient.On("RecoverNodeExecutionData", mock.Anything, recoveryID, nodeExecID).Return(
+			&admin.NodeExecutionGetDataResponse{
+				FullInputs: fullInputs,
+			}, nil)
+
+		mockPBStore := &storageMocks.ComposedProtobufStore{}
+		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
+			return reference.String() == "inputs.pb" || reference.String() == "out/outputs.pb"
+		}), mock.Anything,
+			mock.Anything).Return(nil)
+		mockPBStore.On("ReadProtobuf", mock.Anything, storage.DataReference("outputuri.pb"), &core.LiteralMap{}).Return(nil)
+
+		storageClient := &storage.DataStore{
+			ComposedProtobufStore: mockPBStore,
+			ReferenceConstructor:  &storageMocks.ReferenceConstructor{},
+		}
+
+		executor := nodeExecutor{
+			recoveryClient: recoveryClient,
+			store:          storageClient,
+		}
+
+		phaseInfo, err := executor.recover(context.TODO(), nCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, phaseInfo.GetPhase(), handler.EPhaseRecovered)
+		mockPBStore.AssertNumberOfCalls(t, "ReadProtobuf", 1)
+	})
 }

@@ -114,6 +114,7 @@ var NodeStatusSuccess = NodeStatus{NodePhase: NodePhaseSuccess}
 var NodeStatusComplete = NodeStatus{NodePhase: NodePhaseComplete}
 var NodeStatusUndefined = NodeStatus{NodePhase: NodePhaseUndefined}
 var NodeStatusTimedOut = NodeStatus{NodePhase: NodePhaseTimedOut}
+var NodeStatusRecovered = NodeStatus{NodePhase: NodePhaseRecovered}
 
 func NodeStatusFailed(err *core.ExecutionError) NodeStatus {
 	return NodeStatus{NodePhase: NodePhaseFailed, Err: err}
