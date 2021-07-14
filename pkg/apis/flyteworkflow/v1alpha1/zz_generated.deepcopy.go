@@ -161,7 +161,11 @@ func (in *ExecutionConfig) DeepCopyInto(out *ExecutionConfig) {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
-	out.MaxParallelism = in.MaxParallelism
+	if in.RecoveryExecution != nil {
+		in, out := &in.RecoveryExecution, &out.RecoveryExecution
+		*out = new(core.WorkflowExecutionIdentifier)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -244,13 +248,12 @@ func (in *FlyteWorkflow) DeepCopyInto(out *FlyteWorkflow) {
 		in, out := &in.AcceptedAt, &out.AcceptedAt
 		*out = (*in).DeepCopy()
 	}
-
-	out.SecurityContext = in.SecurityContext
+	in.SecurityContext.DeepCopyInto(&out.SecurityContext)
 	in.Status.DeepCopyInto(&out.Status)
 	in.RawOutputDataConfig.DeepCopyInto(&out.RawOutputDataConfig)
 	in.ExecutionConfig.DeepCopyInto(&out.ExecutionConfig)
 	if in.DataReferenceConstructor != nil {
-		out.DataReferenceConstructor = in.DataReferenceConstructor
+		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
 	}
 	return
 }
@@ -562,7 +565,7 @@ func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 		*out = (*in).DeepCopy()
 	}
 	if in.DataReferenceConstructor != nil {
-		out.DataReferenceConstructor = in.DataReferenceConstructor
+		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
 	}
 	return
 }
@@ -717,7 +720,7 @@ func (in *WorkflowNodeStatus) DeepCopyInto(out *WorkflowNodeStatus) {
 	if in.ExecutionError != nil {
 		in, out := &in.ExecutionError, &out.ExecutionError
 		*out = new(core.ExecutionError)
-		*out = *in
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -752,7 +755,6 @@ func (in *WorkflowSpec) DeepCopyInto(out *WorkflowSpec) {
 	}
 	in.DeprecatedConnections.DeepCopyInto(&out.DeprecatedConnections)
 	in.Connections.DeepCopyInto(&out.Connections)
-
 	if in.OnFailure != nil {
 		in, out := &in.OnFailure, &out.OnFailure
 		*out = new(NodeSpec)
@@ -820,7 +822,7 @@ func (in *WorkflowStatus) DeepCopyInto(out *WorkflowStatus) {
 		*out = (*in).DeepCopy()
 	}
 	if in.DataReferenceConstructor != nil {
-		out.DataReferenceConstructor = in.DataReferenceConstructor
+		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
 	}
 	return
 }
