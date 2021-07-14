@@ -639,6 +639,7 @@ func (in *TaskPluginOverride) DeepCopyInto(out *TaskPluginOverride) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	in.MissingPluginBehavior.DeepCopyInto(&out.MissingPluginBehavior)
 	return
 }
 

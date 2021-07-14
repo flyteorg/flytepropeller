@@ -29,5 +29,5 @@ type ExecutionConfig struct {
 
 type TaskPluginOverride struct {
 	PluginIDs             []string
-	MissingPluginBehavior admin.PluginOverride_MissingPluginBehavior
+	MissingPluginBehavior WorkflowExecutionIdentifier
 }
