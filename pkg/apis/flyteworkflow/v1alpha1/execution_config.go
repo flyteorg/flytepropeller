@@ -2,7 +2,6 @@ package v1alpha1
 
 import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
 // This contains an OutputLocationPrefix. When running against AWS, this should be something of the form
@@ -24,10 +23,10 @@ type ExecutionConfig struct {
 	// Can be used to control the number of parallel nodes to run within the workflow. This is useful to achieve fairness.
 	MaxParallelism uint32
 	// Defines execution behavior for processing nodes.
-	RecoveryExecution *core.WorkflowExecutionIdentifier
+	RecoveryExecution WorkflowExecutionIdentifier
 }
 
 type TaskPluginOverride struct {
 	PluginIDs             []string
-	MissingPluginBehavior WorkflowExecutionIdentifier
+	MissingPluginBehavior admin.PluginOverride_MissingPluginBehavior
 }

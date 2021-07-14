@@ -563,7 +563,9 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		immutableParentInfo.OnCurrentAttempt().Return(uint32(2))
 		execContext.OnGetParentInfo().Return(&immutableParentInfo)
 		execContext.OnGetEventVersion().Return(v1alpha1.EventVersion1)
-		execContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
+		execContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{
+			RecoveryExecution: v1alpha1.WorkflowExecutionIdentifier{},
+		})
 		nCtx.OnExecutionContext().Return(execContext)
 
 		dCtx, err := d.buildContextualDynamicWorkflow(ctx, nCtx)

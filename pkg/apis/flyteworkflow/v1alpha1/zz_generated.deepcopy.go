@@ -161,11 +161,7 @@ func (in *ExecutionConfig) DeepCopyInto(out *ExecutionConfig) {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
-	if in.RecoveryExecution != nil {
-		in, out := &in.RecoveryExecution, &out.RecoveryExecution
-		*out = new(core.WorkflowExecutionIdentifier)
-		(*in).DeepCopyInto(*out)
-	}
+	out.MaxParallelism = in.MaxParallelism
 	return
 }
 
@@ -248,12 +244,13 @@ func (in *FlyteWorkflow) DeepCopyInto(out *FlyteWorkflow) {
 		in, out := &in.AcceptedAt, &out.AcceptedAt
 		*out = (*in).DeepCopy()
 	}
-	in.SecurityContext.DeepCopyInto(&out.SecurityContext)
+
+	out.SecurityContext = in.SecurityContext
 	in.Status.DeepCopyInto(&out.Status)
 	in.RawOutputDataConfig.DeepCopyInto(&out.RawOutputDataConfig)
 	in.ExecutionConfig.DeepCopyInto(&out.ExecutionConfig)
 	if in.DataReferenceConstructor != nil {
-		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
+		out.DataReferenceConstructor = in.DataReferenceConstructor
 	}
 	return
 }
@@ -565,7 +562,7 @@ func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 		*out = (*in).DeepCopy()
 	}
 	if in.DataReferenceConstructor != nil {
-		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
+		out.DataReferenceConstructor = in.DataReferenceConstructor
 	}
 	return
 }
@@ -639,7 +636,6 @@ func (in *TaskPluginOverride) DeepCopyInto(out *TaskPluginOverride) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	in.MissingPluginBehavior.DeepCopyInto(&out.MissingPluginBehavior)
 	return
 }
 
@@ -721,7 +717,7 @@ func (in *WorkflowNodeStatus) DeepCopyInto(out *WorkflowNodeStatus) {
 	if in.ExecutionError != nil {
 		in, out := &in.ExecutionError, &out.ExecutionError
 		*out = new(core.ExecutionError)
-		(*in).DeepCopyInto(*out)
+		*out = *in
 	}
 	return
 }
@@ -756,6 +752,7 @@ func (in *WorkflowSpec) DeepCopyInto(out *WorkflowSpec) {
 	}
 	in.DeprecatedConnections.DeepCopyInto(&out.DeprecatedConnections)
 	in.Connections.DeepCopyInto(&out.Connections)
+
 	if in.OnFailure != nil {
 		in, out := &in.OnFailure, &out.OnFailure
 		*out = new(NodeSpec)
@@ -823,7 +820,7 @@ func (in *WorkflowStatus) DeepCopyInto(out *WorkflowStatus) {
 		*out = (*in).DeepCopy()
 	}
 	if in.DataReferenceConstructor != nil {
-		out.DataReferenceConstructor = in.DataReferenceConstructor.DeepCopyReferenceConstructor()
+		out.DataReferenceConstructor = in.DataReferenceConstructor
 	}
 	return
 }

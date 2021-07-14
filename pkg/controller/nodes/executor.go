@@ -153,7 +153,7 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 }
 
 func (c *nodeExecutor) recover(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.PhaseInfo, error) {
-	recovered, err := c.recoveryClient.RecoverNodeExecution(ctx, nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution, nCtx.NodeExecutionMetadata().GetNodeExecutionID())
+	recovered, err := c.recoveryClient.RecoverNodeExecution(ctx, nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier, nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 	if err != nil {
 		st, ok := status.FromError(err)
 		if !ok || st.Code() != codes.NotFound {
@@ -183,7 +183,7 @@ func (c *nodeExecutor) recover(ctx context.Context, nCtx handler.NodeExecutionCo
 		return handler.PhaseInfoUndefined, nil
 	}
 
-	recoveredData, err := c.recoveryClient.RecoverNodeExecutionData(ctx, nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution, nCtx.NodeExecutionMetadata().GetNodeExecutionID())
+	recoveredData, err := c.recoveryClient.RecoverNodeExecutionData(ctx, nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier, nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 	if err != nil {
 		st, ok := status.FromError(err)
 		if !ok || st.Code() != codes.NotFound {
@@ -285,7 +285,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructur
 		node := nCtx.Node()
 		var nodeInputs *core.LiteralMap
 		if !node.IsStartNode() {
-			if nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution != nil {
+			if nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier != nil {
 				phaseInfo, err := c.recover(ctx, nCtx)
 				if err != nil || phaseInfo.GetPhase() == handler.EPhaseRecovered {
 					return phaseInfo, err

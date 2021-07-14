@@ -1930,7 +1930,9 @@ func TestRecover(t *testing.T) {
 
 	execContext := &mocks4.ExecutionContext{}
 	execContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{
-		RecoveryExecution: recoveryID,
+		RecoveryExecution: v1alpha1.WorkflowExecutionIdentifier{
+			recoveryID,
+		},
 	})
 
 	nm := &nodeHandlerMocks.NodeExecutionMetadata{}

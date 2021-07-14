@@ -64,8 +64,8 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 	launchCtx := launchplan.LaunchContext{
 		ParentNodeExecution: parentNodeExecutionID,
 	}
-	if nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution != nil {
-		recovered, err := l.recoveryClient.RecoverNodeExecution(ctx, nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution, nCtx.NodeExecutionMetadata().GetNodeExecutionID())
+	if nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier != nil {
+		recovered, err := l.recoveryClient.RecoverNodeExecution(ctx, nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier, nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 		if err != nil {
 			st, ok := status.FromError(err)
 			if !ok || st.Code() != codes.NotFound {
