@@ -7,8 +7,8 @@ require (
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/fatih/color v1.10.0
 	github.com/flyteorg/flyteidl v0.19.13-0.20210712214326-e92e965e42c3
-	github.com/flyteorg/flyteplugins v0.5.56
-	github.com/flyteorg/flytestdlib v0.3.17
+	github.com/flyteorg/flyteplugins v0.5.59
+	github.com/flyteorg/flytestdlib v0.3.27
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/go-test/deep v1.0.7
@@ -28,7 +28,7 @@ require (
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
 	k8s.io/client-go v0.20.2
-	k8s.io/code-generator v0.20.1
+	k8s.io/code-generator v0.20.1 // indirect
 	k8s.io/klog v1.0.0
 	sigs.k8s.io/controller-runtime v0.8.2
 )
