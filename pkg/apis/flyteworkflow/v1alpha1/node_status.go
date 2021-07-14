@@ -552,9 +552,10 @@ func (in *NodeStatus) GetNodeExecutionStatus(ctx context.Context, id NodeID) Exe
 	newNodeStatus := &NodeStatus{
 		MutableStruct: MutableStruct{},
 	}
+
 	newNodeStatus.SetParentTaskID(in.GetParentTaskID())
 	newNodeStatus.SetParentNodeID(in.GetParentNodeID())
-	dataDir, err := in.DataReferenceConstructor.ConstructReference(ctx, in.GetDataDir(), id)
+	dataDir, err := in.DataReferenceConstructor.ConstructReference(ctx, in.GetOutputDir(), id)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to construct data dir for node [%v]", id)
 		return n
