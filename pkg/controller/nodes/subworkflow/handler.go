@@ -127,7 +127,7 @@ func (w *workflowNodeHandler) Finalize(ctx context.Context, _ handler.NodeExecut
 	return nil
 }
 
-func New(executor executors.Node, workflowLauncher launchplan.Executor, recoveryClient recovery.RecoveryClient, scope promutils.Scope) handler.Node {
+func New(executor executors.Node, workflowLauncher launchplan.Executor, recoveryClient recovery.Client, scope promutils.Scope) handler.Node {
 	workflowScope := scope.NewSubScope("workflow")
 	return &workflowNodeHandler{
 		subWfHandler: newSubworkflowHandler(executor),

@@ -22,7 +22,7 @@ import (
 
 type launchPlanHandler struct {
 	launchPlan     launchplan.Executor
-	recoveryClient recovery.RecoveryClient
+	recoveryClient recovery.Client
 }
 
 func getParentNodeExecutionID(nCtx handler.NodeExecutionContext) (*core.NodeExecutionIdentifier, error) {
@@ -72,7 +72,7 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 				logger.Warnf(ctx, "Failed to recover workflow node [%+v] with err [%+v]", nCtx.NodeExecutionMetadata().GetNodeExecutionID(), err)
 			}
 		}
-		if recovered.Closure != nil && recovered.Closure.Phase == core.NodeExecution_SUCCEEDED {
+		if recovered != nil && recovered.Closure != nil && recovered.Closure.Phase == core.NodeExecution_SUCCEEDED {
 			if recovered.Closure.GetWorkflowNodeMetadata() != nil {
 				launchCtx.RecoveryExecution = recovered.Closure.GetWorkflowNodeMetadata().ExecutionId
 			} else {

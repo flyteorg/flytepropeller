@@ -431,7 +431,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 			return nil, err
 		}
 	}
-	recoveryClient := recovery.NewRecoveryClient(adminClient)
+	recoveryClient := recovery.NewClient(adminClient)
 
 	nodeExecutor, err := nodes.NewExecutor(ctx, cfg.NodeConfig, store, controller.enqueueWorkflowForNodeUpdates, eventSink,
 		launchPlanActor, launchPlanActor, cfg.MaxDatasetSizeBytes,

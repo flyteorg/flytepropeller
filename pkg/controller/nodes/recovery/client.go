@@ -8,9 +8,9 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 )
 
-//go:generate mockery -name RecoveryClient -output=mocks -case=underscore
+//go:generate mockery -name Client -output=mocks -case=underscore
 
-type RecoveryClient interface {
+type Client interface {
 	RecoverNodeExecution(ctx context.Context, execID *core.WorkflowExecutionIdentifier, id *core.NodeExecutionIdentifier) (*admin.NodeExecution, error)
 	RecoverNodeExecutionData(ctx context.Context, execID *core.WorkflowExecutionIdentifier, id *core.NodeExecutionIdentifier) (*admin.NodeExecutionGetDataResponse, error)
 }
@@ -24,10 +24,9 @@ func (c *recoveryClient) RecoverNodeExecution(ctx context.Context, execID *core.
 		ExecutionId: execID,
 		NodeId:      nodeID.NodeId,
 	}
-	resp, err := c.adminClient.GetNodeExecution(ctx, &admin.NodeExecutionGetRequest{
+	return c.adminClient.GetNodeExecution(ctx, &admin.NodeExecutionGetRequest{
 		Id: origNodeID,
 	})
-	return resp, err
 }
 
 func (c *recoveryClient) RecoverNodeExecutionData(ctx context.Context, execID *core.WorkflowExecutionIdentifier, nodeID *core.NodeExecutionIdentifier) (*admin.NodeExecutionGetDataResponse, error) {
@@ -40,7 +39,7 @@ func (c *recoveryClient) RecoverNodeExecutionData(ctx context.Context, execID *c
 	})
 }
 
-func NewRecoveryClient(adminClient service.AdminServiceClient) RecoveryClient {
+func NewClient(adminClient service.AdminServiceClient) Client {
 	return &recoveryClient{
 		adminClient: adminClient,
 	}

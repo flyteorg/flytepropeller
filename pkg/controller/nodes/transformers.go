@@ -64,7 +64,7 @@ func ToNodeExecEventPhase(p handler.EPhase) core.NodeExecution_Phase {
 	case handler.EPhaseFailed:
 		return core.NodeExecution_FAILED
 	case handler.EPhaseRecovered:
-		return core.NodeExecution_REOVERED
+		return core.NodeExecution_RECOVERED
 	default:
 		return core.NodeExecution_UNDEFINED
 	}

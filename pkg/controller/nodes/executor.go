@@ -99,7 +99,7 @@ type nodeExecutor struct {
 	interruptibleFailureThreshold   uint32
 	defaultDataSandbox              storage.DataReference
 	shardSelector                   ioutils.ShardSelector
-	recoveryClient                  recovery.RecoveryClient
+	recoveryClient                  recovery.Client
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, dag executors.DAGStructure, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -152,7 +152,7 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 	return err
 }
 
-func (c *nodeExecutor) recover(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.PhaseInfo, error) {
+func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.PhaseInfo, error) {
 	recovered, err := c.recoveryClient.RecoverNodeExecution(ctx, nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier, nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 	if err != nil {
 		st, ok := status.FromError(err)
@@ -177,7 +177,6 @@ func (c *nodeExecutor) recover(ctx context.Context, nCtx handler.NodeExecutionCo
 		return handler.PhaseInfoSkip(nil, "node execution recovery indicated original node was skipped"), nil
 	case core.NodeExecution_SUCCEEDED:
 		logger.Debugf(ctx, "Node [%+v] can be recovered. Proceeding to copy inputs and outputs", nCtx.NodeExecutionMetadata().GetNodeExecutionID())
-		break
 	default:
 		logger.Debugf(ctx, "Node [%+v] phase [%v] is not recoverable", nCtx.NodeExecutionMetadata().GetNodeExecutionID(), recovered.Closure.Phase)
 		return handler.PhaseInfoUndefined, nil
@@ -187,13 +186,13 @@ func (c *nodeExecutor) recover(ctx context.Context, nCtx handler.NodeExecutionCo
 	if err != nil {
 		st, ok := status.FromError(err)
 		if !ok || st.Code() != codes.NotFound {
-			logger.Warnf(ctx, "Failed to recover node execution data for [%+v] although back-end indicated node was recoverable with err [%+v]",
+			logger.Warnf(ctx, "Failed to attemptRecovery node execution data for [%+v] although back-end indicated node was recoverable with err [%+v]",
 				nCtx.NodeExecutionMetadata().GetNodeExecutionID(), err)
 		}
 		return handler.PhaseInfoUndefined, nil
 	}
 	if recoveredData == nil {
-		logger.Warnf(ctx, "call to recover node [%+v] data returned no error but also no data", nCtx.NodeExecutionMetadata().GetNodeExecutionID())
+		logger.Warnf(ctx, "call to attemptRecovery node [%+v] data returned no error but also no data", nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 		return handler.PhaseInfoUndefined, nil
 	}
 	// Copy inputs to this node's expected location
@@ -258,8 +257,7 @@ func (c *nodeExecutor) recover(ctx context.Context, nCtx handler.NodeExecutionCo
 		}
 		info.TaskNodeInfo = taskNodeInfo
 	} else if recovered.Closure.GetWorkflowNodeMetadata() != nil {
-		// TODO: this node should be of type workflow node then, and we shouldn't even be processing it in this handler..
-		// TODO: what if this launched execution itself needs to be partially recovered?
+		logger.Warnf(ctx, "Attempted to recover node")
 		info.WorkflowNodeInfo = &handler.WorkflowNodeInfo{
 			LaunchedWorkflowID: recovered.Closure.GetWorkflowNodeMetadata().ExecutionId,
 		}
@@ -286,7 +284,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructur
 		var nodeInputs *core.LiteralMap
 		if !node.IsStartNode() {
 			if nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier != nil {
-				phaseInfo, err := c.recover(ctx, nCtx)
+				phaseInfo, err := c.attemptRecovery(ctx, nCtx)
 				if err != nil || phaseInfo.GetPhase() == handler.EPhaseRecovered {
 					return phaseInfo, err
 				}
@@ -1067,7 +1065,7 @@ func (c *nodeExecutor) Initialize(ctx context.Context) error {
 func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink,
 	workflowLauncher launchplan.Executor, launchPlanReader launchplan.Reader, maxDatasetSize int64,
 	defaultRawOutputPrefix storage.DataReference, kubeClient executors.Client,
-	catalogClient catalog.Client, recoveryClient recovery.RecoveryClient, scope promutils.Scope) (executors.Node, error) {
+	catalogClient catalog.Client, recoveryClient recovery.Client, scope promutils.Scope) (executors.Node, error) {
 
 	// TODO we may want to make this configurable.
 	shardSelector, err := ioutils.NewBase36PrefixShardSelector(ctx)

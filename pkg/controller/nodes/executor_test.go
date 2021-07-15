@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+
 	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	storageMocks "github.com/flyteorg/flytestdlib/storage/mocks"
 
@@ -48,6 +50,8 @@ var catalogClient = catalog.NOOPCatalog{}
 var recoveryClient = &recoveryMocks.RecoveryClient{}
 
 const taskID = "tID"
+const inputsPath = "inputs.pb"
+const outputsPath = "out/outputs.pb"
 
 func TestSetInputsForStartNode(t *testing.T) {
 	ctx := context.Background()
@@ -1931,7 +1935,7 @@ func TestRecover(t *testing.T) {
 	execContext := &mocks4.ExecutionContext{}
 	execContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{
 		RecoveryExecution: v1alpha1.WorkflowExecutionIdentifier{
-			recoveryID,
+			WorkflowExecutionIdentifier: recoveryID,
 		},
 	})
 
@@ -1942,7 +1946,7 @@ func TestRecover(t *testing.T) {
 	})
 
 	ir := &mocks3.InputReader{}
-	ir.OnGetInputPath().Return("inputs.pb")
+	ir.OnGetInputPath().Return(inputsPath)
 
 	ns := &mocks.ExecutableNodeStatus{}
 	ns.OnGetOutputDir().Return(storage.DataReference("out"))
@@ -1953,7 +1957,7 @@ func TestRecover(t *testing.T) {
 	nCtx.OnInputReader().Return(ir)
 	nCtx.OnNodeStatus().Return(ns)
 
-	t.Run("recover successfully", func(t *testing.T) {
+	t.Run("recover task node successfully", func(t *testing.T) {
 		recoveryClient := &recoveryMocks.RecoveryClient{}
 		recoveryClient.On("RecoverNodeExecution", mock.Anything, recoveryID, nodeExecID).Return(
 			&admin.NodeExecution{
@@ -1973,7 +1977,7 @@ func TestRecover(t *testing.T) {
 
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
-			return reference.String() == "inputs.pb" || reference.String() == "out/outputs.pb"
+			return reference.String() == inputsPath || reference.String() == outputsPath
 		}), mock.Anything,
 			mock.Anything).Return(nil)
 		storageClient := &storage.DataStore{
@@ -1986,9 +1990,138 @@ func TestRecover(t *testing.T) {
 			store:          storageClient,
 		}
 
-		phaseInfo, err := executor.recover(context.TODO(), nCtx)
+		phaseInfo, err := executor.attemptRecovery(context.TODO(), nCtx)
 		assert.NoError(t, err)
 		assert.Equal(t, phaseInfo.GetPhase(), handler.EPhaseRecovered)
+	})
+	t.Run("recover cached, dynamic task node successfully", func(t *testing.T) {
+		recoveryClient := &recoveryMocks.RecoveryClient{}
+		recoveryClient.On("RecoverNodeExecution", mock.Anything, recoveryID, nodeExecID).Return(
+			&admin.NodeExecution{
+				Closure: &admin.NodeExecutionClosure{
+					Phase: core.NodeExecution_SUCCEEDED,
+					OutputResult: &admin.NodeExecutionClosure_OutputUri{
+						OutputUri: "outputuri.pb",
+					},
+					TargetMetadata: &admin.NodeExecutionClosure_TaskNodeMetadata{
+						TaskNodeMetadata: &admin.TaskNodeMetadata{
+							CatalogKey: &core.CatalogMetadata{
+								ArtifactTag: &core.CatalogArtifactTag{
+									ArtifactId: "arty",
+								},
+							},
+							CacheStatus: core.CatalogCacheStatus_CACHE_HIT,
+						},
+					},
+				},
+			}, nil)
+
+		dynamicWorkflow := &admin.DynamicWorkflowNodeMetadata{
+			Id: &core.Identifier{
+				ResourceType: core.ResourceType_WORKFLOW,
+				Project:      "p",
+				Domain:       "d",
+				Name:         "n",
+				Version:      "abc123",
+			},
+			CompiledWorkflow: &core.CompiledWorkflowClosure{
+				Primary: &core.CompiledWorkflow{
+					Template: &core.WorkflowTemplate{
+						Metadata: &core.WorkflowMetadata{
+							OnFailure: core.WorkflowMetadata_FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
+						},
+					},
+				},
+			},
+		}
+		recoveryClient.On("RecoverNodeExecutionData", mock.Anything, recoveryID, nodeExecID).Return(
+			&admin.NodeExecutionGetDataResponse{
+				FullInputs:      fullInputs,
+				FullOutputs:     fullOutputs,
+				DynamicWorkflow: dynamicWorkflow,
+			}, nil)
+
+		mockPBStore := &storageMocks.ComposedProtobufStore{}
+		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
+			return reference.String() == inputsPath || reference.String() == outputsPath
+		}), mock.Anything,
+			mock.Anything).Return(nil)
+		storageClient := &storage.DataStore{
+			ComposedProtobufStore: mockPBStore,
+			ReferenceConstructor:  &storageMocks.ReferenceConstructor{},
+		}
+
+		executor := nodeExecutor{
+			recoveryClient: recoveryClient,
+			store:          storageClient,
+		}
+
+		phaseInfo, err := executor.attemptRecovery(context.TODO(), nCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, phaseInfo.GetPhase(), handler.EPhaseRecovered)
+		assert.True(t, proto.Equal(&event.TaskNodeMetadata{
+			CatalogKey: &core.CatalogMetadata{
+				ArtifactTag: &core.CatalogArtifactTag{
+					ArtifactId: "arty",
+				},
+			},
+			CacheStatus: core.CatalogCacheStatus_CACHE_HIT,
+			DynamicWorkflow: &event.DynamicWorkflowNodeMetadata{
+				Id:               dynamicWorkflow.Id,
+				CompiledWorkflow: dynamicWorkflow.CompiledWorkflow,
+			},
+		}, phaseInfo.GetInfo().TaskNodeInfo.TaskNodeMetadata))
+	})
+	t.Run("recover workflow node successfully", func(t *testing.T) {
+		recoveryClient := &recoveryMocks.RecoveryClient{}
+		recoveryClient.On("RecoverNodeExecution", mock.Anything, recoveryID, nodeExecID).Return(
+			&admin.NodeExecution{
+				Closure: &admin.NodeExecutionClosure{
+					Phase: core.NodeExecution_SUCCEEDED,
+					OutputResult: &admin.NodeExecutionClosure_OutputUri{
+						OutputUri: "outputuri.pb",
+					},
+					TargetMetadata: &admin.NodeExecutionClosure_WorkflowNodeMetadata{
+						WorkflowNodeMetadata: &admin.WorkflowNodeMetadata{
+							ExecutionId: &core.WorkflowExecutionIdentifier{
+								Project: "p",
+								Domain:  "d",
+								Name:    "original_child_wf",
+							},
+						},
+					},
+				},
+			}, nil)
+
+		recoveryClient.On("RecoverNodeExecutionData", mock.Anything, recoveryID, nodeExecID).Return(
+			&admin.NodeExecutionGetDataResponse{
+				FullInputs:  fullInputs,
+				FullOutputs: fullOutputs,
+			}, nil)
+
+		mockPBStore := &storageMocks.ComposedProtobufStore{}
+		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
+			return reference.String() == inputsPath || reference.String() == outputsPath
+		}), mock.Anything,
+			mock.Anything).Return(nil)
+		storageClient := &storage.DataStore{
+			ComposedProtobufStore: mockPBStore,
+			ReferenceConstructor:  &storageMocks.ReferenceConstructor{},
+		}
+
+		executor := nodeExecutor{
+			recoveryClient: recoveryClient,
+			store:          storageClient,
+		}
+
+		phaseInfo, err := executor.attemptRecovery(context.TODO(), nCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, phaseInfo.GetPhase(), handler.EPhaseRecovered)
+		assert.True(t, proto.Equal(&core.WorkflowExecutionIdentifier{
+			Project: "p",
+			Domain:  "d",
+			Name:    "original_child_wf",
+		}, phaseInfo.GetInfo().WorkflowNodeInfo.LaunchedWorkflowID))
 	})
 
 	t.Run("nothing to recover", func(t *testing.T) {
@@ -2004,7 +2137,7 @@ func TestRecover(t *testing.T) {
 			recoveryClient: recoveryClient,
 		}
 
-		phaseInfo, err := executor.recover(context.TODO(), nCtx)
+		phaseInfo, err := executor.attemptRecovery(context.TODO(), nCtx)
 		assert.NoError(t, err)
 		assert.Equal(t, phaseInfo.GetPhase(), handler.EPhaseUndefined)
 	})
@@ -2029,7 +2162,7 @@ func TestRecover(t *testing.T) {
 
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
-			return reference.String() == "inputs.pb" || reference.String() == "out/outputs.pb"
+			return reference.String() == inputsPath || reference.String() == outputsPath
 		}), mock.Anything,
 			mock.Anything).Return(nil)
 		mockPBStore.On("ReadProtobuf", mock.Anything, storage.DataReference("inputuri"), &core.LiteralMap{}).Return(nil)
@@ -2044,7 +2177,7 @@ func TestRecover(t *testing.T) {
 			store:          storageClient,
 		}
 
-		phaseInfo, err := executor.recover(context.TODO(), nCtx)
+		phaseInfo, err := executor.attemptRecovery(context.TODO(), nCtx)
 		assert.NoError(t, err)
 		assert.Equal(t, phaseInfo.GetPhase(), handler.EPhaseRecovered)
 		mockPBStore.AssertNumberOfCalls(t, "ReadProtobuf", 1)
@@ -2068,7 +2201,7 @@ func TestRecover(t *testing.T) {
 
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
-			return reference.String() == "inputs.pb" || reference.String() == "out/outputs.pb"
+			return reference.String() == inputsPath || reference.String() == outputsPath
 		}), mock.Anything,
 			mock.Anything).Return(nil)
 		mockPBStore.On("ReadProtobuf", mock.Anything, storage.DataReference("outputuri.pb"), &core.LiteralMap{}).Return(nil)
@@ -2083,7 +2216,7 @@ func TestRecover(t *testing.T) {
 			store:          storageClient,
 		}
 
-		phaseInfo, err := executor.recover(context.TODO(), nCtx)
+		phaseInfo, err := executor.attemptRecovery(context.TODO(), nCtx)
 		assert.NoError(t, err)
 		assert.Equal(t, phaseInfo.GetPhase(), handler.EPhaseRecovered)
 		mockPBStore.AssertNumberOfCalls(t, "ReadProtobuf", 1)
