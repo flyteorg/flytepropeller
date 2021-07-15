@@ -67,6 +67,19 @@ func CanExecute(ctx context.Context, dag executors.DAGStructure, nl executors.No
 			return PredicatePhaseNotReady, nil
 		}
 
+		// BranchNodes are special. When the upstreamNode is a branch node it could represent one of two cases
+		// Case 1: the upstreamNode is the parent branch node (the one that houses the condition) and the child node
+		//         is one of the branches for the condition.
+		//         i.e For an example Branch (if condition then take-branch1 else take-branch2)
+		//         condition is the branch node, take-branch1/2 are the 2 child nodes and this condition can be triggered
+		//         for either one of them
+		// Case 2: the upstreamNode is some branch node and the current node is simply a node that consumes the output
+		//         of the branch
+		// Thus,
+		//   In case1, we can proceed to execute one of the branches as soon as the branch evaluation completes, but
+		//   branch node itself will not be successful (as it contains the branches)
+		//   In case2, we will continue the evaluation of the CanExecute code block and can only proceed if the entire
+		//   branch node is complete
 		if upstreamNode.GetBranchNode() != nil && upstreamNodeStatus.GetBranchStatus() != nil {
 			if upstreamNodeStatus.GetBranchStatus().GetPhase() != v1alpha1.BranchNodeSuccess {
 				return PredicatePhaseNotReady, nil
