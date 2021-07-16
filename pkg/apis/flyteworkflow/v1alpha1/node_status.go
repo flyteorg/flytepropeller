@@ -520,7 +520,6 @@ func (in NodeStatus) GetTaskNodeStatus() ExecutableTaskNodeStatus {
 
 func (in *NodeStatus) setEphemeralNodeExecutionStatusAttributes(ctx context.Context, id NodeID, n *NodeStatus) error {
 	n.SetParentTaskID(in.GetParentTaskID())
-	n.SetParentNodeID(in.GetParentNodeID())
 	if len(n.GetDataDir()) == 0 {
 		dataDir, err := in.DataReferenceConstructor.ConstructReference(ctx, in.GetDataDir(), id)
 		if err != nil {
