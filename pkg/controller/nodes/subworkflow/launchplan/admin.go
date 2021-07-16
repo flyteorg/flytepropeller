@@ -49,9 +49,11 @@ func (a *adminLaunchPlanExecutor) Launch(ctx context.Context, launchCtx LaunchCo
 	var err error
 	if launchCtx.RecoveryExecution != nil {
 		_, err = a.adminClient.RecoverExecution(ctx, &admin.ExecutionRecoverRequest{
-			Id:                  launchCtx.RecoveryExecution,
-			Name:                executionID.Name,
-			ParentNodeExecution: launchCtx.ParentNodeExecution,
+			Id:   launchCtx.RecoveryExecution,
+			Name: executionID.Name,
+			Metadata: &admin.ExecutionMetadata{
+				ParentNodeExecution: launchCtx.ParentNodeExecution,
+			},
 		})
 	} else {
 		req := &admin.ExecutionCreateRequest{
