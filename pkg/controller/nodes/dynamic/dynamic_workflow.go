@@ -148,6 +148,8 @@ func (d dynamicNodeTaskNodeHandler) buildContextualDynamicWorkflow(ctx context.C
 	dynamicNodeStatus.SetDataDir(nCtx.NodeStatus().GetDataDir())
 	dynamicNodeStatus.SetOutputDir(nCtx.NodeStatus().GetOutputDir())
 	dynamicNodeStatus.SetParentTaskID(execID)
+	id := nCtx.NodeID()
+	dynamicNodeStatus.SetParentNodeID(&id)
 
 	cacheHitStopWatch := d.metrics.CacheHit.Start(ctx)
 	// Check if we have compiled the workflow before:
