@@ -521,7 +521,7 @@ func (in NodeStatus) GetTaskNodeStatus() ExecutableTaskNodeStatus {
 func (in *NodeStatus) setEphemeralNodeExecutionStatusAttributes(ctx context.Context, id NodeID, n *NodeStatus) error {
 	n.SetParentTaskID(in.GetParentTaskID())
 	if len(n.GetDataDir()) == 0 {
-		dataDir, err := in.DataReferenceConstructor.ConstructReference(ctx, in.GetDataDir(), id)
+		dataDir, err := in.DataReferenceConstructor.ConstructReference(ctx, in.GetOutputDir(), id)
 		if err != nil {
 			return fmt.Errorf("failed to construct data dir for node [%v]. Error: %w", id, err)
 		}
