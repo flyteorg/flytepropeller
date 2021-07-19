@@ -318,16 +318,13 @@ func getAdminClient(ctx context.Context) (client service.AdminServiceClient, err
 func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Interface, flytepropellerClientset clientset.Interface,
 	flyteworkflowInformerFactory informers.SharedInformerFactory, kubeClient executors.Client, scope promutils.Scope) (*Controller, error) {
 
-	var adminClient service.AdminServiceClient
+	adminClient, err := getAdminClient(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "failed to initialize Admin client, err :%s", err.Error())
+		return nil, err
+	}
 	var launchPlanActor launchplan.FlyteAdmin
 	if cfg.EnableAdminLauncher {
-		var err error
-		adminClient, err = getAdminClient(ctx)
-		if err != nil {
-			logger.Errorf(ctx, "failed to initialize Admin client, err :%s", err.Error())
-			return nil, err
-		}
-
 		launchPlanActor, err = launchplan.NewAdminLaunchPlanExecutor(ctx, adminClient, cfg.DownstreamEval.Duration,
 			launchplan.GetAdminConfig(), scope.NewSubScope("admin_launcher"))
 		if err != nil {
@@ -422,20 +419,9 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 
 	controller.levelMonitor = NewResourceLevelMonitor(scope.NewSubScope("collector"), flyteworkflowInformer.Lister())
 
-	// The admin client might not be initialized if EnableAdminLauncher is set to False.
-	if adminClient == nil {
-		var err error
-		adminClient, err = getAdminClient(ctx)
-		if err != nil {
-			logger.Errorf(ctx, "failed to initialize Admin client, err :%s", err.Error())
-			return nil, err
-		}
-	}
-	recoveryClient := recovery.NewClient(adminClient)
-
 	nodeExecutor, err := nodes.NewExecutor(ctx, cfg.NodeConfig, store, controller.enqueueWorkflowForNodeUpdates, eventSink,
 		launchPlanActor, launchPlanActor, cfg.MaxDatasetSizeBytes,
-		storage.DataReference(cfg.DefaultRawOutputPrefix), kubeClient, catalogClient, recoveryClient, scope)
+		storage.DataReference(cfg.DefaultRawOutputPrefix), kubeClient, catalogClient, recovery.NewClient(adminClient), scope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create Controller.")
 	}

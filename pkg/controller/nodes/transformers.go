@@ -167,8 +167,6 @@ func ToNodePhase(p handler.EPhase) (v1alpha1.NodePhase, error) {
 		return v1alpha1.NodePhaseFailing, nil
 	case handler.EPhaseTimedout:
 		return v1alpha1.NodePhaseTimingOut, nil
-	case handler.EPhaseRecovered:
-		return v1alpha1.NodePhaseRecovering, nil
 	}
 	return v1alpha1.NodePhaseNotYetStarted, fmt.Errorf("no known conversion from handlerPhase[%d] to NodePhase", p)
 }

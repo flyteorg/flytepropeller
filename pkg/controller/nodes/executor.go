@@ -554,16 +554,15 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 		np = v1alpha1.NodePhaseSucceeded
 		finalStatus = executors.NodeStatusSuccess
 	}
-	if np == v1alpha1.NodePhaseRecovering && !h.FinalizeRequired() {
+	if np == v1alpha1.NodePhaseRecovered {
 		logger.Infof(ctx, "Finalize not required, moving node to Recovered")
-		np = v1alpha1.NodePhaseRecovered
 		finalStatus = executors.NodeStatusRecovered
 	}
 
 	// If it is retryable failure, we do no want to send any events, as the node is essentially still running
 	// Similarly if the phase has not changed from the last time, events do not need to be sent
 	if np != nodeStatus.GetPhase() && np != v1alpha1.NodePhaseRetryableFailure {
-		// assert np == skipped, succeeding, failing or recovering
+		// assert np == skipped, succeeding, failing or recovered
 		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s], (handler phase [%s])", nodeStatus.GetPhase().String(), np.String(), p.GetPhase().String())
 		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
 			p, nCtx.InputReader().GetInputPath().String(), nCtx.NodeStatus(), nCtx.ExecutionContext().GetEventVersion(),
@@ -663,22 +662,6 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 			c.metrics.InterruptibleNodesTerminated.Inc(ctx)
 		}
 		return executors.NodeStatusSuccess, nil
-	}
-
-	if currentPhase == v1alpha1.NodePhaseRecovering {
-		logger.Debugf(ctx, "node recovered")
-		if err := c.finalize(ctx, h, nCtx); err != nil {
-			return executors.NodeStatusUndefined, err
-		}
-
-		nodeStatus.ClearSubNodeStatus()
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseRecovered, v1.Now(), "node recovered successfully", nil)
-		c.metrics.SuccessDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
-		c.metrics.TimedOutFailure.Inc(ctx)
-		if nCtx.md.IsInterruptible() {
-			c.metrics.InterruptibleNodesTerminated.Inc(ctx)
-		}
-		return executors.NodeStatusRecovered, nil
 	}
 
 	if currentPhase == v1alpha1.NodePhaseRetryableFailure {
@@ -804,8 +787,7 @@ func canHandleNode(phase v1alpha1.NodePhase) bool {
 		phase == v1alpha1.NodePhaseTimingOut ||
 		phase == v1alpha1.NodePhaseRetryableFailure ||
 		phase == v1alpha1.NodePhaseSucceeding ||
-		phase == v1alpha1.NodePhaseDynamicRunning ||
-		phase == v1alpha1.NodePhaseRecovering
+		phase == v1alpha1.NodePhaseDynamicRunning
 }
 
 func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext executors.ExecutionContext,
