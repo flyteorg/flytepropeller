@@ -22,6 +22,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var isRecovery = true
+
 // IsWorkflowTerminated returns a true if the Workflow Phase is in a Terminal Phase, else returns a false
 func IsWorkflowTerminated(p core.WorkflowExecution_Phase) bool {
 	return p == core.WorkflowExecution_ABORTED || p == core.WorkflowExecution_FAILED ||
@@ -44,6 +46,29 @@ func (e executionCacheItem) ID() string {
 	return e.String()
 }
 
+func (a *adminLaunchPlanExecutor) handleLaunchError(ctx context.Context, isRecovery bool,
+	executionID *core.WorkflowExecutionIdentifier, launchPlanRef *core.Identifier, err error) error {
+
+	statusCode := status.Code(err)
+	if isRecovery && statusCode == codes.NotFound {
+		logger.Warnf(ctx, "failed to recover workflow [%s] with err %+v. will attempt to launch instead", launchPlanRef.Name, err)
+		return nil
+	}
+	switch statusCode {
+	case codes.AlreadyExists:
+		_, err := a.cache.GetOrCreate(executionID.String(), executionCacheItem{WorkflowExecutionIdentifier: *executionID})
+		if err != nil {
+			logger.Errorf(ctx, "Failed to add ExecID [%v] to auto refresh cache", executionID)
+		}
+
+		return errors.Wrapf(RemoteErrorAlreadyExists, err, "ExecID %s already exists", executionID.Name)
+	case codes.DataLoss, codes.DeadlineExceeded, codes.Internal, codes.Unknown, codes.Canceled:
+		return errors.Wrapf(RemoteErrorSystem, err, "failed to launch workflow [%s], system error", launchPlanRef.Name)
+	default:
+		return errors.Wrapf(RemoteErrorUser, err, "failed to launch workflow")
+	}
+}
+
 func (a *adminLaunchPlanExecutor) Launch(ctx context.Context, launchCtx LaunchContext,
 	executionID *core.WorkflowExecutionIdentifier, launchPlanRef *core.Identifier, inputs *core.LiteralMap) error {
 	var err error
@@ -55,38 +80,33 @@ func (a *adminLaunchPlanExecutor) Launch(ctx context.Context, launchCtx LaunchCo
 				ParentNodeExecution: launchCtx.ParentNodeExecution,
 			},
 		})
-	} else {
-		req := &admin.ExecutionCreateRequest{
-			Project: executionID.Project,
-			Domain:  executionID.Domain,
-			Name:    executionID.Name,
-			Spec: &admin.ExecutionSpec{
-				LaunchPlan: launchPlanRef,
-				Metadata: &admin.ExecutionMetadata{
-					Mode:                admin.ExecutionMetadata_CHILD_WORKFLOW,
-					Nesting:             launchCtx.NestingLevel + 1,
-					Principal:           launchCtx.Principal,
-					ParentNodeExecution: launchCtx.ParentNodeExecution,
-				},
-				Inputs: inputs,
-			},
-		}
-		_, err = a.adminClient.CreateExecution(ctx, req)
-	}
-	if err != nil {
-		statusCode := status.Code(err)
-		switch statusCode {
-		case codes.AlreadyExists:
-			_, err := a.cache.GetOrCreate(executionID.String(), executionCacheItem{WorkflowExecutionIdentifier: *executionID})
-			if err != nil {
-				logger.Errorf(ctx, "Failed to add ExecID [%v] to auto refresh cache", executionID)
+		if err != nil {
+			launchErr := a.handleLaunchError(ctx, isRecovery, executionID, launchPlanRef, err)
+			if launchErr != nil {
+				return launchErr
 			}
-
-			return errors.Wrapf(RemoteErrorAlreadyExists, err, "ExecID %s already exists", executionID.Name)
-		case codes.DataLoss, codes.DeadlineExceeded, codes.Internal, codes.Unknown, codes.Canceled:
-			return errors.Wrapf(RemoteErrorSystem, err, "failed to launch workflow [%s], system error", launchPlanRef.Name)
-		default:
-			return errors.Wrapf(RemoteErrorUser, err, "failed to launch workflow")
+		}
+	}
+	req := &admin.ExecutionCreateRequest{
+		Project: executionID.Project,
+		Domain:  executionID.Domain,
+		Name:    executionID.Name,
+		Spec: &admin.ExecutionSpec{
+			LaunchPlan: launchPlanRef,
+			Metadata: &admin.ExecutionMetadata{
+				Mode:                admin.ExecutionMetadata_CHILD_WORKFLOW,
+				Nesting:             launchCtx.NestingLevel + 1,
+				Principal:           launchCtx.Principal,
+				ParentNodeExecution: launchCtx.ParentNodeExecution,
+			},
+			Inputs: inputs,
+		},
+	}
+	_, err = a.adminClient.CreateExecution(ctx, req)
+	if err != nil {
+		launchErr := a.handleLaunchError(ctx, !isRecovery, executionID, launchPlanRef, err)
+		if launchErr != nil {
+			return launchErr
 		}
 	}
 
