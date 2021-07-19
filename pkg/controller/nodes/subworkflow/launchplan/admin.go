@@ -85,6 +85,8 @@ func (a *adminLaunchPlanExecutor) Launch(ctx context.Context, launchCtx LaunchCo
 			if launchErr != nil {
 				return launchErr
 			}
+		} else {
+			return nil
 		}
 	}
 	req := &admin.ExecutionCreateRequest{
