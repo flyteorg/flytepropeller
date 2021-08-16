@@ -19,11 +19,16 @@ func containsBindingByVariableName(bindings []*core.Binding, name string) (found
 }
 
 func findVariableByName(vars *core.VariableMap, name string) (variable *core.Variable, found bool) {
+	// TODO worth using a real map instead?
 	if vars == nil || vars.Variables == nil {
 		return nil, false
 	}
 
-	variable, found = vars.Variables[name]
+	for _, v := range vars.Variables {
+		if v.GetKey() == name {
+			return v.GetValue(), true
+		}
+	}
 	return
 }
 
