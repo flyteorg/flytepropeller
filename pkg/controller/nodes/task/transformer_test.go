@@ -26,6 +26,7 @@ import (
 
 const containerTaskType = "container"
 const containerPluginIdentifier = "container_plugin"
+const generatedName = "generated_name"
 
 func TestToTaskEventPhase(t *testing.T) {
 	assert.Equal(t, core.TaskExecution_UNDEFINED, ToTaskEventPhase(pluginCore.PhaseUndefined))
@@ -88,7 +89,6 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	mockExecContext.OnGetParentInfo().Return(nil)
 
 	tID := &pluginMocks.TaskExecutionID{}
-	generatedName := "generated_name"
 	tID.OnGetGeneratedName().Return(generatedName)
 	tID.OnGetID().Return(*id)
 
@@ -240,7 +240,6 @@ func TestToTaskExecutionEvent_OutputData(t *testing.T) {
 	mockExecContext.OnGetParentInfo().Return(nil)
 
 	tID := &pluginMocks.TaskExecutionID{}
-	generatedName := "generated_name"
 	tID.OnGetGeneratedName().Return(generatedName)
 	tID.OnGetID().Return(*id)
 
@@ -308,7 +307,6 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 	mockExecContext.OnGetParentInfo().Return(mockParentInfo)
 
 	tID := &pluginMocks.TaskExecutionID{}
-	generatedName := "generated_name"
 	tID.OnGetGeneratedName().Return(generatedName)
 	tID.OnGetID().Return(*id)
 
