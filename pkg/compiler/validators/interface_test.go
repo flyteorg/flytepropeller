@@ -1,9 +1,9 @@
 package validators
 
 import (
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"testing"
 
-	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	c "github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/common/mocks"
@@ -19,10 +19,10 @@ func TestValidateInterface(t *testing.T) {
 			c.NodeID("node1"),
 			&core.TypedInterface{
 				Inputs: &core.VariableMap{
-					Variables: map[string]*core.Variable{},
+					Variables: []*core.VariableMapFieldEntry{},
 				},
 				Outputs: &core.VariableMap{
-					Variables: map[string]*core.Variable{},
+					Variables: []*core.VariableMapFieldEntry{},
 				},
 			},
 			errs.NewScope(),
@@ -161,10 +161,10 @@ func TestValidateUnderlyingInterface(t *testing.T) {
 					},
 					Interface: &core.TypedInterface{
 						Inputs: &core.VariableMap{
-							Variables: map[string]*core.Variable{},
+							Variables: []*core.VariableMapFieldEntry{},
 						},
 						Outputs: &core.VariableMap{
-							Variables: map[string]*core.Variable{},
+							Variables: []*core.VariableMapFieldEntry{},
 						},
 					},
 				},
@@ -179,21 +179,27 @@ func TestValidateUnderlyingInterface(t *testing.T) {
 			lp := mocks.InterfaceProvider{}
 			lp.On("GetID").Return(&core.Identifier{Name: "Ref_1"})
 			lp.On("GetExpectedInputs").Return(&core.ParameterMap{
-				Parameters: map[string]*core.Parameter{
-					"required": {
-						Var: &core.Variable{
-							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
-						},
-						Behavior: &core.Parameter_Required{
-							Required: true,
+				Parameters: []*core.ParameterMapFieldEntry{
+					{
+						Key: "required",
+						Value: &core.Parameter{
+							Var: &core.Variable{
+								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
+							},
+							Behavior: &core.Parameter_Required{
+								Required: true,
+							},
 						},
 					},
-					"default_value": {
-						Var: &core.Variable{
-							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
-						},
-						Behavior: &core.Parameter_Default{
-							Default: coreutils.MustMakeLiteral(5),
+					{
+						Key: "default_value",
+						Value: &core.Parameter{
+							Var: &core.Variable{
+								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
+							},
+							Behavior: &core.Parameter_Default{
+								Default: coreutils.MustMakeLiteral(5),
+							},
 						},
 					},
 				},

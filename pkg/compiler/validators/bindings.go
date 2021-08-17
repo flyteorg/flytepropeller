@@ -122,8 +122,12 @@ func ValidateBindings(w c.WorkflowBuilder, node c.Node, bindings []*flyte.Bindin
 	}
 
 	providedBindings := sets.NewString()
+	var paramMap map[string]*flyte.Variable
+	if params != nil {
+		paramMap = VariableMapEntriesToMap(params.Variables)
+	}
 	for _, binding := range bindings {
-		if param, ok := findVariableByName(params, binding.GetVar()); !ok && validateParamTypes {
+		if param, ok := findVariableByName(paramMap, binding.GetVar()); !ok && validateParamTypes {
 			errs.Collect(errors.NewVariableNameNotFoundErr(node.GetId(), node.GetId(), binding.GetVar()))
 		} else if binding.GetBinding() == nil {
 			errs.Collect(errors.NewValueRequiredErr(node.GetId(), "Binding"))
