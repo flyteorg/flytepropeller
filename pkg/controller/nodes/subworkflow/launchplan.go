@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -23,6 +25,7 @@ import (
 type launchPlanHandler struct {
 	launchPlan     launchplan.Executor
 	recoveryClient recovery.Client
+	eventConfig    *config.EventConfig
 }
 
 func getParentNodeExecutionID(nCtx handler.NodeExecutionContext) (*core.NodeExecutionIdentifier, error) {
@@ -175,6 +178,14 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 				}
 			}
 			oInfo = &handler.OutputInfo{OutputURI: outputFile}
+			if l.eventConfig.RawOutputPolicy == config.Inline {
+				var outputData = &core.LiteralMap{}
+				if err := nCtx.DataStore().ReadProtobuf(ctx, outputFile, outputData); err != nil {
+					logger.Debugf(ctx, "failed to read data to Storage, err: %v", err.Error())
+					return handler.UnknownTransition, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "failed to read outputs for child workflow")
+				}
+				oInfo.OutputData = outputData
+			}
 		}
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{
 			WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},

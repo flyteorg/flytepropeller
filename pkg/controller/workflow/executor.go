@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+
 	"github.com/flyteorg/flyteidl/clients/go/events"
 	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -64,6 +66,7 @@ type workflowExecutor struct {
 	metadataPrefix  storage.DataReference
 	nodeExecutor    executors.Node
 	metrics         *workflowMetrics
+	eventConfig     *config.EventConfig
 }
 
 func (c *workflowExecutor) constructWorkflowMetadataPrefix(ctx context.Context, w *v1alpha1.FlyteWorkflow) (storage.DataReference, error) {
@@ -307,8 +310,19 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseSuccess, "", nil)
 			// Not all workflows have outputs
 			if wStatus.GetOutputReference() != "" {
-				wfEvent.OutputResult = &event.WorkflowExecutionEvent_OutputUri{
-					OutputUri: wStatus.GetOutputReference().String(),
+				if c.eventConfig.RawOutputPolicy == config.Inline {
+					var outputData = &core.LiteralMap{}
+					err := c.store.ReadProtobuf(ctx, wStatus.GetOutputReference(), outputData)
+					if err != nil {
+						return errors.Errorf(errors.EventRecordingError, "", "Unable to fetch workflow outputs from [%+v] with err: %v", wStatus.GetOutputReference().String(), err)
+					}
+					wfEvent.OutputResult = &event.WorkflowExecutionEvent_OutputData{
+						OutputData: outputData,
+					}
+				} else {
+					wfEvent.OutputResult = &event.WorkflowExecutionEvent_OutputUri{
+						OutputUri: wStatus.GetOutputReference().String(),
+					}
 				}
 			}
 			wfEvent.OccurredAt = utils.GetProtoTime(wStatus.GetStoppedAt())
@@ -480,7 +494,9 @@ func (c *workflowExecutor) cleanupRunningNodes(ctx context.Context, w v1alpha1.E
 	return nil
 }
 
-func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink, k8sEventRecorder record.EventRecorder, metadataPrefix string, nodeExecutor executors.Node, scope promutils.Scope) (executors.Workflow, error) {
+func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink,
+	k8sEventRecorder record.EventRecorder, metadataPrefix string, nodeExecutor executors.Node, eventConfig *config.EventConfig,
+	scope promutils.Scope) (executors.Workflow, error) {
 	basePrefix := store.GetBaseContainerFQN(ctx)
 	if metadataPrefix != "" {
 		var err error
@@ -501,6 +517,7 @@ func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1al
 		k8sRecorder:     k8sEventRecorder,
 		metadataPrefix:  basePrefix,
 		metrics:         newMetrics(workflowScope),
+		eventConfig:     eventConfig,
 	}, nil
 }
 

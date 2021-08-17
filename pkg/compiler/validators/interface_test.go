@@ -31,7 +31,7 @@ func TestValidateInterface(t *testing.T) {
 		assertNonEmptyInterface(t, iface, ok, errs)
 	})
 
-	t.Run("Empty Inputs/Outputs", func(t *testing.T) {
+	t.Run("Empty Inputs/OutputData", func(t *testing.T) {
 		errs := errors.NewCompileErrors()
 		iface, ok := ValidateInterface(
 			c.NodeID("node1"),

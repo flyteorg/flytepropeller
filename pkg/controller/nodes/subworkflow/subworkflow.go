@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
 	"github.com/flyteorg/flytestdlib/logger"
 
@@ -19,6 +21,7 @@ import (
 // Subworkflow handler handles inline subWorkflows
 type subworkflowHandler struct {
 	nodeExecutor executors.Node
+	eventConfig  *config.EventConfig
 }
 
 // Helper method that extracts the SubWorkflow from the ExecutionContext
@@ -114,6 +117,14 @@ func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.SubWorkflowExecutionFailed, errMsg, nil)), nil
 			}
 			oInfo = &handler.OutputInfo{OutputURI: destinationPath}
+			if s.eventConfig.RawOutputPolicy == config.Inline {
+				var outputData = &core.LiteralMap{}
+				if err := nCtx.DataStore().ReadProtobuf(ctx, destinationPath, outputData); err != nil {
+					logger.Debugf(ctx, "failed to read data to Storage, err: %v", err.Error())
+					return handler.UnknownTransition, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "failed to read outputs for child workflow")
+				}
+				oInfo.OutputData = outputData
+			}
 		}
 
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{
@@ -236,8 +247,9 @@ func (s *subworkflowHandler) HandleAbort(ctx context.Context, nCtx handler.NodeE
 	return s.nodeExecutor.AbortHandler(ctx, execContext, subWorkflow, nodeLookup, subWorkflow.StartNode(), reason)
 }
 
-func newSubworkflowHandler(nodeExecutor executors.Node) subworkflowHandler {
+func newSubworkflowHandler(nodeExecutor executors.Node, eventConfig *config.EventConfig) subworkflowHandler {
 	return subworkflowHandler{
 		nodeExecutor: nodeExecutor,
+		eventConfig:  eventConfig,
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
+	config2 "github.com/flyteorg/flytepropeller/pkg/controller/config"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -77,10 +77,10 @@ func getPluginMetricKey(pluginID, taskType string) string {
 	return taskType + "_" + pluginID
 }
 
-func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference, entry catalog.Entry) {
+func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference, outputData *core.LiteralMap, entry catalog.Entry) {
 	p.ttype = handler.TransitionTypeEphemeral
 	p.pInfo = pluginCore.PhaseInfoSuccess(nil)
-	p.ObserveSuccess(outputPath, &event.TaskNodeMetadata{CacheStatus: entry.GetStatus().GetCacheStatus(), CatalogKey: entry.GetStatus().GetMetadata()})
+	p.ObserveSuccess(outputPath, outputData, &event.TaskNodeMetadata{CacheStatus: entry.GetStatus().GetCacheStatus(), CatalogKey: entry.GetStatus().GetMetadata()})
 }
 
 func (p *pluginRequestedTransition) PopulateCacheInfo(entry catalog.Entry) {
@@ -122,8 +122,8 @@ func (p *pluginRequestedTransition) FinalTaskEvent(input ToTaskExecutionEventInp
 	return ToTaskExecutionEvent(input)
 }
 
-func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference, taskMetadata *event.TaskNodeMetadata) {
-	p.execInfo.OutputInfo = &handler.OutputInfo{OutputURI: outputPath}
+func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference, outputData *core.LiteralMap, taskMetadata *event.TaskNodeMetadata) {
+	p.execInfo.OutputInfo = &handler.OutputInfo{OutputURI: outputPath, OutputData: outputData}
 	p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
 		TaskNodeMetadata: taskMetadata,
 	}
@@ -172,6 +172,7 @@ type Handler struct {
 	barrierCache    *barrier
 	cfg             *config.Config
 	pluginScope     promutils.Scope
+	eventConfig     config2.EventConfig
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -429,7 +430,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		// This code only exists to support Dynamic tasks. Eventually dynamic tasks will use closure nodes to execute
 		// Until then we have to check if the Handler executed resulted in a dynamic node being generated, if so, then
 		// we will not check for outputs or call onTaskSuccess. The reason is that outputs have not yet been materialized.
-		// Outputs for the parent node will only get generated after the subtasks complete. We have to wait for the completion
+		// OutputData for the parent node will only get generated after the subtasks complete. We have to wait for the completion
 		// the dynamic.handler will call onTaskSuccess for the parent node
 
 		f, err := NewRemoteFutureFileReader(ctx, tCtx.ow.GetOutputPrefixPath(), tCtx.DataStore())
@@ -458,7 +459,17 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		if ee != nil {
 			pluginTrns.ObservedExecutionError(ee)
 		} else {
-			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), &event.TaskNodeMetadata{CacheStatus: cacheStatus.GetCacheStatus(), CatalogKey: cacheStatus.GetMetadata()})
+			var outputs *core.LiteralMap
+			if t.eventConfig.RawOutputPolicy == config2.Inline {
+				rawOutputs, ee, err := tCtx.ow.GetReader().Read(ctx)
+				if err != nil {
+					return nil, err
+				} else if ee != nil {
+					pluginTrns.ObservedExecutionError(ee)
+				}
+				outputs = rawOutputs
+			}
+			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), outputs, &event.TaskNodeMetadata{CacheStatus: cacheStatus.GetCacheStatus(), CatalogKey: cacheStatus.GetMetadata()})
 		}
 	}
 
@@ -520,7 +531,11 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 				logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
 				return handler.UnknownTransition, err
 			}
-			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), entry)
+			var outputData *core.LiteralMap
+			if t.eventConfig.RawOutputPolicy == config2.Inline {
+				outputData = o
+			}
+			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), outputData, entry)
 		} else {
 			logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
 			pluginTrns.PopulateCacheInfo(entry)
@@ -740,7 +755,7 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 	}()
 }
 
-func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, recoveryClient recovery.Client, scope promutils.Scope) (*Handler, error) {
+func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) (*Handler, error) {
 	// TODO New should take a pointer
 	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig(), scope.NewSubScope("async_catalog"))
 	if err != nil {

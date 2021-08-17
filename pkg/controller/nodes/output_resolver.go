@@ -72,7 +72,7 @@ func resolveSubtaskOutput(ctx context.Context, store storage.ProtobufStore, node
 
 	if d.Literals == nil {
 		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeID,
-			"Outputs not found at [%v]", outputsFileRef)
+			"OutputData not found at [%v]", outputsFileRef)
 	}
 
 	l, ok := d.Literals[varName]
@@ -106,7 +106,7 @@ func resolveSingleOutput(ctx context.Context, store storage.ProtobufStore, nodeI
 
 	if d.Literals == nil {
 		return nil, errors.Errorf(errors.OutputsNotFoundError, nodeID,
-			"Outputs not found at [%v]", outputsFileRef)
+			"OutputData not found at [%v]", outputsFileRef)
 	}
 
 	l, ok := d.Literals[varName]

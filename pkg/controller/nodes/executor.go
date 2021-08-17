@@ -100,6 +100,7 @@ type nodeExecutor struct {
 	defaultDataSandbox              storage.DataReference
 	shardSelector                   ioutils.ShardSelector
 	recoveryClient                  recovery.Client
+	eventConfig                     *config.EventConfig
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, dag executors.DAGStructure, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -241,6 +242,9 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		OutputInfo: &handler.OutputInfo{
 			OutputURI: outputFile,
 		},
+	}
+	if c.eventConfig.RawOutputPolicy == config.Inline {
+		info.OutputInfo.OutputData = outputs
 	}
 	if recovered.Closure.GetTaskNodeMetadata() != nil {
 		taskNodeInfo := &handler.TaskNodeInfo{
@@ -1047,7 +1051,7 @@ func (c *nodeExecutor) Initialize(ctx context.Context) error {
 func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink,
 	workflowLauncher launchplan.Executor, launchPlanReader launchplan.Reader, maxDatasetSize int64,
 	defaultRawOutputPrefix storage.DataReference, kubeClient executors.Client,
-	catalogClient catalog.Client, recoveryClient recovery.Client, scope promutils.Scope) (executors.Node, error) {
+	catalogClient catalog.Client, recoveryClient recovery.Client, eventConfig *config.EventConfig, scope promutils.Scope) (executors.Node, error) {
 
 	// TODO we may want to make this configurable.
 	shardSelector, err := ioutils.NewBase36PrefixShardSelector(ctx)
@@ -1092,8 +1096,9 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		defaultDataSandbox:              defaultRawOutputPrefix,
 		shardSelector:                   shardSelector,
 		recoveryClient:                  recoveryClient,
+		eventConfig:                     eventConfig,
 	}
-	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, recoveryClient, nodeScope)
+	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, recoveryClient, eventConfig, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory
 	return exec, err
 }
