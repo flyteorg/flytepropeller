@@ -73,6 +73,7 @@ type ToTaskExecutionEventInputs struct {
 	TaskExecContext       pluginCore.TaskExecutionContext
 	InputReader           io.InputFilePaths
 	OutputWriter          io.OutputFilePaths
+	OutputData            *core.LiteralMap
 	Info                  pluginCore.PhaseInfo
 	NodeExecutionMetadata handler.NodeExecutionMetadata
 	ExecContext           executors.ExecutionContext
@@ -119,8 +120,12 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		Metadata:              metadata,
 	}
 
-	if input.Info.Phase().IsSuccess() && input.OutputWriter != nil {
-		if input.OutputWriter.GetOutputPath() != "" {
+	if input.Info.Phase().IsSuccess() {
+		if input.OutputData != nil {
+			tev.OutputResult = &event.TaskExecutionEvent_OutputData{
+				OutputData: input.OutputData,
+			}
+		} else if input.OutputWriter != nil && len(input.OutputWriter.GetOutputPath()) > 0 {
 			tev.OutputResult = &event.TaskExecutionEvent_OutputUri{OutputUri: input.OutputWriter.GetOutputPath().String()}
 		}
 	}

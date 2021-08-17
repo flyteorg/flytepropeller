@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 
@@ -198,6 +200,75 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
 	assert.Equal(t, generatedName, tev.Metadata.GeneratedName)
 	assert.EqualValues(t, resourcePoolInfo, tev.Metadata.ResourcePoolInfo)
+}
+
+func TestToTaskExecutionEvent_OutputData(t *testing.T) {
+	tkID := &core.Identifier{}
+	nodeID := &core.NodeExecutionIdentifier{}
+	id := &core.TaskExecutionIdentifier{
+		TaskId:          tkID,
+		NodeExecutionId: nodeID,
+	}
+
+	in := &mocks.InputFilePaths{}
+	const inputPath = "in"
+	in.On("GetInputPath").Return(storage.DataReference(inputPath))
+
+	outputData := &core.LiteralMap{
+		Literals: map[string]*core.Literal{
+			"foo": {
+				Value: &core.Literal_Scalar{
+					Scalar: &core.Scalar{
+						Value: &core.Scalar_Primitive{
+							Primitive: &core.Primitive{
+								Value: &core.Primitive_Integer{
+									Integer: 4,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	nodeExecutionMetadata := handlerMocks.NodeExecutionMetadata{}
+	nodeExecutionMetadata.OnIsInterruptible().Return(true)
+
+	mockExecContext := &mocks2.ExecutionContext{}
+	mockExecContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
+	mockExecContext.OnGetParentInfo().Return(nil)
+
+	tID := &pluginMocks.TaskExecutionID{}
+	generatedName := "generated_name"
+	tID.OnGetGeneratedName().Return(generatedName)
+	tID.OnGetID().Return(*id)
+
+	tMeta := &pluginMocks.TaskExecutionMetadata{}
+	tMeta.OnGetTaskExecutionID().Return(tID)
+
+	tCtx := &pluginMocks.TaskExecutionContext{}
+	tCtx.OnTaskExecutionMetadata().Return(tMeta)
+	resourcePoolInfo := []*event.ResourcePoolInfo{
+		{
+			Namespace:       "ns",
+			AllocationToken: "alloc_token",
+		},
+	}
+
+	tev, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
+		TaskExecContext:       tCtx,
+		InputReader:           in,
+		OutputData:            outputData,
+		Info:                  pluginCore.PhaseInfoSuccess(&pluginCore.TaskInfo{}),
+		NodeExecutionMetadata: &nodeExecutionMetadata,
+		ExecContext:           mockExecContext,
+		TaskType:              containerTaskType,
+		PluginID:              containerPluginIdentifier,
+		ResourcePoolInfo:      resourcePoolInfo,
+	})
+	assert.NoError(t, err)
+	assert.True(t, proto.Equal(outputData, tev.GetOutputData()))
 }
 
 func TestToTransitionType(t *testing.T) {

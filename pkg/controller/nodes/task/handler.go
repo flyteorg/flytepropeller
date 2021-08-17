@@ -594,10 +594,23 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// STEP 4: Send buffered events!
 	logger.Debugf(ctx, "Sending buffered Task events.")
 	for _, ev := range tCtx.ber.GetAll(ctx) {
+		var outputData *core.LiteralMap
+		if t.eventConfig.RawOutputPolicy == config2.Inline && ev.Phase() == pluginCore.PhaseSuccess {
+			var ee *io.ExecutionError
+			outputData, ee, err = tCtx.ow.GetReader().Read(ctx)
+			if err != nil {
+				logger.Errorf(ctx, "Event recording failed for Plugin [%s], eventPhase [%s], error :%s", p.GetID(), ev.Phase(), err.Error())
+				return handler.UnknownTransition, err
+			} else if ee != nil {
+				logger.Errorf(ctx, "got execution error from catalog output reader? This should not happen, err: %s", ee.String())
+				return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
+			}
+		}
 		evInfo, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
 			TaskExecContext:       tCtx,
 			InputReader:           nCtx.InputReader(),
 			OutputWriter:          tCtx.ow,
+			OutputData:            outputData,
 			Info:                  ev,
 			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 			ExecContext:           nCtx.ExecutionContext(),
@@ -618,10 +631,23 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 	// STEP 5: Send Transition events
 	logger.Debugf(ctx, "Sending transition event for plugin phase [%s]", pluginTrns.pInfo.Phase().String())
+	var outputData *core.LiteralMap
+	if t.eventConfig.RawOutputPolicy == config2.Inline && ts.PluginPhase == pluginCore.PhaseSuccess {
+		var ee *io.ExecutionError
+		outputData, ee, err = tCtx.ow.GetReader().Read(ctx)
+		if err != nil {
+			logger.Errorf(ctx, "Event recording failed for Plugin [%s], eventPhase [%s], error :%s", p.GetID(), ts.PluginPhase, err.Error())
+			return handler.UnknownTransition, err
+		} else if ee != nil {
+			logger.Errorf(ctx, "got execution error from catalog output reader? This should not happen, err: %s", ee.String())
+			return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
+		}
+	}
 	evInfo, err := pluginTrns.FinalTaskEvent(ToTaskExecutionEventInputs{
 		TaskExecContext:       tCtx,
 		InputReader:           nCtx.InputReader(),
 		OutputWriter:          tCtx.ow,
+		OutputData:            outputData,
 		NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 		ExecContext:           nCtx.ExecutionContext(),
 		TaskType:              ttype,
