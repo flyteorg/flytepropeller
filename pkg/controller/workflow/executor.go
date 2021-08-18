@@ -310,7 +310,7 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseSuccess, "", nil)
 			// Not all workflows have outputs
 			if wStatus.GetOutputReference() != "" {
-				if c.eventConfig.RawOutputPolicy == config.Inline {
+				if c.eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
 					var outputData = &core.LiteralMap{}
 					err := c.store.ReadProtobuf(ctx, wStatus.GetOutputReference(), outputData)
 					if err != nil {

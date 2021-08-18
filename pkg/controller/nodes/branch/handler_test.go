@@ -30,7 +30,7 @@ import (
 )
 
 var eventConfig = &config.EventConfig{
-	RawOutputPolicy: config.Reference,
+	RawOutputPolicy: config.RawOutputPolicyReference,
 }
 
 type branchNodeStateHolder struct {

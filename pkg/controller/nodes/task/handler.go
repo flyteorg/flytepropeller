@@ -460,7 +460,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 			pluginTrns.ObservedExecutionError(ee)
 		} else {
 			var outputs *core.LiteralMap
-			if t.eventConfig.RawOutputPolicy == config2.Inline {
+			if t.eventConfig.RawOutputPolicy == config2.RawOutputPolicyInline {
 				rawOutputs, ee, err := tCtx.ow.GetReader().Read(ctx)
 				if err != nil {
 					return nil, err
@@ -532,7 +532,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 				return handler.UnknownTransition, err
 			}
 			var outputData *core.LiteralMap
-			if t.eventConfig.RawOutputPolicy == config2.Inline {
+			if t.eventConfig.RawOutputPolicy == config2.RawOutputPolicyInline {
 				outputData = o
 			}
 			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), outputData, entry)
@@ -595,7 +595,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	logger.Debugf(ctx, "Sending buffered Task events.")
 	for _, ev := range tCtx.ber.GetAll(ctx) {
 		var outputData *core.LiteralMap
-		if t.eventConfig.RawOutputPolicy == config2.Inline && ev.Phase() == pluginCore.PhaseSuccess {
+		if t.eventConfig.RawOutputPolicy == config2.RawOutputPolicyInline && ev.Phase() == pluginCore.PhaseSuccess {
 			var ee *io.ExecutionError
 			outputData, ee, err = tCtx.ow.GetReader().Read(ctx)
 			if err != nil {
@@ -632,7 +632,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// STEP 5: Send Transition events
 	logger.Debugf(ctx, "Sending transition event for plugin phase [%s]", pluginTrns.pInfo.Phase().String())
 	var outputData *core.LiteralMap
-	if t.eventConfig.RawOutputPolicy == config2.Inline && ts.PluginPhase == pluginCore.PhaseSuccess {
+	if t.eventConfig.RawOutputPolicy == config2.RawOutputPolicyInline && ts.PluginPhase == pluginCore.PhaseSuccess {
 		var ee *io.ExecutionError
 		outputData, ee, err = tCtx.ow.GetReader().Read(ctx)
 		if err != nil {

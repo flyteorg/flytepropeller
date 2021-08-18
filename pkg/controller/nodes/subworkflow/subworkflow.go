@@ -117,7 +117,7 @@ func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.SubWorkflowExecutionFailed, errMsg, nil)), nil
 			}
 			oInfo = &handler.OutputInfo{OutputURI: destinationPath}
-			if s.eventConfig.RawOutputPolicy == config.Inline {
+			if s.eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
 				var outputData = &core.LiteralMap{}
 				if err := nCtx.DataStore().ReadProtobuf(ctx, destinationPath, outputData); err != nil {
 					logger.Debugf(ctx, "failed to read data to Storage, err: %v", err.Error())

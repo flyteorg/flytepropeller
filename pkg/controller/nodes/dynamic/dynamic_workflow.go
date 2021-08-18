@@ -323,7 +323,7 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 					nil
 			}
 			o = &handler.OutputInfo{OutputURI: destinationPath}
-			if d.eventConfig.RawOutputPolicy == config.Inline {
+			if d.eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
 				var outputData = &core.LiteralMap{}
 				err := nCtx.DataStore().ReadProtobuf(ctx, destinationPath, outputData)
 				if err != nil {

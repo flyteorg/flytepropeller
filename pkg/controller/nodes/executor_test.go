@@ -54,7 +54,7 @@ const inputsPath = "inputs.pb"
 const outputsPath = "out/outputs.pb"
 
 var eventConfig = &config.EventConfig{
-	RawOutputPolicy: config.Reference,
+	RawOutputPolicy: config.RawOutputPolicyReference,
 }
 
 func TestSetInputsForStartNode(t *testing.T) {
@@ -2067,7 +2067,7 @@ func TestRecover(t *testing.T) {
 			recoveryClient: recoveryClient,
 			store:          storageClient,
 			eventConfig: &config.EventConfig{
-				RawOutputPolicy: config.Reference,
+				RawOutputPolicy: config.RawOutputPolicyReference,
 			},
 		}
 

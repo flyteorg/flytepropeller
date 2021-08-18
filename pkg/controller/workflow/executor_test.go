@@ -60,7 +60,7 @@ const (
 )
 
 var eventConfig = &config.EventConfig{
-	RawOutputPolicy: config.Reference,
+	RawOutputPolicy: config.RawOutputPolicyReference,
 }
 
 type fakeRemoteWritePlugin struct {

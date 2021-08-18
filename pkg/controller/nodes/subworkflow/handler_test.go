@@ -36,7 +36,7 @@ type workflowNodeStateHolder struct {
 }
 
 var eventConfig = &config.EventConfig{
-	RawOutputPolicy: config.Reference,
+	RawOutputPolicy: config.RawOutputPolicyReference,
 }
 
 func (t *workflowNodeStateHolder) PutTaskNodeState(s handler.TaskNodeState) error {

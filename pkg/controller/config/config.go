@@ -106,7 +106,7 @@ var (
 		EnableAdminLauncher: true,
 		MetricsPrefix:       "flyte",
 		EventConfig: EventConfig{
-			RawOutputPolicy: Reference,
+			RawOutputPolicy: RawOutputPolicyReference,
 		},
 	}
 )
@@ -224,9 +224,9 @@ type RawOutputPolicy = string
 
 const (
 	// Only send output data as a URI referencing where outputs have been uploaded
-	Reference RawOutputPolicy = "reference"
+	RawOutputPolicyReference RawOutputPolicy = "reference"
 	// Send raw output data in events.
-	Inline RawOutputPolicy = "inline"
+	RawOutputPolicyInline RawOutputPolicy = "inline"
 )
 
 type EventConfig struct {

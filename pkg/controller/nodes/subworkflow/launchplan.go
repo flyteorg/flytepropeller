@@ -178,7 +178,7 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 				}
 			}
 			oInfo = &handler.OutputInfo{OutputURI: outputFile}
-			if l.eventConfig.RawOutputPolicy == config.Inline {
+			if l.eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
 				var outputData = &core.LiteralMap{}
 				if err := nCtx.DataStore().ReadProtobuf(ctx, outputFile, outputData); err != nil {
 					logger.Debugf(ctx, "failed to read data to Storage, err: %v", err.Error())

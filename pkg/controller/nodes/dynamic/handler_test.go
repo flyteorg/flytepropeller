@@ -58,7 +58,7 @@ func (t *dynamicNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState)
 var tID = "task-1"
 
 var eventConfig = &config.EventConfig{
-	RawOutputPolicy: config.Reference,
+	RawOutputPolicy: config.RawOutputPolicyReference,
 }
 
 func Test_dynamicNodeHandler_Handle_Parent(t *testing.T) {

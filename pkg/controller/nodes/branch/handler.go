@@ -150,7 +150,7 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 	if downstreamStatus.IsComplete() {
 		// For branch node we set the output node to be the same as the child nodes output
 		outputInfo := &handler.OutputInfo{OutputURI: v1alpha1.GetOutputsFile(childNodeStatus.GetOutputDir())}
-		if b.eventConfig.RawOutputPolicy == config.Inline {
+		if b.eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
 			var outputData = &core.LiteralMap{}
 			err := nCtx.DataStore().ReadProtobuf(ctx, outputInfo.OutputURI, outputData)
 			if err != nil {
