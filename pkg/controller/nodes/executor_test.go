@@ -1723,63 +1723,6 @@ func TestNodeExecutionEventV1(t *testing.T) {
 	assert.Equal(t, "2", eventOpt.RetryGroup)
 }
 
-func TestNodeExecutionEvent_OutputData(t *testing.T) {
-	execID := &core.WorkflowExecutionIdentifier{
-		Name:    "e1",
-		Domain:  "d1",
-		Project: "p1",
-	}
-	nID := &core.NodeExecutionIdentifier{
-		NodeId:      "n1",
-		ExecutionId: execID,
-	}
-	tID := &core.TaskExecutionIdentifier{
-		NodeExecutionId: nID,
-	}
-	outputData := &core.LiteralMap{
-		Literals: map[string]*core.Literal{
-			"foo": {
-				Value: &core.Literal_Scalar{
-					Scalar: &core.Scalar{
-						Value: &core.Scalar_Primitive{
-							Primitive: &core.Primitive{
-								Value: &core.Primitive_Integer{
-									Integer: 4,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	p := handler.PhaseInfoSuccess(&handler.ExecutionInfo{
-		OutputInfo: &handler.OutputInfo{
-			OutputData: outputData,
-			OutputURI:  "s3://foo/bar/outputs.pb",
-		},
-	})
-	parentInfo := &mocks4.ImmutableParentInfo{}
-	parentInfo.OnGetUniqueID().Return("np1")
-	parentInfo.OnCurrentAttempt().Return(uint32(2))
-
-	id := "id"
-	n := &mocks.ExecutableNode{}
-	n.OnGetID().Return(id)
-	n.OnGetName().Return("name")
-	nl := &mocks4.NodeLookup{}
-	ns := &mocks.ExecutableNodeStatus{}
-	ns.OnGetPhase().Return(v1alpha1.NodePhaseSucceeded)
-	nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
-	ns.OnGetParentTaskID().Return(tID)
-	eventOpt, err := ToNodeExecutionEvent(nID, p, "reference", ns, v1alpha1.EventVersion1, parentInfo, n)
-	assert.NoError(t, err)
-	assert.Equal(t, "np1-2-n1", eventOpt.Id.NodeId)
-	assert.Equal(t, execID, eventOpt.Id.ExecutionId)
-	assert.Equal(t, "id", eventOpt.SpecNodeId)
-	assert.True(t, proto.Equal(eventOpt.GetOutputData(), outputData))
-}
-
 func TestNodeExecutor_RecursiveNodeHandler_ParallelismLimit(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {

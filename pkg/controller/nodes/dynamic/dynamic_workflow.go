@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	node_common "github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
@@ -323,16 +321,6 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 					nil
 			}
 			o = &handler.OutputInfo{OutputURI: destinationPath}
-			if d.eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
-				var outputData = &core.LiteralMap{}
-				err := nCtx.DataStore().ReadProtobuf(ctx, destinationPath, outputData)
-				if err != nil {
-					return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRetryableFailure(core.ExecutionError_SYSTEM, "DynamicWorkflowOutputsNotFound", fmt.Sprintf(" is expected to produce outputs but no outputs could be read from %v.", destinationPath), nil)),
-						handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: "DynamicWorkflow is expected to produce outputs but no outputs could be read"},
-						nil
-				}
-				o.OutputData = outputData
-			}
 		}
 
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{

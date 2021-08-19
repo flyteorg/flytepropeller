@@ -245,9 +245,6 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 			OutputURI: outputFile,
 		},
 	}
-	if c.eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
-		info.OutputInfo.OutputData = outputs
-	}
 	if recovered.Closure.GetTaskNodeMetadata() != nil {
 		taskNodeInfo := &handler.TaskNodeInfo{
 			TaskNodeMetadata: &event.TaskNodeMetadata{

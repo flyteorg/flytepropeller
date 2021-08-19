@@ -29,16 +29,6 @@ func ToNodeExecOutputURI(info *handler.OutputInfo) *event.NodeExecutionEvent_Out
 	}
 }
 
-func ToNodeExecOutputData(info *handler.OutputInfo) *event.NodeExecutionEvent_OutputData {
-	if info == nil || info.OutputData == nil {
-		return nil
-	}
-
-	return &event.NodeExecutionEvent_OutputData{
-		OutputData: info.OutputData,
-	}
-}
-
 func ToNodeExecWorkflowNodeMetadata(info *handler.WorkflowNodeInfo) *event.NodeExecutionEvent_WorkflowNodeMetadata {
 	if info == nil || info.LaunchedWorkflowID == nil {
 		return nil
@@ -148,12 +138,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 		}
 	}
 	if eInfo != nil && eInfo.OutputInfo != nil {
-		// When both OutputData and OutputURI are set, we prefer to use the output data.
-		if eInfo.OutputInfo.OutputData != nil {
-			nev.OutputResult = ToNodeExecOutputData(eInfo.OutputInfo)
-		} else if len(eInfo.OutputInfo.OutputURI) > 0 {
-			nev.OutputResult = ToNodeExecOutputURI(eInfo.OutputInfo)
-		}
+		nev.OutputResult = ToNodeExecOutputURI(eInfo.OutputInfo)
 	} else if info.GetErr() != nil {
 		nev.OutputResult = &event.NodeExecutionEvent_Error{
 			Error: info.GetErr(),

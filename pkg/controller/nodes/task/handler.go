@@ -77,10 +77,10 @@ func getPluginMetricKey(pluginID, taskType string) string {
 	return taskType + "_" + pluginID
 }
 
-func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference, outputData *core.LiteralMap, entry catalog.Entry) {
+func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference, entry catalog.Entry) {
 	p.ttype = handler.TransitionTypeEphemeral
 	p.pInfo = pluginCore.PhaseInfoSuccess(nil)
-	p.ObserveSuccess(outputPath, outputData, &event.TaskNodeMetadata{CacheStatus: entry.GetStatus().GetCacheStatus(), CatalogKey: entry.GetStatus().GetMetadata()})
+	p.ObserveSuccess(outputPath, &event.TaskNodeMetadata{CacheStatus: entry.GetStatus().GetCacheStatus(), CatalogKey: entry.GetStatus().GetMetadata()})
 }
 
 func (p *pluginRequestedTransition) PopulateCacheInfo(entry catalog.Entry) {
@@ -122,8 +122,8 @@ func (p *pluginRequestedTransition) FinalTaskEvent(input ToTaskExecutionEventInp
 	return ToTaskExecutionEvent(input)
 }
 
-func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference, outputData *core.LiteralMap, taskMetadata *event.TaskNodeMetadata) {
-	p.execInfo.OutputInfo = &handler.OutputInfo{OutputURI: outputPath, OutputData: outputData}
+func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference, taskMetadata *event.TaskNodeMetadata) {
+	p.execInfo.OutputInfo = &handler.OutputInfo{OutputURI: outputPath}
 	p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
 		TaskNodeMetadata: taskMetadata,
 	}
@@ -459,17 +459,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		if ee != nil {
 			pluginTrns.ObservedExecutionError(ee)
 		} else {
-			var outputs *core.LiteralMap
-			if t.eventConfig.RawOutputPolicy == config2.RawOutputPolicyInline {
-				rawOutputs, ee, err := tCtx.ow.GetReader().Read(ctx)
-				if err != nil {
-					return nil, err
-				} else if ee != nil {
-					pluginTrns.ObservedExecutionError(ee)
-				}
-				outputs = rawOutputs
-			}
-			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), outputs, &event.TaskNodeMetadata{CacheStatus: cacheStatus.GetCacheStatus(), CatalogKey: cacheStatus.GetMetadata()})
+			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), &event.TaskNodeMetadata{CacheStatus: cacheStatus.GetCacheStatus(), CatalogKey: cacheStatus.GetMetadata()})
 		}
 	}
 
@@ -531,11 +521,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 				logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
 				return handler.UnknownTransition, err
 			}
-			var outputData *core.LiteralMap
-			if t.eventConfig.RawOutputPolicy == config2.RawOutputPolicyInline {
-				outputData = o
-			}
-			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), outputData, entry)
+			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), entry)
 		} else {
 			logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
 			pluginTrns.PopulateCacheInfo(entry)
@@ -594,23 +580,10 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// STEP 4: Send buffered events!
 	logger.Debugf(ctx, "Sending buffered Task events.")
 	for _, ev := range tCtx.ber.GetAll(ctx) {
-		var outputData *core.LiteralMap
-		if t.eventConfig.RawOutputPolicy == config2.RawOutputPolicyInline && ev.Phase() == pluginCore.PhaseSuccess {
-			var ee *io.ExecutionError
-			outputData, ee, err = tCtx.ow.GetReader().Read(ctx)
-			if err != nil {
-				logger.Errorf(ctx, "Event recording failed for Plugin [%s], eventPhase [%s], error :%s", p.GetID(), ev.Phase(), err.Error())
-				return handler.UnknownTransition, err
-			} else if ee != nil {
-				logger.Errorf(ctx, "got execution error from catalog output reader? This should not happen, err: %s", ee.String())
-				return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
-			}
-		}
 		evInfo, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
 			TaskExecContext:       tCtx,
 			InputReader:           nCtx.InputReader(),
 			OutputWriter:          tCtx.ow,
-			OutputData:            outputData,
 			Info:                  ev,
 			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 			ExecContext:           nCtx.ExecutionContext(),
@@ -631,23 +604,10 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 	// STEP 5: Send Transition events
 	logger.Debugf(ctx, "Sending transition event for plugin phase [%s]", pluginTrns.pInfo.Phase().String())
-	var outputData *core.LiteralMap
-	if t.eventConfig.RawOutputPolicy == config2.RawOutputPolicyInline && ts.PluginPhase == pluginCore.PhaseSuccess {
-		var ee *io.ExecutionError
-		outputData, ee, err = tCtx.ow.GetReader().Read(ctx)
-		if err != nil {
-			logger.Errorf(ctx, "Event recording failed for Plugin [%s], eventPhase [%s], error :%s", p.GetID(), ts.PluginPhase, err.Error())
-			return handler.UnknownTransition, err
-		} else if ee != nil {
-			logger.Errorf(ctx, "got execution error from catalog output reader? This should not happen, err: %s", ee.String())
-			return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
-		}
-	}
 	evInfo, err := pluginTrns.FinalTaskEvent(ToTaskExecutionEventInputs{
 		TaskExecContext:       tCtx,
 		InputReader:           nCtx.InputReader(),
 		OutputWriter:          tCtx.ow,
-		OutputData:            outputData,
 		NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 		ExecContext:           nCtx.ExecutionContext(),
 		TaskType:              ttype,

@@ -178,14 +178,6 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 				}
 			}
 			oInfo = &handler.OutputInfo{OutputURI: outputFile}
-			if l.eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
-				var outputData = &core.LiteralMap{}
-				if err := nCtx.DataStore().ReadProtobuf(ctx, outputFile, outputData); err != nil {
-					logger.Debugf(ctx, "failed to read data to Storage, err: %v", err.Error())
-					return handler.UnknownTransition, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "failed to read outputs for child workflow")
-				}
-				oInfo.OutputData = outputData
-			}
 		}
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{
 			WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},

@@ -149,17 +149,8 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 
 	if downstreamStatus.IsComplete() {
 		// For branch node we set the output node to be the same as the child nodes output
-		outputInfo := &handler.OutputInfo{OutputURI: v1alpha1.GetOutputsFile(childNodeStatus.GetOutputDir())}
-		if b.eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
-			var outputData = &core.LiteralMap{}
-			err := nCtx.DataStore().ReadProtobuf(ctx, outputInfo.OutputURI, outputData)
-			if err != nil {
-				return handler.UnknownTransition, errors.Wrapf(ErrorCodeFailedFetchOutputs, *childNodeStatus.GetParentNodeID(), err, "Failed to fetch child node outputs")
-			}
-			outputInfo.OutputData = outputData
-		}
 		phase := handler.PhaseInfoSuccess(&handler.ExecutionInfo{
-			OutputInfo: outputInfo,
+			OutputInfo: &handler.OutputInfo{OutputURI: v1alpha1.GetOutputsFile(childNodeStatus.GetOutputDir())},
 		})
 		return handler.DoTransition(handler.TransitionTypeEphemeral, phase), nil
 	}

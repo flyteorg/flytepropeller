@@ -50,8 +50,7 @@ type TaskNodeInfo struct {
 }
 
 type OutputInfo struct {
-	OutputURI  storage.DataReference
-	OutputData *core.LiteralMap
+	OutputURI storage.DataReference
 }
 
 type ExecutionInfo struct {

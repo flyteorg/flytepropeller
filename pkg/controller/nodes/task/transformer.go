@@ -73,7 +73,6 @@ type ToTaskExecutionEventInputs struct {
 	TaskExecContext       pluginCore.TaskExecutionContext
 	InputReader           io.InputFilePaths
 	OutputWriter          io.OutputFilePaths
-	OutputData            *core.LiteralMap
 	Info                  pluginCore.PhaseInfo
 	NodeExecutionMetadata handler.NodeExecutionMetadata
 	ExecContext           executors.ExecutionContext
@@ -121,13 +120,7 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 	}
 
 	if input.Info.Phase().IsSuccess() {
-		if input.OutputData != nil {
-			tev.OutputResult = &event.TaskExecutionEvent_OutputData{
-				OutputData: input.OutputData,
-			}
-		} else if input.OutputWriter != nil && len(input.OutputWriter.GetOutputPath()) > 0 {
-			tev.OutputResult = &event.TaskExecutionEvent_OutputUri{OutputUri: input.OutputWriter.GetOutputPath().String()}
-		}
+		tev.OutputResult = &event.TaskExecutionEvent_OutputUri{OutputUri: input.OutputWriter.GetOutputPath().String()}
 	}
 
 	if input.Info.Phase().IsFailure() && input.Info.Err() != nil {
@@ -148,15 +141,6 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 	}
 
 	return tev, nil
-}
-
-func WithOffloadedOutputs(outputWriter io.OutputFilePaths, taskExecutionEvent *event.TaskExecutionEvent) {
-	if taskExecutionEvent.Phase != core.TaskExecution_SUCCEEDED {
-		return
-	}
-	if outputWriter != nil && len(outputWriter.GetOutputPath()) > 0 {
-		taskExecutionEvent.OutputResult = &event.TaskExecutionEvent_OutputUri{OutputUri: outputWriter.GetOutputPath().String()}
-	}
 }
 
 func GetTaskExecutionIdentifier(nCtx handler.NodeExecutionContext) *core.TaskExecutionIdentifier {
