@@ -227,6 +227,8 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 	var outputs = &core.LiteralMap{}
 	if recoveredData.FullOutputs != nil {
 		outputs = recoveredData.FullOutputs
+	} else if recovered.Closure.GetOutputData() != nil {
+		outputs = recovered.Closure.GetOutputData()
 	} else if len(recovered.Closure.GetOutputUri()) > 0 {
 		if err := c.store.ReadProtobuf(ctx, storage.DataReference(recovered.Closure.GetOutputUri()), outputs); err != nil {
 			return handler.PhaseInfoUndefined, errors.Wrapf(errors.InputsNotFoundError, nCtx.NodeID(), err, "failed to read output data [%v].", recovered.Closure.GetOutputUri())
