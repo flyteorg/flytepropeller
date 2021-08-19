@@ -25,7 +25,7 @@ const maxParamHashLength = 8
 // the literal and variable maps. So Nil and empty literals and variable maps should translate to these defintions
 // in order to have a consistent hash.
 var emptyLiteralMap = core.LiteralMap{Literals: map[string]*core.Literal{}}
-var emptyVariableMap = core.VariableMap{Variables: map[string]*core.Variable{}}
+var emptyVariableMap = core.VariableMap{Variables: []*core.VariableMapFieldEntry{}}
 
 func getDatasetNameFromTask(taskID core.Identifier) string {
 	return fmt.Sprintf("%s-%s", taskNamespace, taskID.Name)
@@ -39,7 +39,7 @@ func GenerateTaskOutputsFromArtifact(id core.Identifier, taskInterface core.Type
 		return &emptyLiteralMap, nil
 	}
 
-	outputVariables := taskInterface.Outputs.Variables
+	outputVariables := validators.VariableMapEntriesToMap(taskInterface.Outputs.Variables)
 	artifactDataList := artifact.Data
 
 	// verify the task outputs matches what is stored in ArtifactData

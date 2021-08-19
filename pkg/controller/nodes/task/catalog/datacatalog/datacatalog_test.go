@@ -52,11 +52,14 @@ var sampleParameters = &core.LiteralMap{Literals: map[string]*core.Literal{
 }}
 
 var variableMap = &core.VariableMap{
-	Variables: map[string]*core.Variable{
-		"test": {
-			Type: &core.LiteralType{
-				Type: &core.LiteralType_Simple{
-					Simple: core.SimpleType_STRING,
+	Variables: []*core.VariableMapFieldEntry{
+		{
+			Key: "test",
+			Value: &core.Variable{
+				Type: &core.LiteralType{
+					Type: &core.LiteralType_Simple{
+						Simple: core.SimpleType_STRING,
+					},
 				},
 			},
 		},
@@ -83,7 +86,7 @@ var datasetID = &datacatalog.DatasetID{
 	Project: "project",
 	Domain:  "domain",
 	Name:    "flyte_task-name",
-	Version: "1.0.0-ue5g6uuI-ue5g6uuI",
+	Version: "1.0.0-f136L_9X-f136L_9X",
 }
 
 func assertGrpcErr(t *testing.T, err error, code codes.Code) {

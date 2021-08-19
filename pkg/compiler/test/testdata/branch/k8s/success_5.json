@@ -309,20 +309,26 @@
       }
     },
     "outputs": {
-      "variables": {
-        "out_0": {
-          "type": {
-            "simple": "INTEGER"
-          },
-          "description": "out_0"
+      "variables": [
+        {
+          "key": "out_0",
+          "value": {
+            "type": {
+              "simple": "INTEGER"
+            },
+            "description": "out_0"
+          }
         },
-        "out_1": {
-          "type": {
-            "simple": "STRING"
-          },
-          "description": "out_1"
+        {
+          "key": "out_1",
+          "value": {
+            "type": {
+              "simple": "STRING"
+            },
+            "description": "out_1"
+          }
         }
-      }
+      ]
     },
     "outputBindings": [
       {
@@ -385,30 +391,39 @@
       },
       "interface": {
         "inputs": {
-          "variables": {
-            "a": {
-              "type": {
-                "simple": "INTEGER"
-              },
-              "description": "a"
+          "variables": [
+            {
+              "key": "a",
+              "value": {
+                "type": {
+                  "simple": "INTEGER"
+                },
+                "description": "a"
+              }
             }
-          }
+          ]
         },
         "outputs": {
-          "variables": {
-            "c": {
-              "type": {
-                "simple": "STRING"
-              },
-              "description": "c"
+          "variables": [
+            {
+              "key": "c",
+              "value": {
+                "type": {
+                  "simple": "STRING"
+                },
+                "description": "c"
+              }
             },
-            "t1_int_output": {
-              "type": {
-                "simple": "INTEGER"
-              },
-              "description": "t1_int_output"
+            {
+              "key": "t1_int_output",
+              "value": {
+                "type": {
+                  "simple": "INTEGER"
+                },
+                "description": "t1_int_output"
+              }
             }
-          }
+          ]
         }
       },
       "container": {
@@ -463,24 +478,30 @@
       },
       "interface": {
         "inputs": {
-          "variables": {
-            "a": {
-              "type": {
-                "simple": "STRING"
-              },
-              "description": "a"
+          "variables": [
+            {
+              "key": "a",
+              "value": {
+                "type": {
+                  "simple": "STRING"
+                },
+                "description": "a"
+              }
             }
-          }
+          ]
         },
         "outputs": {
-          "variables": {
-            "out_0": {
-              "type": {
-                "simple": "STRING"
-              },
-              "description": "out_0"
+          "variables": [
+            {
+              "key": "out_0",
+              "value": {
+                "type": {
+                  "simple": "STRING"
+                },
+                "description": "out_0"
+              }
             }
-          }
+          ]
         }
       },
       "container": {

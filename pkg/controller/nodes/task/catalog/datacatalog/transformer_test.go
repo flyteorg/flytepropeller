@@ -74,9 +74,19 @@ func TestVariableMapOrder(t *testing.T) {
 		CacheVersion: "1.0.0",
 		TypedInterface: core.TypedInterface{
 			Inputs: &core.VariableMap{
-				Variables: map[string]*core.Variable{
-					"1": {Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
-					"2": {Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
+				Variables: []*core.VariableMapFieldEntry{
+					{
+						Key: "2",
+						Value: &core.Variable{
+							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
+						},
+					},
+					{
+						Key: "1",
+						Value: &core.Variable{
+							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
+						},
+					},
 				},
 			},
 		},
@@ -84,18 +94,28 @@ func TestVariableMapOrder(t *testing.T) {
 	datasetID, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, datasetID.Version)
-	assert.Equal(t, "1.0.0-UxVtPm0k-GKw-c0Pw", datasetID.Version)
+	assert.Equal(t, "1.0.0-uP5bQ_ta-GKw-c0Pw", datasetID.Version)
 
 	key.TypedInterface.Inputs = &core.VariableMap{
-		Variables: map[string]*core.Variable{
-			"2": {Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
-			"1": {Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
+		Variables: []*core.VariableMapFieldEntry{
+			{
+				Key: "2",
+				Value: &core.Variable{
+					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
+				},
+			},
+			{
+				Key: "1",
+				Value: &core.Variable{
+					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
+				},
+			},
 		},
 	}
 	datasetIDDupe, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "1.0.0-UxVtPm0k-GKw-c0Pw", datasetIDDupe.Version)
+	assert.Equal(t, "1.0.0-uP5bQ_ta-GKw-c0Pw", datasetIDDupe.Version)
 	assert.Equal(t, datasetID.String(), datasetIDDupe.String())
 }
 

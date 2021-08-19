@@ -13,24 +13,30 @@
       },
       "interface": {
         "inputs": {
-          "variables": {
-            "cereal_path": {
-              "type": {
-                "simple": "STRING"
-              },
-              "description": "cereal_path"
+          "variables": [
+            {
+              "key": "cereal_path",
+              "value": {
+                "type": {
+                  "simple": "STRING"
+                },
+                "description": "cereal_path"
+              }
             }
-          }
+          ]
         },
         "outputs": {
-          "variables": {
-            "o0": {
-              "type": {
-                "simple": "FLOAT"
-              },
-              "description": "o0"
+          "variables": [
+            {
+              "key": "o0",
+              "value": {
+                "type": {
+                  "simple": "FLOAT"
+                },
+                "description": "o0"
+              }
             }
-          }
+          ]
         }
       },
       "nodes": [
@@ -289,28 +295,34 @@
         },
         "interface": {
           "inputs": {
-            "variables": {
-              "filepath": {
-                "type": {
-                  "simple": "STRING"
-                },
-                "description": "filepath"
+            "variables": [
+              {
+                "key": "filepath",
+                "value": {
+                  "type": {
+                    "simple": "STRING"
+                  },
+                  "description": "filepath"
+                }
               }
-            }
+            ]
           },
           "outputs": {
-            "variables": {
-              "o0": {
-                "type": {
-                  "collectionType": {
-                    "mapValueType": {
-                      "simple": "STRING"
+            "variables": [
+              {
+                "key": "o0",
+                "value": {
+                  "type": {
+                    "collectionType": {
+                      "mapValueType": {
+                        "simple": "STRING"
+                      }
                     }
-                  }
-                },
-                "description": "o0"
+                  },
+                  "description": "o0"
+                }
               }
-            }
+            ]
           }
         },
         "container": {
@@ -379,28 +391,34 @@
         },
         "interface": {
           "inputs": {
-            "variables": {
-              "lst": {
-                "type": {
-                  "collectionType": {
-                    "mapValueType": {
-                      "simple": "STRING"
+            "variables": [
+              {
+                "key": "lst",
+                "value": {
+                  "type": {
+                    "collectionType": {
+                      "mapValueType": {
+                        "simple": "STRING"
+                      }
                     }
-                  }
-                },
-                "description": "lst"
+                  },
+                  "description": "lst"
+                }
               }
-            }
+            ]
           },
           "outputs": {
-            "variables": {
-              "o0": {
-                "type": {
-                  "simple": "BOOLEAN"
-                },
-                "description": "o0"
+            "variables": [
+              {
+                "key": "o0",
+                "value": {
+                  "type": {
+                    "simple": "BOOLEAN"
+                  },
+                  "description": "o0"
+                }
               }
-            }
+            ]
           }
         },
         "container": {
@@ -469,26 +487,32 @@
         },
         "interface": {
           "inputs": {
-            "variables": {
-              "cereal": {
-                "type": {
-                  "mapValueType": {
-                    "simple": "STRING"
-                  }
-                },
-                "description": "cereal"
+            "variables": [
+              {
+                "key": "cereal",
+                "value": {
+                  "type": {
+                    "mapValueType": {
+                      "simple": "STRING"
+                    }
+                  },
+                  "description": "cereal"
+                }
               }
-            }
+            ]
           },
           "outputs": {
-            "variables": {
-              "o0": {
-                "type": {
-                  "simple": "INTEGER"
-                },
-                "description": "o0"
+            "variables": [
+              {
+                "key": "o0",
+                "value": {
+                  "type": {
+                    "simple": "INTEGER"
+                  },
+                  "description": "o0"
+                }
               }
-            }
+            ]
           }
         },
         "container": {
@@ -557,26 +581,32 @@
         },
         "interface": {
           "inputs": {
-            "variables": {
-              "lst": {
-                "type": {
-                  "collectionType": {
-                    "simple": "INTEGER"
-                  }
-                },
-                "description": "lst"
+            "variables": [
+              {
+                "key": "lst",
+                "value": {
+                  "type": {
+                    "collectionType": {
+                      "simple": "INTEGER"
+                    }
+                  },
+                  "description": "lst"
+                }
               }
-            }
+            ]
           },
           "outputs": {
-            "variables": {
-              "o0": {
-                "type": {
-                  "simple": "FLOAT"
-                },
-                "description": "o0"
+            "variables": [
+              {
+                "key": "o0",
+                "value": {
+                  "type": {
+                    "simple": "FLOAT"
+                  },
+                  "description": "o0"
+                }
               }
-            }
+            ]
           }
         },
         "container": {
@@ -645,28 +675,34 @@
         },
         "interface": {
           "inputs": {
-            "variables": {
-              "cereals": {
-                "type": {
-                  "collectionType": {
-                    "mapValueType": {
-                      "simple": "STRING"
+            "variables": [
+              {
+                "key": "cereals",
+                "value": {
+                  "type": {
+                    "collectionType": {
+                      "mapValueType": {
+                        "simple": "STRING"
+                      }
                     }
-                  }
-                },
-                "description": "cereals"
+                  },
+                  "description": "cereals"
+                }
               }
-            }
+            ]
           },
           "outputs": {
-            "variables": {
-              "o0": {
-                "type": {
-                  "simple": "FLOAT"
-                },
-                "description": "o0"
+            "variables": [
+              {
+                "key": "o0",
+                "value": {
+                  "type": {
+                    "simple": "FLOAT"
+                  },
+                  "description": "o0"
+                }
               }
-            }
+            ]
           }
         },
         "container": {

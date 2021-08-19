@@ -94,7 +94,7 @@ func buildVariablesIndex(params *core.VariableMap) (map[string]*core.Variable, s
 
 func filterVariables(vars *core.VariableMap, varNames sets.String) *core.VariableMap {
 	res := &core.VariableMap{
-		Variables: make([]*core.VariableMapFieldEntry, len(varNames)),
+		Variables: make([]*core.VariableMapFieldEntry, 0, len(varNames)),
 	}
 
 	for _, v := range vars.Variables {

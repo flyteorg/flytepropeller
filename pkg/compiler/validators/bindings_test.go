@@ -97,7 +97,7 @@ func TestValidateBindings(t *testing.T) {
 				{
 					Key: "x",
 					Value: &core.Variable{
-						Type: LiteralTypeForLiteral(coreutils.MustMakeLiteral(5)),
+						Type: LiteralTypeForLiteral(coreutils.MustMakeLiteral([]interface{}{5})),
 					},
 				},
 			},

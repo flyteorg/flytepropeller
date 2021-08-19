@@ -37,13 +37,15 @@ tasks:
   interface:
     inputs:
       variables:
-        list_of_nums:
+      - key: list_of_nums
+        value:
           type:
             collectionType:
               simple: INTEGER
     outputs:
       variables:
-        are_num_odd:
+      - key: are_num_odd
+        value:
           type:
             collectionType:
               simple: BOOLEAN

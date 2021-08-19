@@ -118,7 +118,7 @@ func ValidateBindings(w c.WorkflowBuilder, node c.Node, bindings []*flyte.Bindin
 	validateParamTypes bool, edgeDirection c.EdgeDirection, errs errors.CompileErrors) (resolved *flyte.VariableMap, ok bool) {
 
 	resolved = &flyte.VariableMap{
-		Variables: make([]*flyte.VariableMapFieldEntry, len(bindings)),
+		Variables: make([]*flyte.VariableMapFieldEntry, 0, len(bindings)),
 	}
 
 	providedBindings := sets.NewString()

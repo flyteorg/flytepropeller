@@ -23,7 +23,7 @@ func validateEffectiveOutputParameters(n c.NodeBuilder, errs errors.CompileError
 
 	if n.GetInterface() != nil {
 		params = &flyte.VariableMap{
-			Variables: make([]*flyte.VariableMapFieldEntry, len(n.GetInterface().GetOutputs().Variables)),
+			Variables: make([]*flyte.VariableMapFieldEntry, 0, len(n.GetInterface().GetOutputs().Variables)),
 		}
 
 		for _, param := range n.GetInterface().GetOutputs().Variables {

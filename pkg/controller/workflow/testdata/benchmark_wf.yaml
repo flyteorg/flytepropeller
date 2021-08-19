@@ -231,14 +231,16 @@ tasks:
     interface:
       inputs:
         variables:
-          value_to_print:
-            type:
-              simple: INTEGER
+          - key: value_to_print
+            value:
+              type:
+                simple: INTEGER
       outputs:
         variables:
-          out:
-            type:
-              simple: INTEGER
+          - key: out
+            value:
+              type:
+                simple: INTEGER
     metadata:
       runtime:
         type: 1
@@ -268,22 +270,26 @@ tasks:
     interface:
       inputs:
         variables:
-          date_triggered:
-            type:
-              simple: DATETIME
-          in_blob:
-            type:
-              blob:
-                dimensionality: SINGLE
-          multi_blob:
-            type:
-              blob:
-                dimensionality: 1
-          value_to_print:
-            type:
-              simple: INTEGER
+          - key: date_triggered
+            value:
+              type:
+                simple: DATETIME
+          - key: in_blob
+            value:
+              type:
+                blob:
+                  dimensionality: SINGLE
+          - key: multi_blob
+            value:
+              type:
+                blob:
+                  dimensionality: 1
+          - key: value_to_print
+            value:
+              type:
+                simple: INTEGER
       outputs:
-        variables: {}
+        variables: []
     metadata:
       runtime:
         type: 1
@@ -313,24 +319,28 @@ tasks:
     interface:
       inputs:
         variables:
-          values_to_add:
-            type:
-              collectionType:
-                simple: INTEGER
+          - key: values_to_add
+            value:
+              type:
+                collectionType:
+                  simple: INTEGER
       outputs:
         variables:
-          multi_blob:
-            type:
-              blob:
-                dimensionality: 1
-          out:
-            type:
-              blob:
-                dimensionality: 0
-          out_blob:
-            type:
-              blob:
-                dimensionality: 0
+          - key: multi_blob
+            value:
+              type:
+                blob:
+                  dimensionality: 1
+          - key: out
+            value:
+              type:
+                blob:
+                  dimensionality: 0
+          - key: out_blob
+            value:
+              type:
+                blob:
+                  dimensionality: 0
     metadata:
       runtime:
         type: 1
@@ -360,15 +370,16 @@ tasks:
     interface:
       inputs:
         variables:
-          values_to_print:
-            type:
-              collectionType:
+          - key: values_to_print
+            value:
+              type:
                 simple: INTEGER
       outputs:
         variables:
-          out:
-            type:
-              simple: INTEGER
+          - key: out
+            value:
+              type:
+                simple: INTEGER
     metadata:
       runtime:
         type: 1

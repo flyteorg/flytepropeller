@@ -36,11 +36,14 @@ func TestHierarchicalNodeID(t *testing.T) {
 func TestUnderlyingInterface(t *testing.T) {
 	expectedIface := &core.TypedInterface{
 		Outputs: &core.VariableMap{
-			Variables: map[string]*core.Variable{
-				"in": {
-					Type: &core.LiteralType{
-						Type: &core.LiteralType_Simple{
-							Simple: core.SimpleType_INTEGER,
+			Variables: []*core.VariableMapFieldEntry{
+				{
+					Key: "in",
+					Value: &core.Variable{
+						Type: &core.LiteralType{
+							Type: &core.LiteralType_Simple{
+								Simple: core.SimpleType_INTEGER,
+							},
 						},
 					},
 				},
