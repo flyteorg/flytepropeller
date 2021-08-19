@@ -430,7 +430,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		// This code only exists to support Dynamic tasks. Eventually dynamic tasks will use closure nodes to execute
 		// Until then we have to check if the Handler executed resulted in a dynamic node being generated, if so, then
 		// we will not check for outputs or call onTaskSuccess. The reason is that outputs have not yet been materialized.
-		// OutputData for the parent node will only get generated after the subtasks complete. We have to wait for the completion
+		// Output for the parent node will only get generated after the subtasks complete. We have to wait for the completion
 		// the dynamic.handler will call onTaskSuccess for the parent node
 
 		f, err := NewRemoteFutureFileReader(ctx, tCtx.ow.GetOutputPrefixPath(), tCtx.DataStore())

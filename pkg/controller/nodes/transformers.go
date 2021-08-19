@@ -19,7 +19,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 )
 
-func ToNodeExecOutputURI(info *handler.OutputInfo) *event.NodeExecutionEvent_OutputUri {
+func ToNodeExecOutput(info *handler.OutputInfo) *event.NodeExecutionEvent_OutputUri {
 	if info == nil || info.OutputURI == "" {
 		return nil
 	}
@@ -138,7 +138,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 		}
 	}
 	if eInfo != nil && eInfo.OutputInfo != nil {
-		nev.OutputResult = ToNodeExecOutputURI(eInfo.OutputInfo)
+		nev.OutputResult = ToNodeExecOutput(eInfo.OutputInfo)
 	} else if info.GetErr() != nil {
 		nev.OutputResult = &event.NodeExecutionEvent_Error{
 			Error: info.GetErr(),

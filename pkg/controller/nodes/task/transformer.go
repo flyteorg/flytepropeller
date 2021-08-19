@@ -119,8 +119,10 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		Metadata:              metadata,
 	}
 
-	if input.Info.Phase().IsSuccess() {
-		tev.OutputResult = &event.TaskExecutionEvent_OutputUri{OutputUri: input.OutputWriter.GetOutputPath().String()}
+	if input.Info.Phase().IsSuccess() && input.OutputWriter != nil {
+		if input.OutputWriter.GetOutputPath() != "" {
+			tev.OutputResult = &event.TaskExecutionEvent_OutputUri{OutputUri: input.OutputWriter.GetOutputPath().String()}
+		}
 	}
 
 	if input.Info.Phase().IsFailure() && input.Info.Err() != nil {
