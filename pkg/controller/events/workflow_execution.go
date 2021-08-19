@@ -30,7 +30,7 @@ type workflowEventRecorder struct {
 // In certain cases, a successful workflow execution event can be configured to include raw output data inline. However,
 // for large outputs these events may exceed the event recipient's message size limit, so we fallback to passing
 // the offloaded output URI instead.
-func (c *workflowEventRecorder) handleFailure(ctx context.Context, ev *event.WorkflowExecutionEvent, err error, rawOutputPolicy config.RawOutputPolicy) error {
+func (r *workflowEventRecorder) handleFailure(ctx context.Context, ev *event.WorkflowExecutionEvent, err error, rawOutputPolicy config.RawOutputPolicy) error {
 	// Only attempt to retry sending an event in the case we tried to send raw output data inline
 	if rawOutputPolicy != config.RawOutputPolicyInline || len(ev.GetOutputUri()) > 0 {
 		return err
@@ -45,7 +45,7 @@ func (c *workflowEventRecorder) handleFailure(ctx context.Context, ev *event.Wor
 	}
 
 	// This time, we attempt to record the event with the output URI set.
-	return c.eventRecorder.RecordWorkflowEvent(ctx, ev)
+	return r.eventRecorder.RecordWorkflowEvent(ctx, ev)
 }
 
 func (r *workflowEventRecorder) RecordWorkflowEvent(ctx context.Context, ev *event.WorkflowExecutionEvent, outputPolicy config.RawOutputPolicy) error {

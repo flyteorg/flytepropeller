@@ -31,7 +31,7 @@ type nodeEventRecorder struct {
 // In certain cases, a successful node execution event can be configured to include raw output data inline. However,
 // for large outputs these events may exceed the event recipient's message size limit, so we fallback to passing
 // the offloaded output URI instead.
-func (c *nodeEventRecorder) handleFailure(ctx context.Context, ev *event.NodeExecutionEvent, err error, rawOutputPolicy config.RawOutputPolicy) error {
+func (r *nodeEventRecorder) handleFailure(ctx context.Context, ev *event.NodeExecutionEvent, err error, rawOutputPolicy config.RawOutputPolicy) error {
 	// Only attempt to retry sending an event in the case we tried to send raw output data inline
 	if rawOutputPolicy != config.RawOutputPolicyInline || len(ev.GetOutputUri()) > 0 {
 		return err
@@ -46,7 +46,7 @@ func (c *nodeEventRecorder) handleFailure(ctx context.Context, ev *event.NodeExe
 	}
 
 	// This time, we attempt to record the event with the output URI set.
-	return c.eventRecorder.RecordNodeEvent(ctx, ev)
+	return r.eventRecorder.RecordNodeEvent(ctx, ev)
 }
 
 func (r *nodeEventRecorder) RecordNodeEvent(ctx context.Context, ev *event.NodeExecutionEvent, outputPolicy config.RawOutputPolicy) error {
