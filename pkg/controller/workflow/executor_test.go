@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteidl/clients/go/events"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
@@ -32,9 +35,8 @@ import (
 
 	wfErrors "github.com/flyteorg/flytepropeller/pkg/controller/workflow/errors"
 
-	"github.com/flyteorg/flyteidl/clients/go/events"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	eventMocks "github.com/flyteorg/flytepropeller/pkg/controller/events/mocks"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/flyteorg/flytestdlib/yamlutils"
@@ -715,15 +717,18 @@ func TestWorkflowExecutor_HandleAbortedWorkflow(t *testing.T) {
 
 		var evs []*event.WorkflowExecutionEvent
 		nodeExec := &mocks2.Node{}
+		wfRecorder := &eventMocks.WorkflowEventRecorder{}
+		wfRecorder.On("RecordWorkflowEvent", mock.Anything, mock.MatchedBy(func(ev *event.WorkflowExecutionEvent) bool {
+			evs = append(evs, ev)
+			return true
+		}), mock.Anything).Return(nil)
 		wExec := &workflowExecutor{
 			nodeExecutor: nodeExec,
-			wfRecorder: &events.MockRecorder{
-				RecordWorkflowEventCb: func(ctx context.Context, event *event.WorkflowExecutionEvent) error {
-					evs = append(evs, event)
-					return nil
-				},
+			wfRecorder:   wfRecorder,
+			metrics:      newMetrics(promutils.NewTestScope()),
+			eventConfig: &config.EventConfig{
+				RawOutputPolicy: config.RawOutputPolicyReference,
 			},
-			metrics: newMetrics(promutils.NewTestScope()),
 		}
 
 		nodeExec.OnAbortHandlerMatch(ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -752,15 +757,18 @@ func TestWorkflowExecutor_HandleAbortedWorkflow(t *testing.T) {
 
 		var evs []*event.WorkflowExecutionEvent
 		nodeExec := &mocks2.Node{}
+		wfRecorder := &eventMocks.WorkflowEventRecorder{}
+		wfRecorder.On("RecordWorkflowEvent", mock.Anything, mock.MatchedBy(func(ev *event.WorkflowExecutionEvent) bool {
+			evs = append(evs, ev)
+			return true
+		}), mock.Anything).Return(nil)
 		wExec := &workflowExecutor{
 			nodeExecutor: nodeExec,
-			wfRecorder: &events.MockRecorder{
-				RecordWorkflowEventCb: func(ctx context.Context, event *event.WorkflowExecutionEvent) error {
-					evs = append(evs, event)
-					return nil
-				},
+			wfRecorder:   wfRecorder,
+			metrics:      newMetrics(promutils.NewTestScope()),
+			eventConfig: &config.EventConfig{
+				RawOutputPolicy: config.RawOutputPolicyReference,
 			},
-			metrics: newMetrics(promutils.NewTestScope()),
 		}
 
 		nodeExec.OnAbortHandlerMatch(ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -788,15 +796,18 @@ func TestWorkflowExecutor_HandleAbortedWorkflow(t *testing.T) {
 	t.Run("failure-abort-success", func(t *testing.T) {
 		var evs []*event.WorkflowExecutionEvent
 		nodeExec := &mocks2.Node{}
+		wfRecorder := &eventMocks.WorkflowEventRecorder{}
+		wfRecorder.On("RecordWorkflowEvent", mock.Anything, mock.MatchedBy(func(ev *event.WorkflowExecutionEvent) bool {
+			evs = append(evs, ev)
+			return true
+		}), mock.Anything).Return(nil)
 		wExec := &workflowExecutor{
 			nodeExecutor: nodeExec,
-			wfRecorder: &events.MockRecorder{
-				RecordWorkflowEventCb: func(ctx context.Context, event *event.WorkflowExecutionEvent) error {
-					evs = append(evs, event)
-					return nil
-				},
+			wfRecorder:   wfRecorder,
+			metrics:      newMetrics(promutils.NewTestScope()),
+			eventConfig: &config.EventConfig{
+				RawOutputPolicy: config.RawOutputPolicyReference,
 			},
-			metrics: newMetrics(promutils.NewTestScope()),
 		}
 
 		nodeExec.OnAbortHandlerMatch(ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)

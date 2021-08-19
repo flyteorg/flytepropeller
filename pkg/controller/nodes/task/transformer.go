@@ -150,6 +150,15 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 	return tev, nil
 }
 
+func WithOffloadedOutputs(outputWriter io.OutputFilePaths, taskExecutionEvent *event.TaskExecutionEvent) {
+	if taskExecutionEvent.Phase != core.TaskExecution_SUCCEEDED {
+		return
+	}
+	if outputWriter != nil && len(outputWriter.GetOutputPath()) > 0 {
+		taskExecutionEvent.OutputResult = &event.TaskExecutionEvent_OutputUri{OutputUri: outputWriter.GetOutputPath().String()}
+	}
+}
+
 func GetTaskExecutionIdentifier(nCtx handler.NodeExecutionContext) *core.TaskExecutionIdentifier {
 	return &core.TaskExecutionIdentifier{
 		TaskId:          nCtx.TaskReader().GetTaskID(),

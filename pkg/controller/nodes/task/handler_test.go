@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	config2 "github.com/flyteorg/flytepropeller/pkg/controller/config"
+
 	pluginK8sMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s/mocks"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -20,7 +22,6 @@ import (
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
-	"github.com/flyteorg/flyteidl/clients/go/events"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
@@ -39,6 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	flyteMocks "github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
+	events "github.com/flyteorg/flytepropeller/pkg/controller/events"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
@@ -342,7 +344,7 @@ type fakeBufferedTaskEventRecorder struct {
 	evs []*event.TaskExecutionEvent
 }
 
-func (f *fakeBufferedTaskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskExecutionEvent) error {
+func (f *fakeBufferedTaskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskExecutionEvent, rawOutputPolicy config2.RawOutputPolicy) error {
 	f.evs = append(f.evs, ev)
 	return nil
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	events2 "github.com/flyteorg/flytepropeller/pkg/controller/events"
+
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 
 	"github.com/flyteorg/flyteidl/clients/go/events"
@@ -61,7 +63,7 @@ func StatusFailed(err *core.ExecutionError) Status {
 type workflowExecutor struct {
 	enqueueWorkflow v1alpha1.EnqueueWorkflow
 	store           *storage.DataStore
-	wfRecorder      events.WorkflowEventRecorder
+	wfRecorder      events2.WorkflowEventRecorder
 	k8sRecorder     record.EventRecorder
 	metadataPrefix  storage.DataReference
 	nodeExecutor    executors.Node
@@ -255,7 +257,7 @@ func convertToExecutionError(err *core.ExecutionError, alternateErr *core.Execut
 }
 
 func (c *workflowExecutor) IdempotentReportEvent(ctx context.Context, e *event.WorkflowExecutionEvent) error {
-	err := c.wfRecorder.RecordWorkflowEvent(ctx, e)
+	err := c.wfRecorder.RecordWorkflowEvent(ctx, e, c.eventConfig.RawOutputPolicy)
 	if err != nil && eventsErr.IsAlreadyExists(err) {
 		logger.Infof(ctx, "Workflow event phase: %s, executionId %s already exist",
 			e.Phase.String(), e.ExecutionId)
@@ -310,19 +312,8 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseSuccess, "", nil)
 			// Not all workflows have outputs
 			if wStatus.GetOutputReference() != "" {
-				if c.eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
-					var outputData = &core.LiteralMap{}
-					err := c.store.ReadProtobuf(ctx, wStatus.GetOutputReference(), outputData)
-					if err != nil {
-						return errors.Errorf(errors.EventRecordingError, "", "Unable to fetch workflow outputs from [%+v] with err: %v", wStatus.GetOutputReference().String(), err)
-					}
-					wfEvent.OutputResult = &event.WorkflowExecutionEvent_OutputData{
-						OutputData: outputData,
-					}
-				} else {
-					wfEvent.OutputResult = &event.WorkflowExecutionEvent_OutputUri{
-						OutputUri: wStatus.GetOutputReference().String(),
-					}
+				wfEvent.OutputResult = &event.WorkflowExecutionEvent_OutputUri{
+					OutputUri: wStatus.GetOutputReference().String(),
 				}
 			}
 			wfEvent.OccurredAt = utils.GetProtoTime(wStatus.GetStoppedAt())
@@ -513,7 +504,7 @@ func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1al
 		nodeExecutor:    nodeExecutor,
 		store:           store,
 		enqueueWorkflow: enQWorkflow,
-		wfRecorder:      events.NewWorkflowEventRecorder(eventSink, workflowScope),
+		wfRecorder:      events2.NewWorkflowEventRecorder(eventSink, workflowScope, store),
 		k8sRecorder:     k8sEventRecorder,
 		metadataPrefix:  basePrefix,
 		metrics:         newMetrics(workflowScope),

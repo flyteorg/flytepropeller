@@ -621,7 +621,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		if err != nil {
 			return handler.UnknownTransition, err
 		}
-		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo); err != nil {
+		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo, t.eventConfig.RawOutputPolicy); err != nil {
 			logger.Errorf(ctx, "Event recording failed for Plugin [%s], eventPhase [%s], error :%s", p.GetID(), evInfo.Phase.String(), err.Error())
 			// Check for idempotency
 			// Check for terminate state error
@@ -659,7 +659,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		return handler.UnknownTransition, err
 	}
 	if evInfo != nil {
-		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo); err != nil {
+		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo, t.eventConfig.RawOutputPolicy); err != nil {
 			// Check for idempotency
 			// Check for terminate state error
 			logger.Errorf(ctx, "failed to send event to Admin. error: %s", err.Error())
@@ -746,7 +746,7 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 				Code:    "Task Aborted",
 				Message: reason,
 			}},
-	}); err != nil {
+	}, t.eventConfig.RawOutputPolicy); err != nil {
 		logger.Errorf(ctx, "failed to send event to Admin. error: %s", err.Error())
 		return err
 	}

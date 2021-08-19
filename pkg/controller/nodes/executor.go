@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"time"
 
+	events2 "github.com/flyteorg/flytepropeller/pkg/controller/events"
+
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -88,8 +90,8 @@ type nodeExecutor struct {
 	nodeHandlerFactory              HandlerFactory
 	enqueueWorkflow                 v1alpha1.EnqueueWorkflow
 	store                           *storage.DataStore
-	nodeRecorder                    events.NodeEventRecorder
-	taskRecorder                    events.TaskEventRecorder
+	nodeRecorder                    events2.NodeEventRecorder
+	taskRecorder                    events2.TaskEventRecorder
 	metrics                         *nodeMetrics
 	maxDatasetSizeBytes             int64
 	outputResolver                  OutputResolver
@@ -129,7 +131,7 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 	}
 
 	logger.Infof(ctx, "Recording event p[%+v]", nodeEvent)
-	err := c.nodeRecorder.RecordNodeEvent(ctx, nodeEvent)
+	err := c.nodeRecorder.RecordNodeEvent(ctx, nodeEvent, c.eventConfig.RawOutputPolicy)
 	if err != nil {
 		if nodeEvent.GetId().NodeId == v1alpha1.EndNodeID {
 			return nil
@@ -1063,8 +1065,8 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 	exec := &nodeExecutor{
 		store:               store,
 		enqueueWorkflow:     enQWorkflow,
-		nodeRecorder:        events.NewNodeEventRecorder(eventSink, nodeScope),
-		taskRecorder:        events.NewTaskEventRecorder(eventSink, scope.NewSubScope("task")),
+		nodeRecorder:        events2.NewNodeEventRecorder(eventSink, nodeScope, store),
+		taskRecorder:        events2.NewTaskEventRecorder(eventSink, scope.NewSubScope("task"), store),
 		maxDatasetSizeBytes: maxDatasetSize,
 		metrics: &nodeMetrics{
 			Scope:                         nodeScope,
