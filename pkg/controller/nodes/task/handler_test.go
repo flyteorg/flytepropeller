@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flytepropeller/pkg/controller/events"
+
 	config2 "github.com/flyteorg/flytepropeller/pkg/controller/config"
 
 	pluginK8sMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s/mocks"
@@ -40,7 +42,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	flyteMocks "github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
-	events "github.com/flyteorg/flytepropeller/pkg/controller/events"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
@@ -49,6 +50,10 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/fakeplugins"
 	rmConfig "github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
 )
+
+var eventConfig = &config2.EventConfig{
+	RawOutputPolicy: config2.RawOutputPolicyReference,
+}
 
 func Test_task_setDefault(t *testing.T) {
 	type fields struct {
@@ -239,7 +244,7 @@ func Test_task_Setup(t *testing.T) {
 			sCtx.On("EnqueueOwner").Return(pluginCore.EnqueueOwner(func(name types.NamespacedName) error { return nil }))
 			sCtx.On("MetricsScope").Return(promutils.NewTestScope())
 
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, eventConfig, promutils.NewTestScope())
 			tk.cfg.TaskPlugins.EnabledPlugins = tt.enabledPlugins
 			tk.cfg.TaskPlugins.DefaultForTaskTypes = tt.defaultForTaskTypes
 			assert.NoError(t, err)
@@ -344,7 +349,7 @@ type fakeBufferedTaskEventRecorder struct {
 	evs []*event.TaskExecutionEvent
 }
 
-func (f *fakeBufferedTaskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskExecutionEvent, rawOutputPolicy config2.RawOutputPolicy) error {
+func (f *fakeBufferedTaskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskExecutionEvent, eventConfig *config2.EventConfig) error {
 	f.evs = append(f.evs, ev)
 	return nil
 }
@@ -898,7 +903,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			} else {
 				c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
 			}
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, promutils.NewTestScope())
 			assert.NoError(t, err)
 			tk.defaultPlugins = map[pluginCore.TaskType]pluginCore.Plugin{
 				"test": fakeplugins.NewPhaseBasedPlugin(),
@@ -1189,7 +1194,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 			nCtx := createNodeContext(ev, "test", state, tt.args.prevTick)
 			c := &pluginCatalogMocks.Client{}
 
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, promutils.NewTestScope())
 			assert.NoError(t, err)
 			tk.resourceManager = noopRm
 
@@ -1664,7 +1669,7 @@ func Test_task_Finalize(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	got, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, promutils.NewTestScope())
+	got, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, eventConfig, promutils.NewTestScope())
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.NotNil(t, got.defaultPlugins)

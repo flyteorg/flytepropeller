@@ -5,6 +5,8 @@ package mocks
 import (
 	context "context"
 
+	config "github.com/flyteorg/flytepropeller/pkg/controller/config"
+
 	event "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
 	mock "github.com/stretchr/testify/mock"
@@ -23,8 +25,8 @@ func (_m TaskEventRecorder_RecordTaskEvent) Return(_a0 error) *TaskEventRecorder
 	return &TaskEventRecorder_RecordTaskEvent{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *TaskEventRecorder) OnRecordTaskEvent(ctx context.Context, ev *event.TaskExecutionEvent, outputPolicy string) *TaskEventRecorder_RecordTaskEvent {
-	c := _m.On("RecordTaskEvent", ctx, ev, outputPolicy)
+func (_m *TaskEventRecorder) OnRecordTaskEvent(ctx context.Context, _a1 *event.TaskExecutionEvent, eventConfig *config.EventConfig) *TaskEventRecorder_RecordTaskEvent {
+	c := _m.On("RecordTaskEvent", ctx, _a1, eventConfig)
 	return &TaskEventRecorder_RecordTaskEvent{Call: c}
 }
 
@@ -33,13 +35,13 @@ func (_m *TaskEventRecorder) OnRecordTaskEventMatch(matchers ...interface{}) *Ta
 	return &TaskEventRecorder_RecordTaskEvent{Call: c}
 }
 
-// RecordTaskEvent provides a mock function with given fields: ctx, ev, outputPolicy
-func (_m *TaskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskExecutionEvent, outputPolicy string) error {
-	ret := _m.Called(ctx, ev, outputPolicy)
+// RecordTaskEvent provides a mock function with given fields: ctx, _a1, eventConfig
+func (_m *TaskEventRecorder) RecordTaskEvent(ctx context.Context, _a1 *event.TaskExecutionEvent, eventConfig *config.EventConfig) error {
+	ret := _m.Called(ctx, _a1, eventConfig)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *event.TaskExecutionEvent, string) error); ok {
-		r0 = rf(ctx, ev, outputPolicy)
+	if rf, ok := ret.Get(0).(func(context.Context, *event.TaskExecutionEvent, *config.EventConfig) error); ok {
+		r0 = rf(ctx, _a1, eventConfig)
 	} else {
 		r0 = ret.Error(0)
 	}

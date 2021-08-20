@@ -1864,7 +1864,7 @@ type fakeNodeEventRecorder struct {
 	err error
 }
 
-func (f fakeNodeEventRecorder) RecordNodeEvent(ctx context.Context, event *event.NodeExecutionEvent, rawOutputPolicy config.RawOutputPolicy) error {
+func (f fakeNodeEventRecorder) RecordNodeEvent(ctx context.Context, event *event.NodeExecutionEvent, eventConfig *config.EventConfig) error {
 	if f.err != nil {
 		return f.err
 	}

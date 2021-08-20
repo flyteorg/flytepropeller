@@ -257,7 +257,7 @@ func convertToExecutionError(err *core.ExecutionError, alternateErr *core.Execut
 }
 
 func (c *workflowExecutor) IdempotentReportEvent(ctx context.Context, e *event.WorkflowExecutionEvent) error {
-	err := c.wfRecorder.RecordWorkflowEvent(ctx, e, c.eventConfig.RawOutputPolicy)
+	err := c.wfRecorder.RecordWorkflowEvent(ctx, e, c.eventConfig)
 	if err != nil && eventsErr.IsAlreadyExists(err) {
 		logger.Infof(ctx, "Workflow event phase: %s, executionId %s already exist",
 			e.Phase.String(), e.ExecutionId)

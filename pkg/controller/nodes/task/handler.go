@@ -172,7 +172,7 @@ type Handler struct {
 	barrierCache    *barrier
 	cfg             *config.Config
 	pluginScope     promutils.Scope
-	eventConfig     config2.EventConfig
+	eventConfig     *config2.EventConfig
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -594,7 +594,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		if err != nil {
 			return handler.UnknownTransition, err
 		}
-		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo, t.eventConfig.RawOutputPolicy); err != nil {
+		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo, t.eventConfig); err != nil {
 			logger.Errorf(ctx, "Event recording failed for Plugin [%s], eventPhase [%s], error :%s", p.GetID(), evInfo.Phase.String(), err.Error())
 			// Check for idempotency
 			// Check for terminate state error
@@ -619,7 +619,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		return handler.UnknownTransition, err
 	}
 	if evInfo != nil {
-		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo, t.eventConfig.RawOutputPolicy); err != nil {
+		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo, t.eventConfig); err != nil {
 			// Check for idempotency
 			// Check for terminate state error
 			logger.Errorf(ctx, "failed to send event to Admin. error: %s", err.Error())
@@ -706,7 +706,7 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 				Code:    "Task Aborted",
 				Message: reason,
 			}},
-	}, t.eventConfig.RawOutputPolicy); err != nil {
+	}, t.eventConfig); err != nil {
 		logger.Errorf(ctx, "failed to send event to Admin. error: %s", err.Error())
 		return err
 	}
@@ -741,7 +741,7 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 	}()
 }
 
-func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, scope promutils.Scope) (*Handler, error) {
+func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, eventConfig *config2.EventConfig, scope promutils.Scope) (*Handler, error) {
 	// TODO New should take a pointer
 	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig(), scope.NewSubScope("async_catalog"))
 	if err != nil {
@@ -778,5 +778,6 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		secretManager:   secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
 		barrierCache:    newLRUBarrier(ctx, cfg.BarrierConfig),
 		cfg:             cfg,
+		eventConfig:     eventConfig,
 	}, nil
 }

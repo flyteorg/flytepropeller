@@ -17,8 +17,8 @@ type taskEventRecorder struct {
 	events.TaskEventRecorder
 }
 
-func (t taskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskExecutionEvent, outputPolicy config.RawOutputPolicy) error {
-	if err := t.TaskEventRecorder.RecordTaskEvent(ctx, ev, outputPolicy); err != nil {
+func (t taskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskExecutionEvent, eventConfig *config.EventConfig) error {
+	if err := t.TaskEventRecorder.RecordTaskEvent(ctx, ev, eventConfig); err != nil {
 		if eventsErr.IsAlreadyExists(err) {
 			logger.Warningf(ctx, "Failed to record taskEvent, error [%s]. Trying to record state: %s. Ignoring this error!", err.Error(), ev.Phase)
 			return nil

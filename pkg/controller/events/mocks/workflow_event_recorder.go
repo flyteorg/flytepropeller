@@ -5,6 +5,8 @@ package mocks
 import (
 	context "context"
 
+	config "github.com/flyteorg/flytepropeller/pkg/controller/config"
+
 	event "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
 	mock "github.com/stretchr/testify/mock"
@@ -23,8 +25,8 @@ func (_m WorkflowEventRecorder_RecordWorkflowEvent) Return(_a0 error) *WorkflowE
 	return &WorkflowEventRecorder_RecordWorkflowEvent{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *WorkflowEventRecorder) OnRecordWorkflowEvent(ctx context.Context, _a1 *event.WorkflowExecutionEvent, outputPolicy string) *WorkflowEventRecorder_RecordWorkflowEvent {
-	c := _m.On("RecordWorkflowEvent", ctx, _a1, outputPolicy)
+func (_m *WorkflowEventRecorder) OnRecordWorkflowEvent(ctx context.Context, _a1 *event.WorkflowExecutionEvent, eventConfig *config.EventConfig) *WorkflowEventRecorder_RecordWorkflowEvent {
+	c := _m.On("RecordWorkflowEvent", ctx, _a1, eventConfig)
 	return &WorkflowEventRecorder_RecordWorkflowEvent{Call: c}
 }
 
@@ -33,13 +35,13 @@ func (_m *WorkflowEventRecorder) OnRecordWorkflowEventMatch(matchers ...interfac
 	return &WorkflowEventRecorder_RecordWorkflowEvent{Call: c}
 }
 
-// RecordWorkflowEvent provides a mock function with given fields: ctx, _a1, outputPolicy
-func (_m *WorkflowEventRecorder) RecordWorkflowEvent(ctx context.Context, _a1 *event.WorkflowExecutionEvent, outputPolicy string) error {
-	ret := _m.Called(ctx, _a1, outputPolicy)
+// RecordWorkflowEvent provides a mock function with given fields: ctx, _a1, eventConfig
+func (_m *WorkflowEventRecorder) RecordWorkflowEvent(ctx context.Context, _a1 *event.WorkflowExecutionEvent, eventConfig *config.EventConfig) error {
+	ret := _m.Called(ctx, _a1, eventConfig)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *event.WorkflowExecutionEvent, string) error); ok {
-		r0 = rf(ctx, _a1, outputPolicy)
+	if rf, ok := ret.Get(0).(func(context.Context, *event.WorkflowExecutionEvent, *config.EventConfig) error); ok {
+		r0 = rf(ctx, _a1, eventConfig)
 	} else {
 		r0 = ret.Error(0)
 	}

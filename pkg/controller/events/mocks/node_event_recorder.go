@@ -5,6 +5,8 @@ package mocks
 import (
 	context "context"
 
+	config "github.com/flyteorg/flytepropeller/pkg/controller/config"
+
 	event "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
 	mock "github.com/stretchr/testify/mock"
@@ -23,8 +25,8 @@ func (_m NodeEventRecorder_RecordNodeEvent) Return(_a0 error) *NodeEventRecorder
 	return &NodeEventRecorder_RecordNodeEvent{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *NodeEventRecorder) OnRecordNodeEvent(ctx context.Context, _a1 *event.NodeExecutionEvent, outputPolicy string) *NodeEventRecorder_RecordNodeEvent {
-	c := _m.On("RecordNodeEvent", ctx, _a1, outputPolicy)
+func (_m *NodeEventRecorder) OnRecordNodeEvent(ctx context.Context, _a1 *event.NodeExecutionEvent, eventConfig *config.EventConfig) *NodeEventRecorder_RecordNodeEvent {
+	c := _m.On("RecordNodeEvent", ctx, _a1, eventConfig)
 	return &NodeEventRecorder_RecordNodeEvent{Call: c}
 }
 
@@ -33,13 +35,13 @@ func (_m *NodeEventRecorder) OnRecordNodeEventMatch(matchers ...interface{}) *No
 	return &NodeEventRecorder_RecordNodeEvent{Call: c}
 }
 
-// RecordNodeEvent provides a mock function with given fields: ctx, _a1, outputPolicy
-func (_m *NodeEventRecorder) RecordNodeEvent(ctx context.Context, _a1 *event.NodeExecutionEvent, outputPolicy string) error {
-	ret := _m.Called(ctx, _a1, outputPolicy)
+// RecordNodeEvent provides a mock function with given fields: ctx, _a1, eventConfig
+func (_m *NodeEventRecorder) RecordNodeEvent(ctx context.Context, _a1 *event.NodeExecutionEvent, eventConfig *config.EventConfig) error {
+	ret := _m.Called(ctx, _a1, eventConfig)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *event.NodeExecutionEvent, string) error); ok {
-		r0 = rf(ctx, _a1, outputPolicy)
+	if rf, ok := ret.Get(0).(func(context.Context, *event.NodeExecutionEvent, *config.EventConfig) error); ok {
+		r0 = rf(ctx, _a1, eventConfig)
 	} else {
 		r0 = ret.Error(0)
 	}

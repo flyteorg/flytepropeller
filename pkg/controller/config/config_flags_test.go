@@ -715,4 +715,18 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_event-config.fallback-to-output-reference", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("event-config.fallback-to-output-reference", testValue)
+			if vBool, err := cmdFlags.GetBool("event-config.fallback-to-output-reference"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vBool), &actual.EventConfig.FallbackToOutputReference)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

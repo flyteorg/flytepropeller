@@ -19,7 +19,7 @@ import (
 
 // Recorder for Workflow events
 type WorkflowEventRecorder interface {
-	RecordWorkflowEvent(ctx context.Context, event *event.WorkflowExecutionEvent, outputPolicy config.RawOutputPolicy) error
+	RecordWorkflowEvent(ctx context.Context, event *event.WorkflowExecutionEvent, eventConfig *config.EventConfig) error
 }
 
 type workflowEventRecorder struct {
@@ -30,9 +30,9 @@ type workflowEventRecorder struct {
 // In certain cases, a successful workflow execution event can be configured to include raw output data inline. However,
 // for large outputs these events may exceed the event recipient's message size limit, so we fallback to passing
 // the offloaded output URI instead.
-func (r *workflowEventRecorder) handleFailure(ctx context.Context, ev *event.WorkflowExecutionEvent, err error, rawOutputPolicy config.RawOutputPolicy) error {
+func (r *workflowEventRecorder) handleFailure(ctx context.Context, ev *event.WorkflowExecutionEvent, err error, eventConfig *config.EventConfig) error {
 	// Only attempt to retry sending an event in the case we tried to send raw output data inline
-	if rawOutputPolicy != config.RawOutputPolicyInline || len(ev.GetOutputUri()) > 0 {
+	if eventConfig.RawOutputPolicy != config.RawOutputPolicyInline || len(ev.GetOutputUri()) > 0 {
 		return err
 	}
 	st, ok := status.FromError(err)
@@ -48,14 +48,14 @@ func (r *workflowEventRecorder) handleFailure(ctx context.Context, ev *event.Wor
 	return r.eventRecorder.RecordWorkflowEvent(ctx, ev)
 }
 
-func (r *workflowEventRecorder) RecordWorkflowEvent(ctx context.Context, ev *event.WorkflowExecutionEvent, outputPolicy config.RawOutputPolicy) error {
+func (r *workflowEventRecorder) RecordWorkflowEvent(ctx context.Context, ev *event.WorkflowExecutionEvent, eventConfig *config.EventConfig) error {
 	var origEvent = ev
-	if outputPolicy == config.RawOutputPolicyInline && len(ev.GetOutputUri()) > 0 {
+	if eventConfig.RawOutputPolicy == config.RawOutputPolicyInline && len(ev.GetOutputUri()) > 0 {
 		outputs := &core.LiteralMap{}
 		err := r.store.ReadProtobuf(ctx, storage.DataReference(ev.GetOutputUri()), outputs)
 		if err != nil {
 			// Fall back to forwarding along outputs by reference when we can't fetch them.
-			outputPolicy = config.RawOutputPolicyReference
+			eventConfig.RawOutputPolicy = config.RawOutputPolicyReference
 		} else {
 			origEvent = proto.Clone(ev).(*event.WorkflowExecutionEvent)
 			ev.OutputResult = &event.WorkflowExecutionEvent_OutputData{
@@ -66,7 +66,12 @@ func (r *workflowEventRecorder) RecordWorkflowEvent(ctx context.Context, ev *eve
 
 	err := r.eventRecorder.RecordWorkflowEvent(ctx, ev)
 	if err != nil {
-		return r.handleFailure(ctx, origEvent, err, outputPolicy)
+		if eventConfig.FallbackToOutputReference {
+			return r.handleFailure(ctx, origEvent, err, &config.EventConfig{
+				RawOutputPolicy: config.RawOutputPolicyReference,
+			})
+		}
+		return err
 	}
 	return nil
 }
