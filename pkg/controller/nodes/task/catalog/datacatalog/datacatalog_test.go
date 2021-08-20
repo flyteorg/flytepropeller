@@ -86,7 +86,7 @@ var datasetID = &datacatalog.DatasetID{
 	Project: "project",
 	Domain:  "domain",
 	Name:    "flyte_task-name",
-	Version: "1.0.0-f136L_9X-f136L_9X",
+	Version: "1.0.0-ue5g6uuI-ue5g6uuI",
 }
 
 func assertGrpcErr(t *testing.T, err error, code codes.Code) {
