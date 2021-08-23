@@ -468,29 +468,29 @@ func TestPluginManager_Abort(t *testing.T) {
 	})
 
 	t.Run("Abort Plugin has PluginCleanupPolicy", func(t *testing.T) {
-		// common setup code
 		tctx := getMockTaskContext(PluginPhaseStarted, PluginPhaseStarted)
-		mockClient := new(extendedFakeClient)
-		mockClient.DeleteError = errors.New(
-			"kubeClient.Delete() should not be called if custom cleanup policy exists")
-
-		fc := extendedFakeClient{Client: mockClient}
-
-		// common setup code
-		mockResourceHandler := new(pluginWithCleanupPolicy)
-
 		pluginResource := &v1.Pod{}
-		mockResourceHandler.On(
-			"BuildIdentityResource", ctx, tctx.TaskExecutionMetadata(),
-			).Return(pluginResource, nil)
+
+		mockResourceHandler := new(pluginWithCleanupPolicy)
 
 		mockResourceHandler.On(
 			"OnAbort", ctx, mock.Anything, pluginResource,
-			).Return(nil)
+		).Return(nil)
+
+		mockResourceHandler.On(
+			"BuildIdentityResource", ctx, tctx.TaskExecutionMetadata(),
+		).Return(pluginResource, nil)
 
 		mockResourceHandler.On("GetProperties").Return(k8s.PluginProperties{})
 
-		pluginManager, err := NewPluginManager(ctx, dummySetupContext(fc), k8s.PluginEntry{
+		mockClient := extendedFakeClient{
+			Client: extendedFakeClient{
+				DeleteError: errors.New(
+					"kubeClient.Delete() should not be called if custom cleanup policy exists"),
+			},
+		}
+
+		pluginManager, err := NewPluginManager(ctx, dummySetupContext(mockClient), k8s.PluginEntry{
 			ID:              "x",
 			ResourceToWatch: pluginResource,
 			Plugin:          mockResourceHandler,
@@ -502,7 +502,6 @@ func TestPluginManager_Abort(t *testing.T) {
 		err = pluginManager.Abort(ctx, tctx)
 		assert.NoError(t, err)
 		mockResourceHandler.AssertNumberOfCalls(t, "OnAbort", 1)
-
 	})
 }
 
