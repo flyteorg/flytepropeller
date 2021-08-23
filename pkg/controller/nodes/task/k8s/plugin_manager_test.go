@@ -88,6 +88,31 @@ func (k8sSampleHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.Plug
 	panic("implement me")
 }
 
+type pluginWithCleanupPolicy struct {
+	mock.Mock
+}
+
+func (p *pluginWithCleanupPolicy) GetProperties() k8s.PluginProperties {
+	return p.Called().Get(0).(k8s.PluginProperties)
+}
+
+func (p *pluginWithCleanupPolicy) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
+	panic("implement me")
+}
+
+func (p *pluginWithCleanupPolicy) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (client.Object, error) {
+	args := p.Called(ctx, taskCtx)
+	return args.Get(0).(client.Object), args.Error(1)
+}
+
+func (p *pluginWithCleanupPolicy) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
+	panic("implement me")
+}
+
+func(p *pluginWithCleanupPolicy) OnAbort(ctx context.Context, kubeClient client.Client, resource client.Object) error {
+	return p.Called(ctx, kubeClient, resource).Error(0)
+}
+
 func ExampleNewPluginManager() {
 	sCtx := &pluginsCoreMock.SetupContext{}
 	fakeKubeClient := mocks.NewFakeKubeClient()
@@ -440,6 +465,44 @@ func TestPluginManager_Abort(t *testing.T) {
 
 		err = pluginManager.Abort(ctx, tctx)
 		assert.NoError(t, err)
+	})
+
+	t.Run("Abort Plugin has PluginCleanupPolicy", func(t *testing.T) {
+		// common setup code
+		tctx := getMockTaskContext(PluginPhaseStarted, PluginPhaseStarted)
+		mockClient := new(extendedFakeClient)
+		mockClient.DeleteError = errors.New(
+			"kubeClient.Delete() should not be called if custom cleanup policy exists")
+
+		fc := extendedFakeClient{Client: mockClient}
+
+		// common setup code
+		mockResourceHandler := new(pluginWithCleanupPolicy)
+
+		pluginResource := &v1.Pod{}
+		mockResourceHandler.On(
+			"BuildIdentityResource", ctx, tctx.TaskExecutionMetadata(),
+			).Return(pluginResource, nil)
+
+		mockResourceHandler.On(
+			"OnAbort", ctx, mock.Anything, pluginResource,
+			).Return(nil)
+
+		mockResourceHandler.On("GetProperties").Return(k8s.PluginProperties{})
+
+		pluginManager, err := NewPluginManager(ctx, dummySetupContext(fc), k8s.PluginEntry{
+			ID:              "x",
+			ResourceToWatch: pluginResource,
+			Plugin:          mockResourceHandler,
+		}, NewResourceMonitorIndex())
+
+		assert.NotNil(t, res)
+		assert.NoError(t, err)
+
+		err = pluginManager.Abort(ctx, tctx)
+		assert.NoError(t, err)
+		mockResourceHandler.AssertNumberOfCalls(t, "OnAbort", 1)
+
 	})
 }
 
