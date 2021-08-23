@@ -335,7 +335,13 @@ func (e PluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecution
 
 	e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
 
-	err = e.kubeClient.GetClient().Delete(ctx, o)
+	customCleanupPolicy, hasCleanupPolicy := e.plugin.(k8s.PluginCleanupPolicy)
+	if hasCleanupPolicy {
+		err = customCleanupPolicy.OnAbort(ctx, e.kubeClient.GetClient(), o)
+	} else {
+		err = e.kubeClient.GetClient().Delete(ctx, o)
+	}
+
 	if err != nil && !IsK8sObjectNotExists(err) {
 		logger.Warningf(ctx, "Failed to clear finalizers for Resource with name: %v/%v. Error: %v",
 			o.GetNamespace(), o.GetName(), err)
