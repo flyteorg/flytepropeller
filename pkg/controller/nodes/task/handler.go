@@ -6,8 +6,6 @@ import (
 	"runtime/debug"
 	"time"
 
-	config2 "github.com/flyteorg/flytepropeller/pkg/controller/config"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 
@@ -22,6 +20,7 @@ import (
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	pluginK8s "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
+	controllerConfig "github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -172,7 +171,7 @@ type Handler struct {
 	barrierCache    *barrier
 	cfg             *config.Config
 	pluginScope     promutils.Scope
-	eventConfig     *config2.EventConfig
+	eventConfig     *controllerConfig.EventConfig
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -741,7 +740,7 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 	}()
 }
 
-func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, eventConfig *config2.EventConfig, scope promutils.Scope) (*Handler, error) {
+func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, eventConfig *controllerConfig.EventConfig, scope promutils.Scope) (*Handler, error) {
 	// TODO New should take a pointer
 	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig(), scope.NewSubScope("async_catalog"))
 	if err != nil {

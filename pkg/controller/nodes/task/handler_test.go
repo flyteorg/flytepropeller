@@ -9,8 +9,6 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/events"
 
-	config2 "github.com/flyteorg/flytepropeller/pkg/controller/config"
-
 	pluginK8sMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s/mocks"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -33,6 +31,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	ioMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	pluginK8s "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
+	controllerConfig "github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
@@ -51,8 +50,8 @@ import (
 	rmConfig "github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
 )
 
-var eventConfig = &config2.EventConfig{
-	RawOutputPolicy: config2.RawOutputPolicyReference,
+var eventConfig = &controllerConfig.EventConfig{
+	RawOutputPolicy: controllerConfig.RawOutputPolicyReference,
 }
 
 func Test_task_setDefault(t *testing.T) {
@@ -349,7 +348,7 @@ type fakeBufferedTaskEventRecorder struct {
 	evs []*event.TaskExecutionEvent
 }
 
-func (f *fakeBufferedTaskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskExecutionEvent, eventConfig *config2.EventConfig) error {
+func (f *fakeBufferedTaskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskExecutionEvent, eventConfig *controllerConfig.EventConfig) error {
 	f.evs = append(f.evs, ev)
 	return nil
 }

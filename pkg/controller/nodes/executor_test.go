@@ -766,7 +766,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 
 				called := false
 				evRecorder := &eventMocks.NodeEventRecorder{}
-				evRecorder.On("RecordNodeEvent", mock.Anything, mock.MatchedBy(func(ev *event.NodeExecutionEvent) bool {
+				evRecorder.OnRecordNodeEventMatch(mock.Anything, mock.MatchedBy(func(ev *event.NodeExecutionEvent) bool {
 					assert.NotNil(t, ev)
 					assert.Equal(t, test.eventPhase, ev.Phase)
 					called = true
@@ -877,7 +877,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 
 				called := false
 				evRecorder := &eventMocks.NodeEventRecorder{}
-				evRecorder.On("RecordNodeEvent", mock.Anything, mock.MatchedBy(func(ev *event.NodeExecutionEvent) bool {
+				evRecorder.OnRecordNodeEventMatch(mock.Anything, mock.MatchedBy(func(ev *event.NodeExecutionEvent) bool {
 					assert.NotNil(t, ev)
 					assert.Equal(t, test.eventPhase, ev.Phase)
 					called = true

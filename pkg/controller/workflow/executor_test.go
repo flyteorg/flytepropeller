@@ -758,7 +758,7 @@ func TestWorkflowExecutor_HandleAbortedWorkflow(t *testing.T) {
 		var evs []*event.WorkflowExecutionEvent
 		nodeExec := &mocks2.Node{}
 		wfRecorder := &eventMocks.WorkflowEventRecorder{}
-		wfRecorder.On("RecordWorkflowEvent", mock.Anything, mock.MatchedBy(func(ev *event.WorkflowExecutionEvent) bool {
+		wfRecorder.OnRecordWorkflowEventMatch(mock.Anything, mock.MatchedBy(func(ev *event.WorkflowExecutionEvent) bool {
 			evs = append(evs, ev)
 			return true
 		}), mock.Anything).Return(nil)
@@ -797,7 +797,7 @@ func TestWorkflowExecutor_HandleAbortedWorkflow(t *testing.T) {
 		var evs []*event.WorkflowExecutionEvent
 		nodeExec := &mocks2.Node{}
 		wfRecorder := &eventMocks.WorkflowEventRecorder{}
-		wfRecorder.On("RecordWorkflowEvent", mock.Anything, mock.MatchedBy(func(ev *event.WorkflowExecutionEvent) bool {
+		wfRecorder.OnRecordWorkflowEventMatch(mock.Anything, mock.MatchedBy(func(ev *event.WorkflowExecutionEvent) bool {
 			evs = append(evs, ev)
 			return true
 		}), mock.Anything).Return(nil)
