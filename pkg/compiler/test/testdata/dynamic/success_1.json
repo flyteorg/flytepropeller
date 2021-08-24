@@ -325,8 +325,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "input",
-              "value": {
+              "name":"input",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"
@@ -340,8 +340,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "o1",
-              "value": {
+              "name":"o1",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"
@@ -351,8 +351,8 @@
               }
             },
             {
-              "key": "o2",
-              "value": {
+              "name":"o2",
+              "var": {
                 "type": {
                   "simple": "INTEGER"
                 },
@@ -360,8 +360,8 @@
               }
             },
             {
-              "key": "o0",
-              "value": {
+              "name": "o0",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"
@@ -423,8 +423,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "x",
-              "value": {
+              "name":"x",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"
@@ -434,8 +434,8 @@
               }
             },
             {
-              "key": "y",
-              "value": {
+              "name":"y",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"
@@ -449,8 +449,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "o0",
-              "value": {
+              "name": "o0",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"
@@ -512,8 +512,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "input",
-              "value": {
+              "name":"input",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"
@@ -527,8 +527,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "o0",
-              "value": {
+              "name": "o0",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"
@@ -590,8 +590,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "input",
-              "value": {
+              "name":"input",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"
@@ -605,8 +605,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "o0",
-              "value": {
+              "name": "o0",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"
@@ -661,8 +661,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "count",
-              "value": {
+              "name":"count",
+              "var": {
                 "type": {
                   "simple": "INTEGER"
                 },
@@ -670,8 +670,8 @@
               }
             },
             {
-              "key": "input",
-              "value": {
+              "name":"input",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"
@@ -685,8 +685,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "o0",
-              "value": {
+              "name": "o0",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"

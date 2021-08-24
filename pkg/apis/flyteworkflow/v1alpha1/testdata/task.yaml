@@ -5,15 +5,15 @@ interface:
   inputs:
     variables: # not backwards compatible
       -
-        key: value_to_print
-        value:
+        name: value_to_print
+        var:
           type:
             simple: INTEGER
   outputs:
     variables:
       -
-        key: out
-        value:
+        name: out
+        var:
           type:
             simple: INTEGER
 

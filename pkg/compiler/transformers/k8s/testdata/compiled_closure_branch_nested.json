@@ -13,8 +13,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "my_input",
-              "value": {
+              "name":"my_input",
+              "var": {
                 "type": {
                   "simple": "FLOAT"
                 },
@@ -26,8 +26,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "o0",
-              "value": {
+              "name": "o0",
+              "var": {
                 "type": {
                   "simple": "FLOAT"
                 },
@@ -417,8 +417,8 @@
           "inputs": {
             "variables": [
               {
-                "key": "n",
-                "value": {
+                "name": "n",
+                "var": {
                   "type": {
                     "simple": "FLOAT"
                   },
@@ -430,8 +430,8 @@
           "outputs": {
             "variables": [
               {
-                "key": "o0",
-                "value": {
+                "name": "o0",
+                "var": {
                   "type": {
                     "simple": "FLOAT"
                   },
@@ -496,8 +496,8 @@
           "inputs": {
             "variables": [
               {
-                "key": "n",
-                "value": {
+                "name": "n",
+                "var": {
                   "type": {
                     "simple": "FLOAT"
                   },
@@ -509,8 +509,8 @@
           "outputs": {
             "variables": [
               {
-                "key": "o0",
-                "value": {
+                "name": "o0",
+                "var": {
                   "type": {
                     "simple": "FLOAT"
                   },

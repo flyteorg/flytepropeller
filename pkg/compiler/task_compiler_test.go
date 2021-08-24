@@ -23,10 +23,10 @@ func TestValidateContainerCommand(t *testing.T) {
 	task := core.TaskTemplate{
 		Id: &core.Identifier{Name: "task_123"},
 		Interface: &core.TypedInterface{
-			Inputs: createVariableMap([]*core.VariableMapFieldEntry{
+			Inputs: createVariableMap([]*core.VariableMapEntry{
 				{
-					Key:   "foo",
-					Value: &core.Variable{},
+					Name: "foo",
+					Var:  &core.Variable{},
 				},
 			}),
 			Outputs: createEmptyVariableMap(),
@@ -62,10 +62,10 @@ func TestValidateK8sPod(t *testing.T) {
 	task := core.TaskTemplate{
 		Id: &core.Identifier{Name: "task_123"},
 		Interface: &core.TypedInterface{
-			Inputs: createVariableMap([]*core.VariableMapFieldEntry{
+			Inputs: createVariableMap([]*core.VariableMapEntry{
 				{
-					Key:   "foo",
-					Value: &core.Variable{},
+					Name: "foo",
+					Var:  &core.Variable{},
 				},
 			}),
 			Outputs: createEmptyVariableMap(),

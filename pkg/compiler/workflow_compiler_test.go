@@ -19,12 +19,12 @@ import (
 
 func createEmptyVariableMap() *core.VariableMap {
 	res := &core.VariableMap{
-		Variables: []*core.VariableMapFieldEntry{},
+		Variables: []*core.VariableMapEntry{},
 	}
 	return res
 }
 
-func createVariableMap(variableMap []*core.VariableMapFieldEntry) *core.VariableMap {
+func createVariableMap(variableMap []*core.VariableMapEntry) *core.VariableMap {
 	res := &core.VariableMap{
 		Variables: variableMap,
 	}
@@ -118,18 +118,18 @@ func ExampleCompileWorkflow_inputsOutputsBinding() {
 	inputWorkflow := &core.WorkflowTemplate{
 		Id: &core.Identifier{Name: "repo"},
 		Interface: &core.TypedInterface{
-			Inputs: createVariableMap([]*core.VariableMapFieldEntry{
+			Inputs: createVariableMap([]*core.VariableMapEntry{
 				{
-					Key: "wf_input",
-					Value: &core.Variable{
+					Name: "wf_input",
+					Var: &core.Variable{
 						Type: getIntegerLiteralType(),
 					},
 				},
 			}),
-			Outputs: createVariableMap([]*core.VariableMapFieldEntry{
+			Outputs: createVariableMap([]*core.VariableMapEntry{
 				{
-					Key: "wf_output",
-					Value: &core.Variable{
+					Name: "wf_output",
+					Var: &core.Variable{
 						Type: getIntegerLiteralType(),
 					},
 				},
@@ -178,24 +178,24 @@ func ExampleCompileWorkflow_inputsOutputsBinding() {
 			Id:       &core.Identifier{Name: "task_123"},
 			Metadata: &core.TaskMetadata{},
 			Interface: &core.TypedInterface{
-				Inputs: createVariableMap([]*core.VariableMapFieldEntry{
+				Inputs: createVariableMap([]*core.VariableMapEntry{
 					{
-						Key: "x",
-						Value: &core.Variable{
+						Name: "x",
+						Var: &core.Variable{
 							Type: getIntegerLiteralType(),
 						},
 					},
 					{
-						Key: "y",
-						Value: &core.Variable{
+						Name: "y",
+						Var: &core.Variable{
 							Type: getIntegerLiteralType(),
 						},
 					},
 				}),
-				Outputs: createVariableMap([]*core.VariableMapFieldEntry{
+				Outputs: createVariableMap([]*core.VariableMapEntry{
 					{
-						Key: "x",
-						Value: &core.Variable{
+						Name: "x",
+						Var: &core.Variable{
 							Type: getIntegerLiteralType(),
 						},
 					},
@@ -428,18 +428,18 @@ func TestValidateReachable(t *testing.T) {
 
 func TestValidateUnderlyingInterface(parentT *testing.T) {
 	graphIface := &core.TypedInterface{
-		Inputs: createVariableMap([]*core.VariableMapFieldEntry{
+		Inputs: createVariableMap([]*core.VariableMapEntry{
 			{
-				Key: "x",
-				Value: &core.Variable{
+				Name: "x",
+				Var: &core.Variable{
 					Type: getIntegerLiteralType(),
 				},
 			},
 		}),
-		Outputs: createVariableMap([]*core.VariableMapFieldEntry{
+		Outputs: createVariableMap([]*core.VariableMapEntry{
 			{
-				Key: "x",
-				Value: &core.Variable{
+				Name: "x",
+				Var: &core.Variable{
 					Type: getIntegerLiteralType(),
 				},
 			},
@@ -460,24 +460,24 @@ func TestValidateUnderlyingInterface(parentT *testing.T) {
 	}
 
 	taskIface := &core.TypedInterface{
-		Inputs: createVariableMap([]*core.VariableMapFieldEntry{
+		Inputs: createVariableMap([]*core.VariableMapEntry{
 			{
-				Key: "x",
-				Value: &core.Variable{
+				Name: "x",
+				Var: &core.Variable{
 					Type: getIntegerLiteralType(),
 				},
 			},
 			{
-				Key: "y",
-				Value: &core.Variable{
+				Name: "y",
+				Var: &core.Variable{
 					Type: getIntegerLiteralType(),
 				},
 			},
 		}),
-		Outputs: createVariableMap([]*core.VariableMapFieldEntry{
+		Outputs: createVariableMap([]*core.VariableMapEntry{
 			{
-				Key: "x",
-				Value: &core.Variable{
+				Name: "x",
+				Var: &core.Variable{
 					Type: getIntegerLiteralType(),
 				},
 			},
@@ -596,18 +596,18 @@ func TestCompileWorkflow(t *testing.T) {
 	inputWorkflow := &core.WorkflowTemplate{
 		Id: &core.Identifier{Name: "repo"},
 		Interface: &core.TypedInterface{
-			Inputs: createVariableMap([]*core.VariableMapFieldEntry{
+			Inputs: createVariableMap([]*core.VariableMapEntry{
 				{
-					Key: "x",
-					Value: &core.Variable{
+					Name: "x",
+					Var: &core.Variable{
 						Type: getIntegerLiteralType(),
 					},
 				},
 			}),
-			Outputs: createVariableMap([]*core.VariableMapFieldEntry{
+			Outputs: createVariableMap([]*core.VariableMapEntry{
 				{
-					Key: "x",
-					Value: &core.Variable{
+					Name: "x",
+					Var: &core.Variable{
 						Type: getIntegerLiteralType(),
 					},
 				},
@@ -641,24 +641,24 @@ func TestCompileWorkflow(t *testing.T) {
 		{
 			Id: &core.Identifier{Name: "task_123"}, Metadata: &core.TaskMetadata{},
 			Interface: &core.TypedInterface{
-				Inputs: createVariableMap([]*core.VariableMapFieldEntry{
+				Inputs: createVariableMap([]*core.VariableMapEntry{
 					{
-						Key: "x",
-						Value: &core.Variable{
+						Name: "x",
+						Var: &core.Variable{
 							Type: getIntegerLiteralType(),
 						},
 					},
 					{
-						Key: "y",
-						Value: &core.Variable{
+						Name: "y",
+						Var: &core.Variable{
 							Type: getIntegerLiteralType(),
 						},
 					},
 				}),
-				Outputs: createVariableMap([]*core.VariableMapFieldEntry{
+				Outputs: createVariableMap([]*core.VariableMapEntry{
 					{
-						Key: "x",
-						Value: &core.Variable{
+						Name: "x",
+						Var: &core.Variable{
 							Type: getIntegerLiteralType(),
 						},
 					},
@@ -689,18 +689,18 @@ func TestNoNodesFound(t *testing.T) {
 	inputWorkflow := &core.WorkflowTemplate{
 		Id: &core.Identifier{Name: "repo"},
 		Interface: &core.TypedInterface{
-			Inputs: createVariableMap([]*core.VariableMapFieldEntry{
+			Inputs: createVariableMap([]*core.VariableMapEntry{
 				{
-					Key: "x",
-					Value: &core.Variable{
+					Name: "x",
+					Var: &core.Variable{
 						Type: getIntegerLiteralType(),
 					},
 				},
 			}),
-			Outputs: createVariableMap([]*core.VariableMapFieldEntry{
+			Outputs: createVariableMap([]*core.VariableMapEntry{
 				{
-					Key: "x",
-					Value: &core.Variable{
+					Name: "x",
+					Var: &core.Variable{
 						Type: getIntegerLiteralType(),
 					},
 				},

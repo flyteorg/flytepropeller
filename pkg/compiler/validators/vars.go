@@ -55,11 +55,11 @@ func validateVarType(nodeID c.NodeID, paramName string, param *flyte.Variable,
 // Validate parameters have their required attributes set
 func validateVariables(nodeID c.NodeID, params *flyte.VariableMap, errs errors.CompileErrors) {
 	for _, e := range params.Variables {
-		if len(e.GetKey()) == 0 {
+		if len(e.GetName()) == 0 {
 			errs.Collect(errors.NewValueRequiredErr(nodeID, "paramName"))
 		}
 
-		if e.GetValue().Type == nil {
+		if e.GetVar().Type == nil {
 			errs.Collect(errors.NewValueRequiredErr(nodeID, "param.Type"))
 		}
 	}

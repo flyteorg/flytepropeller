@@ -205,14 +205,14 @@ tasks:
     interface:
       inputs:
         variables:
-          - key: value_to_print
-            value:
+          - name: value_to_print
+            var:
               type:
                 simple: INTEGER
       outputs:
         variables:
-          - key: out
-            value:
+          - name: out
+            var:
               type:
                 simple: INTEGER
     metadata:

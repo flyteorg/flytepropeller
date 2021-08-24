@@ -85,8 +85,8 @@ func buildVariablesIndex(params *core.VariableMap) (map[string]*core.Variable, s
 	paramMap := make(map[string]*core.Variable, len(params.Variables))
 	paramSet := sets.NewString()
 	for _, v := range params.Variables {
-		paramMap[v.GetKey()] = v.GetValue()
-		paramSet.Insert(v.GetKey())
+		paramMap[v.GetName()] = v.GetVar()
+		paramSet.Insert(v.GetName())
 	}
 
 	return paramMap, paramSet
@@ -94,14 +94,14 @@ func buildVariablesIndex(params *core.VariableMap) (map[string]*core.Variable, s
 
 func filterVariables(vars *core.VariableMap, varNames sets.String) *core.VariableMap {
 	res := &core.VariableMap{
-		Variables: make([]*core.VariableMapFieldEntry, 0, len(varNames)),
+		Variables: make([]*core.VariableMapEntry, 0, len(varNames)),
 	}
 
 	for _, v := range vars.Variables {
-		if varNames.Has(v.GetKey()) {
-			res.Variables = append(res.Variables, &core.VariableMapFieldEntry{
-				Key:   v.GetKey(),
-				Value: v.GetValue(),
+		if varNames.Has(v.GetName()) {
+			res.Variables = append(res.Variables, &core.VariableMapEntry{
+				Name: v.GetName(),
+				Var:  v.GetVar(),
 			})
 		}
 	}
@@ -225,10 +225,10 @@ func LiteralToBinding(l *core.Literal) *core.BindingData {
 	return nil
 }
 
-func VariableMapEntriesToMap(entries []*core.VariableMapFieldEntry) (variableMap map[string]*core.Variable) {
+func VariableMapEntriesToMap(entries []*core.VariableMapEntry) (variableMap map[string]*core.Variable) {
 	variableMap = make(map[string]*core.Variable, len(entries))
 	for _, v := range entries {
-		variableMap[v.GetKey()] = v.GetValue()
+		variableMap[v.GetName()] = v.GetVar()
 	}
 	return
 }

@@ -27,12 +27,12 @@ func init() {
 
 func createEmptyVariableMap() *core.VariableMap {
 	res := &core.VariableMap{
-		Variables: []*core.VariableMapFieldEntry{},
+		Variables: []*core.VariableMapEntry{},
 	}
 	return res
 }
 
-func createVariableMap(variableMap []*core.VariableMapFieldEntry) *core.VariableMap {
+func createVariableMap(variableMap []*core.VariableMapEntry) *core.VariableMap {
 	res := &core.VariableMap{
 		Variables: variableMap,
 	}
@@ -138,15 +138,15 @@ func generateWorkflowWithInputs(t *testing.T) {
 		Workflow: &core.WorkflowTemplate{
 			Id: &core.Identifier{Name: "workflow-with-inputs"},
 			Interface: &core.TypedInterface{
-				Inputs: createVariableMap([]*core.VariableMapFieldEntry{
+				Inputs: createVariableMap([]*core.VariableMapEntry{
 					{
-						Key: "x",
-						Value: &core.Variable{
+						Name: "x",
+						Var: &core.Variable{
 							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
 					},
 					{
-						Key: "y",
-						Value: &core.Variable{
+						Name: "y",
+						Var: &core.Variable{
 							Type: &core.LiteralType{
 								Type: &core.LiteralType_CollectionType{
 									CollectionType: &core.LiteralType{
@@ -189,16 +189,16 @@ func generateWorkflowWithInputs(t *testing.T) {
 			{
 				Id: &core.Identifier{Name: "task-1"},
 				Interface: &core.TypedInterface{
-					Inputs: createVariableMap([]*core.VariableMapFieldEntry{
+					Inputs: createVariableMap([]*core.VariableMapEntry{
 						{
-							Key: "x",
-							Value: &core.Variable{
+							Name: "x",
+							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 							},
 						},
 						{
-							Key: "y",
-							Value: &core.Variable{
+							Name: "y",
+							Var: &core.Variable{
 								Type: &core.LiteralType{
 									Type: &core.LiteralType_CollectionType{
 										CollectionType: &core.LiteralType{

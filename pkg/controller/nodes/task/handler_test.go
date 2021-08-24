@@ -411,10 +411,10 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 			},
 			Interface: &core.TypedInterface{
 				Outputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key: "x",
-							Value: &core.Variable{
+							Name: "x",
+							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_BOOLEAN}},
 							},
 						},
@@ -744,10 +744,10 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			},
 			Interface: &core.TypedInterface{
 				Outputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key: "x",
-							Value: &core.Variable{
+							Name: "x",
+							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_BOOLEAN}},
 							},
 						},
@@ -970,10 +970,10 @@ func Test_task_Handle_Barrier(t *testing.T) {
 			},
 			Interface: &core.TypedInterface{
 				Outputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key: "x",
-							Value: &core.Variable{
+							Name: "x",
+							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_BOOLEAN}},
 							},
 						},

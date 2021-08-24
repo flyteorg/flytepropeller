@@ -189,8 +189,8 @@
     "outputs": {
       "variables": [
         {
-          "key": "o0",
-          "value": {
+          "name": "o0",
+          "var": {
             "type": {
               "simple": "FLOAT"
             },
@@ -245,8 +245,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "lst",
-              "value": {
+              "name": "lst",
+              "var": {
                 "type": {
                   "collectionType": {
                     "simple": "INTEGER"
@@ -260,8 +260,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "o0",
-              "value": {
+              "name": "o0",
+              "var": {
                 "type": {
                   "simple": "FLOAT"
                 },
@@ -333,8 +333,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "cereals",
-              "value": {
+              "name": "cereals",
+              "var": {
                 "type": {
                   "collectionType": {
                     "mapValueType": {
@@ -350,8 +350,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "o0",
-              "value": {
+              "name": "o0",
+              "var": {
                 "type": {
                   "simple": "FLOAT"
                 },
@@ -423,8 +423,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "lst",
-              "value": {
+              "name": "lst",
+              "var": {
                 "type": {
                   "collectionType": {
                     "mapValueType": {
@@ -440,8 +440,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "o0",
-              "value": {
+              "name": "o0",
+              "var": {
                 "type": {
                   "simple": "BOOLEAN"
                 },
@@ -513,8 +513,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "filepath",
-              "value": {
+              "name": "filepath",
+              "var": {
                 "type": {
                   "simple": "STRING"
                 },
@@ -526,8 +526,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "o0",
-              "value": {
+              "name": "o0",
+              "var": {
                 "type": {
                   "collectionType": {
                     "mapValueType": {
@@ -603,8 +603,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "cereal",
-              "value": {
+              "name": "cereal",
+              "var": {
                 "type": {
                   "mapValueType": {
                     "simple": "STRING"
@@ -618,8 +618,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "o0",
-              "value": {
+              "name": "o0",
+              "var": {
                 "type": {
                   "simple": "INTEGER"
                 },

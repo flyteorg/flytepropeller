@@ -40,8 +40,8 @@ func makeDefaultInputs(iface *core.TypedInterface) *core.LiteralMap {
 
 	res := make(map[string]*core.Literal, len(iface.GetInputs().Variables))
 	for _, e := range iface.GetInputs().Variables {
-		val := coreutils.MustMakeDefaultLiteralForType(e.GetValue().Type)
-		res[e.GetKey()] = val
+		val := coreutils.MustMakeDefaultLiteralForType(e.GetVar().Type)
+		res[e.GetName()] = val
 	}
 
 	return &core.LiteralMap{
@@ -137,11 +137,11 @@ func TestDynamic(t *testing.T) {
 					Version: "version",
 				},
 				Interface: &core.TypedInterface{
-					Inputs: &core.VariableMap{Variables: []*core.VariableMapFieldEntry{}},
-					Outputs: &core.VariableMap{Variables: []*core.VariableMapFieldEntry{
+					Inputs: &core.VariableMap{Variables: []*core.VariableMapEntry{}},
+					Outputs: &core.VariableMap{Variables: []*core.VariableMapEntry{
 						{
-							Key: "o0",
-							Value: &core.Variable{
+							Name: "o0",
+							Var: &core.Variable{
 								Type: &core.LiteralType{
 									Type: &core.LiteralType_CollectionType{
 										CollectionType: &core.LiteralType{
@@ -166,7 +166,7 @@ func TestDynamic(t *testing.T) {
 
 			inputs := map[string]interface{}{}
 			for _, e := range compiledWfc.Primary.Template.Interface.Inputs.Variables {
-				inputs[e.GetKey()] = coreutils.MustMakeDefaultLiteralForType(e.GetValue().Type)
+				inputs[e.GetName()] = coreutils.MustMakeDefaultLiteralForType(e.GetVar().Type)
 			}
 
 			flyteWf, err := k8s.BuildFlyteWorkflow(compiledWfc,
@@ -394,7 +394,7 @@ func TestBranches(t *testing.T) {
 
 			inputs := map[string]interface{}{}
 			for _, e := range compiledWfc.Primary.Template.Interface.Inputs.Variables {
-				inputs[e.GetKey()] = coreutils.MustMakeDefaultLiteralForType(e.GetValue().Type)
+				inputs[e.GetName()] = coreutils.MustMakeDefaultLiteralForType(e.GetVar().Type)
 			}
 
 			flyteWf, err := k8s.BuildFlyteWorkflow(compiledWfc,

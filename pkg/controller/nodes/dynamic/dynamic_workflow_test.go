@@ -62,10 +62,10 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 			},
 			Interface: &core.TypedInterface{
 				Outputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key: "x",
-							Value: &core.Variable{
+							Name: "x",
+							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 							},
 						},
@@ -169,10 +169,10 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 			Closure: &admin.LaunchPlanClosure{
 				ExpectedInputs: &core.ParameterMap{},
 				ExpectedOutputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key: "x",
-							Value: &core.Variable{
+							Name: "x",
+							Var: &core.Variable{
 								Type:        &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 								Description: "output of the launch plan",
 							},
@@ -240,10 +240,10 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 			Closure: &admin.LaunchPlanClosure{
 				ExpectedInputs: &core.ParameterMap{},
 				ExpectedOutputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key: "x",
-							Value: &core.Variable{
+							Name: "x",
+							Var: &core.Variable{
 								Type:        &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 								Description: "output of the launch plan",
 							},
@@ -308,10 +308,10 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 			Closure: &admin.LaunchPlanClosure{
 				ExpectedInputs: &core.ParameterMap{},
 				ExpectedOutputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key: "x",
-							Value: &core.Variable{
+							Name: "x",
+							Var: &core.Variable{
 								Type:        &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 								Description: "output of the launch plan",
 							},
@@ -390,10 +390,10 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 			Closure: &admin.LaunchPlanClosure{
 				ExpectedInputs: &core.ParameterMap{},
 				ExpectedOutputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key: "x",
-							Value: &core.Variable{
+							Name: "x",
+							Var: &core.Variable{
 								Type:        &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 								Description: "output of the launch plan",
 							},
@@ -494,7 +494,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		composedPBStore.OnWriteRawMatch(
 			mock.MatchedBy(func(ctx context.Context) bool { return true }),
 			storage.DataReference("s3://my-s3-bucket/foo/bar/futures_compiled.pb"),
-			int64(1208),
+			int64(1207),
 			storage.Options{},
 			mock.MatchedBy(func(rdr *bytes.Reader) bool { return true })).Return(errors.New("foo"))
 
@@ -531,10 +531,10 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 			Closure: &admin.LaunchPlanClosure{
 				ExpectedInputs: &core.ParameterMap{},
 				ExpectedOutputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key: "x",
-							Value: &core.Variable{
+							Name: "x",
+							Var: &core.Variable{
 								Type:        &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 								Description: "output of the launch plan",
 							},

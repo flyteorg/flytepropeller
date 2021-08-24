@@ -85,11 +85,11 @@ func (f fakeRemoteWritePlugin) Handle(ctx context.Context, tCtx pluginCore.TaskE
 			Literals: make(map[string]*core.Literal, len(outputVars)),
 		}
 		for _, e := range outputVars {
-			l, err := coreutils.MakeDefaultLiteralForType(e.Value.Type)
+			l, err := coreutils.MakeDefaultLiteralForType(e.Var.Type)
 			if f.enableAsserts && !assert.NoError(f.t, err) {
-				assert.FailNow(f.t, "Failed to create default output for node [%v] Type [%v]", tCtx.TaskExecutionMetadata().GetTaskExecutionID(), e.Value.Type)
+				assert.FailNow(f.t, "Failed to create default output for node [%v] Type [%v]", tCtx.TaskExecutionMetadata().GetTaskExecutionID(), e.Var.Type)
 			}
-			o.Literals[e.Key] = l
+			o.Literals[e.Name] = l
 		}
 		assert.NoError(f.t, tCtx.DataStore().WriteProtobuf(ctx, tCtx.OutputWriter().GetOutputPath(), storage.Options{}, o))
 		assert.NoError(f.t, tCtx.OutputWriter().Put(ctx, ioutils.NewRemoteFileOutputReader(ctx, tCtx.DataStore(), tCtx.OutputWriter(), tCtx.MaxDatasetSizeBytes())))

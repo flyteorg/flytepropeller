@@ -32,7 +32,7 @@ func TestNilParamTask(t *testing.T) {
 	datasetID, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, datasetID.Version)
-	assert.Equal(t, "1.0.0-GKw-c0Pw-GKw-c0Pw", datasetID.Version)
+	assert.Equal(t, "1.0.0-UxVtPm0k-UxVtPm0k", datasetID.Version)
 }
 
 // Ensure that empty parameters generate the same dataset as nil parameters
@@ -74,16 +74,16 @@ func TestVariableMapOrder(t *testing.T) {
 		CacheVersion: "1.0.0",
 		TypedInterface: core.TypedInterface{
 			Inputs: &core.VariableMap{
-				Variables: []*core.VariableMapFieldEntry{
+				Variables: []*core.VariableMapEntry{
 					{
-						Key: "2",
-						Value: &core.Variable{
+						Name: "2",
+						Var: &core.Variable{
 							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 						},
 					},
 					{
-						Key: "1",
-						Value: &core.Variable{
+						Name: "1",
+						Var: &core.Variable{
 							Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 						},
 					},
@@ -94,19 +94,19 @@ func TestVariableMapOrder(t *testing.T) {
 	datasetID, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, datasetID.Version)
-	assert.Equal(t, "1.0.0-uP5bQ_ta-GKw-c0Pw", datasetID.Version)
+	assert.Equal(t, "1.0.0-UxVtPm0k-UxVtPm0k", datasetID.Version)
 
 	key.TypedInterface.Inputs = &core.VariableMap{
-		Variables: []*core.VariableMapFieldEntry{
+		Variables: []*core.VariableMapEntry{
 			{
-				Key: "2",
-				Value: &core.Variable{
+				Name: "2",
+				Var: &core.Variable{
 					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 				},
 			},
 			{
-				Key: "1",
-				Value: &core.Variable{
+				Name: "1",
+				Var: &core.Variable{
 					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 				},
 			},
@@ -115,7 +115,7 @@ func TestVariableMapOrder(t *testing.T) {
 	datasetIDDupe, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "1.0.0-uP5bQ_ta-GKw-c0Pw", datasetIDDupe.Version)
+	assert.Equal(t, "1.0.0-UxVtPm0k-UxVtPm0", datasetIDDupe.Version)
 	assert.Equal(t, datasetID.String(), datasetIDDupe.String())
 }
 

@@ -311,8 +311,8 @@
     "outputs": {
       "variables": [
         {
-          "key": "out_0",
-          "value": {
+          "name": "out_0",
+          "var": {
             "type": {
               "simple": "INTEGER"
             },
@@ -320,8 +320,8 @@
           }
         },
         {
-          "key": "out_1",
-          "value": {
+          "name": "out_1",
+          "var": {
             "type": {
               "simple": "STRING"
             },
@@ -393,8 +393,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "a",
-              "value": {
+              "name": "a",
+              "var": {
                 "type": {
                   "simple": "INTEGER"
                 },
@@ -406,8 +406,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "c",
-              "value": {
+              "name": "c",
+              "var": {
                 "type": {
                   "simple": "STRING"
                 },
@@ -415,8 +415,8 @@
               }
             },
             {
-              "key": "t1_int_output",
-              "value": {
+              "name": "t1_int_output",
+              "var": {
                 "type": {
                   "simple": "INTEGER"
                 },
@@ -480,8 +480,8 @@
         "inputs": {
           "variables": [
             {
-              "key": "a",
-              "value": {
+              "name": "a",
+              "var": {
                 "type": {
                   "simple": "STRING"
                 },
@@ -493,8 +493,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "out_0",
-              "value": {
+              "name": "out_0",
+              "var": {
                 "type": {
                   "simple": "STRING"
                 },

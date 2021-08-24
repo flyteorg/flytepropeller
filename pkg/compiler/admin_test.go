@@ -18,10 +18,10 @@ var launchPlanIdentifier = core.Identifier{
 }
 
 var inputs = core.ParameterMap{
-	Parameters: []*core.ParameterMapFieldEntry{
+	Parameters: []*core.ParameterMapEntry{
 		{
-			Key: "foo",
-			Value: &core.Parameter{
+			Name: "foo",
+			Var: &core.Parameter{
 				Var: &core.Variable{
 					Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 				},
@@ -33,10 +33,10 @@ var inputs = core.ParameterMap{
 	},
 }
 var outputs = core.VariableMap{
-	Variables: []*core.VariableMapFieldEntry{
+	Variables: []*core.VariableMapEntry{
 		{
-			Key: "foo",
-			Value: &core.Variable{
+			Name: "foo",
+			Var: &core.Variable{
 				Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING}},
 			},
 		},
@@ -65,17 +65,17 @@ func TestGetExpectedInputs(t *testing.T) {
 	launchPlan := getDummyLaunchPlan()
 	provider := NewLaunchPlanInterfaceProvider(launchPlan)
 	assert.Equal(t, 1, len((*provider.GetExpectedInputs()).Parameters))
-	assert.Equal(t, "foo", (*provider.GetExpectedInputs()).Parameters[0].GetKey())
-	assert.NotNil(t, (*provider.GetExpectedInputs()).Parameters[0].GetValue().Var.Type.GetSimple())
-	assert.EqualValues(t, "STRING", (*provider.GetExpectedInputs()).Parameters[0].GetValue().Var.Type.GetSimple().String())
-	assert.NotNil(t, (*provider.GetExpectedInputs()).Parameters[0].GetValue().GetDefault())
+	assert.Equal(t, "foo", (*provider.GetExpectedInputs()).Parameters[0].GetName())
+	assert.NotNil(t, (*provider.GetExpectedInputs()).Parameters[0].GetVar().Var.Type.GetSimple())
+	assert.EqualValues(t, "STRING", (*provider.GetExpectedInputs()).Parameters[0].GetVar().Var.Type.GetSimple().String())
+	assert.NotNil(t, (*provider.GetExpectedInputs()).Parameters[0].GetVar().GetDefault())
 }
 
 func TestGetExpectedOutputs(t *testing.T) {
 	launchPlan := getDummyLaunchPlan()
 	provider := NewLaunchPlanInterfaceProvider(launchPlan)
 	assert.Equal(t, 1, len(outputs.Variables))
-	assert.Equal(t, "foo", outputs.Variables[0].GetKey())
-	assert.EqualValues(t, outputs.Variables[0].GetValue().GetType().GetType(),
-		provider.GetExpectedOutputs().Variables[0].GetValue().GetType().GetType())
+	assert.Equal(t, "foo", outputs.Variables[0].GetName())
+	assert.EqualValues(t, outputs.Variables[0].GetVar().GetType().GetType(),
+		provider.GetExpectedOutputs().Variables[0].GetVar().GetType().GetType())
 }

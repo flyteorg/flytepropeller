@@ -18,8 +18,8 @@
         "outputs": {
           "variables": [
             {
-              "key": "o0",
-              "value": {
+              "name": "o0",
+              "var": {
                 "type": {
                   "simple": "INTEGER"
                 },
@@ -225,8 +225,8 @@
           "inputs": {
             "variables": [
               {
-                "key": "n",
-                "value": {
+                "name": "n",
+                "var": {
                   "type": {
                     "simple": "FLOAT"
                   },
@@ -238,8 +238,8 @@
           "outputs": {
             "variables": [
               {
-                "key": "o0",
-                "value": {
+                "name": "o0",
+                "var": {
                   "type": {
                     "simple": "FLOAT"
                   },
@@ -312,8 +312,8 @@
           "outputs": {
             "variables": [
               {
-                "key": "o0",
-                "value": {
+                "name": "o0",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   },
@@ -386,8 +386,8 @@
           "outputs": {
             "variables": [
               {
-                "key": "o0",
-                "value": {
+                "name": "o0",
+                "var": {
                   "type": {
                     "simple": "INTEGER"
                   },
@@ -457,8 +457,8 @@
           "inputs": {
             "variables": [
               {
-                "key": "a",
-                "value": {
+                "name": "a",
+                "var": {
                   "type": {
                     "simple": "FLOAT"
                   },
@@ -466,8 +466,8 @@
                 }
               },
               {
-                "key": "b",
-                "value": {
+                "name": "b",
+                "var": {
                   "type": {
                     "simple": "FLOAT"
                   },
@@ -479,8 +479,8 @@
           "outputs": {
             "variables": [
               {
-                "key": "o0",
-                "value": {
+                "name": "o0",
+                "var": {
                   "type": {
                     "simple": "FLOAT"
                   },
@@ -488,8 +488,8 @@
                 }
               },
               {
-                "key": "o1",
-                "value": {
+                "name": "o1",
+                "var": {
                   "type": {
                     "simple": "FLOAT"
                   },
@@ -562,8 +562,8 @@
           "outputs": {
             "variables": [
               {
-                "key": "o0",
-                "value": {
+                "name": "o0",
+                "var": {
                   "type": {
                     "simple": "BOOLEAN"
                   },
@@ -633,8 +633,8 @@
           "inputs": {
             "variables": [
               {
-                "key": "n",
-                "value": {
+                "name": "n",
+                "var": {
                   "type": {
                     "simple": "FLOAT"
                   },
@@ -646,8 +646,8 @@
           "outputs": {
             "variables": [
               {
-                "key": "o0",
-                "value": {
+                "name": "o0",
+                "var": {
                   "type": {
                     "simple": "FLOAT"
                   },

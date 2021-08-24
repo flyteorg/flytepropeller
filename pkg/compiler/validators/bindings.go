@@ -118,7 +118,7 @@ func ValidateBindings(w c.WorkflowBuilder, node c.Node, bindings []*flyte.Bindin
 	validateParamTypes bool, edgeDirection c.EdgeDirection, errs errors.CompileErrors) (resolved *flyte.VariableMap, ok bool) {
 
 	resolved = &flyte.VariableMap{
-		Variables: make([]*flyte.VariableMapFieldEntry, 0, len(bindings)),
+		Variables: make([]*flyte.VariableMapEntry, 0, len(bindings)),
 	}
 
 	providedBindings := sets.NewString()
@@ -156,9 +156,9 @@ func ValidateBindings(w c.WorkflowBuilder, node c.Node, bindings []*flyte.Bindin
 					}
 				}
 
-				resolved.Variables = append(resolved.Variables, &flyte.VariableMapFieldEntry{
-					Key: binding.GetVar(),
-					Value: &flyte.Variable{
+				resolved.Variables = append(resolved.Variables, &flyte.VariableMapEntry{
+					Name: binding.GetVar(),
+					Var: &flyte.Variable{
 						Type: resolvedType,
 					},
 				})
@@ -169,8 +169,8 @@ func ValidateBindings(w c.WorkflowBuilder, node c.Node, bindings []*flyte.Bindin
 	// If we missed binding some params, add errors
 	if params != nil {
 		for _, param := range params.Variables {
-			if !providedBindings.Has(param.GetKey()) {
-				errs.Collect(errors.NewParameterNotBoundErr(node.GetId(), param.GetKey()))
+			if !providedBindings.Has(param.GetName()) {
+				errs.Collect(errors.NewParameterNotBoundErr(node.GetId(), param.GetName()))
 			}
 		}
 	}

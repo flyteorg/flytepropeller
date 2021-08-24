@@ -19,10 +19,10 @@ func TestValidateInterface(t *testing.T) {
 			c.NodeID("node1"),
 			&core.TypedInterface{
 				Inputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{},
+					Variables: []*core.VariableMapEntry{},
 				},
 				Outputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{},
+					Variables: []*core.VariableMapEntry{},
 				},
 			},
 			errs.NewScope(),
@@ -161,10 +161,10 @@ func TestValidateUnderlyingInterface(t *testing.T) {
 					},
 					Interface: &core.TypedInterface{
 						Inputs: &core.VariableMap{
-							Variables: []*core.VariableMapFieldEntry{},
+							Variables: []*core.VariableMapEntry{},
 						},
 						Outputs: &core.VariableMap{
-							Variables: []*core.VariableMapFieldEntry{},
+							Variables: []*core.VariableMapEntry{},
 						},
 					},
 				},
@@ -179,10 +179,10 @@ func TestValidateUnderlyingInterface(t *testing.T) {
 			lp := mocks.InterfaceProvider{}
 			lp.On("GetID").Return(&core.Identifier{Name: "Ref_1"})
 			lp.On("GetExpectedInputs").Return(&core.ParameterMap{
-				Parameters: []*core.ParameterMapFieldEntry{
+				Parameters: []*core.ParameterMapEntry{
 					{
-						Key: "required",
-						Value: &core.Parameter{
+						Name: "required",
+						Var: &core.Parameter{
 							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 							},
@@ -192,8 +192,8 @@ func TestValidateUnderlyingInterface(t *testing.T) {
 						},
 					},
 					{
-						Key: "default_value",
-						Value: &core.Parameter{
+						Name: "default_value",
+						Var: &core.Parameter{
 							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 							},

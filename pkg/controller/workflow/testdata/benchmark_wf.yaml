@@ -231,14 +231,14 @@ tasks:
     interface:
       inputs:
         variables:
-          - key: value_to_print
-            value:
+          - name: value_to_print
+            var:
               type:
                 simple: INTEGER
       outputs:
         variables:
-          - key: out
-            value:
+          - name: out
+            var:
               type:
                 simple: INTEGER
     metadata:
@@ -270,22 +270,22 @@ tasks:
     interface:
       inputs:
         variables:
-          - key: date_triggered
-            value:
+          - name: date_triggered
+            var:
               type:
                 simple: DATETIME
-          - key: in_blob
-            value:
+          - name: in_blob
+            var:
               type:
                 blob:
                   dimensionality: SINGLE
-          - key: multi_blob
-            value:
+          - name: multi_blob
+            var:
               type:
                 blob:
                   dimensionality: 1
-          - key: value_to_print
-            value:
+          - name: value_to_print
+            var:
               type:
                 simple: INTEGER
       outputs:
@@ -319,25 +319,25 @@ tasks:
     interface:
       inputs:
         variables:
-          - key: values_to_add
-            value:
+          - name: values_to_add
+            var:
               type:
                 collectionType:
                   simple: INTEGER
       outputs:
         variables:
-          - key: multi_blob
-            value:
+          - name: multi_blob
+            var:
               type:
                 blob:
                   dimensionality: 1
-          - key: out
-            value:
+          - name: out
+            var:
               type:
                 blob:
                   dimensionality: 0
-          - key: out_blob
-            value:
+          - name: out_blob
+            var:
               type:
                 blob:
                   dimensionality: 0
@@ -370,14 +370,14 @@ tasks:
     interface:
       inputs:
         variables:
-          - key: values_to_print
-            value:
+          - name: values_to_print
+            var:
               type:
                 simple: INTEGER
       outputs:
         variables:
-          - key: out
-            value:
+          - name: out
+            var:
               type:
                 simple: INTEGER
     metadata:
