@@ -444,6 +444,9 @@ func TestPluginManager_Abort(t *testing.T) {
 
 		err = pluginManager.Abort(ctx, tctx)
 		assert.NoError(t, err)
+
+		// no custom cleanup policy has been specified
+		mockResourceHandler.AssertNumberOfCalls(t, "OnAbort", 0)
 	})
 
 	t.Run("Abort Pod doesn't exist", func(t *testing.T) {
