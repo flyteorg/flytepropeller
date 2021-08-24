@@ -361,7 +361,7 @@ func TestCatalog_Get(t *testing.T) {
 		mockClient.On("GetDataset",
 			ctx,
 			mock.MatchedBy(func(o *datacatalog.GetDatasetRequest) bool {
-				assert.EqualValues(t, "1.0.0-ue5g6uuI-ue5g6uuI", o.Dataset.Version)
+				assert.EqualValues(t, "1.0.0-GKw-c0Pw-GKw-c0Pw", o.Dataset.Version)
 				return true
 			}),
 		).Return(&datacatalog.GetDatasetResponse{Dataset: sampleDataSet}, nil)

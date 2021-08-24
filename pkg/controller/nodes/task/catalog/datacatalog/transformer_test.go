@@ -32,7 +32,7 @@ func TestNilParamTask(t *testing.T) {
 	datasetID, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, datasetID.Version)
-	assert.Equal(t, "1.0.0-UxVtPm0k-UxVtPm0k", datasetID.Version)
+	assert.Equal(t, "1.0.0-GKw-c0Pw-GKw-c0Pw", datasetID.Version)
 }
 
 // Ensure that empty parameters generate the same dataset as nil parameters
@@ -94,7 +94,7 @@ func TestVariableMapOrder(t *testing.T) {
 	datasetID, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, datasetID.Version)
-	assert.Equal(t, "1.0.0-UxVtPm0k-UxVtPm0k", datasetID.Version)
+	assert.Equal(t, "1.0.0-UxVtPm0k-GKw-c0Pw", datasetID.Version)
 
 	key.TypedInterface.Inputs = &core.VariableMap{
 		Variables: []*core.VariableMapEntry{
@@ -115,7 +115,7 @@ func TestVariableMapOrder(t *testing.T) {
 	datasetIDDupe, err := GenerateDatasetIDForTask(context.TODO(), key)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "1.0.0-UxVtPm0k-UxVtPm0", datasetIDDupe.Version)
+	assert.Equal(t, "1.0.0-UxVtPm0k-GKw-c0Pw", datasetIDDupe.Version)
 	assert.Equal(t, datasetID.String(), datasetIDDupe.String())
 }
 

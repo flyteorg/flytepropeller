@@ -73,7 +73,6 @@ const maxParamHashLength = 8
 // the literal and variable maps. So Nil and empty literals and variable maps should translate to these defintions
 // in order to have a consistent hash.
 var emptyLiteralMap = core.LiteralMap{Literals: map[string]*core.Literal{}}
-var emptyVariableMap = LegacyVariableMap{Variables: map[string]*core.Variable{}}
 
 func getDatasetNameFromTask(taskID core.Identifier) string {
 	return fmt.Sprintf("%s-%s", taskNamespace, taskID.Name)
@@ -129,8 +128,8 @@ func generateDataSetVersionFromTask(ctx context.Context, taskInterface core.Type
 }
 
 func generateTaskSignatureHash(ctx context.Context, taskInterface core.TypedInterface) (string, error) {
-	taskInputs := &emptyVariableMap
-	taskOutputs := &emptyVariableMap
+	taskInputs := &LegacyVariableMap{Variables: map[string]*core.Variable{}}
+	taskOutputs := &LegacyVariableMap{Variables: map[string]*core.Variable{}}
 
 	if taskInterface.Inputs != nil && len(taskInterface.Inputs.Variables) != 0 {
 		taskInputs.Variables = validators.VariableMapEntriesToMap(taskInterface.Inputs.Variables)
