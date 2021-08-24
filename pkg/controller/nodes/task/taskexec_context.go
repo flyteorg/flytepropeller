@@ -5,6 +5,9 @@ import (
 	"context"
 	"strconv"
 
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
@@ -43,6 +46,22 @@ func (te taskExecutionID) GetID() core.TaskExecutionIdentifier {
 
 func (te taskExecutionID) GetGeneratedName() string {
 	return te.execName
+}
+
+type taskOverrides struct {
+	pluginCore.TaskOverrides
+	resourceRequirements *v1.ResourceRequirements
+}
+
+func (t taskOverrides) GetResources() *v1.ResourceRequirements {
+	return t.resourceRequirements
+}
+
+func newTaskOverrides(overrides pluginCore.TaskOverrides, resourceRequirements *v1.ResourceRequirements) pluginCore.TaskOverrides {
+	return &taskOverrides{
+		TaskOverrides:        overrides,
+		resourceRequirements: resourceRequirements,
+	}
 }
 
 type taskExecutionMetadata struct {
@@ -124,6 +143,61 @@ func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 	return t.sm
 }
 
+// Validates and assigns a single resource by examining the default requests and max limit with the static resource value
+// defined by this task and node execution context.
+func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigLimit string, requests, limits v1.ResourceList) {
+	if len(execConfigLimit) == 0 || len(execConfigRequest) == 0 {
+		return
+	}
+	request, ok := requests[resourceName]
+	maxLimit := resource.MustParse(execConfigLimit)
+	if !ok {
+		requests[resourceName] = resource.MustParse(execConfigRequest)
+	} else {
+		if request.Cmp(maxLimit) == 1 {
+			// Adjust the request downwards to not exceed the max limit
+			requests[resourceName] = maxLimit
+		}
+	}
+	request = requests[resourceName]
+
+	limit, ok := limits[resourceName]
+	if !ok {
+		limits[resourceName] = requests[resourceName]
+	} else {
+		if limit.Cmp(maxLimit) == 1 {
+			// Adjust the limit downwards to not exceed the max limit
+			limits[resourceName] = maxLimit
+		}
+	}
+	if request.Cmp(limits[resourceName]) == 1 {
+		// The limit should always be greater than or equal to the request
+		requests[resourceName] = limits[resourceName]
+	}
+}
+
+// Reconciles platform-specific resource defaults requests and max limits with the static resource values
+// defined by this task and node execution context.
+func determineResourceRequirements(nCtx handler.NodeExecutionContext, executionConfig v1alpha1.ExecutionConfig) *v1.ResourceRequirements {
+	var requests v1.ResourceList
+	var limits v1.ResourceList
+	if nCtx.Node().GetResources() != nil {
+		requests = nCtx.Node().GetResources().Requests
+		limits = nCtx.Node().GetResources().Limits
+	} else {
+		requests = make(v1.ResourceList)
+		limits = make(v1.ResourceList)
+	}
+
+	assignResource(v1.ResourceCPU, executionConfig.TaskResources.Requests.CPU, executionConfig.TaskResources.Limits.CPU, requests, limits)
+	assignResource(v1.ResourceMemory, executionConfig.TaskResources.Requests.Memory, executionConfig.TaskResources.Limits.Memory, requests, limits)
+	assignResource(v1.ResourceEphemeralStorage, executionConfig.TaskResources.Requests.EphemeralStorage, executionConfig.TaskResources.Limits.EphemeralStorage, requests, limits)
+	return &v1.ResourceRequirements{
+		Requests: requests,
+		Limits:   limits,
+	}
+}
+
 func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.NodeExecutionContext, plugin pluginCore.Plugin) (*taskExecutionContext, error) {
 	id := GetTaskExecutionIdentifier(nCtx)
 
@@ -178,7 +252,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		tm: taskExecutionMetadata{
 			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
-			o:                     nCtx.Node(),
+			o:                     newTaskOverrides(nCtx.Node(), determineResourceRequirements(nCtx, nCtx.ExecutionContext().GetExecutionConfig())),
 			maxAttempts:           maxAttempts,
 		},
 		rm: resourcemanager.GetTaskResourceManager(

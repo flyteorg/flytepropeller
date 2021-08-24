@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
@@ -20,7 +22,7 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
-	v12 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -64,7 +66,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	ns.OnGetDataDir().Return(storage.DataReference("data-dir"))
 	ns.OnGetOutputDir().Return(storage.DataReference("output-dir"))
 
-	res := &v12.ResourceRequirements{}
+	res := &corev1.ResourceRequirements{}
 	n := &flyteMocks.ExecutableNode{}
 	n.OnGetResources().Return(res)
 	ma := 5
@@ -180,4 +182,194 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	})
 	anotherTaskExecCtx, _ := tk.newTaskExecutionContext(context.TODO(), nCtx, anotherPlugin)
 	assert.Equal(t, anotherTaskExecCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), "fpmmhh6q")
+}
+
+func TestAssignResource(t *testing.T) {
+	type testCase struct {
+		name              string
+		execConfigRequest string
+		execConfigLimit   string
+		requests          corev1.ResourceList
+		limits            corev1.ResourceList
+		expectedRequests  corev1.ResourceList
+		expectedLimits    corev1.ResourceList
+	}
+	var testCases = []testCase{
+		{
+			name:              "nothing to do",
+			execConfigRequest: "10",
+			execConfigLimit:   "100",
+			requests: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("1"),
+			},
+			limits: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("1"),
+			},
+			expectedRequests: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("1"),
+			},
+			expectedLimits: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("1"),
+			},
+		},
+		{
+			name:              "assign request",
+			execConfigRequest: "10",
+			execConfigLimit:   "100",
+			requests:          corev1.ResourceList{},
+			limits: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("100"),
+			},
+			expectedRequests: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("10"),
+			},
+			expectedLimits: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("100"),
+			},
+		},
+		{
+			name:              "adjust request",
+			execConfigRequest: "10",
+			execConfigLimit:   "100",
+			requests: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("1000"),
+			},
+			limits: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("100"),
+			},
+			expectedRequests: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("100"),
+			},
+			expectedLimits: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("100"),
+			},
+		},
+		{
+			name:              "assign limit",
+			execConfigRequest: "10",
+			execConfigLimit:   "100",
+			requests: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("10"),
+			},
+			limits: corev1.ResourceList{},
+			expectedRequests: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("10"),
+			},
+			expectedLimits: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("10"),
+			},
+		},
+		{
+			name:              "adjust limit based on exec config",
+			execConfigRequest: "10",
+			execConfigLimit:   "100",
+			requests: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("10"),
+			},
+			limits: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("1000"),
+			},
+			expectedRequests: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("10"),
+			},
+			expectedLimits: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("100"),
+			},
+		},
+		{
+			name:              "assigned request should not exceed limit",
+			execConfigRequest: "10",
+			execConfigLimit:   "100",
+			requests:          corev1.ResourceList{},
+			limits: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("1"),
+			},
+			expectedRequests: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("1"),
+			},
+			expectedLimits: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("1"),
+			},
+		},
+	}
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			assignResource(corev1.ResourceCPU, test.execConfigRequest, test.execConfigLimit, test.requests, test.limits)
+			assert.EqualValues(t, test.requests, test.expectedRequests)
+			assert.EqualValues(t, test.limits, test.expectedLimits)
+		})
+	}
+}
+
+func TestDetermineResourceRequirements(t *testing.T) {
+	node := &flyteMocks.ExecutableNode{}
+	node.OnGetResources().Return(&corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("1"),
+			corev1.ResourceMemory: resource.MustParse("10"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:              resource.MustParse("1"),
+			corev1.ResourceMemory:           resource.MustParse("100"),
+			corev1.ResourceEphemeralStorage: resource.MustParse("10"),
+		},
+	})
+	nodeExecutionContext := &nodeMocks.NodeExecutionContext{}
+	nodeExecutionContext.OnNode().Return(node)
+
+	executionConfig := v1alpha1.ExecutionConfig{
+		TaskResources: v1alpha1.TaskResources{
+			Requests: v1alpha1.TaskResourceSpec{
+				CPU:              "1",
+				Memory:           "20",
+				EphemeralStorage: "50",
+			},
+			Limits: v1alpha1.TaskResourceSpec{
+				CPU:              "2",
+				Memory:           "50",
+				EphemeralStorage: "100",
+			},
+		},
+	}
+	resources := determineResourceRequirements(nodeExecutionContext, executionConfig)
+	assert.EqualValues(t, resources.Requests, corev1.ResourceList{
+		corev1.ResourceCPU:              resource.MustParse("1"),
+		corev1.ResourceMemory:           resource.MustParse("10"),
+		corev1.ResourceEphemeralStorage: resource.MustParse("10"),
+	})
+	assert.EqualValues(t, resources.Limits, corev1.ResourceList{
+		corev1.ResourceCPU:              resource.MustParse("1"),
+		corev1.ResourceMemory:           resource.MustParse("50"),
+		corev1.ResourceEphemeralStorage: resource.MustParse("10"),
+	})
+}
+
+func TestGetResources(t *testing.T) {
+	node := &flyteMocks.ExecutableNode{}
+	node.OnGetResources().Return(&corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("1"),
+			corev1.ResourceMemory: resource.MustParse("10"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:              resource.MustParse("1"),
+			corev1.ResourceMemory:           resource.MustParse("100"),
+			corev1.ResourceEphemeralStorage: resource.MustParse("10"),
+		},
+	})
+
+	computedRequirements := &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("2"),
+			corev1.ResourceMemory: resource.MustParse("20"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:              resource.MustParse("2"),
+			corev1.ResourceMemory:           resource.MustParse("200"),
+			corev1.ResourceEphemeralStorage: resource.MustParse("20"),
+		},
+	}
+
+	overrides := newTaskOverrides(node, computedRequirements)
+	assert.EqualValues(t, overrides.GetResources(), computedRequirements)
 }

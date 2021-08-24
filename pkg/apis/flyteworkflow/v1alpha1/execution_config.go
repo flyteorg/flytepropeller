@@ -24,9 +24,23 @@ type ExecutionConfig struct {
 	MaxParallelism uint32
 	// Defines execution behavior for processing nodes.
 	RecoveryExecution WorkflowExecutionIdentifier
+	// Defines the resource requests and limits specified for this task that ought to be applied at execution time.
+	TaskResources TaskResources
 }
 
 type TaskPluginOverride struct {
 	PluginIDs             []string
 	MissingPluginBehavior admin.PluginOverride_MissingPluginBehavior
+}
+
+type TaskResourceSpec struct {
+	CPU              string
+	Memory           string
+	EphemeralStorage string
+	Storage          string
+}
+
+type TaskResources struct {
+	Requests TaskResourceSpec
+	Limits   TaskResourceSpec
 }
