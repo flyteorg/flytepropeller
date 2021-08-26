@@ -182,7 +182,7 @@ func TestValidateUnderlyingInterface(t *testing.T) {
 				Parameters: []*core.ParameterMapEntry{
 					{
 						Name: "required",
-						Var: &core.Parameter{
+						Parameter: &core.Parameter{
 							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 							},
@@ -193,7 +193,7 @@ func TestValidateUnderlyingInterface(t *testing.T) {
 					},
 					{
 						Name: "default_value",
-						Var: &core.Parameter{
+						Parameter: &core.Parameter{
 							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 							},
