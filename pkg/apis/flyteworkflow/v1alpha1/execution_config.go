@@ -43,6 +43,10 @@ type TaskResourceSpec struct {
 	Storage          resource.Quantity
 }
 
+func (in *TaskResourceSpec) DeepCopyInto(out *TaskResourceSpec) {
+	*out = *in
+}
+
 // Defines the complete closure of compute resources a task can request and apply as limits.
 type TaskResources struct {
 	// If the node where a task is running has enough of a resource available, a
@@ -50,4 +54,8 @@ type TaskResources struct {
 	Requests TaskResourceSpec
 	// A hard limit, a task cannot consume resources greater than the limit specifies.
 	Limits TaskResourceSpec
+}
+
+func (in *TaskResources) DeepCopyInto(out *TaskResources) {
+	*out = *in
 }
