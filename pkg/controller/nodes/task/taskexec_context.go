@@ -35,6 +35,8 @@ var (
 const IDMaxLength = 50
 const DefaultMaxAttempts = 1
 
+var emptyQuantity = resource.MustParse("0")
+
 type taskExecutionID struct {
 	execName string
 	id       *core.TaskExecutionIdentifier
@@ -145,14 +147,14 @@ func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 
 // Validates and assigns a single resource by examining the default requests and max limit with the static resource value
 // defined by this task and node execution context.
-func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigLimit string, requests, limits v1.ResourceList) {
-	if len(execConfigLimit) == 0 || len(execConfigRequest) == 0 {
+func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigLimit resource.Quantity, requests, limits v1.ResourceList) {
+	if execConfigLimit.Equal(emptyQuantity) || execConfigRequest.Equal(emptyQuantity) {
 		return
 	}
 	request, ok := requests[resourceName]
-	maxLimit := resource.MustParse(execConfigLimit)
+	maxLimit := execConfigLimit
 	if !ok {
-		requests[resourceName] = resource.MustParse(execConfigRequest)
+		requests[resourceName] = execConfigRequest
 	} else {
 		if request.Cmp(maxLimit) == 1 {
 			// Adjust the request downwards to not exceed the max limit
@@ -178,7 +180,7 @@ func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigL
 
 // Reconciles platform-specific resource defaults requests and max limits with the static resource values
 // defined by this task and node execution context.
-func determineResourceRequirements(nCtx handler.NodeExecutionContext, executionConfig v1alpha1.ExecutionConfig) *v1.ResourceRequirements {
+func determineResourceRequirements(nCtx handler.NodeExecutionContext, taskResources v1alpha1.TaskResources) *v1.ResourceRequirements {
 	var requests v1.ResourceList
 	var limits v1.ResourceList
 	if nCtx.Node().GetResources() != nil {
@@ -189,9 +191,9 @@ func determineResourceRequirements(nCtx handler.NodeExecutionContext, executionC
 		limits = make(v1.ResourceList)
 	}
 
-	assignResource(v1.ResourceCPU, executionConfig.TaskResources.Requests.CPU, executionConfig.TaskResources.Limits.CPU, requests, limits)
-	assignResource(v1.ResourceMemory, executionConfig.TaskResources.Requests.Memory, executionConfig.TaskResources.Limits.Memory, requests, limits)
-	assignResource(v1.ResourceEphemeralStorage, executionConfig.TaskResources.Requests.EphemeralStorage, executionConfig.TaskResources.Limits.EphemeralStorage, requests, limits)
+	assignResource(v1.ResourceCPU, taskResources.Requests.CPU, taskResources.Limits.CPU, requests, limits)
+	assignResource(v1.ResourceMemory, taskResources.Requests.Memory, taskResources.Limits.Memory, requests, limits)
+	assignResource(v1.ResourceEphemeralStorage, taskResources.Requests.EphemeralStorage, taskResources.Limits.EphemeralStorage, requests, limits)
 	return &v1.ResourceRequirements{
 		Requests: requests,
 		Limits:   limits,
@@ -252,7 +254,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		tm: taskExecutionMetadata{
 			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
-			o:                     newTaskOverrides(nCtx.Node(), determineResourceRequirements(nCtx, nCtx.ExecutionContext().GetExecutionConfig())),
+			o:                     newTaskOverrides(nCtx.Node(), determineResourceRequirements(nCtx, nCtx.ExecutionContext().GetExecutionConfig().TaskResources)),
 			maxAttempts:           maxAttempts,
 		},
 		rm: resourcemanager.GetTaskResourceManager(

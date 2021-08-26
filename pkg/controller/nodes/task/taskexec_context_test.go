@@ -187,8 +187,8 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 func TestAssignResource(t *testing.T) {
 	type testCase struct {
 		name              string
-		execConfigRequest string
-		execConfigLimit   string
+		execConfigRequest resource.Quantity
+		execConfigLimit   resource.Quantity
 		requests          corev1.ResourceList
 		limits            corev1.ResourceList
 		expectedRequests  corev1.ResourceList
@@ -197,8 +197,8 @@ func TestAssignResource(t *testing.T) {
 	var testCases = []testCase{
 		{
 			name:              "nothing to do",
-			execConfigRequest: "10",
-			execConfigLimit:   "100",
+			execConfigRequest: resource.MustParse("10"),
+			execConfigLimit:   resource.MustParse("100"),
 			requests: corev1.ResourceList{
 				corev1.ResourceCPU: resource.MustParse("1"),
 			},
@@ -214,8 +214,8 @@ func TestAssignResource(t *testing.T) {
 		},
 		{
 			name:              "assign request",
-			execConfigRequest: "10",
-			execConfigLimit:   "100",
+			execConfigRequest: resource.MustParse("10"),
+			execConfigLimit:   resource.MustParse("100"),
 			requests:          corev1.ResourceList{},
 			limits: corev1.ResourceList{
 				corev1.ResourceCPU: resource.MustParse("100"),
@@ -229,8 +229,8 @@ func TestAssignResource(t *testing.T) {
 		},
 		{
 			name:              "adjust request",
-			execConfigRequest: "10",
-			execConfigLimit:   "100",
+			execConfigRequest: resource.MustParse("10"),
+			execConfigLimit:   resource.MustParse("100"),
 			requests: corev1.ResourceList{
 				corev1.ResourceCPU: resource.MustParse("1000"),
 			},
@@ -246,8 +246,8 @@ func TestAssignResource(t *testing.T) {
 		},
 		{
 			name:              "assign limit",
-			execConfigRequest: "10",
-			execConfigLimit:   "100",
+			execConfigRequest: resource.MustParse("10"),
+			execConfigLimit:   resource.MustParse("100"),
 			requests: corev1.ResourceList{
 				corev1.ResourceCPU: resource.MustParse("10"),
 			},
@@ -261,8 +261,8 @@ func TestAssignResource(t *testing.T) {
 		},
 		{
 			name:              "adjust limit based on exec config",
-			execConfigRequest: "10",
-			execConfigLimit:   "100",
+			execConfigRequest: resource.MustParse("10"),
+			execConfigLimit:   resource.MustParse("100"),
 			requests: corev1.ResourceList{
 				corev1.ResourceCPU: resource.MustParse("10"),
 			},
@@ -278,8 +278,8 @@ func TestAssignResource(t *testing.T) {
 		},
 		{
 			name:              "assigned request should not exceed limit",
-			execConfigRequest: "10",
-			execConfigLimit:   "100",
+			execConfigRequest: resource.MustParse("10"),
+			execConfigLimit:   resource.MustParse("100"),
 			requests:          corev1.ResourceList{},
 			limits: corev1.ResourceList{
 				corev1.ResourceCPU: resource.MustParse("1"),
@@ -317,21 +317,19 @@ func TestDetermineResourceRequirements(t *testing.T) {
 	nodeExecutionContext := &nodeMocks.NodeExecutionContext{}
 	nodeExecutionContext.OnNode().Return(node)
 
-	executionConfig := v1alpha1.ExecutionConfig{
-		TaskResources: v1alpha1.TaskResources{
-			Requests: v1alpha1.TaskResourceSpec{
-				CPU:              "1",
-				Memory:           "20",
-				EphemeralStorage: "50",
-			},
-			Limits: v1alpha1.TaskResourceSpec{
-				CPU:              "2",
-				Memory:           "50",
-				EphemeralStorage: "100",
-			},
+	taskResources := v1alpha1.TaskResources{
+		Requests: v1alpha1.TaskResourceSpec{
+			CPU:              resource.MustParse("1"),
+			Memory:           resource.MustParse("20"),
+			EphemeralStorage: resource.MustParse("50"),
+		},
+		Limits: v1alpha1.TaskResourceSpec{
+			CPU:              resource.MustParse("2"),
+			Memory:           resource.MustParse("50"),
+			EphemeralStorage: resource.MustParse("100"),
 		},
 	}
-	resources := determineResourceRequirements(nodeExecutionContext, executionConfig)
+	resources := determineResourceRequirements(nodeExecutionContext, taskResources)
 	assert.EqualValues(t, resources.Requests, corev1.ResourceList{
 		corev1.ResourceCPU:              resource.MustParse("1"),
 		corev1.ResourceMemory:           resource.MustParse("10"),
