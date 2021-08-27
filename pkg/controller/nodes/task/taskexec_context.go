@@ -151,8 +151,8 @@ func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigL
 	if execConfigLimit.Equal(emptyQuantity) {
 		return
 	}
-	request, ok := requests[resourceName]
 	maxLimit := execConfigLimit
+	request, ok := requests[resourceName]
 	if !ok {
 		// Requests aren't required so we glean it from the execution config value (when possible)
 		if !execConfigRequest.Equal(emptyQuantity) {
