@@ -148,33 +148,42 @@ func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 // Validates and assigns a single resource by examining the default requests and max limit with the static resource value
 // defined by this task and node execution context.
 func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigLimit resource.Quantity, requests, limits v1.ResourceList) {
-	if execConfigLimit.Equal(emptyQuantity) || execConfigRequest.Equal(emptyQuantity) {
+	if execConfigLimit.Equal(emptyQuantity) {
 		return
 	}
 	request, ok := requests[resourceName]
 	maxLimit := execConfigLimit
 	if !ok {
-		requests[resourceName] = execConfigRequest
+		// Requests aren't required so we glean it from the execution config value (when possible)
+		if !execConfigRequest.Equal(emptyQuantity) {
+			request = execConfigRequest
+		}
 	} else {
 		if request.Cmp(maxLimit) == 1 {
 			// Adjust the request downwards to not exceed the max limit
-			requests[resourceName] = maxLimit
+			request = maxLimit
 		}
 	}
-	request = requests[resourceName]
 
 	limit, ok := limits[resourceName]
 	if !ok {
-		limits[resourceName] = requests[resourceName]
+		limit = request
 	} else {
 		if limit.Cmp(maxLimit) == 1 {
 			// Adjust the limit downwards to not exceed the max limit
-			limits[resourceName] = maxLimit
+			limit = maxLimit
 		}
 	}
-	if request.Cmp(limits[resourceName]) == 1 {
+	if request.Cmp(limit) == 1 {
 		// The limit should always be greater than or equal to the request
-		requests[resourceName] = limits[resourceName]
+		request = limit
+	}
+
+	if !request.Equal(emptyQuantity) {
+		requests[resourceName] = request
+	}
+	if !limit.Equal(emptyQuantity) {
+		limits[resourceName] = limit
 	}
 }
 
@@ -194,6 +203,7 @@ func determineResourceRequirements(nCtx handler.NodeExecutionContext, taskResour
 	assignResource(v1.ResourceCPU, taskResources.Requests.CPU, taskResources.Limits.CPU, requests, limits)
 	assignResource(v1.ResourceMemory, taskResources.Requests.Memory, taskResources.Limits.Memory, requests, limits)
 	assignResource(v1.ResourceEphemeralStorage, taskResources.Requests.EphemeralStorage, taskResources.Limits.EphemeralStorage, requests, limits)
+	assignResource(v1.ResourceStorage, taskResources.Requests.Storage, taskResources.Limits.Storage, requests, limits)
 	return &v1.ResourceRequirements{
 		Requests: requests,
 		Limits:   limits,

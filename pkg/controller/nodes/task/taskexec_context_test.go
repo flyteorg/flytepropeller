@@ -312,6 +312,7 @@ func TestDetermineResourceRequirements(t *testing.T) {
 			corev1.ResourceCPU:              resource.MustParse("1"),
 			corev1.ResourceMemory:           resource.MustParse("100"),
 			corev1.ResourceEphemeralStorage: resource.MustParse("10"),
+			corev1.ResourceStorage:          resource.MustParse("20"),
 		},
 	})
 	nodeExecutionContext := &nodeMocks.NodeExecutionContext{}
@@ -327,6 +328,7 @@ func TestDetermineResourceRequirements(t *testing.T) {
 			CPU:              resource.MustParse("2"),
 			Memory:           resource.MustParse("50"),
 			EphemeralStorage: resource.MustParse("100"),
+			Storage:          resource.MustParse("15"),
 		},
 	}
 	resources := determineResourceRequirements(nodeExecutionContext, taskResources)
@@ -339,6 +341,7 @@ func TestDetermineResourceRequirements(t *testing.T) {
 		corev1.ResourceCPU:              resource.MustParse("1"),
 		corev1.ResourceMemory:           resource.MustParse("50"),
 		corev1.ResourceEphemeralStorage: resource.MustParse("10"),
+		corev1.ResourceStorage:          resource.MustParse("15"),
 	})
 }
 
