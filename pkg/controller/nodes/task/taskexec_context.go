@@ -154,7 +154,7 @@ func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigL
 			request = execConfigRequest
 		}
 	} else {
-		if request.Cmp(maxLimit) == 1 && !maxLimit.IsZero(){
+		if request.Cmp(maxLimit) == 1 && !maxLimit.IsZero() {
 			// Adjust the request downwards to not exceed the max limit if it's set.
 			request = maxLimit
 		}
@@ -185,14 +185,15 @@ func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigL
 // Reconciles platform-specific resource defaults requests and max limits with the static resource values
 // defined by this task and node execution context.
 func determineResourceRequirements(nCtx handler.NodeExecutionContext, taskResources v1alpha1.TaskResources) *v1.ResourceRequirements {
-	var requests v1.ResourceList
-	var limits v1.ResourceList
+	var requests = make(v1.ResourceList)
+	var limits = make(v1.ResourceList)
 	if nCtx.Node().GetResources() != nil {
-		requests = nCtx.Node().GetResources().Requests
-		limits = nCtx.Node().GetResources().Limits
-	} else {
-		requests = make(v1.ResourceList)
-		limits = make(v1.ResourceList)
+		if nCtx.Node().GetResources().Requests != nil {
+			requests = nCtx.Node().GetResources().Requests
+		}
+		if nCtx.Node().GetResources().Limits != nil {
+			limits = nCtx.Node().GetResources().Limits
+		}
 	}
 
 	assignResource(v1.ResourceCPU, taskResources.Requests.CPU, taskResources.Limits.CPU, requests, limits)

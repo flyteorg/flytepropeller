@@ -66,7 +66,10 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	ns.OnGetDataDir().Return(storage.DataReference("data-dir"))
 	ns.OnGetOutputDir().Return(storage.DataReference("output-dir"))
 
-	res := &corev1.ResourceRequirements{}
+	res := &corev1.ResourceRequirements{
+		Requests: make(corev1.ResourceList),
+		Limits:   make(corev1.ResourceList),
+	}
 	n := &flyteMocks.ExecutableNode{}
 	n.OnGetResources().Return(res)
 	ma := 5
