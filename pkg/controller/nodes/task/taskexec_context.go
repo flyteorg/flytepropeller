@@ -35,8 +35,6 @@ var (
 const IDMaxLength = 50
 const DefaultMaxAttempts = 1
 
-var emptyQuantity = resource.MustParse("0")
-
 type taskExecutionID struct {
 	execName string
 	id       *core.TaskExecutionIdentifier
@@ -148,19 +146,16 @@ func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 // Validates and assigns a single resource by examining the default requests and max limit with the static resource value
 // defined by this task and node execution context.
 func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigLimit resource.Quantity, requests, limits v1.ResourceList) {
-	if execConfigLimit.Equal(emptyQuantity) {
-		return
-	}
 	maxLimit := execConfigLimit
 	request, ok := requests[resourceName]
 	if !ok {
 		// Requests aren't required so we glean it from the execution config value (when possible)
-		if !execConfigRequest.Equal(emptyQuantity) {
+		if !execConfigRequest.IsZero() {
 			request = execConfigRequest
 		}
 	} else {
-		if request.Cmp(maxLimit) == 1 {
-			// Adjust the request downwards to not exceed the max limit
+		if request.Cmp(maxLimit) == 1 && !maxLimit.IsZero(){
+			// Adjust the request downwards to not exceed the max limit if it's set.
 			request = maxLimit
 		}
 	}
@@ -169,8 +164,8 @@ func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigL
 	if !ok {
 		limit = request
 	} else {
-		if limit.Cmp(maxLimit) == 1 {
-			// Adjust the limit downwards to not exceed the max limit
+		if limit.Cmp(maxLimit) == 1 && !maxLimit.IsZero() {
+			// Adjust the limit downwards to not exceed the max limit if it's set.
 			limit = maxLimit
 		}
 	}
@@ -179,10 +174,10 @@ func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigL
 		request = limit
 	}
 
-	if !request.Equal(emptyQuantity) {
+	if !request.IsZero() {
 		requests[resourceName] = request
 	}
-	if !limit.Equal(emptyQuantity) {
+	if !limit.IsZero() {
 		limits[resourceName] = limit
 	}
 }
