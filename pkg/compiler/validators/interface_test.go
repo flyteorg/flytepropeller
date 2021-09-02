@@ -1,8 +1,9 @@
 package validators
 
 import (
-	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"testing"
+
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	c "github.com/flyteorg/flytepropeller/pkg/compiler/common"

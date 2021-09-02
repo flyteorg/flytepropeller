@@ -1,3 +1,5 @@
+// Code generated
+
 package datacatalog
 
 import (
