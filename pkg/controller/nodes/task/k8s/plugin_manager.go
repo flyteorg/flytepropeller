@@ -335,11 +335,29 @@ func (e PluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecution
 
 	e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
 
-	customCleanupPolicy, hasCleanupPolicy := e.plugin.(k8s.PluginCleanupPolicy)
-	if hasCleanupPolicy {
-		err = customCleanupPolicy.OnAbort(ctx, e.kubeClient.GetClient(), o)
-	} else {
+	deleteResource := true
+	abortOverride, hasAbortOverride := e.plugin.(k8s.PluginAbortOverride)
+	var behavior k8s.AbortBehavior
+	if hasAbortOverride {
+		behavior, err = abortOverride.OnAbort(ctx, tCtx, o)
+		deleteResource = err == nil && behavior.DeleteResource
+	}
+
+	if err != nil {
+	} else if deleteResource {
 		err = e.kubeClient.GetClient().Delete(ctx, o)
+	} else {
+		if behavior.Patch != nil && behavior.Update == nil {
+			err = e.kubeClient.GetClient().Patch(ctx, o, behavior.Patch.Patch, behavior.Patch.Options...)
+		} else if behavior.Update != nil {
+			err = e.kubeClient.GetClient().Update(ctx, o, behavior.Update.Options...)
+		} else {
+			err = errors.Errorf(errors.RuntimeFailure, "AbortBehavior for resource %v must specify either a Patch and an Update operation if Delete is set to false. Only one can be supplied.", o.GetName())
+		}
+		if behavior.DeleteOnErr && err != nil {
+			logger.Warningf(ctx, "Failed to apply AbortBehavior for resource %v with error %v. Will attempt to delete resource.", o.GetName(), err)
+			err = e.kubeClient.GetClient().Delete(ctx, o)
+		}
 	}
 
 	if err != nil && !IsK8sObjectNotExists(err) {

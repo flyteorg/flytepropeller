@@ -45,6 +45,7 @@ type extendedFakeClient struct {
 	CreateError error
 	GetError    error
 	DeleteError error
+	PatchError  error
 }
 
 func (e extendedFakeClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
@@ -69,6 +70,14 @@ func (e extendedFakeClient) Delete(ctx context.Context, obj client.Object, opts 
 	return e.Client.Delete(ctx, obj, opts...)
 }
 
+func (e extendedFakeClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	if e.PatchError != nil {
+		return e.PatchError
+	}
+
+	return e.Client.Patch(ctx, obj, patch, opts...)
+}
+
 type k8sSampleHandler struct {
 }
 
@@ -88,29 +97,30 @@ func (k8sSampleHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.Plug
 	panic("implement me")
 }
 
-type pluginWithCleanupPolicy struct {
+type pluginWithAbortOverride struct {
 	mock.Mock
 }
 
-func (p *pluginWithCleanupPolicy) GetProperties() k8s.PluginProperties {
+func (p *pluginWithAbortOverride) GetProperties() k8s.PluginProperties {
 	return p.Called().Get(0).(k8s.PluginProperties)
 }
 
-func (p *pluginWithCleanupPolicy) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
+func (p *pluginWithAbortOverride) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 	panic("implement me")
 }
 
-func (p *pluginWithCleanupPolicy) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (client.Object, error) {
+func (p *pluginWithAbortOverride) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (client.Object, error) {
 	args := p.Called(ctx, taskCtx)
 	return args.Get(0).(client.Object), args.Error(1)
 }
 
-func (p *pluginWithCleanupPolicy) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
+func (p *pluginWithAbortOverride) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
 	panic("implement me")
 }
 
-func(p *pluginWithCleanupPolicy) OnAbort(ctx context.Context, kubeClient client.Client, resource client.Object) error {
-	return p.Called(ctx, kubeClient, resource).Error(0)
+func (p *pluginWithAbortOverride) OnAbort(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, resource client.Object) (behavior k8s.AbortBehavior, err error) {
+	args := p.Called(ctx, tCtx, resource)
+	return args.Get(0).(k8s.AbortBehavior), args.Error(1)
 }
 
 func ExampleNewPluginManager() {
@@ -470,15 +480,20 @@ func TestPluginManager_Abort(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Abort Plugin has PluginCleanupPolicy", func(t *testing.T) {
+	t.Run("Abort Plugin has PluginAbortOverride", func(t *testing.T) {
 		tctx := getMockTaskContext(PluginPhaseStarted, PluginPhaseStarted)
 		pluginResource := &v1.Pod{}
 
-		mockResourceHandler := new(pluginWithCleanupPolicy)
+		abortBehavior := k8s.AbortBehaviorPatchDefaultResource(k8s.PatchResourceOperation{
+			Patch: nil,
+			Options: nil,
+		}, false)
+
+		mockResourceHandler := new(pluginWithAbortOverride)
 
 		mockResourceHandler.On(
-			"OnAbort", ctx, mock.Anything, pluginResource,
-		).Return(nil)
+			"OnAbort", ctx, tctx, pluginResource,
+		).Return(abortBehavior, nil)
 
 		mockResourceHandler.On(
 			"BuildIdentityResource", ctx, tctx.TaskExecutionMetadata(),
@@ -486,10 +501,12 @@ func TestPluginManager_Abort(t *testing.T) {
 
 		mockResourceHandler.On("GetProperties").Return(k8s.PluginProperties{})
 
+		expectedErr := errors.New("client-side patch error")
 		mockClient := extendedFakeClient{
 			Client: extendedFakeClient{
 				DeleteError: errors.New(
 					"kubeClient.Delete() should not be called if custom cleanup policy exists"),
+				PatchError: expectedErr,
 			},
 		}
 
@@ -503,8 +520,7 @@ func TestPluginManager_Abort(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = pluginManager.Abort(ctx, tctx)
-		assert.NoError(t, err)
-		mockResourceHandler.AssertNumberOfCalls(t, "OnAbort", 1)
+		assert.Equal(t, expectedErr, err)
 	})
 }
 
