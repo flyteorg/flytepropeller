@@ -94,11 +94,24 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 		phase = core.NodeExecution_RUNNING
 	}
 
-	nev := &event.NodeExecutionEvent{
-		Id:         nodeExecID,
-		Phase:      phase,
-		InputUri:   inputPath,
-		OccurredAt: occurredTime,
+	var nev *event.NodeExecutionEvent
+	if nodeExecID.NodeId == v1alpha1.StartNodeID {
+		nev = &event.NodeExecutionEvent{
+			Id:       nodeExecID,
+			Phase:    ToNodeExecEventPhase(info.GetPhase()),
+			InputUri: v1alpha1.GetOutputsFile(status.GetOutputDir()).String(),
+			OutputResult: ToNodeExecOutput(&handler.OutputInfo{
+				OutputURI: v1alpha1.GetOutputsFile(status.GetOutputDir()),
+			}),
+			OccurredAt: occurredTime,
+		}
+	} else {
+		nev = &event.NodeExecutionEvent{
+			Id:         nodeExecID,
+			Phase:      ToNodeExecEventPhase(info.GetPhase()),
+			InputUri:   inputPath,
+			OccurredAt: occurredTime,
+		}
 	}
 
 	if eventVersion == v1alpha1.EventVersion0 && status.GetParentTaskID() != nil {
