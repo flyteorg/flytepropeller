@@ -1671,7 +1671,7 @@ func TestNodeExecutionEventStartNode(t *testing.T) {
 	nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
 	ns.OnGetParentTaskID().Return(tID)
 	ns.OnGetOutputDirMatch(mock.Anything).Return("dummy://dummyOutUrl")
-	ev, err := ToNodeExecutionEvent(nID, p, inputReader, ns, v1alpha1.EventVersion0, parentInfo, n)
+	ev, err := ToNodeExecutionEvent(nID, p, "reference", ns, v1alpha1.EventVersion0, parentInfo, n)
 	assert.NoError(t, err)
 	assert.Equal(t, "start-node", ev.Id.NodeId)
 	assert.Equal(t, execID, ev.Id.ExecutionId)
