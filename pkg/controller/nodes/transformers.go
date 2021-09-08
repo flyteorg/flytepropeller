@@ -95,13 +95,16 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	}
 
 	var nev *event.NodeExecutionEvent
+	// Start node is special case where the Inputs and Outputs are the same and hence here we copy the Output info
+	// in both the InputUri and OutputUri
 	if nodeExecID.NodeId == v1alpha1.StartNodeID {
+		outputsFile := v1alpha1.GetOutputsFile(status.GetOutputDir())
 		nev = &event.NodeExecutionEvent{
 			Id:       nodeExecID,
 			Phase:    phase,
-			InputUri: v1alpha1.GetOutputsFile(status.GetOutputDir()).String(),
+			InputUri: outputsFile.String(),
 			OutputResult: ToNodeExecOutput(&handler.OutputInfo{
-				OutputURI: v1alpha1.GetOutputsFile(status.GetOutputDir()),
+				OutputURI: outputsFile,
 			}),
 			OccurredAt: occurredTime,
 		}
