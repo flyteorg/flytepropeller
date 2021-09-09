@@ -230,9 +230,9 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			}
 		}
 
-		// ExecutionNotFound error is returned when flyteadmin is missing the workflow. This is not a valid state
-		// unless we are experiencing a race condition where the workflow has not yet been inserted
-		// into the db (ie. workflow phase is WorkflowPhaseReady).
+		// ExecutionNotFound error is returned when flyteadmin is missing the workflow. This is not
+		// a valid state unless we are experiencing a race condition where the workflow has not yet
+		// been inserted into the db (ie. workflow phase is WorkflowPhaseReady).
 		if err != nil {
 			e, ok := err.(*errors.WorkflowErrorWithCause)
 			if ok && eventsErr.IsNotFound(e.Cause()) && w.GetExecutionStatus().GetPhase() != v1alpha1.WorkflowPhaseReady {
