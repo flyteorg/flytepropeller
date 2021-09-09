@@ -405,7 +405,11 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 			return err
 		}
 		if err := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, wStatus, newStatus); err != nil {
-			return err
+			// Ignore ExecutionNotFound error to allow graceful failure
+			e, ok := err.(*errors.WorkflowErrorWithCause)
+			if !ok && eventsErr.IsNotFound(e.Cause()) {
+				return err
+			}
 		}
 		c.k8sRecorder.Event(w, corev1.EventTypeWarning, v1alpha1.WorkflowPhaseFailed.String(), "Workflow failed.")
 		return nil
