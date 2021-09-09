@@ -10,13 +10,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	eventErrors "github.com/flyteorg/flyteidl/clients/go/events/errors"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 	workflowErrors "github.com/flyteorg/flytepropeller/pkg/controller/workflow/errors"
+	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
@@ -466,8 +466,8 @@ func TestPropeller_Handle(t *testing.T) {
 	t.Run("failOnExecutionNotFoundError", func(t *testing.T) {
 		assert.NoError(t, s.Create(ctx, &v1alpha1.FlyteWorkflow{
 			ObjectMeta: v1.ObjectMeta{
-				Name:       name,
-				Namespace:  namespace,
+				Name:      name,
+				Namespace: namespace,
 			},
 			WorkflowSpec: &v1alpha1.WorkflowSpec{
 				ID: "w1",
@@ -479,9 +479,9 @@ func TestPropeller_Handle(t *testing.T) {
 		}))
 		exec.HandleCb = func(ctx context.Context, w *v1alpha1.FlyteWorkflow) error {
 			return workflowErrors.Wrapf(workflowErrors.EventRecordingError, "",
-				&eventErrors.EventError {
-					Code: eventErrors.ExecutionNotFound,
-					Cause: nil,
+				&eventErrors.EventError{
+					Code:    eventErrors.ExecutionNotFound,
+					Cause:   nil,
 					Message: "The execution that the event belongs to does not exist",
 				}, "failed to transition phase")
 		}
