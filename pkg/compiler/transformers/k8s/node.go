@@ -3,6 +3,8 @@ package k8s
 import (
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/common"
@@ -27,7 +29,7 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 	}
 
 	var task *core.TaskTemplate
-	var resources *core.Resources
+	var overrides *corev1.ResourceRequirements
 	if n.GetTaskNode() != nil {
 		taskID := n.GetTaskNode().GetReferenceId().String()
 		// TODO: Use task index for quick lookup
@@ -44,13 +46,16 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		}
 
 		if n.GetTaskNode().Overrides != nil && n.GetTaskNode().Overrides.Resources != nil {
-			resources = n.GetTaskNode().Overrides.Resources
-		} else {
-			resources = getResources(task)
+			var err error
+			overrides, err = utils.ToK8sResourceRequirements(n.GetTaskNode().Overrides.Resources)
+			if err != nil {
+				errs.Collect(errors.NewWorkflowBuildError(err))
+				return nil, false
+			}
 		}
 	}
 
-	res, err := utils.ToK8sResourceRequirements(resources)
+	res, err := utils.ToK8sResourceRequirements(getResources(task))
 	if err != nil {
 		errs.Collect(errors.NewWorkflowBuildError(err))
 		return nil, false
@@ -83,6 +88,7 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		RetryStrategy:     computeRetryStrategy(n, task),
 		ExecutionDeadline: timeout,
 		Resources:         res,
+		ResourceOverrides: overrides,
 		OutputAliases:     toAliasValueArray(n.GetOutputAliases()),
 		InputBindings:     toBindingValueArray(n.GetInputs()),
 		ActiveDeadline:    activeDeadline,

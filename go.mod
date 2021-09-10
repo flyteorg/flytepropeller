@@ -7,7 +7,7 @@ require (
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/fatih/color v1.10.0
 	github.com/flyteorg/flyteidl v0.20.1
-	github.com/flyteorg/flyteplugins v0.5.75-0.20210907194730-c664714a3cef
+	github.com/flyteorg/flyteplugins v0.5.75-0.20210910174331-04c81dab163a
 	github.com/flyteorg/flytestdlib v0.3.34
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-redis/redis v6.15.7+incompatible
@@ -32,4 +32,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.8.2
 )
 
-replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
+replace (
+	github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
+	github.com/flyteorg/flyteplugins => /Users/katrina/go/src/github.com/flyteorg/flyteplugins
+)

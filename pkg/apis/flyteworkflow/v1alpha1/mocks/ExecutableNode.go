@@ -317,6 +317,40 @@ func (_m *ExecutableNode) GetOutputAlias() []v1alpha1.Alias {
 	return r0
 }
 
+type ExecutableNode_GetResourceOverrides struct {
+	*mock.Call
+}
+
+func (_m ExecutableNode_GetResourceOverrides) Return(_a0 *v1.ResourceRequirements) *ExecutableNode_GetResourceOverrides {
+	return &ExecutableNode_GetResourceOverrides{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableNode) OnGetResourceOverrides() *ExecutableNode_GetResourceOverrides {
+	c := _m.On("GetResourceOverrides")
+	return &ExecutableNode_GetResourceOverrides{Call: c}
+}
+
+func (_m *ExecutableNode) OnGetResourceOverridesMatch(matchers ...interface{}) *ExecutableNode_GetResourceOverrides {
+	c := _m.On("GetResourceOverrides", matchers...)
+	return &ExecutableNode_GetResourceOverrides{Call: c}
+}
+
+// GetResourceOverrides provides a mock function with given fields:
+func (_m *ExecutableNode) GetResourceOverrides() *v1.ResourceRequirements {
+	ret := _m.Called()
+
+	var r0 *v1.ResourceRequirements
+	if rf, ok := ret.Get(0).(func() *v1.ResourceRequirements); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ResourceRequirements)
+		}
+	}
+
+	return r0
+}
+
 type ExecutableNode_GetResources struct {
 	*mock.Call
 }

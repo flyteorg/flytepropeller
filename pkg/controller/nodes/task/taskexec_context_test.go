@@ -306,7 +306,7 @@ func TestAssignResource(t *testing.T) {
 
 func TestDetermineResourceRequirements(t *testing.T) {
 	node := &flyteMocks.ExecutableNode{}
-	node.OnGetResources().Return(&corev1.ResourceRequirements{
+	resourceRequirements := &corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("1"),
 			corev1.ResourceMemory: resource.MustParse("10"),
@@ -317,7 +317,7 @@ func TestDetermineResourceRequirements(t *testing.T) {
 			corev1.ResourceEphemeralStorage: resource.MustParse("10"),
 			corev1.ResourceStorage:          resource.MustParse("20"),
 		},
-	})
+	}
 	nodeExecutionContext := &nodeMocks.NodeExecutionContext{}
 	nodeExecutionContext.OnNode().Return(node)
 
@@ -334,7 +334,7 @@ func TestDetermineResourceRequirements(t *testing.T) {
 			Storage:          resource.MustParse("15"),
 		},
 	}
-	resources := determineResourceRequirements(nodeExecutionContext, taskResources)
+	resources := determineResourceRequirements(resourceRequirements, taskResources)
 	assert.EqualValues(t, resources.Requests, corev1.ResourceList{
 		corev1.ResourceCPU:              resource.MustParse("1"),
 		corev1.ResourceMemory:           resource.MustParse("10"),
@@ -350,7 +350,7 @@ func TestDetermineResourceRequirements(t *testing.T) {
 
 func TestGetResources(t *testing.T) {
 	node := &flyteMocks.ExecutableNode{}
-	node.OnGetResources().Return(&corev1.ResourceRequirements{
+	resourceOverrides := &corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("1"),
 			corev1.ResourceMemory: resource.MustParse("10"),
@@ -360,20 +360,20 @@ func TestGetResources(t *testing.T) {
 			corev1.ResourceMemory:           resource.MustParse("100"),
 			corev1.ResourceEphemeralStorage: resource.MustParse("10"),
 		},
-	})
+	}
 
-	computedRequirements := &corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("2"),
-			corev1.ResourceMemory: resource.MustParse("20"),
+	taskResources := v1alpha1.TaskResources{
+		Requests: v1alpha1.TaskResourceSpec{
+			CPU:    resource.MustParse("2"),
+			Memory: resource.MustParse("20"),
 		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:              resource.MustParse("2"),
-			corev1.ResourceMemory:           resource.MustParse("200"),
-			corev1.ResourceEphemeralStorage: resource.MustParse("20"),
+		Limits: v1alpha1.TaskResourceSpec{
+			CPU:              resource.MustParse("2"),
+			Memory:           resource.MustParse("200"),
+			EphemeralStorage: resource.MustParse("20"),
 		},
 	}
 
-	overrides := newTaskOverrides(node, computedRequirements)
-	assert.EqualValues(t, overrides.GetResources(), computedRequirements)
+	overrides := newTaskOverrides(node, resourceOverrides, taskResources)
+	assert.EqualValues(t, overrides.GetResources(), resourceOverrides)
 }

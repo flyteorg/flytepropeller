@@ -57,7 +57,12 @@ func (t taskOverrides) GetResources() *v1.ResourceRequirements {
 	return t.resourceRequirements
 }
 
-func newTaskOverrides(overrides pluginCore.TaskOverrides, resourceRequirements *v1.ResourceRequirements) pluginCore.TaskOverrides {
+func newTaskOverrides(overrides pluginCore.TaskOverrides, resourceRequirements *v1.ResourceRequirements, taskResources v1alpha1.TaskResources) pluginCore.TaskOverrides {
+	resourceOverrides := resourceRequirements
+	if resourceOverrides != nil {
+		// We only validate node resource overrides to ensure requests are less than limits, etc when overrides exist.
+		resourceOverrides = determineResourceRequirements(resourceRequirements, taskResources)
+	}
 	return &taskOverrides{
 		TaskOverrides:        overrides,
 		resourceRequirements: resourceRequirements,
@@ -69,6 +74,7 @@ type taskExecutionMetadata struct {
 	taskExecID  taskExecutionID
 	o           pluginCore.TaskOverrides
 	maxAttempts uint32
+	resources   *v1.ResourceRequirements
 }
 
 func (t taskExecutionMetadata) GetTaskExecutionID() pluginCore.TaskExecutionID {
@@ -81,6 +87,10 @@ func (t taskExecutionMetadata) GetOverrides() pluginCore.TaskOverrides {
 
 func (t taskExecutionMetadata) GetMaxAttempts() uint32 {
 	return t.maxAttempts
+}
+
+func (t taskExecutionMetadata) GetResources() *v1.ResourceRequirements {
+	return t.resources
 }
 
 type taskExecutionContext struct {
@@ -184,22 +194,44 @@ func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigL
 
 // Reconciles platform-specific resource defaults requests and max limits with the static resource values
 // defined by this task and node execution context.
-func determineResourceRequirements(nCtx handler.NodeExecutionContext, taskResources v1alpha1.TaskResources) *v1.ResourceRequirements {
+func determineResourceRequirements(resourceRequirements *v1.ResourceRequirements, taskResources v1alpha1.TaskResources) *v1.ResourceRequirements {
 	var requests = make(v1.ResourceList)
 	var limits = make(v1.ResourceList)
-	if nCtx.Node().GetResources() != nil {
-		if nCtx.Node().GetResources().Requests != nil {
-			requests = nCtx.Node().GetResources().Requests
-		}
-		if nCtx.Node().GetResources().Limits != nil {
-			limits = nCtx.Node().GetResources().Limits
-		}
+	if resourceRequirements != nil {
+		requests = resourceRequirements.Requests
+		limits = resourceRequirements.Limits
 	}
 
 	assignResource(v1.ResourceCPU, taskResources.Requests.CPU, taskResources.Limits.CPU, requests, limits)
 	assignResource(v1.ResourceMemory, taskResources.Requests.Memory, taskResources.Limits.Memory, requests, limits)
 	assignResource(v1.ResourceEphemeralStorage, taskResources.Requests.EphemeralStorage, taskResources.Limits.EphemeralStorage, requests, limits)
 	assignResource(v1.ResourceStorage, taskResources.Requests.Storage, taskResources.Limits.Storage, requests, limits)
+	return &v1.ResourceRequirements{
+		Requests: requests,
+		Limits:   limits,
+	}
+}
+
+func convertTaskResourceSpec(taskSpec v1alpha1.TaskResourceSpec) v1.ResourceList {
+	results := v1.ResourceList{}
+	if !taskSpec.CPU.IsZero() {
+		results[v1.ResourceCPU] = taskSpec.CPU
+	}
+	if !taskSpec.Memory.IsZero() {
+		results[v1.ResourceMemory] = taskSpec.Memory
+	}
+	if !taskSpec.Storage.IsZero() {
+		results[v1.ResourceStorage] = taskSpec.Storage
+	}
+	if !taskSpec.EphemeralStorage.IsZero() {
+		results[v1.ResourceEphemeralStorage] = taskSpec.EphemeralStorage
+	}
+	return results
+}
+
+func convertResourceRequirements(taskResources v1alpha1.TaskResources) *v1.ResourceRequirements {
+	requests := convertTaskResourceSpec(taskResources.Requests)
+	limits := convertTaskResourceSpec(taskResources.Limits)
 	return &v1.ResourceRequirements{
 		Requests: requests,
 		Limits:   limits,
@@ -260,8 +292,9 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		tm: taskExecutionMetadata{
 			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
-			o:                     newTaskOverrides(nCtx.Node(), determineResourceRequirements(nCtx, nCtx.ExecutionContext().GetExecutionConfig().TaskResources)),
+			o:                     newTaskOverrides(nCtx.Node(), nCtx.Node().GetResourceOverrides(), nCtx.ExecutionContext().GetExecutionConfig().TaskResources),
 			maxAttempts:           maxAttempts,
+			resources:             determineResourceRequirements(nCtx.Node().GetResources(), nCtx.ExecutionContext().GetExecutionConfig().TaskResources),
 		},
 		rm: resourcemanager.GetTaskResourceManager(
 			t.resourceManager, resourceNamespacePrefix, id),
