@@ -46,6 +46,7 @@ type extendedFakeClient struct {
 	GetError    error
 	DeleteError error
 	PatchError  error
+	UpdateError error
 }
 
 func (e extendedFakeClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
@@ -76,6 +77,14 @@ func (e extendedFakeClient) Patch(ctx context.Context, obj client.Object, patch 
 	}
 
 	return e.Client.Patch(ctx, obj, patch, opts...)
+}
+
+func (e extendedFakeClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	if e.UpdateError != nil {
+		return e.UpdateError
+	}
+
+	return e.Client.Update(ctx, obj, opts...)
 }
 
 type k8sSampleHandler struct {
@@ -236,6 +245,32 @@ func dummySetupContext(fakeClient client.Client) pluginsCore.SetupContext {
 	setupContext.On("MetricsScope").Return(promutils.NewTestScope())
 
 	return setupContext
+}
+
+func buildPluginWithAbortOverride(ctx context.Context, tctx pluginsCore.TaskExecutionContext, abortBehavior k8s.AbortBehavior, client client.Client) (*PluginManager, error) {
+	pluginResource := &v1.Pod{}
+
+	mockResourceHandler := new(pluginWithAbortOverride)
+
+	mockResourceHandler.On(
+		"OnAbort", ctx, tctx, pluginResource,
+	).Return(abortBehavior, nil)
+
+	mockResourceHandler.On(
+		"BuildIdentityResource", ctx, tctx.TaskExecutionMetadata(),
+	).Return(pluginResource, nil)
+
+	mockResourceHandler.On("GetProperties").Return(k8s.PluginProperties{})
+
+	mockClient := extendedFakeClient{
+		Client: client,
+	}
+
+	return NewPluginManager(ctx, dummySetupContext(mockClient), k8s.PluginEntry{
+		ID:              "x",
+		ResourceToWatch: pluginResource,
+		Plugin:          mockResourceHandler,
+	}, NewResourceMonitorIndex())
 }
 
 func TestK8sTaskExecutor_Handle_LaunchResource(t *testing.T) {
@@ -480,41 +515,61 @@ func TestPluginManager_Abort(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Abort Plugin has PluginAbortOverride", func(t *testing.T) {
+	t.Run("Abort Plugin has Patch PluginAbortOverride", func(t *testing.T) {
 		tctx := getMockTaskContext(PluginPhaseStarted, PluginPhaseStarted)
-		pluginResource := &v1.Pod{}
-
-		abortBehavior := k8s.AbortBehaviorPatchDefaultResource(k8s.PatchResourceOperation{
-			Patch:   nil,
-			Options: nil,
-		}, false)
-
-		mockResourceHandler := new(pluginWithAbortOverride)
-
-		mockResourceHandler.On(
-			"OnAbort", ctx, tctx, pluginResource,
-		).Return(abortBehavior, nil)
-
-		mockResourceHandler.On(
-			"BuildIdentityResource", ctx, tctx.TaskExecutionMetadata(),
-		).Return(pluginResource, nil)
-
-		mockResourceHandler.On("GetProperties").Return(k8s.PluginProperties{})
-
 		expectedErr := errors.New("client-side patch error")
-		mockClient := extendedFakeClient{
-			Client: extendedFakeClient{
+		pluginManager, err := buildPluginWithAbortOverride(
+			ctx,
+			tctx,
+			k8s.AbortBehaviorPatchDefaultResource(k8s.PatchResourceOperation{
+				Patch:   nil,
+				Options: nil,
+			}, false),
+			extendedFakeClient{
 				DeleteError: errors.New(
 					"kubeClient.Delete() should not be called if custom cleanup policy exists"),
 				PatchError: expectedErr,
-			},
-		}
+			})
 
-		pluginManager, err := NewPluginManager(ctx, dummySetupContext(mockClient), k8s.PluginEntry{
-			ID:              "x",
-			ResourceToWatch: pluginResource,
-			Plugin:          mockResourceHandler,
-		}, NewResourceMonitorIndex())
+		assert.NotNil(t, res)
+		assert.NoError(t, err)
+
+		err = pluginManager.Abort(ctx, tctx)
+		assert.Equal(t, expectedErr, err)
+	})
+
+	t.Run("Abort Plugin has Update PluginAbortOverride", func(t *testing.T) {
+		tctx := getMockTaskContext(PluginPhaseStarted, PluginPhaseStarted)
+		expectedErr := errors.New("client-side update error")
+		pluginManager, err := buildPluginWithAbortOverride(
+			ctx,
+			tctx,
+			k8s.AbortBehaviorUpdateDefaultResource(k8s.UpdateResourceOperation{
+				Options: nil,
+			}, false),
+			extendedFakeClient{
+				DeleteError: errors.New(
+					"kubeClient.Delete() should not be called if custom cleanup policy exists"),
+				UpdateError: expectedErr,
+			})
+
+		assert.NotNil(t, res)
+		assert.NoError(t, err)
+
+		err = pluginManager.Abort(ctx, tctx)
+		assert.Equal(t, expectedErr, err)
+	})
+
+	t.Run("Abort Plugin has Delete PluginAbortOverride", func(t *testing.T) {
+		tctx := getMockTaskContext(PluginPhaseStarted, PluginPhaseStarted)
+		expectedErr := errors.New("client-side delete error")
+		pluginManager, err := buildPluginWithAbortOverride(
+			ctx,
+			tctx,
+			k8s.AbortBehaviorDeleteDefaultResource(),
+			extendedFakeClient{
+				DeleteError: expectedErr,
+			})
 
 		assert.NotNil(t, res)
 		assert.NoError(t, err)
