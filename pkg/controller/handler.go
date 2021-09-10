@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 	"runtime/debug"
@@ -233,7 +232,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		// ExecutionNotFound error is returned when flyteadmin is missing the workflow. This is not
 		// a valid state unless we are experiencing a race condition where the workflow has not yet
 		// been inserted into the db (ie. workflow phase is WorkflowPhaseReady).
-		if err != nil && errors.Is(err, &eventsErr.EventError{Code: eventsErr.ExecutionNotFound}) && w.GetExecutionStatus().GetPhase() != v1alpha1.WorkflowPhaseReady {
+		if err != nil && eventsErr.IsNotFound(err) && w.GetExecutionStatus().GetPhase() != v1alpha1.WorkflowPhaseReady {
 			t.Stop()
 			logger.Errorf(ctx, "Failed to process workflow, failing: %s", err)
 

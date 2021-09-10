@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -22,7 +21,7 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
-	workflowErr "github.com/flyteorg/flytepropeller/pkg/controller/workflow/errors"
+	"github.com/flyteorg/flytepropeller/pkg/controller/workflow/errors"
 	"github.com/flyteorg/flytepropeller/pkg/utils"
 )
 
@@ -87,7 +86,7 @@ func (c *workflowExecutor) handleReadyWorkflow(ctx context.Context, w *v1alpha1.
 	if startNode == nil {
 		return StatusFailing(&core.ExecutionError{
 			Kind:    core.ExecutionError_SYSTEM,
-			Code:    workflowErr.BadSpecificationError.String(),
+			Code:    errors.BadSpecificationError.String(),
 			Message: "StartNode not found."}), nil
 	}
 
@@ -141,7 +140,7 @@ func (c *workflowExecutor) handleRunningWorkflow(ctx context.Context, w *v1alpha
 	if startNode == nil {
 		return StatusFailing(&core.ExecutionError{
 			Kind:    core.ExecutionError_SYSTEM,
-			Code:    workflowErr.IllegalStateError.String(),
+			Code:    errors.IllegalStateError.String(),
 			Message: "Start node not found"}), nil
 	}
 	execcontext := executors.NewExecutionContext(w, w, w, nil, executors.InitializeControlFlow())
@@ -245,7 +244,7 @@ func convertToExecutionError(err *core.ExecutionError, alternateErr *core.Execut
 			err = alternateErr
 		} else {
 			err = &core.ExecutionError{
-				Code:    workflowErr.RuntimeExecutionError.String(),
+				Code:    errors.RuntimeExecutionError.String(),
 				Message: "Unknown error",
 				Kind:    core.ExecutionError_UNKNOWN,
 			}
@@ -326,7 +325,7 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 			wStatus.UpdatePhase(v1alpha1.WorkflowPhaseAborted, "", nil)
 			wfEvent.OccurredAt = utils.GetProtoTime(wStatus.GetStoppedAt())
 		default:
-			return workflowErr.Errorf(workflowErr.IllegalStateError, "", "Illegal transition from [%v] -> [%v]", wStatus.GetPhase().String(), toStatus.TransitionToPhase.String())
+			return errors.Errorf(errors.IllegalStateError, "", "Illegal transition from [%v] -> [%v]", wStatus.GetPhase().String(), toStatus.TransitionToPhase.String())
 		}
 
 		if recordingErr := c.IdempotentReportEvent(ctx, wfEvent); recordingErr != nil {
@@ -342,7 +341,7 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 				return nil
 			}
 			logger.Warningf(ctx, "Event recording failed. Error [%s]", recordingErr.Error())
-			return workflowErr.Wrapf(workflowErr.EventRecordingError, "", recordingErr, "failed to publish event")
+			return errors.Wrapf(errors.EventRecordingError, "", recordingErr, "failed to publish event")
 		}
 	}
 	return nil
@@ -407,7 +406,7 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 		}
 		if err := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, wStatus, newStatus); err != nil {
 			// Ignore ExecutionNotFound error to allow graceful failure
-			if err != nil && !errors.Is(err, &eventsErr.EventError{Code: eventsErr.ExecutionNotFound}) {
+			if err != nil && !eventsErr.IsNotFound(err) {
 				return err
 			}
 		}
@@ -424,7 +423,7 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 		c.k8sRecorder.Event(w, corev1.EventTypeWarning, v1alpha1.WorkflowPhaseFailed.String(), "Workflow failed.")
 		return nil
 	default:
-		return workflowErr.Errorf(workflowErr.IllegalStateError, w.ID, "Unsupported state [%s] for workflow", w.GetExecutionStatus().GetPhase().String())
+		return errors.Errorf(errors.IllegalStateError, w.ID, "Unsupported state [%s] for workflow", w.GetExecutionStatus().GetPhase().String())
 	}
 }
 
@@ -449,7 +448,7 @@ func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha
 		}
 
 		if w.Status.FailedAttempts > maxRetries {
-			err = workflowErr.Errorf(workflowErr.RuntimeExecutionError, w.GetID(), "max number of system retry attempts [%d/%d] exhausted. Last known status message: %v", w.Status.FailedAttempts, maxRetries, w.Status.Message)
+			err = errors.Errorf(errors.RuntimeExecutionError, w.GetID(), "max number of system retry attempts [%d/%d] exhausted. Last known status message: %v", w.Status.FailedAttempts, maxRetries, w.Status.Message)
 		}
 
 		var status Status
@@ -477,12 +476,12 @@ func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha
 func (c *workflowExecutor) cleanupRunningNodes(ctx context.Context, w v1alpha1.ExecutableWorkflow, reason string) error {
 	startNode := w.StartNode()
 	if startNode == nil {
-		return workflowErr.Errorf(workflowErr.IllegalStateError, w.GetID(), "StartNode not found in running workflow?")
+		return errors.Errorf(errors.IllegalStateError, w.GetID(), "StartNode not found in running workflow?")
 	}
 
 	execcontext := executors.NewExecutionContext(w, w, w, nil, executors.InitializeControlFlow())
 	if err := c.nodeExecutor.AbortHandler(ctx, execcontext, w, w, startNode, reason); err != nil {
-		return workflowErr.Errorf(workflowErr.CausedByError, w.GetID(), "Failed to propagate Abort for workflow. Error: %v", err)
+		return errors.Errorf(errors.CausedByError, w.GetID(), "Failed to propagate Abort for workflow. Error: %v", err)
 	}
 
 	return nil
