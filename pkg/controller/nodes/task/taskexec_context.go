@@ -65,7 +65,7 @@ func newTaskOverrides(overrides pluginCore.TaskOverrides, resourceRequirements *
 	}
 	return &taskOverrides{
 		TaskOverrides:        overrides,
-		resourceRequirements: resourceRequirements,
+		resourceRequirements: resourceOverrides,
 	}
 }
 
@@ -157,10 +157,10 @@ func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 // defined by this task and node execution context.
 func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigLimit resource.Quantity, requests, limits v1.ResourceList) {
 	if requests == nil {
-		requests = make(v1.ResourceList, 0)
+		requests = make(v1.ResourceList)
 	}
 	if limits == nil {
-		limits = make(v1.ResourceList, 0)
+		limits = make(v1.ResourceList)
 	}
 	maxLimit := execConfigLimit
 	request, ok := requests[resourceName]
@@ -212,32 +212,6 @@ func determineResourceRequirements(resourceRequirements *v1.ResourceRequirements
 	assignResource(v1.ResourceMemory, taskResources.Requests.Memory, taskResources.Limits.Memory, requests, limits)
 	assignResource(v1.ResourceEphemeralStorage, taskResources.Requests.EphemeralStorage, taskResources.Limits.EphemeralStorage, requests, limits)
 	assignResource(v1.ResourceStorage, taskResources.Requests.Storage, taskResources.Limits.Storage, requests, limits)
-	return &v1.ResourceRequirements{
-		Requests: requests,
-		Limits:   limits,
-	}
-}
-
-func convertTaskResourceSpec(taskSpec v1alpha1.TaskResourceSpec) v1.ResourceList {
-	results := v1.ResourceList{}
-	if !taskSpec.CPU.IsZero() {
-		results[v1.ResourceCPU] = taskSpec.CPU
-	}
-	if !taskSpec.Memory.IsZero() {
-		results[v1.ResourceMemory] = taskSpec.Memory
-	}
-	if !taskSpec.Storage.IsZero() {
-		results[v1.ResourceStorage] = taskSpec.Storage
-	}
-	if !taskSpec.EphemeralStorage.IsZero() {
-		results[v1.ResourceEphemeralStorage] = taskSpec.EphemeralStorage
-	}
-	return results
-}
-
-func convertResourceRequirements(taskResources v1alpha1.TaskResources) *v1.ResourceRequirements {
-	requests := convertTaskResourceSpec(taskResources.Requests)
-	limits := convertTaskResourceSpec(taskResources.Limits)
 	return &v1.ResourceRequirements{
 		Requests: requests,
 		Limits:   limits,
