@@ -156,6 +156,12 @@ func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
 // Validates and assigns a single resource by examining the default requests and max limit with the static resource value
 // defined by this task and node execution context.
 func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigLimit resource.Quantity, requests, limits v1.ResourceList) {
+	if requests == nil {
+		requests = make(v1.ResourceList, 0)
+	}
+	if limits == nil {
+		limits = make(v1.ResourceList, 0)
+	}
 	maxLimit := execConfigLimit
 	request, ok := requests[resourceName]
 	if !ok {
