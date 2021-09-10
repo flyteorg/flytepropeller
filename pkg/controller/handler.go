@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"runtime/debug"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-	"github.com/flyteorg/flytepropeller/pkg/controller/workflow/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 
 	"github.com/flyteorg/flytestdlib/logger"
@@ -233,25 +233,22 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		// ExecutionNotFound error is returned when flyteadmin is missing the workflow. This is not
 		// a valid state unless we are experiencing a race condition where the workflow has not yet
 		// been inserted into the db (ie. workflow phase is WorkflowPhaseReady).
-		if err != nil {
-			e, ok := err.(*errors.WorkflowErrorWithCause)
-			if ok && eventsErr.IsNotFound(e.Cause()) && w.GetExecutionStatus().GetPhase() != v1alpha1.WorkflowPhaseReady {
-				t.Stop()
-				logger.Errorf(ctx, "Failed to process workflow, failing: %s", e.Cause())
+		if err != nil && errors.Is(err, &eventsErr.EventError{Code: eventsErr.ExecutionNotFound}) && w.GetExecutionStatus().GetPhase() != v1alpha1.WorkflowPhaseReady {
+			t.Stop()
+			logger.Errorf(ctx, "Failed to process workflow, failing: %s", err)
 
-				// We set the workflow status to failing to abort any active tasks in the next round.
-				mutableW := w.DeepCopy()
-				mutableW.Status.UpdatePhase(v1alpha1.WorkflowPhaseFailing, "Workflow execution is missing in flyteadmin, aborting", &core.ExecutionError{
-					Kind:    core.ExecutionError_SYSTEM,
-					Code:    "ExecutionNotFound",
-					Message: "Workflow execution not found in flyteadmin.",
-				})
-				if _, e := p.wfStore.Update(ctx, mutableW, workflowstore.PriorityClassCritical); e != nil {
-					logger.Errorf(ctx, "Failed to record an ExecutionNotFound workflow as failed, reason: %s. Retrying...", e)
-					return e
-				}
-				return nil
+			// We set the workflow status to failing to abort any active tasks in the next round.
+			mutableW := w.DeepCopy()
+			mutableW.Status.UpdatePhase(v1alpha1.WorkflowPhaseFailing, "Workflow execution is missing in flyteadmin, aborting", &core.ExecutionError{
+				Kind:    core.ExecutionError_SYSTEM,
+				Code:    "ExecutionNotFound",
+				Message: "Workflow execution not found in flyteadmin.",
+			})
+			if _, e := p.wfStore.Update(ctx, mutableW, workflowstore.PriorityClassCritical); e != nil {
+				logger.Errorf(ctx, "Failed to record an ExecutionNotFound workflow as failed, reason: %s. Retrying...", e)
+				return e
 			}
+			return nil
 		}
 
 		// TODO we will need to call updatestatus when it is supported. But to preserve metadata like (label/finalizer) we will need to use update
