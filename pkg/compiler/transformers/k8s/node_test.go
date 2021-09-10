@@ -126,8 +126,8 @@ func TestBuildNodeSpec(t *testing.T) {
 
 		spec := mustBuild(t, n, 1, errs.NewScope())
 		assert.NotNil(t, spec.Resources)
-		assert.NotNil(t, spec.Resources.Requests.Cpu())
-		assert.Equal(t, expectedCPU.Value(), spec.Resources.Requests.Cpu().Value())
+		assert.NotNil(t, spec.ResourceOverrides.Requests.Cpu())
+		assert.Equal(t, expectedCPU.Value(), spec.ResourceOverrides.Requests.Cpu().Value())
 	})
 
 	t.Run("LaunchPlanRef", func(t *testing.T) {

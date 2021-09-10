@@ -442,6 +442,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 		ma := 5
 		n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 		n.OnGetResources().Return(res)
+		n.OnGetResourceOverrides().Return(nil)
 
 		ir := &ioMocks.InputReader{}
 		ir.OnGetInputPath().Return("input")
@@ -775,6 +776,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 		ma := 5
 		n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 		n.OnGetResources().Return(res)
+		n.OnGetResourceOverrides().Return(nil)
 
 		ir := &ioMocks.InputReader{}
 		ir.OnGetInputPath().Return(storage.DataReference("input"))
@@ -1002,6 +1004,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 		ma := 5
 		n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 		n.OnGetResources().Return(res)
+		n.OnGetResourceOverrides().Return(nil)
 
 		ir := &ioMocks.InputReader{}
 		ir.OnGetInputPath().Return(storage.DataReference("input"))
@@ -1281,6 +1284,7 @@ func Test_task_Abort(t *testing.T) {
 		ma := 5
 		n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 		n.OnGetResources().Return(res)
+		n.OnGetResourceOverrides().Return(nil)
 
 		ir := &ioMocks.InputReader{}
 		nCtx := &nodeMocks.NodeExecutionContext{}
@@ -1425,6 +1429,7 @@ func Test_task_Abort_v1(t *testing.T) {
 		ma := 5
 		n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 		n.OnGetResources().Return(res)
+		n.OnGetResourceOverrides().Return(nil)
 
 		ir := &ioMocks.InputReader{}
 		nCtx := &nodeMocks.NodeExecutionContext{}
@@ -1569,6 +1574,7 @@ func Test_task_Finalize(t *testing.T) {
 	ma := 5
 	n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 	n.OnGetResources().Return(res)
+	n.OnGetResourceOverrides().Return(nil)
 
 	ir := &ioMocks.InputReader{}
 	nCtx := &nodeMocks.NodeExecutionContext{}

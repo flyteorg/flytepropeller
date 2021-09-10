@@ -72,6 +72,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	}
 	n := &flyteMocks.ExecutableNode{}
 	n.OnGetResources().Return(res)
+	n.OnGetResourceOverrides().Return(nil)
 	ma := 5
 	n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
 
@@ -154,7 +155,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	assert.NotNil(t, got.SecretManager())
 
 	assert.NotNil(t, got.OutputWriter())
-	assert.Equal(t, got.TaskExecutionMetadata().GetOverrides().GetResources(), res)
+	assert.Equal(t, got.TaskExecutionMetadata().GetResources(), res)
 
 	assert.Equal(t, got.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), "name-n1-1")
 	assert.Equal(t, got.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId, taskID)
