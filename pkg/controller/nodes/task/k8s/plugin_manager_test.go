@@ -485,7 +485,7 @@ func TestPluginManager_Abort(t *testing.T) {
 		pluginResource := &v1.Pod{}
 
 		abortBehavior := k8s.AbortBehaviorPatchDefaultResource(k8s.PatchResourceOperation{
-			Patch: nil,
+			Patch:   nil,
 			Options: nil,
 		}, false)
 
