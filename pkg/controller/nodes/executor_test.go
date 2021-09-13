@@ -1680,7 +1680,8 @@ func TestNodeExecutionEventStartNode(t *testing.T) {
 	assert.Equal(t, tID, ev.ParentTaskMetadata.Id)
 	assert.Empty(t, ev.NodeName)
 	assert.Empty(t, ev.RetryGroup)
-	assert.Equal(t, ev.OutputResult.(*event.NodeExecutionEvent_OutputUri).OutputUri, ev.InputUri)
+	assert.Equal(t, "dummy://dummyOutUrl/outputs.pb",
+		ev.OutputResult.(*event.NodeExecutionEvent_OutputUri).OutputUri)
 }
 
 func TestNodeExecutionEventV0(t *testing.T) {
