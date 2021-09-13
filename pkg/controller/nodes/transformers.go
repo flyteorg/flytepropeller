@@ -100,8 +100,8 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	if nodeExecID.NodeId == v1alpha1.StartNodeID {
 		outputsFile := v1alpha1.GetOutputsFile(status.GetOutputDir())
 		nev = &event.NodeExecutionEvent{
-			Id:       nodeExecID,
-			Phase:    phase,
+			Id:    nodeExecID,
+			Phase: phase,
 			OutputResult: ToNodeExecOutput(&handler.OutputInfo{
 				OutputURI: outputsFile,
 			}),
