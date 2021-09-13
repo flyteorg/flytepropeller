@@ -122,7 +122,7 @@ func ValidateNode(w c.WorkflowBuilder, n c.NodeBuilder, validateConditionTypes b
 	}
 
 	if n.GetCoreNode().UpstreamNodeIds == nil {
-		n.GetCoreNode().UpstreamNodeIds = make([]string, 0, 0)
+		n.GetCoreNode().UpstreamNodeIds = make([]string, 0)
 	}
 
 	// Order upstream node ids to ensure consistent output of the compiler even if client ordering changes.
