@@ -315,7 +315,7 @@ func getAdminClient(ctx context.Context) (client service.AdminServiceClient, err
 	return clients.AdminClient(), nil
 }
 
-// Check to see if the status field is defined as a subresouce of the flyteworkflow CRD. This is
+// Check to see if the status field is defined as a subresource of the flyteworkflow CRD. This is
 // necessary to determine the correct API to use when updating flyteworkflow status'.
 func hasStatusSubresourceAPI(kubeclientset kubernetes.Interface) (bool, error) {
 	resourceList, err := kubeclientset.Discovery().ServerResourcesForGroupVersion(fmt.Sprintf("%s", v1alpha1.SchemeGroupVersion))
@@ -453,7 +453,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to discover flyteworkflow resource API")
 	}
-	logger.Infof(ctx, "flyteworkflow status subresouce detected: %v", hasStatusSubresourceAPI)
+	logger.Infof(ctx, "flyteworkflow status subresource detected: %v", hasStatusSubresourceAPI)
 
 	handler := NewPropellerHandler(ctx, cfg, controller.workflowStore, workflowExecutor, scope, hasStatusSubresourceAPI)
 	controller.workerPool = NewWorkerPool(ctx, scope, workQ, handler)
