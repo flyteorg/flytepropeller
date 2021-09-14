@@ -261,7 +261,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 						Code:    "WorkflowTooLarge",
 						Message: "Workflow execution state is too large for Flyte to handle.",
 					})
-					if _, e := p.wfStore.UpdateStatus(ctx, mutableW, workflowstore.PriorityClassCritical); e != nil {
+					if _, e := p.wfStore.Update(ctx, mutableW, workflowstore.PriorityClassCritical); e != nil {
 						logger.Errorf(ctx, "Failed recording a large workflow as failed, reason: %s. Retrying...", e)
 						return e
 					}

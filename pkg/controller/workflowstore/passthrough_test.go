@@ -93,7 +93,6 @@ func dummyWf(namespace, name string) *v1alpha1.FlyteWorkflow {
 }
 
 func TestPassthroughWorkflowStore_UpdateStatus(t *testing.T) {
-
 	ctx := context.TODO()
 
 	mockClient := fake.NewSimpleClientset().FlyteworkflowV1alpha1()
@@ -128,5 +127,41 @@ func TestPassthroughWorkflowStore_UpdateStatus(t *testing.T) {
 			assert.Equal(t, v1alpha1.WorkflowPhaseFailed, newVal.GetExecutionStatus().GetPhase())
 		}
 	})
+}
 
+func TestPassthroughWorkflowStore_Update(t *testing.T) {
+	ctx := context.TODO()
+
+	mockClient := fake.NewSimpleClientset().FlyteworkflowV1alpha1()
+	l := &mockWFNamespaceLister{}
+	wfStore := NewPassthroughWorkflowStore(ctx, promutils.NewTestScope(), mockClient, &mockWFLister{V: l})
+
+	const namespace = "test-ns"
+	t.Run("notFound", func(t *testing.T) {
+		wf := dummyWf(namespace, "x")
+		_, err := wfStore.Update(ctx, wf, PriorityClassCritical)
+		assert.NoError(t, err)
+		updated, err := mockClient.FlyteWorkflows(namespace).Get(ctx, "x", v1.GetOptions{})
+		assert.Error(t, err)
+		assert.Nil(t, updated)
+	})
+
+	t.Run("Found-Updated", func(t *testing.T) {
+		n := mockClient.FlyteWorkflows(namespace)
+		wf := dummyWf(namespace, "x")
+		wf.GetExecutionStatus().UpdatePhase(v1alpha1.WorkflowPhaseSucceeding, "", nil)
+		wf.ResourceVersion = "r1"
+		_, err := n.Create(ctx, wf, v1.CreateOptions{})
+		assert.NoError(t, err)
+		updated, err := n.Get(ctx, "x", v1.GetOptions{})
+		if assert.NoError(t, err) {
+			assert.Equal(t, v1alpha1.WorkflowPhaseSucceeding, updated.GetExecutionStatus().GetPhase())
+			wf.GetExecutionStatus().UpdatePhase(v1alpha1.WorkflowPhaseFailed, "", &core.ExecutionError{})
+			_, err := wfStore.Update(ctx, wf, PriorityClassCritical)
+			assert.NoError(t, err)
+			newVal, err := n.Get(ctx, "x", v1.GetOptions{})
+			assert.NoError(t, err)
+			assert.Equal(t, v1alpha1.WorkflowPhaseFailed, newVal.GetExecutionStatus().GetPhase())
+		}
+	})
 }

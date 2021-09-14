@@ -137,6 +137,35 @@ func TestPropeller_Handle(t *testing.T) {
 		assert.Equal(t, uint32(0), r.Status.FailedAttempts)
 	})
 
+	t.Run("happyWithSubresourceApi", func(t *testing.T) {
+		scope := promutils.NewTestScope()
+		//s := &mocks.FlyteWorkflow{}
+		exec := &mockExecutor{}
+		p := NewPropellerHandler(ctx, cfg, s, exec, scope, true)
+
+		assert.NoError(t, s.Create(ctx, &v1alpha1.FlyteWorkflow{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			WorkflowSpec: &v1alpha1.WorkflowSpec{
+				ID: "w1",
+			},
+		}))
+		exec.HandleCb = func(ctx context.Context, w *v1alpha1.FlyteWorkflow) error {
+			w.GetExecutionStatus().UpdatePhase(v1alpha1.WorkflowPhaseSucceeding, "done", nil)
+			return nil
+		}
+		assert.NoError(t, p.Handle(ctx, namespace, name))
+
+		r, err := s.Get(ctx, namespace, name)
+		assert.NoError(t, err)
+		assert.Equal(t, v1alpha1.WorkflowPhaseSucceeding, r.GetExecutionStatus().GetPhase())
+		assert.Equal(t, 1, len(r.Finalizers))
+		assert.False(t, HasCompletedLabel(r))
+		assert.Equal(t, uint32(0), r.Status.FailedAttempts)
+	})
+
 	t.Run("error", func(t *testing.T) {
 		assert.NoError(t, s.Create(ctx, &v1alpha1.FlyteWorkflow{
 			ObjectMeta: v1.ObjectMeta{
@@ -707,6 +736,27 @@ func TestNewPropellerHandler_UpdateFailure(t *testing.T) {
 		}
 		s.OnGetMatch(mock.Anything, mock.Anything, mock.Anything).Return(wf, nil)
 		s.OnUpdateMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("unknown error")).Once()
+
+		err := p.Handle(ctx, namespace, name)
+		assert.Error(t, err)
+	})
+
+	t.Run("unknownErrorWithSubresourceApi", func(t *testing.T) {
+		scope := promutils.NewTestScope()
+		s := &mocks.FlyteWorkflow{}
+		exec := &mockExecutor{}
+		p := NewPropellerHandler(ctx, cfg, s, exec, scope, true)
+		wf := &v1alpha1.FlyteWorkflow{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			WorkflowSpec: &v1alpha1.WorkflowSpec{
+				ID: "w1",
+			},
+		}
+		s.OnGetMatch(mock.Anything, mock.Anything, mock.Anything).Return(wf, nil)
+		s.OnUpdateStatusMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("unknown error")).Once()
 
 		err := p.Handle(ctx, namespace, name)
 		assert.Error(t, err)
