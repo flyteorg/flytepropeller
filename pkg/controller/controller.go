@@ -318,7 +318,7 @@ func getAdminClient(ctx context.Context) (client service.AdminServiceClient, err
 // Check to see if the status field is defined as a subresource of the flyteworkflow CRD. This is
 // necessary to determine the correct API to use when updating flyteworkflow status'.
 func hasStatusSubresourceAPI(kubeclientset kubernetes.Interface) (bool, error) {
-	resourceList, err := kubeclientset.Discovery().ServerResourcesForGroupVersion(fmt.Sprintf("%s", v1alpha1.SchemeGroupVersion))
+	resourceList, err := kubeclientset.Discovery().ServerResourcesForGroupVersion(v1alpha1.SchemeGroupVersion.String())
 	if err != nil {
 		return false, err
 	}

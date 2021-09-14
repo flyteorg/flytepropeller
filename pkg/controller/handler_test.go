@@ -48,7 +48,7 @@ func TestPropeller_Handle(t *testing.T) {
 		MaxWorkflowRetries: 0,
 	}
 
-	p := NewPropellerHandler(ctx, cfg, s, exec, scope)
+	p := NewPropellerHandler(ctx, cfg, s, exec, scope, false)
 
 	const namespace = "test"
 	const name = "123"
@@ -60,7 +60,7 @@ func TestPropeller_Handle(t *testing.T) {
 		scope := promutils.NewTestScope()
 		s := &mocks.FlyteWorkflow{}
 		exec := &mockExecutor{}
-		p := NewPropellerHandler(ctx, cfg, s, exec, scope)
+		p := NewPropellerHandler(ctx, cfg, s, exec, scope, false)
 		s.OnGetMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.Wrap(workflowstore.ErrStaleWorkflowError, "stale")).Once()
 		assert.NoError(t, p.Handle(ctx, namespace, name))
 	})
@@ -475,7 +475,7 @@ func TestPropeller_Handle_TurboMode(t *testing.T) {
 	const namespace = "test"
 	const name = "123"
 
-	p := NewPropellerHandler(ctx, cfg, s, exec, scope)
+	p := NewPropellerHandler(ctx, cfg, s, exec, scope, false)
 
 	t.Run("error", func(t *testing.T) {
 		assert.NoError(t, s.Create(ctx, &v1alpha1.FlyteWorkflow{
@@ -677,7 +677,7 @@ func TestPropellerHandler_Initialize(t *testing.T) {
 		MaxWorkflowRetries: 0,
 	}
 
-	p := NewPropellerHandler(ctx, cfg, s, exec, scope)
+	p := NewPropellerHandler(ctx, cfg, s, exec, scope, false)
 
 	assert.NoError(t, p.Initialize(ctx))
 }
@@ -695,7 +695,7 @@ func TestNewPropellerHandler_UpdateFailure(t *testing.T) {
 		scope := promutils.NewTestScope()
 		s := &mocks.FlyteWorkflow{}
 		exec := &mockExecutor{}
-		p := NewPropellerHandler(ctx, cfg, s, exec, scope)
+		p := NewPropellerHandler(ctx, cfg, s, exec, scope, false)
 		wf := &v1alpha1.FlyteWorkflow{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      name,
@@ -716,7 +716,7 @@ func TestNewPropellerHandler_UpdateFailure(t *testing.T) {
 		scope := promutils.NewTestScope()
 		s := &mocks.FlyteWorkflow{}
 		exec := &mockExecutor{}
-		p := NewPropellerHandler(ctx, cfg, s, exec, scope)
+		p := NewPropellerHandler(ctx, cfg, s, exec, scope, false)
 		wf := &v1alpha1.FlyteWorkflow{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      name,
@@ -737,7 +737,7 @@ func TestNewPropellerHandler_UpdateFailure(t *testing.T) {
 		scope := promutils.NewTestScope()
 		s := &mocks.FlyteWorkflow{}
 		exec := &mockExecutor{}
-		p := NewPropellerHandler(ctx, cfg, s, exec, scope)
+		p := NewPropellerHandler(ctx, cfg, s, exec, scope, false)
 		wf := &v1alpha1.FlyteWorkflow{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      name,

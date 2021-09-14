@@ -25,9 +25,9 @@ type workflowstoreMetrics struct {
 }
 
 type passthroughWorkflowStore struct {
-	wfLister                listers.FlyteWorkflowLister
-	wfClientSet             v1alpha12.FlyteworkflowV1alpha1Interface
-	metrics                 *workflowstoreMetrics
+	wfLister    listers.FlyteWorkflowLister
+	wfClientSet v1alpha12.FlyteworkflowV1alpha1Interface
+	metrics     *workflowstoreMetrics
 }
 
 func (p *passthroughWorkflowStore) Get(ctx context.Context, namespace, name string) (*v1alpha1.FlyteWorkflow, error) {
@@ -114,8 +114,8 @@ func NewPassthroughWorkflowStore(_ context.Context, scope promutils.Scope, wfCli
 	}
 
 	return &passthroughWorkflowStore{
-		wfLister:                flyteworkflowLister,
-		wfClientSet:             wfClient,
-		metrics:                 metrics,
+		wfLister:    flyteworkflowLister,
+		wfClientSet: wfClient,
+		metrics:     metrics,
 	}
 }
