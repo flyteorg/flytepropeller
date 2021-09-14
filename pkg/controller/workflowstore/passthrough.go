@@ -25,9 +25,9 @@ type workflowstoreMetrics struct {
 }
 
 type passthroughWorkflowStore struct {
-	wfLister    listers.FlyteWorkflowLister
-	wfClientSet v1alpha12.FlyteworkflowV1alpha1Interface
-	metrics     *workflowstoreMetrics
+	wfLister                listers.FlyteWorkflowLister
+	wfClientSet             v1alpha12.FlyteworkflowV1alpha1Interface
+	metrics                 *workflowstoreMetrics
 }
 
 func (p *passthroughWorkflowStore) Get(ctx context.Context, namespace, name string) (*v1alpha1.FlyteWorkflow, error) {
@@ -50,7 +50,7 @@ func (p *passthroughWorkflowStore) UpdateStatus(ctx context.Context, workflow *v
 	// Something has changed. Lets save
 	logger.Debugf(ctx, "Observed FlyteWorkflow State change. [%v] -> [%v]", workflow.Status.Phase.String(), workflow.Status.Phase.String())
 	t := p.metrics.workflowUpdateLatency.Start()
-	newWF, err = p.wfClientSet.FlyteWorkflows(workflow.Namespace).Update(ctx, workflow, v1.UpdateOptions{})
+	newWF, err = p.wfClientSet.FlyteWorkflows(workflow.Namespace).UpdateStatus(ctx, workflow, v1.UpdateOptions{})
 	if err != nil {
 		if kubeerrors.IsNotFound(err) {
 			return nil, nil
@@ -114,8 +114,8 @@ func NewPassthroughWorkflowStore(_ context.Context, scope promutils.Scope, wfCli
 	}
 
 	return &passthroughWorkflowStore{
-		wfLister:    flyteworkflowLister,
-		wfClientSet: wfClient,
-		metrics:     metrics,
+		wfLister:                flyteworkflowLister,
+		wfClientSet:             wfClient,
+		metrics:                 metrics,
 	}
 }

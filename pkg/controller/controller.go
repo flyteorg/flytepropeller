@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"runtime/pprof"
+	"strings"
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
@@ -314,6 +315,23 @@ func getAdminClient(ctx context.Context) (client service.AdminServiceClient, err
 	return clients.AdminClient(), nil
 }
 
+// Check to see if the status field is defined as a subresouce of the flyteworkflow CRD. This is
+// necessary to determine the correct API to use when updating flyteworkflow status'.
+func hasStatusSubresourceAPI(kubeclientset kubernetes.Interface) (bool, error) {
+	resourceList, err := kubeclientset.Discovery().ServerResourcesForGroupVersion(fmt.Sprintf("%s", v1alpha1.SchemeGroupVersion))
+	if err != nil {
+		return false, err
+	}
+
+	for _, resource := range resourceList.APIResources {
+		if strings.HasSuffix(resource.Name, "/status") {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 // NewController returns a new FlyteWorkflow controller
 func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Interface, flytepropellerClientset clientset.Interface,
 	flyteworkflowInformerFactory informers.SharedInformerFactory, kubeClient executors.Client, scope promutils.Scope) (*Controller, error) {
@@ -431,7 +449,13 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, err
 	}
 
-	handler := NewPropellerHandler(ctx, cfg, controller.workflowStore, workflowExecutor, scope)
+	hasStatusSubresourceAPI, err := hasStatusSubresourceAPI(kubeclientset)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to discover flyteworkflow resource API")
+	}
+	logger.Infof(ctx, "flyteworkflow status subresouce detected: %v", hasStatusSubresourceAPI)
+
+	handler := NewPropellerHandler(ctx, cfg, controller.workflowStore, workflowExecutor, scope, hasStatusSubresourceAPI)
 	controller.workerPool = NewWorkerPool(ctx, scope, workQ, handler)
 
 	logger.Info(ctx, "Setting up event handlers")

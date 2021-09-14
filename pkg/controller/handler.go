@@ -7,6 +7,8 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
@@ -66,10 +68,11 @@ func RecordSystemError(w *v1alpha1.FlyteWorkflow, err error) *v1alpha1.FlyteWork
 
 // Core Propeller structure that houses the Reconciliation loop for Flytepropeller
 type Propeller struct {
-	wfStore          workflowstore.FlyteWorkflow
-	workflowExecutor executors.Workflow
-	metrics          *propellerMetrics
-	cfg              *config.Config
+	wfStore                 workflowstore.FlyteWorkflow
+	workflowExecutor        executors.Workflow
+	metrics                 *propellerMetrics
+	cfg                     *config.Config
+	hasStatusSubresourceAPI bool
 }
 
 // Initializes all downstream executors
@@ -227,34 +230,47 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 				ResetFinalizers(mutatedWf)
 			}
 		}
-		// TODO we will need to call updatestatus when it is supported. But to preserve metadata like (label/finalizer) we will need to use update
 
-		// update the GetExecutionStatus block of the FlyteWorkflow resource. UpdateStatus will not
-		// allow changes to the Spec of the resource, which is ideal for ensuring
-		// nothing other than resource status has been updated.
-		newWf, updateErr := p.wfStore.Update(ctx, mutatedWf, workflowstore.PriorityClassCritical)
-		if updateErr != nil {
-			t.Stop()
-			// The update has failed, lets check if this is because the size is too large. If so
-			if workflowstore.IsWorkflowTooLarge(updateErr) {
-				logger.Errorf(ctx, "Failed storing workflow to the store, reason: %s", updateErr)
-				p.metrics.SystemError.Inc(ctx)
-				// Workflow is too large, we will mark the workflow as failing and record it. This will automatically
-				// propagate the failure in the next round.
-				mutableW := w.DeepCopy()
-				mutableW.Status.UpdatePhase(v1alpha1.WorkflowPhaseFailing, "Workflow size has breached threshold, aborting", &core.ExecutionError{
-					Kind:    core.ExecutionError_SYSTEM,
-					Code:    "WorkflowTooLarge",
-					Message: "Workflow execution state is too large for Flyte to handle.",
-				})
-				if _, e := p.wfStore.Update(ctx, mutableW, workflowstore.PriorityClassCritical); e != nil {
-					logger.Errorf(ctx, "Failed recording a large workflow as failed, reason: %s. Retrying...", e)
-					return e
-				}
-				return nil
+		// If flyteworkflow CRD defines status as a subresource we need to call UpdateStatus to
+		// update the field, an Update call will succeed but will not modify the status field.
+		var newWf *v1alpha1.FlyteWorkflow
+		var updateErr error
+		if p.hasStatusSubresourceAPI && !mutatedWf.Status.Equals(&w.Status) {
+			newWf, updateErr = p.wfStore.UpdateStatus(ctx, mutatedWf, workflowstore.PriorityClassCritical)
+			if updateErr != nil {
+				t.Stop()
+				return updateErr
 			}
-			return updateErr
 		}
+
+		// If flyteworkflow CRD does not define status as a subresource or if there are other
+		// changes (ie. labels or finalizers), we need to call Update to modify the CRD.
+		if (!p.hasStatusSubresourceAPI && !mutatedWf.Status.Equals(&w.Status)) || !cmp.Equal(mutatedWf.Labels, w.Labels) || !FinalizersIdentical(mutatedWf, w) {
+			newWf, updateErr = p.wfStore.Update(ctx, mutatedWf, workflowstore.PriorityClassCritical)
+			if updateErr != nil {
+				t.Stop()
+				// The update has failed, lets check if this is because the size is too large. If so
+				if workflowstore.IsWorkflowTooLarge(updateErr) {
+					logger.Errorf(ctx, "Failed storing workflow to the store, reason: %s", updateErr)
+					p.metrics.SystemError.Inc(ctx)
+					// Workflow is too large, we will mark the workflow as failing and record it. This will automatically
+					// propagate the failure in the next round.
+					mutableW := w.DeepCopy()
+					mutableW.Status.UpdatePhase(v1alpha1.WorkflowPhaseFailing, "Workflow size has breached threshold, aborting", &core.ExecutionError{
+						Kind:    core.ExecutionError_SYSTEM,
+						Code:    "WorkflowTooLarge",
+						Message: "Workflow execution state is too large for Flyte to handle.",
+					})
+					if _, e := p.wfStore.UpdateStatus(ctx, mutableW, workflowstore.PriorityClassCritical); e != nil {
+						logger.Errorf(ctx, "Failed recording a large workflow as failed, reason: %s. Retrying...", e)
+						return e
+					}
+					return nil
+				}
+				return updateErr
+			}
+		}
+
 		if err != nil {
 			t.Stop()
 			// An error was encountered during the round. Let us return, so that we can back-off gracefully
@@ -276,13 +292,14 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 }
 
 // NewPropellerHandler creates a new Propeller and initializes metrics
-func NewPropellerHandler(_ context.Context, cfg *config.Config, wfStore workflowstore.FlyteWorkflow, executor executors.Workflow, scope promutils.Scope) *Propeller {
+func NewPropellerHandler(_ context.Context, cfg *config.Config, wfStore workflowstore.FlyteWorkflow, executor executors.Workflow, scope promutils.Scope, hasStatusSubresourceAPI bool) *Propeller {
 
 	metrics := newPropellerMetrics(scope)
 	return &Propeller{
-		metrics:          metrics,
-		wfStore:          wfStore,
-		workflowExecutor: executor,
-		cfg:              cfg,
+		metrics:                 metrics,
+		wfStore:                 wfStore,
+		workflowExecutor:        executor,
+		cfg:                     cfg,
+		hasStatusSubresourceAPI: hasStatusSubresourceAPI,
 	}
 }
