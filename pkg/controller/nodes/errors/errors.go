@@ -28,6 +28,12 @@ func (n *NodeError) Is(target error) bool {
 	if !ok {
 		return false
 	}
+	if n == nil && t == nil {
+		return true
+	}
+	if n == nil || t == nil {
+		return false
+	}
 	return n.ErrCode == t.ErrCode && (n.Message == t.Message || t.Message == "") && (n.Node == t.Node || t.Node == "")
 }
 
@@ -65,6 +71,12 @@ func (n *NodeErrorWithCause) Error() string {
 func (n *NodeErrorWithCause) Is(target error) bool {
 	t, ok := target.(*NodeErrorWithCause)
 	if !ok {
+		return false
+	}
+	if n == nil && t == nil {
+		return true
+	}
+	if n == nil || t == nil {
 		return false
 	}
 	return n.Is(target) && (n.cause == t.cause || t.cause == nil)
