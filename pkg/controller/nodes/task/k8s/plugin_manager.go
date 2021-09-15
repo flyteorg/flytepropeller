@@ -3,6 +3,8 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"reflect"
 	"strings"
 	"time"
@@ -198,7 +200,6 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 	if err != nil {
 		return pluginsCore.UnknownTransition, err
 	}
-
 	e.AddObjectMetadata(k8sTaskCtxMetadata, o, config.GetK8sPluginConfig())
 	logger.Infof(ctx, "Creating Object: Type:[%v], Object:[%v/%v]", o.GetObjectKind().GroupVersionKind(), o.GetNamespace(), o.GetName())
 
@@ -206,6 +207,9 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 
 	pod, casted := o.(*v1.Pod)
 	if e.backOffController != nil && casted {
+		if errs := validation.IsDNS1123Label(pod.Name); len(errs) > 0 {
+			pod.Name = rand.String(4)
+		}
 		podRequestedResources := e.getPodEffectiveResourceLimits(ctx, pod)
 
 		cfg := nodeTaskConfig.GetConfig()
