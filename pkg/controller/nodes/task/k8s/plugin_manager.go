@@ -258,6 +258,13 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 	e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
 	nsName := k8stypes.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
 	// Attempt to get resource from informer cache, if not found, retrieve it from API server.
+	pod, casted := o.(*v1.Pod)
+	if casted {
+		if errs := validation.IsDNS1123Label(pod.Name); len(errs) > 0 {
+			pod.Name = rand.String(4)
+		}
+	}
+
 	if err := e.kubeClient.GetClient().Get(ctx, nsName, o); err != nil {
 		if IsK8sObjectNotExists(err) {
 			// This happens sometimes because a node gets removed and K8s deletes the pod. This will result in a
