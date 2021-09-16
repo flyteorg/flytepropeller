@@ -3,8 +3,6 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/apimachinery/pkg/util/validation"
 	"reflect"
 	"strings"
 	"time"
@@ -107,7 +105,7 @@ func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetad
 	o.SetNamespace(taskCtx.GetNamespace())
 	o.SetAnnotations(utils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
 	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
-	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
+	o.SetName(strings.ToLower(taskCtx.GetTaskExecutionID().GetGeneratedName()))
 
 	if !e.plugin.GetProperties().DisableInjectOwnerReferences {
 		o.SetOwnerReferences([]metav1.OwnerReference{taskCtx.GetOwnerReference()})
@@ -200,6 +198,7 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 	if err != nil {
 		return pluginsCore.UnknownTransition, err
 	}
+
 	e.AddObjectMetadata(k8sTaskCtxMetadata, o, config.GetK8sPluginConfig())
 	logger.Infof(ctx, "Creating Object: Type:[%v], Object:[%v/%v]", o.GetObjectKind().GroupVersionKind(), o.GetNamespace(), o.GetName())
 
@@ -207,9 +206,6 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 
 	pod, casted := o.(*v1.Pod)
 	if e.backOffController != nil && casted {
-		if errs := validation.IsDNS1123Label(pod.Name); len(errs) > 0 {
-			pod.Name = rand.String(4)
-		}
 		podRequestedResources := e.getPodEffectiveResourceLimits(ctx, pod)
 
 		cfg := nodeTaskConfig.GetConfig()
@@ -258,13 +254,6 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 	e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
 	nsName := k8stypes.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
 	// Attempt to get resource from informer cache, if not found, retrieve it from API server.
-	pod, casted := o.(*v1.Pod)
-	if casted {
-		if errs := validation.IsDNS1123Label(pod.Name); len(errs) > 0 {
-			pod.Name = rand.String(4)
-		}
-	}
-
 	if err := e.kubeClient.GetClient().Get(ctx, nsName, o); err != nil {
 		if IsK8sObjectNotExists(err) {
 			// This happens sometimes because a node gets removed and K8s deletes the pod. This will result in a
