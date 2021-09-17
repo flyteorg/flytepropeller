@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"reflect"
 	"strings"
 	"time"
@@ -105,16 +106,7 @@ func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetad
 	o.SetNamespace(taskCtx.GetNamespace())
 	o.SetAnnotations(utils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
 	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
-	//o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
-	//pod, casted := o.(*v1.Pod)
-	//if casted {
-	//	println("Is a pod, name" + pod.Name)
-	//	if errs := validation.IsDNS1123Label(pod.Name); len(errs) > 0 {
-	//		pod.Name = strings.ToLower(pod.Name)
-	//	}
-	//} else {
-	//	println("Not a pod")
-	//}
+	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
 
 	if !e.plugin.GetProperties().DisableInjectOwnerReferences {
 		o.SetOwnerReferences([]metav1.OwnerReference{taskCtx.GetOwnerReference()})
@@ -123,6 +115,13 @@ func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetad
 	if cfg.InjectFinalizer && !e.plugin.GetProperties().DisableInjectFinalizer {
 		f := append(o.GetFinalizers(), finalizer)
 		o.SetFinalizers(f)
+	}
+
+	pod, casted := o.(*v1.Pod)
+	if casted {
+		if errs := validation.IsDNS1123Label(pod.Name); len(errs) > 0 {
+			pod.Name = utils.ConvertToDNS1123CompatibleString(pod.Name)
+		}
 	}
 }
 
