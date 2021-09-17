@@ -106,6 +106,7 @@ func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetad
 	o.SetNamespace(taskCtx.GetNamespace())
 	o.SetAnnotations(utils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
 	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
+	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
 	pod, casted := o.(*v1.Pod)
 	if casted {
 		println("Is a pod, name" + pod.Name)
@@ -115,7 +116,6 @@ func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetad
 	} else {
 		println("Not a pod")
 	}
-	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
 
 	if !e.plugin.GetProperties().DisableInjectOwnerReferences {
 		o.SetOwnerReferences([]metav1.OwnerReference{taskCtx.GetOwnerReference()})
