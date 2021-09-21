@@ -121,7 +121,7 @@ func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetad
 	pod, casted := o.(*v1.Pod)
 	if casted {
 		if errs := validation.IsDNS1123Label(pod.Name); len(errs) > 0 {
-			pod.Name = utils.ConvertToDNS1123CompatibleString(pod.Name)
+			pod.Name = ConvertToDNS1123CompatibleString(pod.Name)
 		}
 	}
 }
