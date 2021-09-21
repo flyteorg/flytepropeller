@@ -20,9 +20,9 @@ func ConvertToDNS1123CompatibleString(name string) string {
 	name = dns1123InvalidRegex.ReplaceAllString(name, "")
 	name = strings.Trim(name, ".-")
 	if len(name) > validation.DNS1123LabelMaxLength {
-		fixedLengthId, err := utils.FixedLengthUniqueID(name, maxUniqueIDLength)
+		fixedLengthID, err := utils.FixedLengthUniqueID(name, maxUniqueIDLength)
 		if err == nil {
-			name = name[:validation.DNS1123LabelMaxLength-maxUniqueIDLength-1] + "-" + fixedLengthId
+			name = name[:validation.DNS1123LabelMaxLength-maxUniqueIDLength-1] + "-" + fixedLengthID
 		} else {
 			name = name[:validation.DNS1123LabelMaxLength]
 		}
