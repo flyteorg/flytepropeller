@@ -265,7 +265,7 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 }
 
 // TODO hamersaw - comment
-func (m *CatalogClient) GetOrExtendReservation(ctx context.Context, key catalog.Key, ownerID string) (*datacatalog.Reservation, error) {
+func (m *CatalogClient) GetOrExtendReservation(ctx context.Context, key catalog.Key, ownerID string, heartbeatInterval time.Duration) (*datacatalog.Reservation, error) {
 	datasetID, err := GenerateDatasetIDForTask(ctx, key)
 	if err != nil {
 		return nil, err
@@ -291,6 +291,7 @@ func (m *CatalogClient) GetOrExtendReservation(ctx context.Context, key catalog.
 			TagName:   tag,
 		},
 		OwnerId:   ownerID,
+		HeartbeatInterval: ptypes.DurationProto(heartbeatInterval),
 	}
 
 	response, err := m.client.GetOrExtendReservation(ctx, reservationQuery)

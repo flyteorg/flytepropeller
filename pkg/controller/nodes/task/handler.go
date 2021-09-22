@@ -544,8 +544,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// Check catalog for cache reservation and acquire if none exists
 	if checkCatalog && (pluginTrns.execInfo.TaskNodeInfo == nil || pluginTrns.execInfo.TaskNodeInfo.TaskNodeMetadata.CacheStatus != core.CatalogCacheStatus_CACHE_HIT) {
 		ownerID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-		// TODO hamersaw - need to handle cache expiration
-		reservation, err := t.GetOrExtendCatalogReservation(ctx, ownerID, tCtx.tr, nCtx.InputReader())
+		reservation, err := t.GetOrExtendCatalogReservation(ctx, ownerID, controllerConfig.GetConfig().WorkflowReEval.Duration, tCtx.tr, nCtx.InputReader())
 		if err != nil {
 			logger.Errorf(ctx, "failed to get or extend catalog reservation with error")
 			return handler.UnknownTransition, err

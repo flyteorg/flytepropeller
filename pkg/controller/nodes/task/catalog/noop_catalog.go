@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
@@ -22,7 +23,7 @@ func (n NOOPCatalog) Put(_ context.Context, _ catalog.Key, _ io.OutputReader, _ 
 	return disabledStatus, nil
 }
 
-func (n NOOPCatalog) GetOrExtendReservation(_ context.Context, _ catalog.Key, _ string) (*datacatalog.Reservation, error) {
+func (n NOOPCatalog) GetOrExtendReservation(_ context.Context, _ catalog.Key, _ string, _ time.Duration) (*datacatalog.Reservation, error) {
 	return nil, nil
 }
 

@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"time"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
@@ -71,7 +72,7 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 	return catalog.NewCatalogEntry(nil, cacheDisabled), nil
 }
 
-func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID string, tr pluginCore.TaskReader, inputReader io.InputReader) (catalog.ReservationEntry, error) {
+func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID string, heartbeatInterval time.Duration, tr pluginCore.TaskReader, inputReader io.InputReader) (catalog.ReservationEntry, error) {
 	tk, err := tr.Read(ctx)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
@@ -88,7 +89,7 @@ func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID str
 			InputReader:    inputReader,
 		}
 
-		reservation, err := t.catalog.GetOrExtendReservation(ctx, key, ownerID)
+		reservation, err := t.catalog.GetOrExtendReservation(ctx, key, ownerID, heartbeatInterval)
 		if err != nil {
 			t.metrics.catalogReservationFailureCount.Inc(ctx)
 			logger.Errorf(ctx, "Catalog Failure: reservation get or extend failed. err: %v", err.Error())
