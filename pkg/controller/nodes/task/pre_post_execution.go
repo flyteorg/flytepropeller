@@ -27,7 +27,7 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 		return catalog.Entry{}, err
 	}
 
-	if tk.Metadata.Discoverable {
+	if tk.Metadata.Discoverable || tk.Metadata.DiscoveryReservable {
 		logger.Infof(ctx, "Catalog CacheEnabled: Looking up catalog Cache.")
 		key := catalog.Key{
 			Identifier:     *tk.Id,
@@ -69,6 +69,48 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 	}
 	logger.Infof(ctx, "Catalog CacheDisabled: for Task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
 	return catalog.NewCatalogEntry(nil, cacheDisabled), nil
+}
+
+func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID string, tr pluginCore.TaskReader, inputReader io.InputReader) (catalog.ReservationEntry, error) {
+	tk, err := tr.Read(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
+		return catalog.NewFailedReservationEntry(core.CatalogReservationStatus_RESERVATION_FAILURE), err
+	}
+
+	//if tk.Metadata.DiscoveryReservable {
+	if true { // TODO hamersaw - testing
+		logger.Infof(ctx, "Catalog CacheReservationEnabled: Creating catalog Reservation.")
+		key := catalog.Key{
+			Identifier:     *tk.Id,
+			CacheVersion:   tk.Metadata.DiscoveryVersion,
+			TypedInterface: *tk.Interface,
+			InputReader:    inputReader,
+		}
+
+		reservation, err := t.catalog.GetOrExtendReservation(ctx, key, ownerID)
+		if err != nil {
+			t.metrics.catalogReservationFailureCount.Inc(ctx)
+			logger.Errorf(ctx, "Catalog Failure: reservation get or extend failed. err: %v", err.Error())
+			return catalog.NewFailedReservationEntry(core.CatalogReservationStatus_RESERVATION_FAILURE), err
+		}
+
+		expiresAt := reservation.ExpiresAt.AsTime()
+		heartbeatInterval := reservation.HeartbeatInterval.AsDuration()
+
+		var status core.CatalogReservationStatus
+		if reservation.OwnerId == ownerID {
+			status = core.CatalogReservationStatus_RESERVATION_ACQUIRED
+		} else {
+			status = core.CatalogReservationStatus_RESERVATION_EXISTS
+		}
+		// TODO hamersaw - check for reservation release
+
+		t.metrics.catalogReservationSuccessCount.Inc(ctx)
+		return catalog.NewReservationEntry(expiresAt, heartbeatInterval, reservation.OwnerId, status), nil
+	}
+	logger.Infof(ctx, "Catalog CacheReservationDisabled: for Task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
+	return catalog.NewFailedReservationEntry(core.CatalogReservationStatus_RESERVATION_DISABLED), nil
 }
 
 func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader,
