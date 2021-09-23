@@ -27,6 +27,6 @@ func (n NOOPCatalog) GetOrExtendReservation(_ context.Context, _ catalog.Key, _ 
 	return nil, nil
 }
 
-func (n NOOPCatalog) ReleaseReservation(_ context.Context, _ catalog.Key, _ string) (error) {
+func (n NOOPCatalog) ReleaseReservation(_ context.Context, _ catalog.Key, _ string) error {
 	return nil
 }

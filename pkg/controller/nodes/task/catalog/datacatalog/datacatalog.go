@@ -291,7 +291,7 @@ func (m *CatalogClient) GetOrExtendReservation(ctx context.Context, key catalog.
 			DatasetId: datasetID,
 			TagName:   tag,
 		},
-		OwnerId:   ownerID,
+		OwnerId:           ownerID,
 		HeartbeatInterval: ptypes.DurationProto(heartbeatInterval),
 	}
 
@@ -303,7 +303,7 @@ func (m *CatalogClient) GetOrExtendReservation(ctx context.Context, key catalog.
 	return response.Reservation, nil
 }
 
-func (m *CatalogClient) ReleaseReservation(ctx context.Context, key catalog.Key, ownerID string) (error) {
+func (m *CatalogClient) ReleaseReservation(ctx context.Context, key catalog.Key, ownerID string) error {
 	datasetID, err := GenerateDatasetIDForTask(ctx, key)
 	if err != nil {
 		return err
@@ -328,7 +328,7 @@ func (m *CatalogClient) ReleaseReservation(ctx context.Context, key catalog.Key,
 			DatasetId: datasetID,
 			TagName:   tag,
 		},
-		OwnerId:   ownerID,
+		OwnerId: ownerID,
 	}
 
 	_, err = m.client.ReleaseReservation(ctx, reservationQuery)

@@ -562,12 +562,12 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		pluginTrns.PopulateReservationInfo(reservation)
 
 		if reservation.GetStatus() == core.CatalogReservationStatus_RESERVATION_ACQUIRED &&
-				(ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache){
+			(ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache) {
 			logger.Infof(ctx, "Acquired cache reservation")
 		}
 
 		// If we do not own the reservation then we transition to WaitingForCache phase. If we are
-		// already running (ie. in a phase other than PhaseUndefined or PhaseWaitingForCache) and 
+		// already running (ie. in a phase other than PhaseUndefined or PhaseWaitingForCache) and
 		// somehow lost the reservation (ex. by expiration), continue to execute until completion.
 		if reservation.GetStatus() == core.CatalogReservationStatus_RESERVATION_EXISTS {
 			if ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache {
@@ -584,8 +584,8 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 	barrierTick := uint32(0)
 	// STEP 2: If no cache-hit and not transitioning to PhaseWaitingForCache, then lets invoke the plugin and wait for a transition out of undefined
-	if pluginTrns.execInfo.TaskNodeInfo == nil || (pluginTrns.execInfo.TaskNodeInfo.TaskNodeMetadata.CacheStatus != core.CatalogCacheStatus_CACHE_HIT &&
-			pluginTrns.pInfo.Phase() != pluginCore.PhaseWaitingForCache) {
+	if pluginTrns.execInfo.TaskNodeInfo == nil || (pluginTrns.pInfo.Phase() != pluginCore.PhaseWaitingForCache &&
+		pluginTrns.execInfo.TaskNodeInfo.TaskNodeMetadata.CacheStatus != core.CatalogCacheStatus_CACHE_HIT) {
 		prevBarrier := t.barrierCache.GetPreviousBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
 		// Lets start with the current barrierTick (the value to be stored) same as the barrierTick in the cache
 		barrierTick = prevBarrier.BarrierClockTick
