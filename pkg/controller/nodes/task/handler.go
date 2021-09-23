@@ -49,10 +49,12 @@ type metrics struct {
 	catalogPutSuccessCount         labeled.Counter
 	catalogMissCount               labeled.Counter
 	catalogHitCount                labeled.Counter
-	catalogReservationSuccessCount labeled.Counter
-	catalogReservationFailureCount labeled.Counter
 	pluginExecutionLatency         labeled.StopWatch
 	pluginQueueLatency             labeled.StopWatch
+	reservationGetSuccessCount     labeled.Counter
+	reservationGetFailureCount     labeled.Counter
+	reservationReleaseSuccessCount labeled.Counter
+	reservationReleaseFailureCount labeled.Counter
 
 	// TODO We should have a metric to capture custom state size
 	scope promutils.Scope
@@ -474,6 +476,13 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		} else {
 			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), &event.TaskNodeMetadata{CacheStatus: cacheStatus.GetCacheStatus(), CatalogKey: cacheStatus.GetMetadata()})
 		}
+
+		ownerID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+		reservation, err := t.ReleaseCatalogReservation(ctx, ownerID, tCtx.tr, tCtx.InputReader())
+		if err != nil {
+			return nil, err
+		}
+		pluginTrns.PopulateReservationInfo(reservation)
 	}
 
 	return pluginTrns, nil
@@ -552,12 +561,15 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 		pluginTrns.PopulateReservationInfo(reservation)
 
-		// If we do not own the reservation then we transition to WaitingForCache phase. If we are
-		// already running (ie. in a phase other than PhaseUndefined) and somehow lost the reservation
-		// (ex. by expiration), continue to execute until completion.
-		if reservation.GetStatus() == core.CatalogReservationStatus_RESERVATION_EXISTS {
-			// TODO hamersaw - can we set the owner in metadata for sending to admin?
+		if reservation.GetStatus() == core.CatalogReservationStatus_RESERVATION_ACQUIRED &&
+				(ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache){
+			logger.Infof(ctx, "Acquired cache reservation")
+		}
 
+		// If we do not own the reservation then we transition to WaitingForCache phase. If we are
+		// already running (ie. in a phase other than PhaseUndefined or PhaseWaitingForCache) and 
+		// somehow lost the reservation (ex. by expiration), continue to execute until completion.
+		if reservation.GetStatus() == core.CatalogReservationStatus_RESERVATION_EXISTS {
 			if ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache {
 				pluginTrns.ttype = handler.TransitionTypeEphemeral
 				pluginTrns.pInfo = pluginCore.PhaseInfoWaitingForCache(pluginCore.DefaultPhaseVersion, nil)
@@ -809,10 +821,12 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 			catalogPutSuccessCount:         labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", scope),
 			catalogPutFailureCount:         labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			catalogGetFailureCount:         labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
-			catalogReservationFailureCount: labeled.NewCounter("reservation_failure_count", "Reservation GetOrExtend faillure count", scope),
-			catalogReservationSuccessCount: labeled.NewCounter("reservation_success_count", "Reservation GetOrExtend success count", scope),
 			pluginExecutionLatency:         labeled.NewStopWatch("plugin_exec_latency", "Time taken to invoke plugin for one round", time.Microsecond, scope),
 			pluginQueueLatency:             labeled.NewStopWatch("plugin_queue_latency", "Time spent by plugin in queued phase", time.Microsecond, scope),
+			reservationGetFailureCount:     labeled.NewCounter("reservation_get_failure_count", "Reservation GetOrExtend failure count", scope),
+			reservationGetSuccessCount:     labeled.NewCounter("reservation_get_success_count", "Reservation GetOrExtend success count", scope),
+			reservationReleaseFailureCount: labeled.NewCounter("reservation_release_failure_count", "Reservation Release failure count", scope),
+			reservationReleaseSuccessCount: labeled.NewCounter("reservation_release_success_count", "Reservation Release success count", scope),
 			scope:                          scope,
 		},
 		pluginScope:     scope.NewSubScope("plugin"),

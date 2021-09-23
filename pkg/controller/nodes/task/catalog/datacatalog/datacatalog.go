@@ -264,7 +264,8 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 	return catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, EventCatalogMetadata(datasetID, tag, nil)), nil
 }
 
-// TODO hamersaw - comment
+// Attempts to get a reservation for the cachable task. If you have previously acquired a reservation
+// it will be extended. If another entity holds the reservation that is returned.
 func (m *CatalogClient) GetOrExtendReservation(ctx context.Context, key catalog.Key, ownerID string, heartbeatInterval time.Duration) (*datacatalog.Reservation, error) {
 	datasetID, err := GenerateDatasetIDForTask(ctx, key)
 	if err != nil {
@@ -302,7 +303,6 @@ func (m *CatalogClient) GetOrExtendReservation(ctx context.Context, key catalog.
 	return response.Reservation, nil
 }
 
-// TODO hamersaw - comment
 func (m *CatalogClient) ReleaseReservation(ctx context.Context, key catalog.Key, ownerID string) (error) {
 	datasetID, err := GenerateDatasetIDForTask(ctx, key)
 	if err != nil {
