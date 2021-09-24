@@ -553,13 +553,13 @@ func TestCatalog_GetOrExtendReservation(t *testing.T) {
 
 	heartbeatInterval := time.Second * 5
 	prevReservation := datacatalog.Reservation{
-		ReservationId:     &reservationID,
-		OwnerId:           prevOwner,
+		ReservationId: &reservationID,
+		OwnerId:       prevOwner,
 	}
 
 	currentReservation := datacatalog.Reservation{
-		ReservationId:     &reservationID,
-		OwnerId:           currentOwner,
+		ReservationId: &reservationID,
+		OwnerId:       currentOwner,
 	}
 
 	t.Run("CreateOrUpdateReservation", func(t *testing.T) {

@@ -23,8 +23,8 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginCatalogMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog/mocks"
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -972,7 +972,7 @@ func Test_task_Handle_Reservation(t *testing.T) {
 			Id:   taskID,
 			Type: "test",
 			Metadata: &core.TaskMetadata{
-				Discoverable: true,
+				Discoverable:          true,
 				DiscoverySerializable: true,
 			},
 			Interface: &core.TypedInterface{
