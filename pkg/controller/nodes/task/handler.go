@@ -480,7 +480,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		ownerID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 		reservation, err := t.ReleaseCatalogReservation(ctx, ownerID, tCtx.tr, tCtx.InputReader())
 		if err != nil {
-			return nil, err
+			logger.Errorf(ctx, "failed to release reservation. error %v", err)
 		}
 		pluginTrns.PopulateReservationInfo(reservation)
 	}
