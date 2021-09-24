@@ -28,7 +28,7 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 		return catalog.Entry{}, err
 	}
 
-	if tk.Metadata.Discoverable || tk.Metadata.DiscoverySerializable {
+	if tk.Metadata.Discoverable {
 		logger.Infof(ctx, "Catalog CacheEnabled: Looking up catalog Cache.")
 		key := catalog.Key{
 			Identifier:     *tk.Id,
@@ -79,7 +79,7 @@ func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID str
 		return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_FAILURE), err
 	}
 
-	if tk.Metadata.DiscoverySerializable {
+	if tk.Metadata.Discoverable && tk.Metadata.DiscoverySerializable {
 		logger.Infof(ctx, "Catalog CacheSerializeEnabled: creating catalog reservation.")
 		key := catalog.Key{
 			Identifier:     *tk.Id,
@@ -198,7 +198,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 	}
 	writeToCatalog := !p.GetProperties().DisableNodeLevelCaching
 
-	if (!tk.Metadata.Discoverable && !tk.Metadata.DiscoverySerializable) || !writeToCatalog {
+	if !tk.Metadata.Discoverable || !writeToCatalog {
 		if !writeToCatalog {
 			logger.Infof(ctx, "Node level caching is disabled. Skipping catalog write.")
 		}
@@ -237,7 +237,7 @@ func (t *Handler) ReleaseCatalogReservation(ctx context.Context, ownerID string,
 		return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_FAILURE), err
 	}
 
-	if tk.Metadata.DiscoverySerializable {
+	if tk.Metadata.Discoverable && tk.Metadata.DiscoverySerializable {
 		logger.Infof(ctx, "Catalog CacheSerializeEnabled: releasing catalog reservation.")
 		key := catalog.Key{
 			Identifier:     *tk.Id,
