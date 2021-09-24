@@ -28,7 +28,7 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 		return catalog.Entry{}, err
 	}
 
-	if tk.Metadata.Discoverable || tk.Metadata.DiscoveryReservable {
+	if tk.Metadata.Discoverable || tk.Metadata.DiscoverySerializable {
 		logger.Infof(ctx, "Catalog CacheEnabled: Looking up catalog Cache.")
 		key := catalog.Key{
 			Identifier:     *tk.Id,
@@ -79,8 +79,8 @@ func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID str
 		return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_FAILURE), err
 	}
 
-	if tk.Metadata.DiscoveryReservable {
-		logger.Infof(ctx, "Catalog CacheReservationEnabled: creating catalog reservation.")
+	if tk.Metadata.DiscoverySerializable {
+		logger.Infof(ctx, "Catalog CacheSerializeEnabled: creating catalog reservation.")
 		key := catalog.Key{
 			Identifier:     *tk.Id,
 			CacheVersion:   tk.Metadata.DiscoveryVersion,
@@ -108,7 +108,7 @@ func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID str
 		t.metrics.reservationGetSuccessCount.Inc(ctx)
 		return catalog.NewReservationEntry(expiresAt, heartbeatInterval, reservation.OwnerId, status), nil
 	}
-	logger.Infof(ctx, "Catalog CacheReservationDisabled: for Task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
+	logger.Infof(ctx, "Catalog CacheSerializeDisabled: for Task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
 	return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_DISABLED), nil
 }
 
@@ -198,7 +198,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 	}
 	writeToCatalog := !p.GetProperties().DisableNodeLevelCaching
 
-	if (!tk.Metadata.Discoverable && !tk.Metadata.DiscoveryReservable) || !writeToCatalog {
+	if (!tk.Metadata.Discoverable && !tk.Metadata.DiscoverySerializable) || !writeToCatalog {
 		if !writeToCatalog {
 			logger.Infof(ctx, "Node level caching is disabled. Skipping catalog write.")
 		}
@@ -237,8 +237,8 @@ func (t *Handler) ReleaseCatalogReservation(ctx context.Context, ownerID string,
 		return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_FAILURE), err
 	}
 
-	if tk.Metadata.DiscoveryReservable {
-		logger.Infof(ctx, "Catalog CacheReservationEnabled: releasing catalog reservation.")
+	if tk.Metadata.DiscoverySerializable {
+		logger.Infof(ctx, "Catalog CacheSerializeEnabled: releasing catalog reservation.")
 		key := catalog.Key{
 			Identifier:     *tk.Id,
 			CacheVersion:   tk.Metadata.DiscoveryVersion,
@@ -256,6 +256,6 @@ func (t *Handler) ReleaseCatalogReservation(ctx context.Context, ownerID string,
 		t.metrics.reservationReleaseSuccessCount.Inc(ctx)
 		return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_RELEASED), nil
 	}
-	logger.Infof(ctx, "Catalog CacheReservationDisabled: for Task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
+	logger.Infof(ctx, "Catalog CacheSerializeDisabled: for Task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
 	return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_DISABLED), nil
 }
