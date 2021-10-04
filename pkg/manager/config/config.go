@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/flyteorg/flytestdlib/config"
 )
 
@@ -8,15 +10,18 @@ import (
 
 var (
 	DefaultConfig = &Config{
-		TestStr: "hello world",
+		Namespace: "flyte",
+		ScanInterval: config.Duration{
+			Duration: 10 * time.Second,
+		},
 	}
 
 	configSection = config.MustRegisterSection("manager", DefaultConfig)
 )
 
 type Config struct {
-	TestStr string `json:"test-str" pflag:",A string to test the command is working"`
-	// TODO - flytepropeller namespace (default: "flyte")
+	Namespace    string  `json:"namespace" pflag:"Namespace to use for managing flytepropeller pod instances"`
+	ScanInterval config.Duration `json:"scan-interval" pflag:"Frequency to scan flytepropeller pods and start / restart if necessary"`
 }
 
 func GetConfig() *Config {
