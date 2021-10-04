@@ -2,16 +2,16 @@ package cmd
 
 import (
 	"context"
-	//"encoding/json"
 	"fmt"
 	//"errors"
+	"time"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	//"github.com/flyteorg/flytepropeller/pkg/manager"
 	managerConfig "github.com/flyteorg/flytepropeller/pkg/manager/config"
 	"github.com/flyteorg/flytepropeller/pkg/signals"
 
-	//"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/logger"
 	//"github.com/flyteorg/flytestdlib/profutils"
 	//"github.com/flyteorg/flytestdlib/promutils"
 
@@ -20,6 +20,7 @@ import (
 	//"k8s.io/client-go/kubernetes"
 	//apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 var managerCmd = &cobra.Command{
@@ -42,23 +43,9 @@ func runManager(origContext context.Context, propellerCfg *config.Config, cfg *m
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler(origContext)
 
-	/*raw, err := json.Marshal(cfg)
-	if err != nil {
-		return err
-	}*/
-
 	kubeClient, _, err := getKubeConfig(ctx, propellerCfg)
 	if err != nil {
 		return err
-	}
-
-	// TODO hamersaw - use [ListOptions](https://pkg.go.dev/k8s.io/apimachinery@v0.20.2/pkg/apis/meta/v1#ListOptions)
-	for {
-		pods, err := kubeClient.CoreV1().Pods("flyte").List(ctx, metav1.ListOptions{})
-		if err != nil {
-			panic(err.Error())
-		}
-		fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
 	}
 
 	// TODO hamersaw - reenable for metrics
@@ -71,6 +58,37 @@ func runManager(origContext context.Context, propellerCfg *config.Config, cfg *m
 			logger.Panicf(ctx, "Failed to Start profiling and metrics server. Error: %v", err)
 		}
 	}()*/
+
+	// TODO hamersaw - use [ListOptions](https://pkg.go.dev/k8s.io/apimachinery@v0.20.2/pkg/apis/meta/v1#ListOptions)
+	labelMap := map[string]string{
+		"app": "flytepropeller",
+	}
+	options := metav1.ListOptions{
+        LabelSelector: labels.SelectorFromSet(labelMap).String(),
+    }
+
+	ticker := time.NewTicker(2 * time.Second)
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				pods, err := kubeClient.CoreV1().Pods("flyte").List(ctx, options)
+				if err != nil {
+					panic(err.Error())
+				}
+				fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
+			}
+		}
+	}()
+
+	logger.Info(ctx, "Started manager")
+	<-ctx.Done()
+
+	logger.Info(ctx, "Shutting down manager")
+	done <- true
 
 	/*limitNamespace := ""
 	if propellerCfg.LimitNamespace != defaultNamespace {
