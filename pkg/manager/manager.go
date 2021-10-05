@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -32,7 +33,24 @@ type Manager struct {
 	EnqueueCountTask prometheus.Counter
 }*/
 
-func (m *Manager) amendReplicas(ctx context.Context) error {
+func extractReplicaFromString(str string) (int, error) {
+	// TODO hamersaw - move outside of function?
+	re := regexp.MustCompile("^flytepropeller-([1-9]+[0-9]*)$")
+
+	matches := re.FindAllString(str, -1)
+	if matches == nil || len(matches) != 1 {
+		return -1, errors.New(fmt.Sprintf("failed to parse string '%s' with regex '%s'", str, re))
+	}
+
+	replica, err := strconv.ParseInt(matches[0], 0, 32)
+	if err != nil {
+		return -1, errors.New(fmt.Sprintf("failed to parse replica value '%s' as integer", matches[0]))
+	}
+
+	return int(replica), nil
+}
+
+func (m *Manager) recoverReplicas(ctx context.Context) error {
 	// TODO hamersaw - move these outside
 	labelMap := map[string]string{
 		"app": "flytepropeller",
@@ -55,38 +73,18 @@ func (m *Manager) amendReplicas(ctx context.Context) error {
 		replicaExists[i] = false
 	}
 
-	re, err := regexp.Compile("flytepropeller-([1-9]+[0-9]*)")
-	if err != nil {
-		fmt.Println("failed to compile regex")
-		return nil
-	}
-
-	//  find missing pod and start
+	// find missing pod and start
 	for _, pod := range pods.Items {
-		matches := re.FindAllString(pod.ObjectMeta.Name, -1)
-		if matches == nil || len(matches) != 1 {
-			fmt.Println("invalid replica pod name - regex")
-			// TODO hamersaw - invalid replica pod name
+		replica, err := extractReplicaFromString(pod.ObjectMeta.Name)
+		if err != nil {
+			logger.Warnf(ctx, "failed to parse replica from pod name: [%v]", err)
+			continue
+		} else if replica < 0 || replica >= m.replicaCount {
+			logger.Warnf(ctx, "replica does not fall within valid range [0,%d)", m.replicaCount)
 			continue
 		}
 
-		for _, match := range matches {
-			replica, err := strconv.ParseInt(match, 0, 32)
-			if err != nil {
-				fmt.Println("invalid replica pod name - parse")
-				// TODO hamersaw - invalid replica pod name
-				continue
-			}
-
-			intReplica := int(replica)
-			if intReplica < 0 || intReplica >= m.replicaCount {
-				fmt.Println("invalid replica pod name - range")
-				// TODO hamersaw - out of range
-				continue
-			}
-
-			replicaExists[intReplica] = true
-		}
+		replicaExists[replica] = true
 	}
 
 	for replica, exists := range replicaExists {
@@ -104,9 +102,9 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	go func() {
 		for {
-			err := m.amendReplicas(ctx)
+			err := m.recoverReplicas(ctx)
 			if err != nil {
-				// TODO hamersaw - log?
+				logger.Errorf("failed to recover replicas: [%v]", err)
 			}
 
 			select {
