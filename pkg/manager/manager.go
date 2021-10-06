@@ -12,32 +12,40 @@ import (
 
 	"github.com/flyteorg/flytestdlib/logger"
 
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-var replicaRegex = regexp.MustCompile("^flytepropeller-([1-9]+[0-9]*)$")
-
 type Manager struct {
-	kubeClient   kubernetes.Interface
-	namespace    string
-	podTemplate  *corev1.PodTemplate
-	replicaCount int
-	scanInterval time.Duration
+	kubePodsClient corev1.PodInterface
+	pod            *v1.Pod
+	podApplication string
+	replicaCount   int
+	scanInterval   time.Duration
 
 	// Kubernetes API.
 	//metrics       *metrics
 }
 
+// TODO hamersaw - integrate prometheus metrics
 /*type metrics struct {
 	Scope            promutils.Scope
 	EnqueueCountWf   prometheus.Counter
 	EnqueueCountTask prometheus.Counter
 }*/
 
-func extractReplicaFromString(str string) (int, error) {
+// TODO hameraw - need to use this?
+/*func getReplicaPodName(replica int) string {
+	return fmt.Sprintf("%s-managed-%d", appName, replica)
+}*/
+
+func (m *Manager) extractReplicaFromString(str string) (int, error) {
+	// TODO hamersaw - remove this
+	replicaRegex := regexp.MustCompile(fmt.Sprintf("^%s-([0-9]+)$", m.podApplication))
+
 	matches := replicaRegex.FindAllString(str, -1)
 	if matches == nil || len(matches) != 1 {
 		return -1, errors.New(fmt.Sprintf("failed to parse string '%s' with regex '%s'", str, replicaRegex))
@@ -52,16 +60,17 @@ func extractReplicaFromString(str string) (int, error) {
 }
 
 func (m *Manager) recoverReplicas(ctx context.Context) error {
-	// TODO hamersaw - move these outside
-	labelMap := map[string]string{
-		"app": "flytepropeller",
+	// TODO hamersaw - need to handle pods with Error status?
+	// with 3 replicas locally we get "too many open files"
+	podLabels := map[string]string{
+		"app": m.podApplication,
 	}
 
-	options := metav1.ListOptions{
-        LabelSelector: labels.SelectorFromSet(labelMap).String(),
+	listOptions := metav1.ListOptions{
+        LabelSelector: labels.SelectorFromSet(podLabels).String(),
     }
 
-	pods, err := m.kubeClient.CoreV1().Pods(m.namespace).List(ctx, options)
+	pods, err := m.kubePodsClient.List(ctx, listOptions)
 	if err != nil {
 		return err
 	} else if len(pods.Items) == m.replicaCount {
@@ -73,11 +82,10 @@ func (m *Manager) recoverReplicas(ctx context.Context) error {
 		replicaExists[i] = false
 	}
 
-	// find missing pod and start
 	for _, pod := range pods.Items {
-		replica, err := extractReplicaFromString(pod.ObjectMeta.Name)
+		replica, err := m.extractReplicaFromString(pod.ObjectMeta.Name)
 		if err != nil {
-			logger.Warnf(ctx, "failed to parse replica from pod name: [%v]", err)
+			logger.Warnf(ctx, "failed to parse replica from pod name [%v]", err)
 			continue
 		} else if replica < 0 || replica >= m.replicaCount {
 			logger.Warnf(ctx, "replica does not fall within valid range [0,%d)", m.replicaCount)
@@ -89,21 +97,17 @@ func (m *Manager) recoverReplicas(ctx context.Context) error {
 
 	for replica, exists := range replicaExists {
 		if !exists {
-			fmt.Printf("TODO - start pod %d\n", replica)
 
-			pod := &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      fmt.Sprintf("flytepropeller-%d", replica),
-					Namespace: m.namespace,
-				},
-				Spec: m.podTemplate.Template.Spec,
-			}
+			pod := m.pod.DeepCopy()
+			pod.ObjectMeta.Name = fmt.Sprintf("flytepropeller-%d", replica)
 
-			_, err := m.kubeClient.CoreV1().Pods(m.namespace).Create(ctx, pod, metav1.CreateOptions{})
+			_, err := m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
 			if err != nil {
-				logger.Warnf(ctx, "failed to create replica %d - %v", replica, err)
+				logger.Errorf(ctx, "failed to create replica %d [%v]", replica, err)
 				continue
 			}
+
+			logger.Infof(ctx, "created pod for replica %d", replica)
 		}
 	}
 
@@ -116,9 +120,11 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	go func() {
 		for {
+			logger.Debugf(ctx, "validating replica state")
+
 			err := m.recoverReplicas(ctx)
 			if err != nil {
-				logger.Errorf(ctx, "failed to recover replicas: [%v]", err)
+				logger.Errorf(ctx, "failed to recover replicas [%v]", err)
 			}
 
 			select {
@@ -130,25 +136,39 @@ func (m *Manager) Run(ctx context.Context) error {
 		}
 	}()
 
-	logger.Info(ctx, "Started manager")
+	logger.Info(ctx, "started manager")
 	<-ctx.Done()
-	logger.Info(ctx, "Shutting down manager")
+	logger.Info(ctx, "shutting down manager")
 
 	return nil
 }
 
 func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interface) (*Manager, error) {
-	podTemplate, err := kubeClient.CoreV1().PodTemplates(cfg.Namespace).Get(ctx, cfg.Template, metav1.GetOptions{})
+	// create singular pod spec to ensure uniformity in managed pods
+	podTemplate, err := kubeClient.CoreV1().PodTemplates(cfg.PodTemplateNamespace).Get(ctx, cfg.PodTemplate, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: cfg.PodNamespace,
+			Labels:    map[string]string{
+				"app": cfg.PodApplication,
+			},
+		},
+		Spec: podTemplate.Template.Spec,
+	}
+
+	kubePodsClient := kubeClient.CoreV1().Pods(cfg.PodNamespace)
+
+	// TODO hamersaw - use podApplication to generate pod names
 	manager := &Manager{
-		kubeClient:   kubeClient,
-		namespace:    cfg.Namespace,
-		podTemplate:  podTemplate,
-		replicaCount: cfg.ReplicaCount,
-		scanInterval: cfg.ScanInterval.Duration,
+		kubePodsClient: kubePodsClient,
+		pod:            pod,
+		podApplication: cfg.PodApplication,
+		replicaCount:   cfg.ReplicaCount,
+		scanInterval:   cfg.ScanInterval.Duration,
 	}
 
 	return manager, nil
