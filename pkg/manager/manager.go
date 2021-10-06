@@ -12,14 +12,18 @@ import (
 
 	"github.com/flyteorg/flytestdlib/logger"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
 
+var replicaRegex = regexp.MustCompile("^flytepropeller-([1-9]+[0-9]*)$")
+
 type Manager struct {
 	kubeClient   kubernetes.Interface
 	namespace    string
+	podTemplate  *corev1.PodTemplate
 	replicaCount int
 	scanInterval time.Duration
 
@@ -34,12 +38,9 @@ type Manager struct {
 }*/
 
 func extractReplicaFromString(str string) (int, error) {
-	// TODO hamersaw - move outside of function?
-	re := regexp.MustCompile("^flytepropeller-([1-9]+[0-9]*)$")
-
-	matches := re.FindAllString(str, -1)
+	matches := replicaRegex.FindAllString(str, -1)
 	if matches == nil || len(matches) != 1 {
-		return -1, errors.New(fmt.Sprintf("failed to parse string '%s' with regex '%s'", str, re))
+		return -1, errors.New(fmt.Sprintf("failed to parse string '%s' with regex '%s'", str, replicaRegex))
 	}
 
 	replica, err := strconv.ParseInt(matches[0], 0, 32)
@@ -67,7 +68,6 @@ func (m *Manager) recoverReplicas(ctx context.Context) error {
 		return nil
 	}
 
-	fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
 	replicaExists := make(map[int]bool)
 	for i := 0; i < m.replicaCount; i++ {
 		replicaExists[i] = false
@@ -90,6 +90,20 @@ func (m *Manager) recoverReplicas(ctx context.Context) error {
 	for replica, exists := range replicaExists {
 		if !exists {
 			fmt.Printf("TODO - start pod %d\n", replica)
+
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("flytepropeller-%d", replica),
+					Namespace: m.namespace,
+				},
+				Spec: m.podTemplate.Template.Spec,
+			}
+
+			_, err := m.kubeClient.CoreV1().Pods(m.namespace).Create(ctx, pod, metav1.CreateOptions{})
+			if err != nil {
+				logger.Warnf(ctx, "failed to create replica %d - %v", replica, err)
+				continue
+			}
 		}
 	}
 
@@ -104,7 +118,7 @@ func (m *Manager) Run(ctx context.Context) error {
 		for {
 			err := m.recoverReplicas(ctx)
 			if err != nil {
-				logger.Errorf("failed to recover replicas: [%v]", err)
+				logger.Errorf(ctx, "failed to recover replicas: [%v]", err)
 			}
 
 			select {
@@ -124,9 +138,15 @@ func (m *Manager) Run(ctx context.Context) error {
 }
 
 func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interface) (*Manager, error) {
+	podTemplate, err := kubeClient.CoreV1().PodTemplates(cfg.Namespace).Get(ctx, cfg.Template, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
 	manager := &Manager{
 		kubeClient:   kubeClient,
 		namespace:    cfg.Namespace,
+		podTemplate:  podTemplate,
 		replicaCount: cfg.ReplicaCount,
 		scanInterval: cfg.ScanInterval.Duration,
 	}
