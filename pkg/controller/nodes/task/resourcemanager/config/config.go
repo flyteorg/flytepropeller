@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+	"crypto/tls"
 )
 
 //go:generate pflags Config --default-var=defaultConfig
@@ -41,6 +42,7 @@ type RedisConfig struct {
 	HostPath   string `json:"hostPath" pflag:",Redis host location"`
 	HostKey    string `json:"hostKey" pflag:",Key for local Redis access"`
 	MaxRetries int    `json:"maxRetries" pflag:",See Redis client options for more info"`
+	TLSConfig  *tls.Config `json:"TLSConfig" pflag:",See the crytpo/tls config object for more info"`
 }
 
 // Retrieves the current config value or default.

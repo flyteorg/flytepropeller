@@ -67,6 +67,7 @@ func NewRedisClient(ctx context.Context, config config.RedisConfig) (RedisClient
 			Password:   config.HostKey,
 			DB:         0, // use default DB
 			MaxRetries: config.MaxRetries,
+			TLSConfig:  config.TLSConfig,
 		}),
 	}
 
