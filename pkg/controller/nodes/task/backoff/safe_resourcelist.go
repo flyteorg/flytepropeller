@@ -36,11 +36,6 @@ func (s *SyncResourceList) Range(visitor func(key v1.ResourceName, value resourc
 	})
 }
 
-// Delete deletes items from the map
-func (s *SyncResourceList) Delete(key v1.ResourceName) {
-	s.Map.Delete(key)
-}
-
 // String returns a formatted string of some snapshot of the map.
 func (s *SyncResourceList) String() string {
 	sb := strings.Builder{}
@@ -53,6 +48,25 @@ func (s *SyncResourceList) String() string {
 	})
 
 	return sb.String()
+}
+
+func (s *SyncResourceList) AsResourceList() v1.ResourceList {
+	lst := v1.ResourceList{}
+	s.Range(func(key v1.ResourceName, value resource.Quantity) bool {
+		lst[key] = value
+		return true
+	})
+
+	return lst
+}
+
+func SyncResourceListFromResourceList(list v1.ResourceList) SyncResourceList {
+	ls := NewSyncResourceList()
+	for key, value := range list {
+		ls.Store(key, value)
+	}
+
+	return ls
 }
 
 // NewSyncResourceList creates a thread-safe map to store resource names and resource
