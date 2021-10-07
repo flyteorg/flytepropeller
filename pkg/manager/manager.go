@@ -35,9 +35,9 @@ type Manager struct {
 	EnqueueCountTask prometheus.Counter
 }*/
 
-func (m *Manager) recoverReplicas(ctx context.Context) error {
+func (m *Manager) recoverPods(ctx context.Context) error {
 	// TODO hamersaw - do we need to handle pods with Error status?
-	// with 3 replicas locally we get "too many open files"
+	// with 3 pods locally we get "too many open files"
 
 	// retrieve existing pods
 	podLabels := map[string]string{
@@ -71,24 +71,31 @@ func (m *Manager) recoverReplicas(ctx context.Context) error {
 		}
 	}
 
-	// create non-existant pod replicas
-	for replica, podName := range m.podNames {
-		if _, ok := podExists[podName]; !ok {
+	// create non-existent pods
+	for i, podName := range m.podNames {
+		if exists, _ := podExists[podName]; !exists {
 			pod := m.pod.DeepCopy()
 			pod.ObjectMeta.Name = podName
 
-			err := m.shardStrategy.UpdatePodSpec(&pod.Spec, replica, len(m.podNames))
+			err := m.shardStrategy.UpdatePodSpec(&pod.Spec, i)
 			if err != nil {
 				logger.Errorf(ctx, "failed to update pod spec for '%s' [%v]", podName, err)
 				continue
 			}
 
+			/*for _, container := range pod.Spec.Containers {
+				fmt.Printf("CONTAINER: %v\n", container.Image)
+				for _, arg := range container.Args {
+					fmt.Printf("  %s\n", arg)
+				}
+			}*/
+
 			// TODO hamersaw - tmp
-			/*_, err := m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
+			_, err := m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
 			if err != nil {
 				logger.Errorf(ctx, "failed to create pod '%s' [%v]", podName, err)
 				continue
-			}*/
+			}
 
 			logger.Infof(ctx, "created pod '%s'", podName)
 		}
@@ -103,11 +110,10 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	go func() {
 		for {
-			logger.Debugf(ctx, "validating replica state")
-
-			err := m.recoverReplicas(ctx)
+			logger.Debugf(ctx, "validating managed pod(s) state")
+			err := m.recoverPods(ctx)
 			if err != nil {
-				logger.Errorf(ctx, "failed to recover replicas [%v]", err)
+				logger.Errorf(ctx, "failed to recover pods [%v]", err)
 			}
 
 			select {
@@ -127,12 +133,20 @@ func (m *Manager) Run(ctx context.Context) error {
 }
 
 func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interface) (*Manager, error) {
-	// create singular pod spec to ensure uniformity in managed pods
+	// TODO hamersaw - reconfigure hardcoding shard strategy
+	shardStrategy := &ConsistentHashingShardStrategy{podCount: 2, keyspaceSize: 32}
+
+	// retrieve and validate pod template
 	podTemplate, err := kubeClient.CoreV1().PodTemplates(cfg.PodTemplateNamespace).Get(ctx, cfg.PodTemplate, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
+	if _, err := getFlytePropellerContainer(&podTemplate.Template.Spec); err != nil {
+		return nil, err
+	}
+
+	// create singular pod spec to ensure uniformity in managed pods
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: cfg.PodNamespace,
@@ -144,8 +158,13 @@ func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interfac
 	}
 
 	// generate pod names
+	podCount, err := shardStrategy.GetPodCount()
+	if err != nil {
+		return nil, err
+	}
+
 	var podNames []string
-	for i := 0; i < cfg.ReplicaCount; i++ {
+	for i := 0; i < podCount; i++ {
 		podNames = append(podNames, fmt.Sprintf("%s-%d", cfg.PodApplication, i))
 	}
 
@@ -155,8 +174,7 @@ func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interfac
 		podApplication: cfg.PodApplication,
 		podNames:       podNames,
 		scanInterval:   cfg.ScanInterval.Duration,
-		// TODO hamersaw - reconfigure hardcoding shard strategy
-		shardStrategy:  &ConsistentShardStrategy{populationSize: 32},
+		shardStrategy:  shardStrategy,
 	}
 
 	return manager, nil
