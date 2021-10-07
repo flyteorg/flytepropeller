@@ -2,10 +2,7 @@ package manager
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/flyteorg/flytepropeller/pkg/manager/config"
@@ -23,7 +20,7 @@ type Manager struct {
 	kubePodsClient corev1.PodInterface
 	pod            *v1.Pod
 	podApplication string
-	replicaCount   int
+	podNames       []string
 	scanInterval   time.Duration
 
 	// Kubernetes API.
@@ -37,31 +34,11 @@ type Manager struct {
 	EnqueueCountTask prometheus.Counter
 }*/
 
-// TODO hameraw - need to use this?
-/*func getReplicaPodName(replica int) string {
-	return fmt.Sprintf("%s-managed-%d", appName, replica)
-}*/
-
-func (m *Manager) extractReplicaFromString(str string) (int, error) {
-	// TODO hamersaw - remove this
-	replicaRegex := regexp.MustCompile(fmt.Sprintf("^%s-([0-9]+)$", m.podApplication))
-
-	matches := replicaRegex.FindAllString(str, -1)
-	if matches == nil || len(matches) != 1 {
-		return -1, errors.New(fmt.Sprintf("failed to parse string '%s' with regex '%s'", str, replicaRegex))
-	}
-
-	replica, err := strconv.ParseInt(matches[0], 0, 32)
-	if err != nil {
-		return -1, errors.New(fmt.Sprintf("failed to parse replica value '%s' as integer", matches[0]))
-	}
-
-	return int(replica), nil
-}
-
 func (m *Manager) recoverReplicas(ctx context.Context) error {
 	// TODO hamersaw - need to handle pods with Error status?
 	// with 3 replicas locally we get "too many open files"
+
+	// retrieve existing pods
 	podLabels := map[string]string{
 		"app": m.podApplication,
 	}
@@ -73,41 +50,39 @@ func (m *Manager) recoverReplicas(ctx context.Context) error {
 	pods, err := m.kubePodsClient.List(ctx, listOptions)
 	if err != nil {
 		return err
-	} else if len(pods.Items) == m.replicaCount {
-		return nil
 	}
 
-	replicaExists := make(map[int]bool)
-	for i := 0; i < m.replicaCount; i++ {
-		replicaExists[i] = false
+	// note: we are unable to short-circuit if 'len(pods) == len(m.podNames)' because there may be
+	// unmanaged flytepropeller pods - which is invalid configuration but will be detected later
+
+	// determine missing managed pods
+	podExists := make(map[string]bool)
+	for _, podName := range m.podNames {
+		podExists[podName] = false
 	}
 
 	for _, pod := range pods.Items {
-		replica, err := m.extractReplicaFromString(pod.ObjectMeta.Name)
-		if err != nil {
-			logger.Warnf(ctx, "failed to parse replica from pod name [%v]", err)
-			continue
-		} else if replica < 0 || replica >= m.replicaCount {
-			logger.Warnf(ctx, "replica does not fall within valid range [0,%d)", m.replicaCount)
-			continue
+		podName := pod.ObjectMeta.Name
+		if _, ok := podExists[podName]; ok {
+			podExists[podName] = true
+		} else {
+			logger.Warnf(ctx, "unmanaged pod '%s' detected", podName)
 		}
-
-		replicaExists[replica] = true
 	}
 
-	for replica, exists := range replicaExists {
+	// create non-existant pod replicas
+	for podName, exists := range podExists {
 		if !exists {
-
 			pod := m.pod.DeepCopy()
-			pod.ObjectMeta.Name = fmt.Sprintf("flytepropeller-%d", replica)
+			pod.ObjectMeta.Name = podName
 
 			_, err := m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
 			if err != nil {
-				logger.Errorf(ctx, "failed to create replica %d [%v]", replica, err)
+				logger.Errorf(ctx, "failed to create pod '%s' [%v]", podName, err)
 				continue
 			}
 
-			logger.Infof(ctx, "created pod for replica %d", replica)
+			logger.Infof(ctx, "created pod '%s'", podName)
 		}
 	}
 
@@ -160,14 +135,17 @@ func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interfac
 		Spec: podTemplate.Template.Spec,
 	}
 
-	kubePodsClient := kubeClient.CoreV1().Pods(cfg.PodNamespace)
+	// generate pod names
+	var podNames []string
+	for i := 0; i < cfg.ReplicaCount; i++ {
+		podNames = append(podNames, fmt.Sprintf("%s-%d", cfg.PodApplication, i))
+	}
 
-	// TODO hamersaw - use podApplication to generate pod names
 	manager := &Manager{
-		kubePodsClient: kubePodsClient,
+		kubePodsClient: kubeClient.CoreV1().Pods(cfg.PodNamespace),
 		pod:            pod,
 		podApplication: cfg.PodApplication,
-		replicaCount:   cfg.ReplicaCount,
+		podNames:       podNames,
 		scanInterval:   cfg.ScanInterval.Duration,
 	}
 
