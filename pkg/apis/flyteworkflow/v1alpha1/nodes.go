@@ -93,19 +93,19 @@ func (in *NodeMetadata) DeepCopyInto(out *NodeMetadata) {
 }
 
 type NodeSpec struct {
-	ID            NodeID                        `json:"id"`
-	Name          string                        `json:"name,omitempty"`
-	Resources     *typesv1.ResourceRequirements `json:"resources,omitempty"`
-	Kind          NodeKind                      `json:"kind"`
-	BranchNode    *BranchNodeSpec               `json:"branch,omitempty"`
-	TaskRef       *TaskID                       `json:"task,omitempty"`
-	WorkflowNode  *WorkflowNodeSpec             `json:"workflow,omitempty"`
+	ID           NodeID                        `json:"id"`
+	Name         string                        `json:"name,omitempty"`
+	Resources    *typesv1.ResourceRequirements `json:"resources,omitempty"`
+	Kind         NodeKind                      `json:"kind"`
+	BranchNode   *BranchNodeSpec               `json:"branch,omitempty"`
+	TaskRef      *TaskID                       `json:"task,omitempty"`
+	WorkflowNode *WorkflowNodeSpec             `json:"workflow,omitempty"`
 	// +listType=atomic
-	InputBindings []*Binding                    `json:"inputBindings,omitempty"`
-	Config        *typesv1.ConfigMap            `json:"config,omitempty"`
-	RetryStrategy *RetryStrategy                `json:"retry,omitempty"`
+	InputBindings []*Binding         `json:"inputBindings,omitempty"`
+	Config        *typesv1.ConfigMap `json:"config,omitempty"`
+	RetryStrategy *RetryStrategy     `json:"retry,omitempty"`
 	// +listType=atomic
-	OutputAliases []Alias                       `json:"outputAlias,omitempty"`
+	OutputAliases []Alias `json:"outputAlias,omitempty"`
 
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// Optional: Defaults to empty.  See type description for default values of each field.

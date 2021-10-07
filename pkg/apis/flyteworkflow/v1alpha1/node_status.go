@@ -18,7 +18,7 @@ import (
 )
 
 type MutableStruct struct {
-	isDirty bool `json:",inline"`
+	isDirty bool
 }
 
 func (in *MutableStruct) SetDirty() {
@@ -35,7 +35,7 @@ func (in MutableStruct) IsDirty() bool {
 }
 
 type BranchNodeStatus struct {
-	MutableStruct `json:"-"`
+	MutableStruct   `json:"-"`
 	Phase           BranchNodePhase `json:"phase"`
 	FinalizedNodeID *NodeID         `json:"finalNodeId"`
 }
@@ -96,9 +96,9 @@ const (
 
 type DynamicNodeStatus struct {
 	MutableStruct `json:"-"`
-	Phase  DynamicNodePhase `json:"phase"`
-	Reason string           `json:"reason,omitempty"`
-	Error  *ExecutionError  `json:"error,omitempty"`
+	Phase         DynamicNodePhase `json:"phase"`
+	Reason        string           `json:"reason,omitempty"`
+	Error         *ExecutionError  `json:"error,omitempty"`
 }
 
 func (in *DynamicNodeStatus) GetDynamicNodePhase() DynamicNodePhase {
@@ -157,7 +157,7 @@ const (
 )
 
 type WorkflowNodeStatus struct {
-	MutableStruct `json:"-"`
+	MutableStruct  `json:"-"`
 	Phase          WorkflowNodePhase    `json:"phase"`
 	ExecutionError *core.ExecutionError `json:"executionError"`
 }
@@ -185,7 +185,7 @@ func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
 }
 
 type NodeStatus struct {
-	MutableStruct `json:"-"`
+	MutableStruct        `json:"-"`
 	Phase                NodePhase     `json:"phase"`
 	QueuedAt             *metav1.Time  `json:"queuedAt,omitempty"`
 	StartedAt            *metav1.Time  `json:"startedAt,omitempty"`
@@ -710,7 +710,7 @@ func (in *CustomState) DeepCopy() *CustomState {
 }
 
 type TaskNodeStatus struct {
-	MutableStruct `json:"-"`
+	MutableStruct      `json:"-"`
 	Phase              int       `json:"phase,omitempty"`
 	PhaseVersion       uint32    `json:"phaseVersion,omitempty"`
 	PluginState        []byte    `json:"pState,omitempty"`

@@ -20,20 +20,20 @@ func (in *RawOutputDataConfig) DeepCopyInto(out *RawOutputDataConfig) {
 // This contains workflow-execution specifications and overrides.
 type ExecutionConfig struct {
 	// Maps individual task types to their alternate (non-default) plugin handlers by name.
-	TaskPluginImpls map[string]TaskPluginOverride `json:"taskPluginImpls,omitempty"`
+	TaskPluginImpls map[string]TaskPluginOverride `json:"TaskPluginImpls"`
 	// Can be used to control the number of parallel nodes to run within the workflow. This is useful to achieve fairness.
-	MaxParallelism uint32 `json:"maxParallelism,omitempty"`
+	MaxParallelism uint32 `json:"MaxParallelism"`
 	// Defines execution behavior for processing nodes.
-	RecoveryExecution WorkflowExecutionIdentifier `json:"recoveryExecution,omitempty"`
+	RecoveryExecution WorkflowExecutionIdentifier `json:"RecoveryExecution"`
 	// Defines the resource requests and limits specified for tasks run as part of this execution that ought to be
 	// applied at execution time.
-	TaskResources TaskResources `json:"taskResources,omitempty"`
+	TaskResources TaskResources `json:"TaskResources"`
 }
 
 type TaskPluginOverride struct {
 	// +listType=atomic
 	PluginIDs             []string                                   `json:"pluginIDs,omitempty"`
-	MissingPluginBehavior admin.PluginOverride_MissingPluginBehavior `json:"missingPluginBehavior,omitempty"`
+	MissingPluginBehavior admin.PluginOverride_MissingPluginBehavior `json:"missingPluginBehavior"`
 }
 
 // Defines a set of configurable resources of different types that a task can request or apply as limits.
@@ -49,7 +49,7 @@ type TaskResourceSpec struct {
 type TaskResources struct {
 	// If the node where a task is running has enough of a resource available, a
 	// container may use more resources than its request for that resource specifies.
-	Requests TaskResourceSpec `json:"requests,omitempty"`
+	Requests TaskResourceSpec `json:"Requests"`
 	// A hard limit, a task cannot consume resources greater than the limit specifies.
-	Limits TaskResourceSpec `json:"limits,omitempty"`
+	Limits TaskResourceSpec `json:"Limits"`
 }

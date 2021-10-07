@@ -39,12 +39,12 @@ spec:
           executionConfig:
             description: Workflow-execution specifications and overrides
             properties:
-              maxParallelism:
+              MaxParallelism:
                 description: Can be used to control the number of parallel nodes to
                   run within the workflow. This is useful to achieve fairness.
                 format: int32
                 type: integer
-              recoveryExecution:
+              RecoveryExecution:
                 description: Defines execution behavior for processing nodes.
                 properties:
                   domain:
@@ -58,7 +58,7 @@ spec:
                     description: Name of the project the resource belongs to.
                     type: string
                 type: object
-              taskPluginImpls:
+              TaskPluginImpls:
                 additionalProperties:
                   properties:
                     missingPluginBehavior:
@@ -69,75 +69,95 @@ spec:
                         type: string
                       type: array
                       x-kubernetes-list-type: atomic
+                  required:
+                  - missingPluginBehavior
                   type: object
                 description: Maps individual task types to their alternate (non-default)
                   plugin handlers by name.
                 type: object
-              taskResources:
+              TaskResources:
                 description: Defines the resource requests and limits specified for
                   tasks run as part of this execution that ought to be applied at
                   execution time.
                 properties:
-                  limits:
+                  Limits:
                     description: A hard limit, a task cannot consume resources greater
                       than the limit specifies.
                     properties:
-                      cpu:
+                      CPU:
                         anyOf:
                         - type: integer
                         - type: string
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
-                      ephemeralStorage:
+                      EphemeralStorage:
                         anyOf:
                         - type: integer
                         - type: string
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
-                      memory:
+                      Memory:
                         anyOf:
                         - type: integer
                         - type: string
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
-                      storage:
+                      Storage:
                         anyOf:
                         - type: integer
                         - type: string
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
+                    required:
+                    - CPU
+                    - EphemeralStorage
+                    - Memory
+                    - Storage
                     type: object
-                  requests:
+                  Requests:
                     description: If the node where a task is running has enough of
                       a resource available, a container may use more resources than
                       its request for that resource specifies.
                     properties:
-                      cpu:
+                      CPU:
                         anyOf:
                         - type: integer
                         - type: string
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
-                      ephemeralStorage:
+                      EphemeralStorage:
                         anyOf:
                         - type: integer
                         - type: string
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
-                      memory:
+                      Memory:
                         anyOf:
                         - type: integer
                         - type: string
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
-                      storage:
+                      Storage:
                         anyOf:
                         - type: integer
                         - type: string
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
+                    required:
+                    - CPU
+                    - EphemeralStorage
+                    - Memory
+                    - Storage
                     type: object
+                required:
+                - Limits
+                - Requests
                 type: object
+            required:
+            - MaxParallelism
+            - RecoveryExecution
+            - TaskPluginImpls
+            - TaskResources
             type: object
           executionId:
             properties:
