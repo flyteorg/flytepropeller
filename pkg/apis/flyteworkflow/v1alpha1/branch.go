@@ -8,7 +8,7 @@ import (
 )
 
 type Error struct {
-	*core.Error
+	*core.Error `json:",inline"`
 }
 
 func (in Error) UnmarshalJSON(b []byte) error {
@@ -37,7 +37,7 @@ func (in *Error) DeepCopyInto(out *Error) {
 }
 
 type BooleanExpression struct {
-	*core.BooleanExpression
+	*core.BooleanExpression `json:"-"`
 }
 
 func (in BooleanExpression) MarshalJSON() ([]byte, error) {
@@ -79,6 +79,7 @@ func (in *IfBlock) GetThenNode() *NodeID {
 
 type BranchNodeSpec struct {
 	If       IfBlock    `json:"if"`
+	// +listType=atomic
 	ElseIf   []*IfBlock `json:"elseIf,omitempty"`
 	Else     *NodeID    `json:"else,omitempty"`
 	ElseFail *Error     `json:"elseFail,omitempty"`

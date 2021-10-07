@@ -154,7 +154,7 @@ func (in *FlyteWorkflow) GetRawOutputDataConfig() RawOutputDataConfig {
 }
 
 type Inputs struct {
-	*core.LiteralMap
+	*core.LiteralMap `json:"-"`
 }
 
 func (in *Inputs) UnmarshalJSON(b []byte) error {
@@ -183,8 +183,8 @@ func (in *Inputs) DeepCopyInto(out *Inputs) {
 
 // Deprecated: Please use Connections instead
 type DeprecatedConnections struct {
-	DownstreamEdges map[NodeID][]NodeID
-	UpstreamEdges   map[NodeID][]NodeID
+	DownstreamEdges map[NodeID][]NodeID `json:"downstreamEdges,omitempty"`
+	UpstreamEdges   map[NodeID][]NodeID `json:"upstreamEdges,omitempty"`
 }
 
 func (in *DeprecatedConnections) UnmarshalJSON(b []byte) error {
@@ -254,6 +254,7 @@ type WorkflowSpec struct {
 	// Defines the data links used to construct the final outputs of the workflow. Bindings will typically
 	// refer to specific outputs of a subset of the nodes executed in the Workflow. When executing the end-node,
 	// the execution engine will traverse these bindings and assemble the final set of outputs of the workflow.
+	// +listType=atomic
 	OutputBindings []*Binding `json:"outputBindings,omitempty"`
 
 	// Defines the policy for handling failures whether it's to fail immediately, or let the nodes run
