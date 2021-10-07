@@ -22,6 +22,7 @@ type Manager struct {
 	podApplication string
 	podNames       []string
 	scanInterval   time.Duration
+	shardStrategy  ShardStrategy
 
 	// Kubernetes API.
 	//metrics       *metrics
@@ -35,7 +36,7 @@ type Manager struct {
 }*/
 
 func (m *Manager) recoverReplicas(ctx context.Context) error {
-	// TODO hamersaw - need to handle pods with Error status?
+	// TODO hamersaw - do we need to handle pods with Error status?
 	// with 3 replicas locally we get "too many open files"
 
 	// retrieve existing pods
@@ -71,16 +72,23 @@ func (m *Manager) recoverReplicas(ctx context.Context) error {
 	}
 
 	// create non-existant pod replicas
-	for podName, exists := range podExists {
-		if !exists {
+	for replica, podName := range m.podNames {
+		if _, ok := podExists[podName]; !ok {
 			pod := m.pod.DeepCopy()
 			pod.ObjectMeta.Name = podName
 
-			_, err := m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
+			err := m.shardStrategy.UpdatePodSpec(&pod.Spec, replica, len(m.podNames))
+			if err != nil {
+				logger.Errorf(ctx, "failed to update pod spec for '%s' [%v]", podName, err)
+				continue
+			}
+
+			// TODO hamersaw - tmp
+			/*_, err := m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
 			if err != nil {
 				logger.Errorf(ctx, "failed to create pod '%s' [%v]", podName, err)
 				continue
-			}
+			}*/
 
 			logger.Infof(ctx, "created pod '%s'", podName)
 		}
@@ -147,6 +155,8 @@ func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interfac
 		podApplication: cfg.PodApplication,
 		podNames:       podNames,
 		scanInterval:   cfg.ScanInterval.Duration,
+		// TODO hamersaw - reconfigure hardcoding shard strategy
+		shardStrategy:  &ConsistentShardStrategy{populationSize: 32},
 	}
 
 	return manager, nil
