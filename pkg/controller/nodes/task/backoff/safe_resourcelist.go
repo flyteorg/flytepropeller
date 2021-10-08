@@ -60,19 +60,24 @@ func (s *SyncResourceList) AsResourceList() v1.ResourceList {
 	return lst
 }
 
-func SyncResourceListFromResourceList(list v1.ResourceList) SyncResourceList {
-	ls := NewSyncResourceList()
+func (s *SyncResourceList) AddResourceList(list v1.ResourceList) *SyncResourceList {
 	for key, value := range list {
-		ls.Store(key, value)
+		s.Store(key, value)
 	}
 
-	return ls
+	return s
+}
+
+func SyncResourceListFromResourceList(list v1.ResourceList) *SyncResourceList {
+	s := NewSyncResourceList()
+	s.AddResourceList(list)
+	return s
 }
 
 // NewSyncResourceList creates a thread-safe map to store resource names and resource
 // quantities. Equivalent to v1.ResourceList but offering concurrent-safe operations.
-func NewSyncResourceList() SyncResourceList {
-	return SyncResourceList{
+func NewSyncResourceList() *SyncResourceList {
+	return &SyncResourceList{
 		Map: sync.Map{},
 	}
 }

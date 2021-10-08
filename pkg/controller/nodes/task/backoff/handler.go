@@ -63,7 +63,7 @@ func (b *SimpleBackOffBlocker) backOff(ctx context.Context) time.Duration {
 }
 
 type ComputeResourceCeilings struct {
-	computeResourceCeilings SyncResourceList
+	computeResourceCeilings *SyncResourceList
 }
 
 func (r *ComputeResourceCeilings) isEligible(requestedResourceList v1.ResourceList) bool {
