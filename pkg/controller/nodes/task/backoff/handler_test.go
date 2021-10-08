@@ -169,19 +169,19 @@ func TestComputeResourceAwareBackOffHandler_Handle(t *testing.T) {
 
 func TestComputeResourceCeilings_inf(t *testing.T) {
 	type fields struct {
-		computeResourceCeilings SyncResourceList
+		v1.ResourceList
 	}
 	tests := []struct {
 		name   string
 		fields fields
 		want   resource.Quantity
 	}{
-		{name: "inf is set properly", fields: fields{computeResourceCeilings: NewSyncResourceList()}, want: resource.MustParse("1Ei")},
+		{name: "inf is set properly", fields: fields{ResourceList: v1.ResourceList{}}, want: resource.MustParse("1Ei")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ComputeResourceCeilings{
-				computeResourceCeilings: tt.fields.computeResourceCeilings,
+				computeResourceCeilings: SyncResourceListFromResourceList(tt.fields.ResourceList),
 			}
 			if got := r.inf(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("inf() = %v, want %v", got, tt.want)
@@ -192,7 +192,7 @@ func TestComputeResourceCeilings_inf(t *testing.T) {
 
 func TestComputeResourceCeilings_isEligible(t *testing.T) {
 	type fields struct {
-		computeResourceCeilings SyncResourceList
+		computeResourceCeilings v1.ResourceList
 	}
 	type args struct {
 		requestedResourceList v1.ResourceList
@@ -204,30 +204,30 @@ func TestComputeResourceCeilings_isEligible(t *testing.T) {
 		want   bool
 	}{
 		{name: "Smaller request should be accepted",
-			fields: fields{computeResourceCeilings: SyncResourceListFromResourceList(v1.ResourceList{v1.ResourceCPU: resource.MustParse("0.7m")})},
+			fields: fields{computeResourceCeilings: v1.ResourceList{v1.ResourceCPU: resource.MustParse("0.7m")}},
 			args:   args{requestedResourceList: v1.ResourceList{v1.ResourceCPU: resource.MustParse("0.5m")}},
 			want:   true},
 		{name: "Larger request should be rejected",
-			fields: fields{computeResourceCeilings: SyncResourceListFromResourceList(v1.ResourceList{v1.ResourceMemory: resource.MustParse("32Gi")})},
+			fields: fields{computeResourceCeilings: v1.ResourceList{v1.ResourceMemory: resource.MustParse("32Gi")}},
 			args:   args{requestedResourceList: v1.ResourceList{v1.ResourceMemory: resource.MustParse("33Gi")}},
 			want:   false},
 		{name: "If not all of the resource requests are smaller, it should be rejected",
-			fields: fields{computeResourceCeilings: SyncResourceListFromResourceList(v1.ResourceList{v1.ResourceCPU: resource.MustParse("0.7m"), v1.ResourceMemory: resource.MustParse("32Gi")})},
+			fields: fields{computeResourceCeilings: v1.ResourceList{v1.ResourceCPU: resource.MustParse("0.7m"), v1.ResourceMemory: resource.MustParse("32Gi")}},
 			args:   args{requestedResourceList: v1.ResourceList{v1.ResourceCPU: resource.MustParse("0.69m"), v1.ResourceMemory: resource.MustParse("33Gi")}},
 			want:   false},
 		{name: "All the resources should be strictly smaller (<); otherwise it is rejected",
-			fields: fields{computeResourceCeilings: SyncResourceListFromResourceList(v1.ResourceList{v1.ResourceCPU: resource.MustParse("0.7m"), v1.ResourceMemory: resource.MustParse("32Gi")})},
+			fields: fields{computeResourceCeilings: v1.ResourceList{v1.ResourceCPU: resource.MustParse("0.7m"), v1.ResourceMemory: resource.MustParse("32Gi")}},
 			args:   args{requestedResourceList: v1.ResourceList{v1.ResourceCPU: resource.MustParse("0.7m"), v1.ResourceMemory: resource.MustParse("32Gi")}},
 			want:   false},
 		{name: "If all the resource requests are smaller, it should be accepted",
-			fields: fields{computeResourceCeilings: SyncResourceListFromResourceList(v1.ResourceList{v1.ResourceCPU: resource.MustParse("0.8m"), v1.ResourceMemory: resource.MustParse("34Gi")})},
+			fields: fields{computeResourceCeilings: v1.ResourceList{v1.ResourceCPU: resource.MustParse("0.8m"), v1.ResourceMemory: resource.MustParse("34Gi")}},
 			args:   args{requestedResourceList: v1.ResourceList{v1.ResourceCPU: resource.MustParse("0.7m"), v1.ResourceMemory: resource.MustParse("32Gi")}},
 			want:   true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ComputeResourceCeilings{
-				computeResourceCeilings: tt.fields.computeResourceCeilings,
+				computeResourceCeilings: SyncResourceListFromResourceList(tt.fields.computeResourceCeilings),
 			}
 			if got := r.isEligible(tt.args.requestedResourceList); got != tt.want {
 				t.Errorf("isEligible() = %v, want %v", got, tt.want)
@@ -238,7 +238,7 @@ func TestComputeResourceCeilings_isEligible(t *testing.T) {
 
 func TestComputeResourceCeilings_update(t *testing.T) {
 	type fields struct {
-		computeResourceCeilings SyncResourceList
+		computeResourceCeilings v1.ResourceList
 	}
 	type args struct {
 		reqResource v1.ResourceName
@@ -252,22 +252,22 @@ func TestComputeResourceCeilings_update(t *testing.T) {
 		shouldNotExist []v1.ResourceName
 	}{
 		{name: "Update CPU ceiling on top of an existing ceiling",
-			fields:         fields{computeResourceCeilings: SyncResourceListFromResourceList(v1.ResourceList{v1.ResourceCPU: resource.MustParse("1"), v1.ResourceMemory: resource.MustParse("1Gi")})},
+			fields:         fields{computeResourceCeilings: v1.ResourceList{v1.ResourceCPU: resource.MustParse("1"), v1.ResourceMemory: resource.MustParse("1Gi")}},
 			args:           args{reqResource: v1.ResourceCPU, reqQuantity: resource.MustParse("0")},
 			wants:          []args{{reqResource: v1.ResourceCPU, reqQuantity: resource.MustParse("0")}, {reqResource: v1.ResourceMemory, reqQuantity: resource.MustParse("1Gi")}},
 			shouldNotExist: []v1.ResourceName{}},
 		{name: "Update Memory ceiling on top of an existing ceiling",
-			fields:         fields{computeResourceCeilings: SyncResourceListFromResourceList(v1.ResourceList{v1.ResourceCPU: resource.MustParse("1"), v1.ResourceMemory: resource.MustParse("1Gi")})},
+			fields:         fields{computeResourceCeilings: v1.ResourceList{v1.ResourceCPU: resource.MustParse("1"), v1.ResourceMemory: resource.MustParse("1Gi")}},
 			args:           args{reqResource: v1.ResourceMemory, reqQuantity: resource.MustParse("500Mi")},
 			wants:          []args{{reqResource: v1.ResourceCPU, reqQuantity: resource.MustParse("1")}, {reqResource: v1.ResourceMemory, reqQuantity: resource.MustParse("500Mi")}},
 			shouldNotExist: []v1.ResourceName{}},
 		{name: "Update CPU ceiling without an existing ceiling",
-			fields:         fields{computeResourceCeilings: NewSyncResourceList()},
+			fields:         fields{computeResourceCeilings: v1.ResourceList{}},
 			args:           args{reqResource: v1.ResourceCPU, reqQuantity: resource.MustParse("1")},
 			wants:          []args{{reqResource: v1.ResourceCPU, reqQuantity: resource.MustParse("1")}},
 			shouldNotExist: []v1.ResourceName{v1.ResourceMemory}},
 		{name: "Update Memory ceiling without an existing ceiling",
-			fields:         fields{computeResourceCeilings: NewSyncResourceList()},
+			fields:         fields{computeResourceCeilings: v1.ResourceList{}},
 			args:           args{reqResource: v1.ResourceMemory, reqQuantity: resource.MustParse("500Mi")},
 			wants:          []args{{reqResource: v1.ResourceMemory, reqQuantity: resource.MustParse("500Mi")}},
 			shouldNotExist: []v1.ResourceName{v1.ResourceCPU}},
@@ -275,7 +275,7 @@ func TestComputeResourceCeilings_update(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ComputeResourceCeilings{
-				computeResourceCeilings: tt.fields.computeResourceCeilings,
+				computeResourceCeilings: SyncResourceListFromResourceList(tt.fields.computeResourceCeilings),
 			}
 			r.update(tt.args.reqResource, tt.args.reqQuantity)
 			for _, rsrcTuple := range tt.wants {
@@ -295,7 +295,7 @@ func TestComputeResourceCeilings_update(t *testing.T) {
 
 func TestComputeResourceCeilings_updateAll(t *testing.T) {
 	type fields struct {
-		computeResourceCeilings SyncResourceList
+		computeResourceCeilings v1.ResourceList
 	}
 	type args struct {
 		resources *v1.ResourceList
@@ -311,12 +311,12 @@ func TestComputeResourceCeilings_updateAll(t *testing.T) {
 		shouldNotExist []v1.ResourceName
 	}{
 		{name: "Update Memory ceiling without an existing ceiling",
-			fields:         fields{computeResourceCeilings: NewSyncResourceList()},
+			fields:         fields{computeResourceCeilings: v1.ResourceList{}},
 			args:           args{&v1.ResourceList{v1.ResourceMemory: resource.MustParse("500Mi")}},
 			wants:          wants{map[v1.ResourceName]resource.Quantity{v1.ResourceMemory: resource.MustParse("500Mi")}},
 			shouldNotExist: []v1.ResourceName{v1.ResourceCPU}},
 		{name: "Update Memory ceiling without an existing ceiling",
-			fields:         fields{computeResourceCeilings: SyncResourceListFromResourceList(v1.ResourceList{v1.ResourceCPU: resource.MustParse("1"), v1.ResourceMemory: resource.MustParse("1Gi")})},
+			fields:         fields{computeResourceCeilings: v1.ResourceList{v1.ResourceCPU: resource.MustParse("1"), v1.ResourceMemory: resource.MustParse("1Gi")}},
 			args:           args{&v1.ResourceList{v1.ResourceMemory: resource.MustParse("500Mi")}},
 			wants:          wants{map[v1.ResourceName]resource.Quantity{v1.ResourceCPU: resource.MustParse("1"), v1.ResourceMemory: resource.MustParse("500Mi")}},
 			shouldNotExist: []v1.ResourceName{}},
@@ -324,7 +324,7 @@ func TestComputeResourceCeilings_updateAll(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ComputeResourceCeilings{
-				computeResourceCeilings: tt.fields.computeResourceCeilings,
+				computeResourceCeilings: SyncResourceListFromResourceList(tt.fields.computeResourceCeilings),
 			}
 			r.updateAll(tt.args.resources)
 			for rs, qs := range tt.wants.resources {
