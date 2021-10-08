@@ -50,9 +50,9 @@ func (te taskExecutionID) GetGeneratedName() string {
 
 type taskExecutionMetadata struct {
 	handler.NodeExecutionMetadata
-	taskExecID  taskExecutionID
-	o           pluginCore.TaskOverrides
-	maxAttempts uint32
+	taskExecID        taskExecutionID
+	o                 pluginCore.TaskOverrides
+	maxAttempts       uint32
 	platformResources *v1.ResourceRequirements
 }
 
@@ -68,7 +68,7 @@ func (t taskExecutionMetadata) GetMaxAttempts() uint32 {
 	return t.maxAttempts
 }
 
-func (t taskExecutionMetadata) GetPlatformResources() *v1.ResourceRequirements{
+func (t taskExecutionMetadata) GetPlatformResources() *v1.ResourceRequirements {
 	return t.platformResources
 }
 
@@ -171,19 +171,19 @@ func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigL
 	}
 }
 
-func convertTaskResourcesToRequirements(taskResources v1alpha1.TaskResources) *v1.ResourceRequirements{
+func convertTaskResourcesToRequirements(taskResources v1alpha1.TaskResources) *v1.ResourceRequirements {
 	return &v1.ResourceRequirements{
 		Requests: v1.ResourceList{
-			v1.ResourceCPU: taskResources.Requests.CPU,
-			v1.ResourceMemory: taskResources.Requests.Memory,
+			v1.ResourceCPU:              taskResources.Requests.CPU,
+			v1.ResourceMemory:           taskResources.Requests.Memory,
 			v1.ResourceEphemeralStorage: taskResources.Requests.EphemeralStorage,
-			utils.ResourceNvidiaGPU: taskResources.Requests.GPU,
+			utils.ResourceNvidiaGPU:     taskResources.Requests.GPU,
 		},
 		Limits: v1.ResourceList{
-			v1.ResourceCPU: taskResources.Limits.CPU,
-			v1.ResourceMemory: taskResources.Limits.Memory,
+			v1.ResourceCPU:              taskResources.Limits.CPU,
+			v1.ResourceMemory:           taskResources.Limits.Memory,
 			v1.ResourceEphemeralStorage: taskResources.Limits.EphemeralStorage,
-			utils.ResourceNvidiaGPU: taskResources.Limits.GPU,
+			utils.ResourceNvidiaGPU:     taskResources.Limits.GPU,
 		},
 	}
 
@@ -245,7 +245,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
 			o:                     nCtx.Node(),
 			maxAttempts:           maxAttempts,
-			platformResources: convertTaskResourcesToRequirements(nCtx.ExecutionContext().GetExecutionConfig().TaskResources),
+			platformResources:     convertTaskResourcesToRequirements(nCtx.ExecutionContext().GetExecutionConfig().TaskResources),
 		},
 		rm: resourcemanager.GetTaskResourceManager(
 			t.resourceManager, resourceNamespacePrefix, id),
