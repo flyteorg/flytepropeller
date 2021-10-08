@@ -48,27 +48,12 @@ func (te taskExecutionID) GetGeneratedName() string {
 	return te.execName
 }
 
-type taskOverrides struct {
-	pluginCore.TaskOverrides
-	resourceRequirements *v1.ResourceRequirements
-}
-
-func (t taskOverrides) GetResources() *v1.ResourceRequirements {
-	return t.resourceRequirements
-}
-
-func newTaskOverrides(overrides pluginCore.TaskOverrides, resourceRequirements *v1.ResourceRequirements) pluginCore.TaskOverrides {
-	return &taskOverrides{
-		TaskOverrides:        overrides,
-		resourceRequirements: resourceRequirements,
-	}
-}
-
 type taskExecutionMetadata struct {
 	handler.NodeExecutionMetadata
 	taskExecID  taskExecutionID
 	o           pluginCore.TaskOverrides
 	maxAttempts uint32
+	platformResources *v1.ResourceRequirements
 }
 
 func (t taskExecutionMetadata) GetTaskExecutionID() pluginCore.TaskExecutionID {
@@ -81,6 +66,10 @@ func (t taskExecutionMetadata) GetOverrides() pluginCore.TaskOverrides {
 
 func (t taskExecutionMetadata) GetMaxAttempts() uint32 {
 	return t.maxAttempts
+}
+
+func (t taskExecutionMetadata) GetPlatformResources() *v1.ResourceRequirements{
+	return t.platformResources
 }
 
 type taskExecutionContext struct {
@@ -182,6 +171,24 @@ func assignResource(resourceName v1.ResourceName, execConfigRequest, execConfigL
 	}
 }
 
+func convertTaskResourcesToRequirements(taskResources v1alpha1.TaskResources) *v1.ResourceRequirements{
+	return &v1.ResourceRequirements{
+		Requests: v1.ResourceList{
+			v1.ResourceCPU: taskResources.Requests.CPU,
+			v1.ResourceMemory: taskResources.Requests.Memory,
+			v1.ResourceEphemeralStorage: taskResources.Requests.EphemeralStorage,
+			utils.ResourceNvidiaGPU: taskResources.Requests.GPU,
+		},
+		Limits: v1.ResourceList{
+			v1.ResourceCPU: taskResources.Limits.CPU,
+			v1.ResourceMemory: taskResources.Limits.Memory,
+			v1.ResourceEphemeralStorage: taskResources.Limits.EphemeralStorage,
+			utils.ResourceNvidiaGPU: taskResources.Limits.GPU,
+		},
+	}
+
+}
+
 // Reconciles platform-specific resource defaults requests and max limits with the static resource values
 // defined by this task and node execution context.
 func determineResourceRequirements(nCtx handler.NodeExecutionContext, taskResources v1alpha1.TaskResources) *v1.ResourceRequirements {
@@ -260,8 +267,9 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		tm: taskExecutionMetadata{
 			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 			taskExecID:            taskExecutionID{execName: uniqueID, id: id},
-			o:                     newTaskOverrides(nCtx.Node(), determineResourceRequirements(nCtx, nCtx.ExecutionContext().GetExecutionConfig().TaskResources)),
+			o:                     nCtx.Node(),
 			maxAttempts:           maxAttempts,
+			platformResources: convertTaskResourcesToRequirements(nCtx.ExecutionContext().GetExecutionConfig().TaskResources),
 		},
 		rm: resourcemanager.GetTaskResourceManager(
 			t.resourceManager, resourceNamespacePrefix, id),
