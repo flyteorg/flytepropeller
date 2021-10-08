@@ -22,6 +22,28 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 		},
 	}
 
+	inputPodWithVolume := corev1.Pod{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name: "container1",
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:     "kube-api-access-gxmz8",
+							ReadOnly: true,
+						},
+					},
+				},
+			},
+			Volumes: []corev1.Volume{
+				{
+					Name:         "kube-api-access-gxmz8",
+					VolumeSource: corev1.VolumeSource{},
+				},
+			},
+		},
+	}
+
 	successPodEnv := corev1.Pod{
 		Spec: corev1.PodSpec{
 			InitContainers: []corev1.Container{},
@@ -191,6 +213,8 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 		{name: "require group", args: args{secret: &coreIdl.Secret{Key: "hello", MountRequirement: coreIdl.Secret_ENV_VAR}, p: &corev1.Pod{}},
 			want: &corev1.Pod{}, wantErr: true},
 		{name: "simple", args: args{secret: &coreIdl.Secret{Group: "group", Key: "hello", MountRequirement: coreIdl.Secret_ENV_VAR}, p: inputPod.DeepCopy()},
+			want: &successPodEnv, wantErr: false},
+		{name: "require file on pod with volume", args: args{secret: &coreIdl.Secret{Group: "group", Key: "hello", MountRequirement: coreIdl.Secret_FILE}, p: inputPodWithVolume.DeepCopy()},
 			want: &successPodEnv, wantErr: false},
 		{name: "require file single", args: args{secret: &coreIdl.Secret{Group: "group", Key: "hello", MountRequirement: coreIdl.Secret_FILE},
 			p: inputPod.DeepCopy()},
