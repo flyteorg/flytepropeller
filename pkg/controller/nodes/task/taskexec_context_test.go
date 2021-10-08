@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/flyteorg/flytepropeller/pkg/utils"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager"
@@ -302,4 +304,39 @@ func TestAssignResource(t *testing.T) {
 			assert.EqualValues(t, test.limits, test.expectedLimits)
 		})
 	}
+}
+
+func TestConvertTaskResourcesToRequirements(t *testing.T) {
+	resourceRequirements := convertTaskResourcesToRequirements(v1alpha1.TaskResources{
+		Requests: v1alpha1.TaskResourceSpec{
+			CPU:              resource.MustParse("1"),
+			Memory:           resource.MustParse("2"),
+			EphemeralStorage: resource.MustParse("3"),
+			Storage:          resource.MustParse("4"),
+			GPU:              resource.MustParse("5"),
+		},
+		Limits: v1alpha1.TaskResourceSpec{
+			CPU:              resource.MustParse("10"),
+			Memory:           resource.MustParse("20"),
+			EphemeralStorage: resource.MustParse("30"),
+			Storage:          resource.MustParse("40"),
+			GPU:              resource.MustParse("50"),
+		},
+	})
+	assert.EqualValues(t, &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:              resource.MustParse("1"),
+			corev1.ResourceMemory:           resource.MustParse("2"),
+			corev1.ResourceEphemeralStorage: resource.MustParse("3"),
+			corev1.ResourceStorage:          resource.MustParse("4"),
+			utils.ResourceNvidiaGPU:         resource.MustParse("5"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:              resource.MustParse("10"),
+			corev1.ResourceMemory:           resource.MustParse("20"),
+			corev1.ResourceEphemeralStorage: resource.MustParse("30"),
+			corev1.ResourceStorage:          resource.MustParse("40"),
+			utils.ResourceNvidiaGPU:         resource.MustParse("50"),
+		},
+	}, resourceRequirements)
 }
