@@ -119,7 +119,7 @@ func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetad
 	}
 
 	if errs := validation.IsDNS1123Label(o.GetName()); len(errs) > 0 {
-		o.SetName(ConvertToDNS1123CompatibleString(o.GetName()))
+		o.SetName(utils.ConvertToDNS1123SubdomainCompatibleString(o.GetName()))
 	}
 }
 
