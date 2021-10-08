@@ -115,5 +115,6 @@ func AppendVolume(volumes []corev1.Volume, volume corev1.Volume) []corev1.Volume
 			return volumes
 		}
 	}
+
 	return append(volumes, volume)
 }
