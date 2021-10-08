@@ -4,6 +4,8 @@ import (
 	"strings"
 	"sync"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -36,20 +38,30 @@ func (s *SyncResourceList) Range(visitor func(key v1.ResourceName, value resourc
 	})
 }
 
-// String returns a formatted string of some snapshot of the map.
+// String returns a formatted string of some snapshot of the map ordered by keys.
 func (s *SyncResourceList) String() string {
-	sb := strings.Builder{}
+	set := sets.NewString()
+	snapshot := map[string]resource.Quantity{}
 	s.Range(func(key v1.ResourceName, value resource.Quantity) bool {
-		sb.WriteString(key.String())
+		strKey := string(key)
+		set.Insert(strKey)
+		snapshot[strKey] = value
+		return true
+	})
+
+	sb := strings.Builder{}
+	for _, key := range set.List() {
+		value := snapshot[key]
+		sb.WriteString(key)
 		sb.WriteString(":")
 		sb.WriteString(value.String())
 		sb.WriteString(", ")
-		return true
-	})
+	}
 
 	return sb.String()
 }
 
+// AsResourceList serializes a snapshot of the sync map into a v1.ResourceList
 func (s *SyncResourceList) AsResourceList() v1.ResourceList {
 	lst := v1.ResourceList{}
 	s.Range(func(key v1.ResourceName, value resource.Quantity) bool {
@@ -60,17 +72,12 @@ func (s *SyncResourceList) AsResourceList() v1.ResourceList {
 	return lst
 }
 
+// AddResourceList stores a list into the sync map.
 func (s *SyncResourceList) AddResourceList(list v1.ResourceList) *SyncResourceList {
 	for key, value := range list {
 		s.Store(key, value)
 	}
 
-	return s
-}
-
-func SyncResourceListFromResourceList(list v1.ResourceList) *SyncResourceList {
-	s := NewSyncResourceList()
-	s.AddResourceList(list)
 	return s
 }
 

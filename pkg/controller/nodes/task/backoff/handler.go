@@ -66,15 +66,15 @@ type ComputeResourceCeilings struct {
 	computeResourceCeilings *SyncResourceList
 }
 
-func (r *ComputeResourceCeilings) isEligible(requestedResourceList v1.ResourceList) bool {
-	eligibility := true
+func (r *ComputeResourceCeilings) isEligible(requestedResourceList v1.ResourceList) (eligibility bool) {
 	for reqResource, reqQuantity := range requestedResourceList {
 		val, found := r.computeResourceCeilings.Load(reqResource)
-		if found {
-			eligibility = eligibility && (reqQuantity.Cmp(val) < 0)
+		if found && reqQuantity.Cmp(val) >= 0 {
+			return false
 		}
 	}
-	return eligibility
+
+	return true
 }
 
 func (r *ComputeResourceCeilings) update(reqResource v1.ResourceName, reqQuantity resource.Quantity) {
