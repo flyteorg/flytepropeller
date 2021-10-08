@@ -29,8 +29,9 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 					Name: "container1",
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:     "kube-api-access-gxmz8",
-							ReadOnly: true,
+							Name:      "kube-api-access-gxmz8",
+							ReadOnly:  true,
+							MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
 						},
 					},
 				},
@@ -89,12 +90,73 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 						},
 					},
 				},
+				{
+					Name:         "kube-api-access-gxmz8",
+					VolumeSource: corev1.VolumeSource{},
+				},
 			},
 			InitContainers: []corev1.Container{},
 			Containers: []corev1.Container{
 				{
 					Name: "container1",
 					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "kube-api-access-gxmz8",
+							ReadOnly:  true,
+							MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+						},
+						{
+							Name:      "m4zg54lql3",
+							MountPath: "/etc/flyte/secrets/group",
+							ReadOnly:  true,
+						},
+					},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "FLYTE_SECRETS_DEFAULT_DIR",
+							Value: "/etc/flyte/secrets",
+						},
+						{
+							Name: "FLYTE_SECRETS_FILE_PREFIX",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	successPodFileWithVolume := corev1.Pod{
+		Spec: corev1.PodSpec{
+			Volumes: []corev1.Volume{
+				{
+					Name:         "kube-api-access-gxmz8",
+					VolumeSource: corev1.VolumeSource{},
+				},
+				{
+					Name: "m4zg54lql3",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "group",
+							Items: []corev1.KeyToPath{
+								{
+									Key:  "hello",
+									Path: "hello",
+								},
+							},
+						},
+					},
+				},
+			},
+			InitContainers: []corev1.Container{},
+			Containers: []corev1.Container{
+				{
+					Name: "container1",
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "kube-api-access-gxmz8",
+							ReadOnly:  true,
+							MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+						},
 						{
 							Name:      "m4zg54lql3",
 							MountPath: "/etc/flyte/secrets/group",
@@ -215,7 +277,7 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 		{name: "simple", args: args{secret: &coreIdl.Secret{Group: "group", Key: "hello", MountRequirement: coreIdl.Secret_ENV_VAR}, p: inputPod.DeepCopy()},
 			want: &successPodEnv, wantErr: false},
 		{name: "require file on pod with volume", args: args{secret: &coreIdl.Secret{Group: "group", Key: "hello", MountRequirement: coreIdl.Secret_FILE}, p: inputPodWithVolume.DeepCopy()},
-			want: &successPodEnv, wantErr: false},
+			want: &successPodFileWithVolume, wantErr: false},
 		{name: "require file single", args: args{secret: &coreIdl.Secret{Group: "group", Key: "hello", MountRequirement: coreIdl.Secret_FILE},
 			p: inputPod.DeepCopy()},
 			want: &successPodFile, wantErr: false},
