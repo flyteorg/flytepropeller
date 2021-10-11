@@ -3,8 +3,10 @@ package task
 import (
 	"bytes"
 	"context"
+	"github.com/flyteorg/flytepropeller/pkg/utils"
 	"strconv"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/encoding"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -25,7 +27,6 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/flyteorg/flytepropeller/pkg/utils"
 )
 
 var (
@@ -208,7 +209,7 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		length = *l
 	}
 
-	uniqueID, err := utils.FixedLengthUniqueIDForParts(length, nCtx.NodeExecutionMetadata().GetOwnerID().Name, currentNodeUniqueID, strconv.Itoa(int(id.RetryAttempt)))
+	uniqueID, err := encoding.FixedLengthUniqueIDForParts(length, nCtx.NodeExecutionMetadata().GetOwnerID().Name, currentNodeUniqueID, strconv.Itoa(int(id.RetryAttempt)))
 	if err != nil {
 		// SHOULD never really happen
 		return nil, err
