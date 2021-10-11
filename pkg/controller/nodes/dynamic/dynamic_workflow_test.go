@@ -8,10 +8,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/flyteorg/flytepropeller/pkg/utils"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/encoding"
 	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/storage"
@@ -208,7 +207,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		assert.NotNil(t, dCtx.subWorkflowClosure)
 		assert.NotNil(t, dCtx.execContext)
 		assert.NotNil(t, dCtx.execContext.GetParentInfo())
-		expectedParentUniqueID, err := utils.FixedLengthUniqueIDForParts(20, "c1", "2", "n1")
+		expectedParentUniqueID, err := encoding.FixedLengthUniqueIDForParts(20, "c1", "2", "n1")
 		assert.Nil(t, err)
 		assert.Equal(t, expectedParentUniqueID, dCtx.execContext.GetParentInfo().GetUniqueID())
 		assert.Equal(t, uint32(1), dCtx.execContext.GetParentInfo().CurrentAttempt())
@@ -277,7 +276,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		assert.NotNil(t, dCtx.subWorkflowClosure)
 		assert.NotNil(t, dCtx.execContext)
 		assert.NotNil(t, dCtx.execContext.GetParentInfo())
-		expectedParentUniqueID, err := utils.FixedLengthUniqueIDForParts(20, "", "", "n1")
+		expectedParentUniqueID, err := encoding.FixedLengthUniqueIDForParts(20, "", "", "n1")
 		assert.Nil(t, err)
 		assert.Equal(t, expectedParentUniqueID, dCtx.execContext.GetParentInfo().GetUniqueID())
 		assert.Equal(t, uint32(1), dCtx.execContext.GetParentInfo().CurrentAttempt())
@@ -431,7 +430,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		assert.NotNil(t, dCtx.subWorkflow)
 		assert.NotNil(t, dCtx.execContext)
 		assert.NotNil(t, dCtx.execContext.GetParentInfo())
-		expectedParentUniqueID, err := utils.FixedLengthUniqueIDForParts(20, "c1", "2", "n1")
+		expectedParentUniqueID, err := encoding.FixedLengthUniqueIDForParts(20, "c1", "2", "n1")
 		assert.Nil(t, err)
 		assert.Equal(t, expectedParentUniqueID, dCtx.execContext.GetParentInfo().GetUniqueID())
 		assert.Equal(t, uint32(1), dCtx.execContext.GetParentInfo().CurrentAttempt())
@@ -499,7 +498,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		composedPBStore.OnWriteRawMatch(
 			mock.MatchedBy(func(ctx context.Context) bool { return true }),
 			storage.DataReference("s3://my-s3-bucket/foo/bar/futures_compiled.pb"),
-			int64(1192),
+			int64(1354),
 			storage.Options{},
 			mock.MatchedBy(func(rdr *bytes.Reader) bool { return true })).Return(errors.New("foo"))
 
@@ -576,7 +575,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		assert.NotNil(t, dCtx.subWorkflow)
 		assert.NotNil(t, dCtx.execContext)
 		assert.NotNil(t, dCtx.execContext.GetParentInfo())
-		expectedParentUniqueID, err := utils.FixedLengthUniqueIDForParts(20, "c1", "2", "n1")
+		expectedParentUniqueID, err := encoding.FixedLengthUniqueIDForParts(20, "c1", "2", "n1")
 		assert.Nil(t, err)
 		assert.Equal(t, expectedParentUniqueID, dCtx.execContext.GetParentInfo().GetUniqueID())
 		assert.Equal(t, uint32(1), dCtx.execContext.GetParentInfo().CurrentAttempt())
