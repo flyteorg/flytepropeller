@@ -3,8 +3,9 @@ package task
 import (
 	"bytes"
 	"context"
-	"github.com/flyteorg/flytepropeller/pkg/utils"
 	"strconv"
+
+	"github.com/flyteorg/flytepropeller/pkg/utils"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/encoding"
 	v1 "k8s.io/api/core/v1"
