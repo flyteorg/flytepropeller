@@ -11,7 +11,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/rand"
 
-	"github.com/flyteorg/flyteidl/clients/go/events"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
@@ -29,8 +28,9 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/flyteorg/flytestdlib/logger"
 
-	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
-
+	"github.com/flyteorg/flytepropeller/events"
+	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
+	eventMocks "github.com/flyteorg/flytepropeller/events/mocks"
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/fakeplugins"
@@ -38,7 +38,6 @@ import (
 	wfErrors "github.com/flyteorg/flytepropeller/pkg/controller/workflow/errors"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	eventMocks "github.com/flyteorg/flytepropeller/pkg/controller/events/mocks"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/flyteorg/flytestdlib/yamlutils"
