@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"math"
 
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
-func updatePod(pod *corev1.Pod) {
+func updatePod(pod *v1.Pod) {
 	pod.ObjectMeta.Name = "foobar"
 }
 
 type ShardStrategy interface {
 	GetPodCount() (int, error)
-	UpdatePodSpec(pod *corev1.PodSpec, podIndex int) error
+	UpdatePodSpec(pod *v1.PodSpec, podIndex int) error
 }
 
-func getFlytePropellerContainer(pod *corev1.PodSpec) (*corev1.Container, error) {
+func getFlytePropellerContainer(pod *v1.PodSpec) (*v1.Container, error) {
 	// find flytepropeller container(s)
-	var containers []*corev1.Container
+	var containers []*v1.Container
 	for i := 0; i < len(pod.Containers); i++ {
 		commands := pod.Containers[i].Command
 		if len(commands) > 0 && commands[0] == "flytepropeller" {
@@ -43,7 +43,7 @@ func (c *ConsistentHashingShardStrategy) GetPodCount() (int, error) {
 	return c.podCount, nil
 }
 
-func (c *ConsistentHashingShardStrategy) UpdatePodSpec(pod *corev1.PodSpec, podIndex int) error {
+func (c *ConsistentHashingShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 	container, err := getFlytePropellerContainer(pod)
 	if err != nil {
 		return err
@@ -105,7 +105,7 @@ func (l *LoadBalancingShardStrategy) GetPodCount() (int, error) {
 	return -1, errors.New("unimplemented")
 }
 
-func (l *LoadBalancingShardStrategy) UpdatePodSpec(pod *corev1.PodSpec, podIndex int) error {
+func (l *LoadBalancingShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 	return errors.New("unimplemented")
 }
 
@@ -138,6 +138,6 @@ func (l *ProjectDomainShardStrategy) GetPodCount() (int, error) {
 	return -1, errors.New("unimplemented")
 }
 
-func (p *ProjectDomainShardStrategy) UpdatePodSpec(pod *corev1.PodSpec, podIndex int) error {
+func (p *ProjectDomainShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 	return errors.New("unimplemented")
 }

@@ -45,8 +45,8 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 	}
 
 	listOptions := metav1.ListOptions{
-        LabelSelector: labels.SelectorFromSet(podLabels).String(),
-    }
+		LabelSelector: labels.SelectorFromSet(podLabels).String(),
+	}
 
 	pods, err := m.kubePodsClient.List(ctx, listOptions)
 	if err != nil {
@@ -150,7 +150,7 @@ func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interfac
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: cfg.PodNamespace,
-			Labels:    map[string]string{
+			Labels: map[string]string{
 				"app": cfg.PodApplication,
 			},
 		},
