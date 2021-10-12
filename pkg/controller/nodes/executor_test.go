@@ -8,14 +8,12 @@ import (
 	"testing"
 	"time"
 
-	controllerEvents "github.com/flyteorg/flytepropeller/pkg/controller/events"
 
 	"github.com/golang/protobuf/proto"
 
 	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	storageMocks "github.com/flyteorg/flytestdlib/storage/mocks"
 
-	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
 
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -27,15 +25,16 @@ import (
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/flyteorg/flytepropeller/events"
+	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
+	eventMocks "github.com/flyteorg/flytepropeller/events/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
-	eventMocks "github.com/flyteorg/flytepropeller/pkg/controller/events/mocks"
 	mocks4 "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	nodeHandlerMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
 
-	"github.com/flyteorg/flyteidl/clients/go/events"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
@@ -1337,7 +1336,7 @@ func Test_nodeExecutor_RecordTransitionLatency(t *testing.T) {
 		nodeHandlerFactory HandlerFactory
 		enqueueWorkflow    v1alpha1.EnqueueWorkflow
 		store              *storage.DataStore
-		nodeRecorder       controllerEvents.NodeEventRecorder
+		nodeRecorder       events.NodeEventRecorder
 		metrics            *nodeMetrics
 	}
 	type args struct {
@@ -1921,7 +1920,7 @@ func Test_nodeExecutor_IdempotentRecordEvent(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		rec     controllerEvents.NodeEventRecorder
+		rec     events.NodeEventRecorder
 		p       core.NodeExecution_Phase
 		wantErr bool
 	}{

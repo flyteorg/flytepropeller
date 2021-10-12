@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/flyteorg/flyteidl/clients/go/admin/mocks"
-	"github.com/flyteorg/flyteidl/clients/go/events/errors"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/flyteorg/flytepropeller/events/errors"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
