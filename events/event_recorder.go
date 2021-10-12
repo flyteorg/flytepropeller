@@ -2,14 +2,18 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytepropeller/events/errors"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/golang/protobuf/proto"
 )
+
+const maxErrorMessageLength = 104857600 //100Kb
 
 type recordingMetrics struct {
 	EventRecordingFailure           labeled.StopWatch
@@ -53,16 +57,36 @@ func (r *eventRecorder) sinkEvent(ctx context.Context, event proto.Message) erro
 	return nil
 }
 
-func (r *eventRecorder) RecordNodeEvent(ctx context.Context, event *event.NodeExecutionEvent) error {
-	return r.sinkEvent(ctx, event)
+func (r *eventRecorder) RecordNodeEvent(ctx context.Context, e *event.NodeExecutionEvent) error {
+	if err, ok := e.GetOutputResult().(*event.NodeExecutionEvent_Error); ok {
+		validateErrorMessage(err.Error)
+	}
+
+	return r.sinkEvent(ctx, e)
 }
 
-func (r *eventRecorder) RecordTaskEvent(ctx context.Context, event *event.TaskExecutionEvent) error {
-	return r.sinkEvent(ctx, event)
+func (r *eventRecorder) RecordTaskEvent(ctx context.Context, e *event.TaskExecutionEvent) error {
+	if err, ok := e.GetOutputResult().(*event.TaskExecutionEvent_Error); ok {
+		validateErrorMessage(err.Error)
+	}
+
+	return r.sinkEvent(ctx, e)
 }
 
-func (r *eventRecorder) RecordWorkflowEvent(ctx context.Context, event *event.WorkflowExecutionEvent) error {
-	return r.sinkEvent(ctx, event)
+func (r *eventRecorder) RecordWorkflowEvent(ctx context.Context, e *event.WorkflowExecutionEvent) error {
+	if err, ok := e.GetOutputResult().(*event.WorkflowExecutionEvent_Error); ok {
+		validateErrorMessage(err.Error)
+	}
+
+	return r.sinkEvent(ctx, e)
+}
+
+// If error message is larger than 100KB, truncate to mitigate grpc message size limit. Concatenate
+// the first and last 50KB to maintain the most relevant information.
+func validateErrorMessage(err *core.ExecutionError) {
+	if len(err.Message) > maxErrorMessageLength {
+		err.Message = fmt.Sprintf("%s ... %s", err.Message[:maxErrorMessageLength/2], err.Message[(len(err.Message)-maxErrorMessageLength/2):])
+	}
 }
 
 // Construct a new Event Recorder
