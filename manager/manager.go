@@ -67,7 +67,7 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 		if _, ok := podExists[podName]; ok {
 			podExists[podName] = true
 		} else {
-			logger.Warnf(ctx, "unmanaged pod '%s' detected", podName)
+			logger.Warnf(ctx, "detected unmanaged pod '%s'", podName)
 		}
 	}
 
@@ -83,19 +83,19 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 				continue
 			}
 
-			/*for _, container := range pod.Spec.Containers {
+			for _, container := range pod.Spec.Containers {
 				fmt.Printf("CONTAINER: %v\n", container.Image)
 				for _, arg := range container.Args {
 					fmt.Printf("  %s\n", arg)
 				}
-			}*/
+			}
 
 			// TODO hamersaw - tmp
-			_, err = m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
+			/*_, err = m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
 			if err != nil {
 				logger.Errorf(ctx, "failed to create pod '%s' [%v]", podName, err)
 				continue
-			}
+			}*/
 
 			logger.Infof(ctx, "created pod '%s'", podName)
 		}
@@ -133,8 +133,10 @@ func (m *Manager) Run(ctx context.Context) error {
 }
 
 func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interface) (*Manager, error) {
-	// TODO hamersaw - reconfigure hardcoding shard strategy
-	shardStrategy := &ConsistentHashingShardStrategy{podCount: 2, keyspaceSize: 32}
+	shardStrategy, err := NewShardStrategy(ctx, cfg.ShardConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to intialize shard strategy [%v]", err)
+	}
 
 	// retrieve and validate pod template
 	podTemplate, err := kubeClient.CoreV1().PodTemplates(cfg.PodTemplateNamespace).Get(ctx, cfg.PodTemplate, metav1.GetOptions{})

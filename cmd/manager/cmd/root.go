@@ -9,11 +9,6 @@ import (
 	//"runtime/pprof" // TODO hamersaw - add pprof
 	"strings"
 
-	"k8s.io/client-go/kubernetes"
-	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/klog"
-
 	"github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/config/viper"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -31,10 +26,15 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
+	"k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog"
 )
 
 const (
-	appName          = "flytepropeller-manager"
+	appName = "flytepropeller-manager"
 )
 
 var (

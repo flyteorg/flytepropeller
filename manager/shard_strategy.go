@@ -1,9 +1,12 @@
 package manager
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
+
+	"github.com/flyteorg/flytepropeller/manager/config"
 
 	v1 "k8s.io/api/core/v1"
 )
@@ -17,21 +20,16 @@ type ShardStrategy interface {
 	UpdatePodSpec(pod *v1.PodSpec, podIndex int) error
 }
 
-func getFlytePropellerContainer(pod *v1.PodSpec) (*v1.Container, error) {
-	// find flytepropeller container(s)
-	var containers []*v1.Container
-	for i := 0; i < len(pod.Containers); i++ {
-		commands := pod.Containers[i].Command
-		if len(commands) > 0 && commands[0] == "flytepropeller" {
-			containers = append(containers, &pod.Containers[i])
-		}
+func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (ShardStrategy, error) {
+	switch shardConfig.Type {
+	case config.ConsistentHashingShardType:
+		return &ConsistentHashingShardStrategy{
+			podCount: shardConfig.PodCount,
+			keyspaceSize: shardConfig.KeyspaceSize,
+		}, nil
 	}
 
-	if len(containers) != 1 {
-		return nil, errors.New(fmt.Sprintf("expecting 1 flytepropeller container in podtemplate but found %d, ", len(containers)))
-	}
-
-	return containers[0], nil
+	return nil, fmt.Errorf("shard strategy '%s' does not exist", shardConfig.Type)
 }
 
 type ConsistentHashingShardStrategy struct {
@@ -51,7 +49,7 @@ func (c *ConsistentHashingShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex
 
 	startKey, endKey := computeKeyRange(c.keyspaceSize, c.podCount, podIndex)
 	for i := startKey; i < endKey; i++ {
-		container.Args = append(container.Args, "--include-selector", fmt.Sprintf("%d", i))
+		container.Args = append(container.Args, "--include-shard-key", fmt.Sprintf("%d", i))
 	}
 
 	return nil
@@ -141,3 +139,21 @@ func (l *ProjectDomainShardStrategy) GetPodCount() (int, error) {
 func (p *ProjectDomainShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 	return errors.New("unimplemented")
 }
+
+func getFlytePropellerContainer(pod *v1.PodSpec) (*v1.Container, error) {
+	// find flytepropeller container(s)
+	var containers []*v1.Container
+	for i := 0; i < len(pod.Containers); i++ {
+		commands := pod.Containers[i].Command
+		if len(commands) > 0 && commands[0] == "flytepropeller" {
+			containers = append(containers, &pod.Containers[i])
+		}
+	}
+
+	if len(containers) != 1 {
+		return nil, errors.New(fmt.Sprintf("expecting 1 flytepropeller container in podtemplate but found %d, ", len(containers)))
+	}
+
+	return containers[0], nil
+}
+
