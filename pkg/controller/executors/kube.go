@@ -2,6 +2,9 @@ package executors
 
 import (
 	"context"
+	"fmt"
+	"github.com/flyteorg/flytestdlib/fastcheck"
+	"github.com/flyteorg/flytestdlib/promutils"
 
 	"k8s.io/client-go/rest"
 
@@ -20,6 +23,8 @@ type Client interface {
 	GetCache() cache.Cache
 }
 
+// fallbackClientReader reads from the cache first and if not found then reads from the configured reader, which
+// directly reads from the API
 type fallbackClientReader struct {
 	orderedClients []client.Reader
 }
@@ -46,6 +51,7 @@ func (c fallbackClientReader) List(ctx context.Context, list client.ObjectList, 
 
 type FallbackClientBuilder struct {
 	uncached []client.Object
+	scope    promutils.Scope
 }
 
 func (f *FallbackClientBuilder) WithUncached(objs ...client.Object) cluster.ClientBuilder {
@@ -55,6 +61,11 @@ func (f *FallbackClientBuilder) WithUncached(objs ...client.Object) cluster.Clie
 
 func (f FallbackClientBuilder) Build(cache cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
 	c, err := client.New(config, options)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err = newWriteThroughCachingWriter(c, 20000, f.scope)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +83,60 @@ func (f FallbackClientBuilder) Build(cache cache.Cache, config *rest.Config, opt
 
 // Creates a new k8s client that uses the cached client for reads and falls back to making API
 // calls if it failed. Write calls will always go to raw client directly.
-func NewFallbackClientBuilder() *FallbackClientBuilder {
-	return &FallbackClientBuilder{}
+func NewFallbackClientBuilder(scope promutils.Scope) *FallbackClientBuilder {
+	return &FallbackClientBuilder{
+		scope: scope,
+	}
+}
+
+type writeThroughCachingWriter struct {
+	client.Client
+	filter fastcheck.Filter
+}
+
+func IdFromObject(obj client.Object, op string) []byte {
+	return []byte(fmt.Sprintf("%s:%s:%s:%s:%s", obj.GetNamespace(), obj.GetName(), obj.GetClusterName(), obj.GetObjectKind().GroupVersionKind().String(), op))
+}
+
+// Create first checks the local cache if the object with id was previously successfully saved, if not then
+// saves the object obj in the Kubernetes cluster
+func (w writeThroughCachingWriter) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	// "c" represents create
+	id := IdFromObject(obj, "c")
+	if w.filter.Contains(ctx, id) {
+		return nil
+	}
+	err := w.Client.Create(ctx, obj, opts...)
+	if err != nil {
+		return err
+	}
+	w.filter.Add(ctx, id)
+	return nil
+}
+
+// Delete first checks the local cache if the object with id was previously successfully deleted, if not then
+// deletes the given obj from Kubernetes cluster.
+func (w writeThroughCachingWriter) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	// "d" represents delete
+	id := IdFromObject(obj, "d")
+	if w.filter.Contains(ctx, id) {
+		return nil
+	}
+	err := w.Client.Delete(ctx, obj, opts...)
+	if err != nil {
+		return err
+	}
+	w.filter.Add(ctx, id)
+	return nil
+}
+
+func newWriteThroughCachingWriter(c client.Client, cacheSize int, scope promutils.Scope) (writeThroughCachingWriter, error) {
+	filter, err := fastcheck.NewLRUCacheFilter(cacheSize, scope.NewSubScope("kube_filter"))
+	if err != nil {
+		return writeThroughCachingWriter{}, err
+	}
+	return writeThroughCachingWriter{
+		Client: c,
+		filter: filter,
+	}, nil
 }
