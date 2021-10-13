@@ -85,7 +85,10 @@ func (r *eventRecorder) RecordWorkflowEvent(ctx context.Context, e *event.Workfl
 // the first and last 50KB to maintain the most relevant information.
 func validateErrorMessage(err *core.ExecutionError) {
 	if len(err.Message) > maxErrorMessageLength {
-		err.Message = fmt.Sprintf("%s ... %s", err.Message[:maxErrorMessageLength/2], err.Message[(len(err.Message)-maxErrorMessageLength/2):])
+		//logger.Warnf(ctx, "admin event error message too long (%d bytes), truncating to %d bytes", len(err.Message), maxErrorMessageLength)
+		// TODO hamersaw - tmp
+		fmt.Printf("admin event error message too long (%d bytes), truncating to %d bytes", len(err.Message), maxErrorMessageLength)
+		err.Message = fmt.Sprintf("%s%s", err.Message[:maxErrorMessageLength/2], err.Message[(len(err.Message)-maxErrorMessageLength/2):])
 	}
 }
 
