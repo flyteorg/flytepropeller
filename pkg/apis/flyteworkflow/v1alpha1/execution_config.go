@@ -32,8 +32,8 @@ type ExecutionConfig struct {
 
 type TaskPluginOverride struct {
 	// +listType=atomic
-	PluginIDs             []string                                   `json:"pluginIDs,omitempty"`
-	MissingPluginBehavior admin.PluginOverride_MissingPluginBehavior `json:"missingPluginBehavior"`
+	PluginIDs             []string                                   `json:"PluginsIDs,omitempty"`
+	MissingPluginBehavior admin.PluginOverride_MissingPluginBehavior `json:"MissingPluginBehavior"`
 }
 
 // Defines a set of configurable resources of different types that a task can request or apply as limits.

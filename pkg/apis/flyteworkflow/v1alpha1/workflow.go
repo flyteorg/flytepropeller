@@ -183,8 +183,8 @@ func (in *Inputs) DeepCopyInto(out *Inputs) {
 
 // Deprecated: Please use Connections instead
 type DeprecatedConnections struct {
-	DownstreamEdges map[NodeID][]NodeID `json:"downstreamEdges,omitempty"`
-	UpstreamEdges   map[NodeID][]NodeID `json:"upstreamEdges,omitempty"`
+	DownstreamEdges map[NodeID][]NodeID `json:"DownstreamEdges,omitempty"`
+	UpstreamEdges   map[NodeID][]NodeID `json:"UpstreamEdges,omitempty"`
 }
 
 func (in *DeprecatedConnections) UnmarshalJSON(b []byte) error {
