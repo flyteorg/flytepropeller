@@ -1,13 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/flyteorg/flytepropeller/cmd/manager/cmd"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
+	"github.com/flyteorg/flytepropeller/cmd/manager/cmd"
 )
 
 func init() {
@@ -16,10 +13,5 @@ func init() {
 }
 
 func main() {
-
-	rootCmd := cmd.NewFlyteCommand()
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	cmd.Execute()
 }

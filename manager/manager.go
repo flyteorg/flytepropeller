@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/flyteorg/flytepropeller/pkg/manager/config"
+	"github.com/flyteorg/flytepropeller/manager/config"
 
 	"github.com/flyteorg/flytestdlib/logger"
 
@@ -91,7 +91,7 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 			}*/
 
 			// TODO hamersaw - tmp
-			_, err := m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
+			_, err = m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
 			if err != nil {
 				logger.Errorf(ctx, "failed to create pod '%s' [%v]", podName, err)
 				continue
