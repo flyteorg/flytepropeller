@@ -36,9 +36,9 @@ const (
 )
 
 type ShardConfig struct {
-	Type         ShardType `json:"type" pflag:", Shard implementation to use`
-	PodCount     int       `json:"pod-count" pflag:", The number of pods to manage for consistent hashing"`
-	KeyspaceSize int       `json:"keyspace-size" pflag:", Size of the keyspace to use in consistent hashing"`
+	Type         ShardType `json:"type" pflag:",Shard implementation to use"`
+	PodCount     int       `json:"pod-count" pflag:",The number of pods to manage for consistent hashing"`
+	KeyspaceSize int       `json:"keyspace-size" pflag:",Size of the keyspace to use in consistent hashing"`
 }
 
 type Config struct {

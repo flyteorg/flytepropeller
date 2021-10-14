@@ -144,11 +144,30 @@ func getKubeConfig(_ context.Context, cfg *config2.Config) (*kubernetes.Clientse
 }
 
 func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption {
+	labelSelector := controller.IgnoreCompletedWorkflowsLabelSelector()
+	if len(cfg.IncludeShardKey) > 0 {
+		labelSelectorRequirement := v1.LabelSelectorRequirement{"shardKey", v1.LabelSelectorOpIn, cfg.IncludeShardKey}
+
+		labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, labelSelectorRequirement)
+	}
+
+	if len(cfg.ExcludeShardKey) > 0 {
+		labelSelectorRequirement := v1.LabelSelectorRequirement{"shardKey", v1.LabelSelectorOpNotIn, cfg.IncludeShardKey}
+
+		labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, labelSelectorRequirement)
+	}
+
 	opts := []informers.SharedInformerOption{
+		informers.WithTweakListOptions(func(options *v1.ListOptions) {
+			options.LabelSelector = v1.FormatLabelSelector(labelSelector)
+		}),
+	}
+
+	/*opts := []informers.SharedInformerOption{
 		informers.WithTweakListOptions(func(options *v1.ListOptions) {
 			options.LabelSelector = v1.FormatLabelSelector(controller.IgnoreCompletedWorkflowsLabelSelector())
 		}),
-	}
+	}*/
 	if cfg.LimitNamespace != defaultNamespace {
 		opts = append(opts, informers.WithNamespace(cfg.LimitNamespace))
 	}

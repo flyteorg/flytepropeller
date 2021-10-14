@@ -49,7 +49,7 @@ func (c *ConsistentHashingShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex
 
 	startKey, endKey := computeKeyRange(c.keyspaceSize, c.podCount, podIndex)
 	for i := startKey; i < endKey; i++ {
-		container.Args = append(container.Args, "--include-shard-key", fmt.Sprintf("%d", i))
+		container.Args = append(container.Args, "--propeller.include-shard-key", fmt.Sprintf("%d", i))
 	}
 
 	return nil

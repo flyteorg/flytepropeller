@@ -40,6 +40,7 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 	// with 3 pods locally we get "too many open files"
 
 	// retrieve existing pods
+	// TODO hamersaw - use existing LabelSelector API (AddLabel...)
 	podLabels := map[string]string{
 		"app": m.podApplication,
 	}
@@ -83,19 +84,19 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 				continue
 			}
 
-			for _, container := range pod.Spec.Containers {
+			// TODO hamersaw - tmp
+			/*for _, container := range pod.Spec.Containers {
 				fmt.Printf("CONTAINER: %v\n", container.Image)
 				for _, arg := range container.Args {
 					fmt.Printf("  %s\n", arg)
 				}
-			}
+			}*/
 
-			// TODO hamersaw - tmp
-			/*_, err = m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
+			_, err = m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
 			if err != nil {
 				logger.Errorf(ctx, "failed to create pod '%s' [%v]", podName, err)
 				continue
-			}*/
+			}
 
 			logger.Infof(ctx, "created pod '%s'", podName)
 		}

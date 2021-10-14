@@ -137,6 +137,8 @@ type Config struct {
 	NodeConfig             NodeConfig           `json:"node-config,omitempty" pflag:",config for a workflow node"`
 	MaxStreakLength        int                  `json:"max-streak-length" pflag:",Maximum number of consecutive rounds that one propeller worker can use for one workflow - >1 => turbo-mode is enabled."`
 	EventConfig            EventConfig          `json:"event-config,omitempty" pflag:",Configures execution event behavior."`
+	IncludeShardKey        []string             `json:"include-shard-key" pflag:",Include the specified shard key label in the k8s FlyteWorkflow CRD label selector"`
+	ExcludeShardKey        []string             `json:"exclude-shard-key" pflag:",Include the specified shard key label in the k8s FlyteWorkflow CRD label selector"`
 }
 
 // KubeClientConfig contains the configuration used by flytepropeller to configure its internal Kubernetes Client.
