@@ -38,11 +38,11 @@ type TaskPluginOverride struct {
 
 // Defines a set of configurable resources of different types that a task can request or apply as limits.
 type TaskResourceSpec struct {
-	CPU              resource.Quantity `json:"cpu,omitempty"`
-	Memory           resource.Quantity `json:"memory,omitempty"`
-	EphemeralStorage resource.Quantity `json:"ephemeralStorage,omitempty"`
-	Storage          resource.Quantity `json:"storage,omitempty"`
-	GPU              resource.Quantity `json:"gpu,omitempty"`
+	CPU              resource.Quantity `json:"CPU,omitempty"`
+	Memory           resource.Quantity `json:"Memory,omitempty"`
+	EphemeralStorage resource.Quantity `json:"EphemeralStorage,omitempty"`
+	Storage          resource.Quantity `json:"Storage,omitempty"`
+	GPU              resource.Quantity `json:"GPU,omitempty"`
 }
 
 // Defines the complete closure of compute resources a task can request and apply as limits.
