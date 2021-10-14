@@ -154,7 +154,7 @@ func (in *FlyteWorkflow) GetRawOutputDataConfig() RawOutputDataConfig {
 }
 
 type Inputs struct {
-	*core.LiteralMap `json:"-"`
+	*core.LiteralMap `json:",inline"`
 }
 
 func (in *Inputs) UnmarshalJSON(b []byte) error {

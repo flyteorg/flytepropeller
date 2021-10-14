@@ -8,7 +8,7 @@ import (
 )
 
 type TaskSpec struct {
-	*core.TaskTemplate `json:"-"`
+	*core.TaskTemplate
 }
 
 func (in *TaskSpec) TaskType() TaskType {

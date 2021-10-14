@@ -13,7 +13,7 @@ import (
 var marshaler = jsonpb.Marshaler{}
 
 type OutputVarMap struct {
-	*core.VariableMap `json:"-"`
+	*core.VariableMap
 }
 
 func (in *OutputVarMap) MarshalJSON() ([]byte, error) {
@@ -38,7 +38,7 @@ func (in *OutputVarMap) DeepCopyInto(out *OutputVarMap) {
 }
 
 type Binding struct {
-	*core.Binding `json:"-"`
+	*core.Binding
 }
 
 func (in *Binding) UnmarshalJSON(b []byte) error {

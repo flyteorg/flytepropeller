@@ -61,16 +61,16 @@ spec:
               TaskPluginImpls:
                 additionalProperties:
                   properties:
-                    missingPluginBehavior:
+                    MissingPluginBehavior:
                       format: int32
                       type: integer
-                    pluginIDs:
+                    PluginsIDs:
                       items:
                         type: string
                       type: array
                       x-kubernetes-list-type: atomic
                   required:
-                  - missingPluginBehavior
+                  - MissingPluginBehavior
                   type: object
                 description: Maps individual task types to their alternate (non-default)
                   plugin handlers by name.
@@ -173,6 +173,13 @@ spec:
                 type: string
             type: object
           inputs:
+            properties:
+              literals:
+                additionalProperties:
+                  description: A simple value. This supports any level of nesting
+                    (e.g. array of array of array of Blobs) as well as simple primitives.
+                  type: object
+                type: object
             type: object
           kind:
             description: 'Kind is a string value representing the REST resource this
@@ -414,13 +421,13 @@ spec:
                   engine will respect and follow these connections as it determines
                   which nodes can and should be executed. Deprecated: Please use Connections'
                 properties:
-                  downstreamEdges:
+                  DownstreamEdges:
                     additionalProperties:
                       items:
                         type: string
                       type: array
                     type: object
-                  upstreamEdges:
+                  UpstreamEdges:
                     additionalProperties:
                       items:
                         type: string
@@ -2856,13 +2863,13 @@ spec:
                     which nodes can and should be executed. Deprecated: Please use
                     Connections'
                   properties:
-                    downstreamEdges:
+                    DownstreamEdges:
                       additionalProperties:
                         items:
                           type: string
                         type: array
                       type: object
-                    upstreamEdges:
+                    UpstreamEdges:
                       additionalProperties:
                         items:
                           type: string

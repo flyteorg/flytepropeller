@@ -3,7 +3,7 @@ include boilerplate/flyte/docker_build/Makefile
 include boilerplate/flyte/golang_test_targets/Makefile
 include boilerplate/flyte/end2end/Makefile
 
-CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false,generateEmbeddedObjectMeta=true"
+CRD_OPTIONS ?= "crd:preserveUnknownFields=false,generateEmbeddedObjectMeta=true"
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 OPENAPI_GEN = $(shell pwd)/bin/openapi-gen
 
@@ -14,7 +14,7 @@ openapi-gen:
 	$(call go-get-tool,$(OPENAPI_GEN),k8s.io/kube-openapi/cmd/openapi-gen@v0.0.0-20200805222855-6aeccd4b50c6)
 
 manifests: controller-gen ## Generate CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/flyteworkflow/..." output:crd:artifacts:config=manifests/base/crds
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/flyteworkflow/..." output:crd:artifacts:config=manifests/base/crds || true
 
 .PHONY: update_boilerplate
 update_boilerplate:

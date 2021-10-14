@@ -37,7 +37,7 @@ func (in *Error) DeepCopyInto(out *Error) {
 }
 
 type BooleanExpression struct {
-	*core.BooleanExpression `json:"-"`
+	*core.BooleanExpression
 }
 
 func (in BooleanExpression) MarshalJSON() ([]byte, error) {
