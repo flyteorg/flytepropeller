@@ -39,7 +39,7 @@ func (i VaultSecretInjector) Type() config.SecretManagerType {
 
 func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
 	if len(secret.Group) == 0 || len(secret.Key) == 0 {
-		return nil, false, fmt.Errorf("Vault Secrets Webhook require both key and group to be set. "+
+		return nil, false, fmt.Errorf("Vault Secrets Webhook requires both key and group to be set. "+
 			"Secret: [%v]", secret)
 	}
 
@@ -48,7 +48,8 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 		fmt.Println("DEBUG: We're doing this, YEAH!")
 		
 		//"vault.hashicorp.com/agent-inject": true
-		// This is where we need to pick up stuff from vault			
+		// This is where we need to pick up stuff from vault
+		// ####################################################### Testing			
 		envVar := corev1.EnvVar{
 			Name: strings.ToUpper(VaultDefaultEnvVarPrefix + secret.Group + EnvVarGroupKeySeparator + secret.Key),
 			Value: "Mumintroll",
@@ -56,11 +57,11 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 
 		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, envVar)
 		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, envVar)
+		// ####################################################
 
-		fmt.Println("Container spec")
-		fmt.Println(p.Spec.Containers)
-		fmt.Println("Init container spec")
-		fmt.Println(p.Spec.InitContainers)
+		fmt.Println(p)
+
+
 
 	default:
 		err := fmt.Errorf("unrecognized mount requirement [%v] for secret [%v]", secret.MountRequirement.String(), secret.Key)
