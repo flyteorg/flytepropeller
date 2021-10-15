@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	//"path/filepath"
 
 	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
@@ -42,21 +43,24 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 			"Secret: [%v]", secret)
 	}
 
-	fmt.Println("DEBUG: Triggered VaultSecretInjector, YEAH!")
-
 	switch secret.MountRequirement {
 	case core.Secret_ANY:
 		fmt.Println("DEBUG: We're doing this, YEAH!")
 		
 		//"vault.hashicorp.com/agent-inject": true
-		// This is where we need to pick up stuff from vault
+		// This is where we need to pick up stuff from vault			
 		envVar := corev1.EnvVar{
-			Name:  "FOOBAR",
-			Value: "GOTCHA_ENV_VAR",
+			Name: strings.ToUpper(VaultDefaultEnvVarPrefix + secret.Group + EnvVarGroupKeySeparator + secret.Key),
+			Value: "Mumintroll",
 		}
-		fmt.Println(p.Spec.Containers)
+
+		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, envVar)
 		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, envVar)
 
+		fmt.Println("Container spec")
+		fmt.Println(p.Spec.Containers)
+		fmt.Println("Init container spec")
+		fmt.Println(p.Spec.InitContainers)
 
 	default:
 		err := fmt.Errorf("unrecognized mount requirement [%v] for secret [%v]", secret.MountRequirement.String(), secret.Key)
