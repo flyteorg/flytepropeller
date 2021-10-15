@@ -2,7 +2,6 @@ package webhook
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 
@@ -70,7 +69,6 @@ func (s *SecretsMutator) Mutate(ctx context.Context, p *corev1.Pod) (newP *corev
 // NewSecretsMutator creates a new SecretsMutator with all available plugins. Depending on the selected plugins in the
 // config, only the global plugin and one other plugin can be enabled.
 func NewSecretsMutator(cfg *config.Config, _ promutils.Scope) *SecretsMutator {
-	fmt.Println("DEBUG: Selecting a SecretsMutator")
 	return &SecretsMutator{
 		cfg: cfg,
 		injectors: []SecretsInjector{

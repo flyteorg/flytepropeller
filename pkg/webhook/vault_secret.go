@@ -46,44 +46,15 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 
 	switch secret.MountRequirement {
 	case core.Secret_ANY:
-		fallthrough
-	case core.Secret_FILE:
-		// Inject a Volume that to the pod and all of its containers and init containers that mounts the secret into a
-		// file.
-
-//		volume := CreateVolumeForSecret(secret)
-//		p.Spec.Volumes = AppendVolume(p.Spec.Volumes, volume)
-//
-//		// Mount the secret to all containers in the given pod.
-//		mount := CreateVolumeMountForSecret(volume.Name, secret)
-//		p.Spec.InitContainers = AppendVolumeMounts(p.Spec.InitContainers, mount)
-//		p.Spec.Containers = AppendVolumeMounts(p.Spec.Containers, mount)
-//
-//		// Set environment variable to let the container know where to find the mounted files.
-//		defaultDirEnvVar := corev1.EnvVar{
-//			Name:  SecretPathDefaultDirEnvVar,
-//			Value: filepath.Join(VaultSecretPathPrefix...),
-//		}
-//
-//		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, defaultDirEnvVar)
-//		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, defaultDirEnvVar)
-
-		// Sets an empty prefix to let the containers know the file names will match the secret keys as-is.
-		prefixEnvVar := corev1.EnvVar{
-			Name:  "FOOBAR",
-			Value: "GOTCHA_FILE",
-		}
-
-		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, prefixEnvVar)
-		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, prefixEnvVar)
-	case core.Secret_ENV_VAR:
+		fmt.Println("DEBUG: We're doing this, YEAH!")
+		
+		//"vault.hashicorp.com/agent-inject": true
 		// This is where we need to pick up stuff from vault
 		envVar := corev1.EnvVar{
 			Name:  "FOOBAR",
 			Value: "GOTCHA_ENV_VAR",
 		}
-
-		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, envVar)
+		fmt.Println(p.Spec.Containers)
 		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, envVar)
 
 
