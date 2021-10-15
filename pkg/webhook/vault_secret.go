@@ -59,7 +59,7 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, envVar)
 		// ####################################################
 
-		fmt.Println(p)
+		fmt.Println(p.ObjectMeta.Annotations)
 
 
 
