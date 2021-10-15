@@ -42,6 +42,8 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 			"Secret: [%v]", secret)
 	}
 
+	logger.Infof(ctx, "Triggered VaultSecretInjector, YEAH!")
+
 	switch secret.MountRequirement {
 	case core.Secret_ANY:
 		fallthrough
