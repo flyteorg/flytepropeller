@@ -341,7 +341,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	}
 
 	logger.Info(ctx, "Setting up event sink and recorder")
-	eventSink, err := events.ConstructEventSink(ctx, events.GetConfig(ctx))
+	eventSink, err := events.ConstructEventSink(ctx, events.GetConfig(ctx), scope.NewSubScope("event_sink"))
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create EventSink [%v], error %v", events.GetConfig(ctx).Type, err)
 	}
