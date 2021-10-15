@@ -59,7 +59,10 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, envVar)
 		// ####################################################
 
+		p.ObjectMeta.Annotations["vault.hashicorp.com/agent-inject"] = "true"
+
 		fmt.Println(p.ObjectMeta.Annotations)
+
 
 
 
