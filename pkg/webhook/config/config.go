@@ -49,6 +49,9 @@ const (
 	// SecretManagerTypeAWS defines a secret manager webhook that injects a side car to pull secrets from AWS Secret
 	// Manager and mount them to a local file system (in memory) and share that mount with other containers in the pod.
 	SecretManagerTypeAWS
+
+	// SecretManagerTypeVault defines a secret manager webhook that pulls secrets from Hashicorp Vault.
+	SecretManagerTypeVault
 )
 
 type Config struct {
