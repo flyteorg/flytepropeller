@@ -86,6 +86,7 @@ A sample Container for this webhook might look like this:
               readOnly: true
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println("Houston, we're live")
 		return runWebhook(context.Background(), config.GetConfig(), webhookConfig.GetConfig())
 	},
 }
