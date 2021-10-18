@@ -95,7 +95,7 @@ type writeThroughCachingWriter struct {
 	filter fastcheck.Filter
 }
 
-func IdFromObject(obj client.Object, op string) []byte {
+func IDFromObject(obj client.Object, op string) []byte {
 	return []byte(fmt.Sprintf("%s:%s:%s:%s:%s", obj.GetClusterName(), obj.GetObjectKind().GroupVersionKind().String(), obj.GetNamespace(), obj.GetName(), op))
 }
 
@@ -103,7 +103,7 @@ func IdFromObject(obj client.Object, op string) []byte {
 // saves the object obj in the Kubernetes cluster
 func (w writeThroughCachingWriter) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	// "c" represents create
-	id := IdFromObject(obj, "c")
+	id := IDFromObject(obj, "c")
 	if w.filter.Contains(ctx, id) {
 		return nil
 	}
@@ -119,7 +119,7 @@ func (w writeThroughCachingWriter) Create(ctx context.Context, obj client.Object
 // deletes the given obj from Kubernetes cluster.
 func (w writeThroughCachingWriter) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 	// "d" represents delete
-	id := IdFromObject(obj, "d")
+	id := IDFromObject(obj, "d")
 	if w.filter.Contains(ctx, id) {
 		return nil
 	}

@@ -46,8 +46,8 @@ func TestIdFromObject(t *testing.T) {
 					APIVersion: "v1",
 				},
 			}
-			if got := IdFromObject(p, tt.args.op); !reflect.DeepEqual(got, []byte(tt.want)) {
-				t.Errorf("IdFromObject() = %s, want %s", string(got), tt.want)
+			if got := IDFromObject(p, tt.args.op); !reflect.DeepEqual(got, []byte(tt.want)) {
+				t.Errorf("IDFromObject() = %s, want %s", string(got), tt.want)
 			}
 		})
 	}
