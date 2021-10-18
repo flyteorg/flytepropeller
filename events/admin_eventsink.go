@@ -43,31 +43,39 @@ func NewAdminEventSink(ctx context.Context, config *Config, adminClient service.
 func (s *adminEventSink) Sink(ctx context.Context, message proto.Message) error {
 	logger.Debugf(ctx, "AdminEventSink received a new event %s", message.String())
 
-	var id []byte
+	// Short-circuit if event has already been sent
+	var idStr string
 	switch eventMessage := message.(type) {
 	case *event.WorkflowExecutionEvent:
-		id = idFromMessage("w")
+		wid := eventMessage.ExecutionId
+		idStr = fmt.Sprintf("%s:%s:%s:%d", wid.Project, wid.Domain, wid.Name, eventMessage.Phase)
 	case *event.NodeExecutionEvent:
-		id = idFromMessage("n")
+		nid := eventMessage.Id
+		wid := nid.ExecutionId
+		idStr = fmt.Sprintf("%s:%s:%s:%s:%d", wid.Project, wid.Domain, wid.Name, nid.NodeId, eventMessage.Phase)
 	case *event.TaskExecutionEvent:
-		id = idFromMessage("t")
+		tid := eventMessage.TaskId
+		nid := eventMessage.ParentNodeExecutionId
+		wid := nid.ExecutionId
+		idStr = fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%s:%d:%d", tid.Project, tid.Domain, tid.Name, tid.Version, wid.Project, wid.Domain, wid.Name, nid.NodeId, eventMessage.Phase, eventMessage.PhaseVersion)
 	default:
 		return fmt.Errorf("unknown event type [%s]", eventMessage.String())
 	}
 
-	// Short-circuit if event has already been sent
+	id := []byte(idStr)
 	if s.filter.Contains(ctx, id) {
 		return nil
 	}
 
+	// Validate submission with rate limiter and send admin event
 	if s.rateLimiter.Allow() {
 		switch eventMessage := message.(type) {
 		case *event.WorkflowExecutionEvent:
 			request := &admin.WorkflowExecutionEventRequest{
 				Event: eventMessage,
 			}
-			_, err := s.adminClient.CreateWorkflowEvent(ctx, request)
 
+			_, err := s.adminClient.CreateWorkflowEvent(ctx, request)
 			if err != nil {
 				return errors.WrapError(err)
 			}
@@ -75,6 +83,7 @@ func (s *adminEventSink) Sink(ctx context.Context, message proto.Message) error 
 			request := &admin.NodeExecutionEventRequest{
 				Event: eventMessage,
 			}
+
 			_, err := s.adminClient.CreateNodeEvent(ctx, request)
 			if err != nil {
 				return errors.WrapError(err)
@@ -83,6 +92,7 @@ func (s *adminEventSink) Sink(ctx context.Context, message proto.Message) error 
 			request := &admin.TaskExecutionEventRequest{
 				Event: eventMessage,
 			}
+
 			_, err := s.adminClient.CreateTaskEvent(ctx, request)
 			if err != nil {
 				return errors.WrapError(err)
@@ -102,11 +112,6 @@ func (s *adminEventSink) Sink(ctx context.Context, message proto.Message) error 
 // Closes the gRPC client connection. This should be deferred on the client does shutdown cleanup.
 func (s *adminEventSink) Close() error {
 	return nil
-}
-
-// TODO hamersaw - fill out
-func idFromMessage(op string) []byte {
-	return []byte(fmt.Sprintf("%s", op))
 }
 
 func initializeAdminClientFromConfig(ctx context.Context) (client service.AdminServiceClient, err error) {
@@ -131,7 +136,7 @@ func ConstructEventSink(ctx context.Context, config *Config, scope promutils.Sco
 			return nil, err
 		}
 
-		filter, err := fastcheck.NewOppoBloomFilter(2000, scope.NewSubScope("admin_filter"))
+		filter, err := fastcheck.NewOppoBloomFilter(20000, scope.NewSubScope("admin_filter"))
 		if err != nil {
 			return nil, err
 		}
