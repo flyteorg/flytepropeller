@@ -95,7 +95,7 @@ type writeThroughCachingWriter struct {
 }
 
 func IdFromObject(obj client.Object, op string) []byte {
-	return []byte(fmt.Sprintf("%s:%s:%s:%s:%s", obj.GetNamespace(), obj.GetName(), obj.GetClusterName(), obj.GetObjectKind().GroupVersionKind().String(), op))
+	return []byte(fmt.Sprintf("%s:%s:%s:%s:%s", obj.GetClusterName(), obj.GetObjectKind().GroupVersionKind().String(), obj.GetNamespace(), obj.GetName(), op))
 }
 
 // Create first checks the local cache if the object with id was previously successfully saved, if not then
@@ -131,7 +131,7 @@ func (w writeThroughCachingWriter) Delete(ctx context.Context, obj client.Object
 }
 
 func newWriteThroughCachingWriter(c client.Client, cacheSize int, scope promutils.Scope) (writeThroughCachingWriter, error) {
-	filter, err := fastcheck.NewLRUCacheFilter(cacheSize, scope.NewSubScope("kube_filter"))
+	filter, err := fastcheck.NewOppoBloomFilter(cacheSize, scope.NewSubScope("kube_filter"))
 	if err != nil {
 		return writeThroughCachingWriter{}, err
 	}
