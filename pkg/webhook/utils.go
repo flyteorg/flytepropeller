@@ -1,6 +1,8 @@
 package webhook
 
 import (
+	"encoding/base64"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -114,4 +116,19 @@ func AppendVolume(volumes []corev1.Volume, volume corev1.Volume) []corev1.Volume
 	}
 
 	return append(volumes, volume)
+}
+
+func CreateAnnotationsForSecret(secret *core.Secret) map[string]string {
+	name := fmt.Sprintf("%s:%s", secret.Group, secret.Key)
+	b64name := base64.StdEncoding.EncodeToString([]byte(name))
+	b64name = strings.TrimSuffix(b64name, "=")
+	secretVaultAnnotations := map[string]string{
+		fmt.Sprintf("vault.hashicorp.com/agent-inject-secret-%s", b64name): secret.Group,
+		fmt.Sprintf("vault.hashicorp.com/agent-inject-file-%s", b64name):   fmt.Sprintf("%s/%s", secret.Group, secret.Key),
+		fmt.Sprintf("vault.hashicorp.com/agent-inject-template-%s", b64name): fmt.Sprintf(`
+		{{- with secret "%s" -}}
+		{{ .Data.data.%s }}
+		{{- end -}}`, secret.Group, secret.Key),
+	}
+	return secretVaultAnnotations
 }

@@ -6,15 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"github.com/flyteorg/flytestdlib/logger"
 	corev1 "k8s.io/api/core/v1"
-)
-
-const (
-	VaultDefaultEnvVarPrefix  = "_FSEC_"
 )
 
 var (
@@ -45,7 +41,7 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 	switch secret.MountRequirement {
 	case core.Secret_ANY:
 		fmt.Println("DEBUG: We're doing this, YEAH!")
-		
+
 		// Set environment variable to let the container know where to find the mounted files.
 		defaultDirEnvVar := corev1.EnvVar{
 			Name:  SecretPathDefaultDirEnvVar,
@@ -63,29 +59,19 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 
 		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, prefixEnvVar)
 		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, prefixEnvVar)
-		generalVaultAnnotations := map[string]string {
-			"vault.hashicorp.com/agent-inject": "true",
-			"vault.hashicorp.com/secret-volume-path": filepath.Join(VaultSecretPathPrefix...),
-			"vault.hashicorp.com/role": "internal-app",
+		generalVaultAnnotations := map[string]string{
+			"vault.hashicorp.com/agent-inject":            "true",
+			"vault.hashicorp.com/secret-volume-path":      filepath.Join(VaultSecretPathPrefix...),
+			"vault.hashicorp.com/role":                    "internal-app",
 			"vault.hashicorp.com/agent-pre-populate-only": "true",
 		}
 
-		secretVaultAnnotations := map[string]string {
-			"vault.hashicorp.com/agent-inject-secret-foobar": secret.Group,
-			"vault.hashicorp.com/agent-inject-file-foobar": fmt.Sprintf("%s/%s", secret.Group, secret.Key),
-			"vault.hashicorp.com/agent-inject-template-foobar": fmt.Sprintf(`{{- with secret "internal/data/database/config" -}}
-			{{ .Data.data.%s }}
-			{{- end -}}`, secret.Key),
-		}
-
+		secretVaultAnnotations := CreateAnnotationsForSecret(secret)
 
 		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, generalVaultAnnotations)
 		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, secretVaultAnnotations)
 
 		fmt.Println(p.ObjectMeta.Annotations)
-
-
-
 
 	default:
 		err := fmt.Errorf("unrecognized mount requirement [%v] for secret [%v]", secret.MountRequirement.String(), secret.Key)
