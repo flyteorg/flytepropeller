@@ -1,7 +1,6 @@
 package webhook
 
 import (
-	"encoding/base64"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/uuid"
 )
 
 func hasEnvVar(envVars []corev1.EnvVar, envVarKey string) bool {
@@ -119,13 +119,11 @@ func AppendVolume(volumes []corev1.Volume, volume corev1.Volume) []corev1.Volume
 }
 
 func CreateAnnotationsForSecret(secret *core.Secret) map[string]string {
-	name := fmt.Sprintf("%s:%s", secret.Group, secret.Key)
-	b64name := base64.StdEncoding.EncodeToString([]byte(name))
-	b64name = strings.TrimSuffix(b64name, "=")
+	id := string(uuid.NewUUID())
 	secretVaultAnnotations := map[string]string{
-		fmt.Sprintf("vault.hashicorp.com/agent-inject-secret-%s", b64name): secret.Group,
-		fmt.Sprintf("vault.hashicorp.com/agent-inject-file-%s", b64name):   fmt.Sprintf("%s/%s", secret.Group, secret.Key),
-		fmt.Sprintf("vault.hashicorp.com/agent-inject-template-%s", b64name): fmt.Sprintf(`
+		fmt.Sprintf("vault.hashicorp.com/agent-inject-secret-%s", id): secret.Group,
+		fmt.Sprintf("vault.hashicorp.com/agent-inject-file-%s", id):   fmt.Sprintf("%s/%s", secret.Group, secret.Key),
+		fmt.Sprintf("vault.hashicorp.com/agent-inject-template-%s", id): fmt.Sprintf(`
 		{{- with secret "%s" -}}
 		{{ .Data.data.%s }}
 		{{- end -}}`, secret.Group, secret.Key),

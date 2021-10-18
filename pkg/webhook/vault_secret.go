@@ -59,6 +59,7 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 
 		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, prefixEnvVar)
 		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, prefixEnvVar)
+
 		generalVaultAnnotations := map[string]string{
 			"vault.hashicorp.com/agent-inject":            "true",
 			"vault.hashicorp.com/secret-volume-path":      filepath.Join(VaultSecretPathPrefix...),
