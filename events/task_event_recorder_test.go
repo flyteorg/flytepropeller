@@ -6,6 +6,7 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/flyteorg/flytepropeller/events/mocks"
 	"github.com/flyteorg/flytestdlib/storage"
 	storageMocks "github.com/flyteorg/flytestdlib/storage/mocks"
 	"github.com/golang/protobuf/proto"
@@ -46,7 +47,7 @@ func getRawOutputTaskEv() *event.TaskExecutionEvent {
 }
 
 func TestRecordTaskEvent_Success_ReferenceOutputs(t *testing.T) {
-	eventRecorder := MockRecorder{}
+	eventRecorder := mocks.MockRecorder{}
 	eventRecorder.RecordTaskEventCb = func(ctx context.Context, event *event.TaskExecutionEvent) error {
 		assert.True(t, proto.Equal(event, getReferenceTaskEv()))
 		return nil
@@ -65,7 +66,7 @@ func TestRecordTaskEvent_Success_ReferenceOutputs(t *testing.T) {
 }
 
 func TestRecordTaskEvent_Success_InlineOutputs(t *testing.T) {
-	eventRecorder := MockRecorder{}
+	eventRecorder := mocks.MockRecorder{}
 	eventRecorder.RecordTaskEventCb = func(ctx context.Context, event *event.TaskExecutionEvent) error {
 		assert.True(t, proto.Equal(event, getRawOutputTaskEv()))
 		return nil
@@ -91,7 +92,7 @@ func TestRecordTaskEvent_Success_InlineOutputs(t *testing.T) {
 }
 
 func TestRecordTaskEvent_Failure_FetchInlineOutputs(t *testing.T) {
-	eventRecorder := MockRecorder{}
+	eventRecorder := mocks.MockRecorder{}
 	eventRecorder.RecordTaskEventCb = func(ctx context.Context, event *event.TaskExecutionEvent) error {
 		assert.True(t, proto.Equal(event, getReferenceTaskEv()))
 		return nil
@@ -114,7 +115,7 @@ func TestRecordTaskEvent_Failure_FetchInlineOutputs(t *testing.T) {
 }
 
 func TestRecordTaskEvent_Failure_FallbackReference_Retry(t *testing.T) {
-	eventRecorder := MockRecorder{}
+	eventRecorder := mocks.MockRecorder{}
 	eventRecorder.RecordTaskEventCb = func(ctx context.Context, event *event.TaskExecutionEvent) error {
 		if event.GetOutputData() != nil {
 			return status.Error(codes.ResourceExhausted, "message too large")
@@ -143,7 +144,7 @@ func TestRecordTaskEvent_Failure_FallbackReference_Retry(t *testing.T) {
 }
 
 func TestRecordTaskEvent_Failure_FallbackReference_Unretriable(t *testing.T) {
-	eventRecorder := MockRecorder{}
+	eventRecorder := mocks.MockRecorder{}
 	eventRecorder.RecordTaskEventCb = func(ctx context.Context, event *event.TaskExecutionEvent) error {
 		return errors.New("foo")
 	}

@@ -25,7 +25,7 @@ type adminEventSink struct {
 }
 
 // Constructs a new EventSink that sends events to FlyteAdmin through gRPC
-func NewAdminEventSink(ctx context.Context, config *Config, adminClient service.AdminServiceClient, filter fastcheck.Filter) (EventSink, error) {
+func NewAdminEventSink(ctx context.Context, adminClient service.AdminServiceClient, config *Config, filter fastcheck.Filter) (EventSink, error) {
 	rateLimiter := rate.NewLimiter(rate.Limit(config.Rate), config.Capacity)
 
 	eventSink := &adminEventSink{
@@ -64,6 +64,7 @@ func (s *adminEventSink) Sink(ctx context.Context, message proto.Message) error 
 
 	id := []byte(idStr)
 	if s.filter.Contains(ctx, id) {
+		logger.Debugf(ctx, "event '%s' has already been sent", idStr)
 		return nil
 	}
 
@@ -141,7 +142,7 @@ func ConstructEventSink(ctx context.Context, config *Config, scope promutils.Sco
 			return nil, err
 		}
 
-		return NewAdminEventSink(ctx, config, adminClient, filter)
+		return NewAdminEventSink(ctx, adminClient, config, filter)
 	default:
 		return NewStdoutSink()
 	}

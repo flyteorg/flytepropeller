@@ -63,7 +63,7 @@ func TestSetInputsForStartNode(t *testing.T) {
 	enQWf := func(workflowID v1alpha1.WorkflowID) {}
 
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
-	exec, err := NewExecutor(ctx, config.GetConfig().NodeConfig, mockStorage, enQWf, events.NewMockEventSink(), adminClient,
+	exec, err := NewExecutor(ctx, config.GetConfig().NodeConfig, mockStorage, enQWf, eventMocks.NewMockEventSink(), adminClient,
 		adminClient, 10, "s3://bucket/", fakeKubeClient, catalogClient, recoveryClient, eventConfig, promutils.NewTestScope())
 	assert.NoError(t, err)
 	inputs := &core.LiteralMap{
@@ -110,7 +110,7 @@ func TestSetInputsForStartNode(t *testing.T) {
 	})
 
 	failStorage := createFailingDatastore(t, testScope.NewSubScope("failing"))
-	execFail, err := NewExecutor(ctx, config.GetConfig().NodeConfig, failStorage, enQWf, events.NewMockEventSink(), adminClient,
+	execFail, err := NewExecutor(ctx, config.GetConfig().NodeConfig, failStorage, enQWf, eventMocks.NewMockEventSink(), adminClient,
 		adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, promutils.NewTestScope())
 	assert.NoError(t, err)
 	t.Run("StorageFailure", func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestNodeExecutor_Initialize(t *testing.T) {
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
 
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 	memStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 	assert.NoError(t, err)
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
@@ -168,7 +168,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 
@@ -272,7 +272,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 
@@ -481,7 +481,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	defaultNodeID := "n1"
 	taskID := taskID
@@ -991,7 +991,7 @@ func TestNodeExecutor_RecursiveNodeHandler_NoDownstream(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
@@ -1101,7 +1101,7 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 
@@ -1217,7 +1217,7 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 	ctx := context.TODO()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 
@@ -1766,7 +1766,7 @@ func TestNodeExecutor_RecursiveNodeHandler_ParallelismLimit(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 
