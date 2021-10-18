@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
-	//"path/filepath"
+	"path/filepath"
 
 	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
-
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
 	corev1 "k8s.io/api/core/v1"
@@ -47,19 +46,40 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 	case core.Secret_ANY:
 		fmt.Println("DEBUG: We're doing this, YEAH!")
 		
-		//"vault.hashicorp.com/agent-inject": true
-		// This is where we need to pick up stuff from vault
-		// ####################################################### Testing			
-		envVar := corev1.EnvVar{
-			Name: strings.ToUpper(VaultDefaultEnvVarPrefix + secret.Group + EnvVarGroupKeySeparator + secret.Key),
-			Value: "Mumintroll",
+		// Set environment variable to let the container know where to find the mounted files.
+		defaultDirEnvVar := corev1.EnvVar{
+			Name:  SecretPathDefaultDirEnvVar,
+			Value: filepath.Join(VaultSecretPathPrefix...),
 		}
 
-		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, envVar)
-		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, envVar)
-		// ####################################################
+		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, defaultDirEnvVar)
+		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, defaultDirEnvVar)
 
-		p.ObjectMeta.Annotations["vault.hashicorp.com/agent-inject"] = "true"
+		// Sets an empty prefix to let the containers know the file names will match the secret keys as-is.
+		prefixEnvVar := corev1.EnvVar{
+			Name:  SecretPathFilePrefixEnvVar,
+			Value: "",
+		}
+
+		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, prefixEnvVar)
+		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, prefixEnvVar)
+		generalVaultAnnotations := map[string]string {
+			"vault.hashicorp.com/agent-inject": "true",
+			"vault.hashicorp.com/secret-volume-path": filepath.Join(VaultSecretPathPrefix...),
+			"vault.hashicorp.com/role": "internal-app",
+		}
+
+		secretVaultAnnotations := map[string]string {
+			"vault.hashicorp.com/agent-inject-secret-foobar": secret.Group,
+			"vault.hashicorp.com/agent-inject-file-foobar": fmt.Sprintf("%s/%s", secret.Group, secret.Key),
+			"vault.hashicorp.com/agent-inject-template-foobar": fmt.Sprintf(`{{- with secret "internal/data/database/config" -}}
+			{{ .Data.data.%s }}
+			{{- end -}}`, secret.Key),
+		}
+
+
+		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, generalVaultAnnotations)
+		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, secretVaultAnnotations)
 
 		fmt.Println(p.ObjectMeta.Annotations)
 
