@@ -9,6 +9,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flytepropeller/events/errors"
+	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -22,7 +23,8 @@ import (
 
 func CreateMockAdminEventSink(t *testing.T) (EventSink, *mocks.AdminServiceClient) {
 	mockClient := &mocks.AdminServiceClient{}
-	eventSink, _ := NewAdminEventSink(context.Background(), mockClient, &Config{Rate: 100, Capacity: 1000})
+	scope := promutils.NewScope("testscope")
+	eventSink, _ := NewAdminEventSink(context.Background(), mockClient, &Config{Rate: 100, Capacity: 1000}, scope)
 	return eventSink, mockClient
 }
 

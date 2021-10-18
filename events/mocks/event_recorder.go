@@ -1,4 +1,4 @@
-package events
+package mocks
 
 import (
 	"context"
@@ -36,7 +36,7 @@ func (m *MockRecorder) RecordWorkflowEvent(ctx context.Context, event *event.Wor
 	return nil
 }
 
-func NewMock() EventRecorder {
+func NewMock() *MockRecorder {
 	return &MockRecorder{
 		RecordNodeEventCb: func(ctx context.Context, event *event.NodeExecutionEvent) error {
 			return nil

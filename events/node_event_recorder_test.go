@@ -6,6 +6,7 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/flyteorg/flytepropeller/events/mocks"
 	"github.com/flyteorg/flytestdlib/storage"
 	storageMocks "github.com/flyteorg/flytestdlib/storage/mocks"
 	"github.com/golang/protobuf/proto"
@@ -35,7 +36,7 @@ func getRawOutputNodeEv() *event.NodeExecutionEvent {
 }
 
 func TestRecordNodeEvent_Success_ReferenceOutputs(t *testing.T) {
-	eventRecorder := MockRecorder{}
+	eventRecorder := mocks.MockRecorder{}
 	eventRecorder.RecordNodeEventCb = func(ctx context.Context, event *event.NodeExecutionEvent) error {
 		assert.True(t, proto.Equal(event, getReferenceNodeEv()))
 		return nil
@@ -54,7 +55,7 @@ func TestRecordNodeEvent_Success_ReferenceOutputs(t *testing.T) {
 }
 
 func TestRecordNodeEvent_Success_InlineOutputs(t *testing.T) {
-	eventRecorder := MockRecorder{}
+	eventRecorder := mocks.MockRecorder{}
 	eventRecorder.RecordNodeEventCb = func(ctx context.Context, event *event.NodeExecutionEvent) error {
 		assert.True(t, proto.Equal(event, getRawOutputNodeEv()))
 		return nil
@@ -80,7 +81,7 @@ func TestRecordNodeEvent_Success_InlineOutputs(t *testing.T) {
 }
 
 func TestRecordNodeEvent_Failure_FetchInlineOutputs(t *testing.T) {
-	eventRecorder := MockRecorder{}
+	eventRecorder := mocks.MockRecorder{}
 	eventRecorder.RecordNodeEventCb = func(ctx context.Context, event *event.NodeExecutionEvent) error {
 		assert.True(t, proto.Equal(event, getReferenceNodeEv()))
 		return nil
@@ -103,7 +104,7 @@ func TestRecordNodeEvent_Failure_FetchInlineOutputs(t *testing.T) {
 }
 
 func TestRecordNodeEvent_Failure_FallbackReference_Retry(t *testing.T) {
-	eventRecorder := MockRecorder{}
+	eventRecorder := mocks.MockRecorder{}
 	eventRecorder.RecordNodeEventCb = func(ctx context.Context, event *event.NodeExecutionEvent) error {
 		if event.GetOutputData() != nil {
 			return status.Error(codes.ResourceExhausted, "message too large")
@@ -132,7 +133,7 @@ func TestRecordNodeEvent_Failure_FallbackReference_Retry(t *testing.T) {
 }
 
 func TestRecordNodeEvent_Failure_FallbackReference_Unretriable(t *testing.T) {
-	eventRecorder := MockRecorder{}
+	eventRecorder := mocks.MockRecorder{}
 	eventRecorder.RecordNodeEventCb = func(ctx context.Context, event *event.NodeExecutionEvent) error {
 		return errors.New("foo")
 	}

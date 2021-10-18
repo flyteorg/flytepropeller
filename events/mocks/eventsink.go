@@ -1,4 +1,4 @@
-package events
+package mocks
 
 import (
 	"context"
@@ -27,7 +27,7 @@ func (t *MockEventSink) Close() error {
 	return nil
 }
 
-func NewMockEventSink() EventSink {
+func NewMockEventSink() *MockEventSink {
 	return &MockEventSink{
 		SinkCb: func(ctx context.Context, message proto.Message) error {
 			return nil
