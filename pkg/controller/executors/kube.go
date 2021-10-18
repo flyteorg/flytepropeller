@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// A friendly controller-runtime client that gets passed to executors
+// Client is a friendlier controller-runtime client that gets passed to executors
 type Client interface {
 	// GetClient returns a client configured with the Config
 	GetClient() client.Client
