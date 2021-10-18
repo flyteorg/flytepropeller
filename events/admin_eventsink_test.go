@@ -9,7 +9,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flytepropeller/events/errors"
-	"github.com/flyteorg/flytestdlib/promutils"
+	fastcheckMocks "github.com/flyteorg/flytestdlib/fastcheck/mocks"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -21,24 +21,64 @@ import (
 // IDE "Go Generate File". This will create a mocks/AdminServiceClient.go file
 //go:generate mockery -dir ../../../gen/pb-go/flyteidl/service -name AdminServiceClient -output ../admin/mocks
 
-func CreateMockAdminEventSink(t *testing.T) (EventSink, *mocks.AdminServiceClient) {
+var (
+	wfEvent = &event.WorkflowExecutionEvent{
+		ExecutionId: &core.WorkflowExecutionIdentifier{
+			Project: "p",
+			Domain:  "d",
+			Name:    "n",
+		},
+		Phase:        core.WorkflowExecution_RUNNING,
+		OccurredAt:   ptypes.TimestampNow(),
+		ProducerId:   "",
+		OutputResult: &event.WorkflowExecutionEvent_OutputUri{OutputUri: ""},
+	}
+
+	nodeEvent = &event.NodeExecutionEvent{
+		Id: &core.NodeExecutionIdentifier{
+			NodeId: "node-id",
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "p",
+				Domain:  "d",
+				Name:    "n",
+			},
+		},
+		Phase:        core.NodeExecution_FAILED,
+		OccurredAt:   ptypes.TimestampNow(),
+		ProducerId:   "",
+		InputUri:     "input-uri",
+		OutputResult: &event.NodeExecutionEvent_OutputUri{OutputUri: ""},
+	}
+
+	taskEvent = &event.TaskExecutionEvent{
+		Phase:        core.TaskExecution_SUCCEEDED,
+		OccurredAt:   ptypes.TimestampNow(),
+		TaskId:       &core.Identifier{ResourceType: core.ResourceType_TASK, Name: "task-id"},
+		RetryAttempt: 1,
+		ParentNodeExecutionId: &core.NodeExecutionIdentifier{
+			NodeId: "node-id",
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "p",
+				Domain:  "d",
+				Name:    "n",
+			},
+		},
+		Logs: []*core.TaskLog{{Uri: "logs.txt"}},
+	}
+)
+
+func CreateMockAdminEventSink(t *testing.T, rate int64, capacity int) (EventSink, *mocks.AdminServiceClient, *fastcheckMocks.Filter) {
 	mockClient := &mocks.AdminServiceClient{}
-	scope := promutils.NewScope("testscope")
-	eventSink, _ := NewAdminEventSink(context.Background(), mockClient, &Config{Rate: 100, Capacity: 1000}, scope)
-	return eventSink, mockClient
+	filter := &fastcheckMocks.Filter{}
+	eventSink, _ := NewAdminEventSink(context.Background(), mockClient, &Config{Rate: rate, Capacity: capacity}, filter)
+	return eventSink, mockClient, filter
 }
 
 func TestAdminWorkflowEvent(t *testing.T) {
 	ctx := context.Background()
-	adminEventSink, adminClient := CreateMockAdminEventSink(t)
-
-	wfEvent := &event.WorkflowExecutionEvent{
-		Phase:        core.WorkflowExecution_RUNNING,
-		OccurredAt:   ptypes.TimestampNow(),
-		ExecutionId:  nil,
-		ProducerId:   "",
-		OutputResult: &event.WorkflowExecutionEvent_OutputUri{OutputUri: ""},
-	}
+	adminEventSink, adminClient, filter := CreateMockAdminEventSink(t, 100, 1000)
+	filter.OnAddMatch(mock.Anything, mock.Anything).Return(true)
+	filter.OnContainsMatch(mock.Anything, mock.Anything).Return(false)
 
 	adminClient.On(
 		"CreateWorkflowEvent",
@@ -54,18 +94,9 @@ func TestAdminWorkflowEvent(t *testing.T) {
 
 func TestAdminNodeEvent(t *testing.T) {
 	ctx := context.Background()
-	adminEventSink, adminClient := CreateMockAdminEventSink(t)
-
-	nodeEvent := &event.NodeExecutionEvent{
-		Id: &core.NodeExecutionIdentifier{
-			NodeId: "node-id",
-		},
-		Phase:        core.NodeExecution_FAILED,
-		OccurredAt:   ptypes.TimestampNow(),
-		ProducerId:   "",
-		InputUri:     "input-uri",
-		OutputResult: &event.NodeExecutionEvent_OutputUri{OutputUri: ""},
-	}
+	adminEventSink, adminClient, filter := CreateMockAdminEventSink(t, 100, 1000)
+	filter.OnAddMatch(mock.Anything, mock.Anything).Return(true)
+	filter.OnContainsMatch(mock.Anything, mock.Anything).Return(false)
 
 	adminClient.On(
 		"CreateNodeEvent",
@@ -81,23 +112,9 @@ func TestAdminNodeEvent(t *testing.T) {
 
 func TestAdminTaskEvent(t *testing.T) {
 	ctx := context.Background()
-	adminEventSink, adminClient := CreateMockAdminEventSink(t)
-
-	taskEvent := &event.TaskExecutionEvent{
-		Phase:        core.TaskExecution_SUCCEEDED,
-		OccurredAt:   ptypes.TimestampNow(),
-		TaskId:       &core.Identifier{ResourceType: core.ResourceType_TASK, Name: "task-id"},
-		RetryAttempt: 1,
-		ParentNodeExecutionId: &core.NodeExecutionIdentifier{
-			NodeId: "node-id",
-			ExecutionId: &core.WorkflowExecutionIdentifier{
-				Project: "p",
-				Domain:  "d",
-				Name:    "n",
-			},
-		},
-		Logs: []*core.TaskLog{{Uri: "logs.txt"}},
-	}
+	adminEventSink, adminClient, filter := CreateMockAdminEventSink(t, 100, 1000)
+	filter.OnAddMatch(mock.Anything, mock.Anything).Return(true)
+	filter.OnContainsMatch(mock.Anything, mock.Anything).Return(false)
 
 	adminClient.On(
 		"CreateTaskEvent",
@@ -113,23 +130,9 @@ func TestAdminTaskEvent(t *testing.T) {
 
 func TestAdminAlreadyExistsError(t *testing.T) {
 	ctx := context.Background()
-	adminEventSink, adminClient := CreateMockAdminEventSink(t)
-
-	taskEvent := &event.TaskExecutionEvent{
-		Phase:        core.TaskExecution_SUCCEEDED,
-		OccurredAt:   ptypes.TimestampNow(),
-		TaskId:       &core.Identifier{ResourceType: core.ResourceType_TASK, Name: "task-id"},
-		RetryAttempt: 1,
-		ParentNodeExecutionId: &core.NodeExecutionIdentifier{
-			NodeId: "node-id",
-			ExecutionId: &core.WorkflowExecutionIdentifier{
-				Project: "p",
-				Domain:  "d",
-				Name:    "n",
-			},
-		},
-		Logs: []*core.TaskLog{{Uri: "logs.txt"}},
-	}
+	adminEventSink, adminClient, filter := CreateMockAdminEventSink(t, 100, 1000)
+	filter.OnAddMatch(mock.Anything, mock.Anything).Return(true)
+	filter.OnContainsMatch(mock.Anything, mock.Anything).Return(false)
 
 	alreadyExistErr := status.Error(codes.AlreadyExists, "Grpc AlreadyExists error")
 
@@ -146,24 +149,9 @@ func TestAdminAlreadyExistsError(t *testing.T) {
 
 func TestAdminRateLimitError(t *testing.T) {
 	ctx := context.Background()
-	adminClient := &mocks.AdminServiceClient{}
-	adminEventSink, _ := NewAdminEventSink(context.Background(), adminClient, &Config{Rate: 1, Capacity: 1})
-
-	taskEvent := &event.TaskExecutionEvent{
-		Phase:        core.TaskExecution_SUCCEEDED,
-		OccurredAt:   ptypes.TimestampNow(),
-		TaskId:       &core.Identifier{ResourceType: core.ResourceType_TASK, Name: "task-id"},
-		RetryAttempt: 1,
-		ParentNodeExecutionId: &core.NodeExecutionIdentifier{
-			NodeId: "node-id",
-			ExecutionId: &core.WorkflowExecutionIdentifier{
-				Project: "p",
-				Domain:  "d",
-				Name:    "n",
-			},
-		},
-		Logs: []*core.TaskLog{{Uri: "logs.txt"}},
-	}
+	adminEventSink, adminClient, filter := CreateMockAdminEventSink(t, 1, 1)
+	filter.OnAddMatch(mock.Anything, mock.Anything).Return(true)
+	filter.OnContainsMatch(mock.Anything, mock.Anything).Return(false)
 
 	adminClient.On(
 		"CreateTaskEvent",
@@ -185,4 +173,20 @@ func TestAdminRateLimitError(t *testing.T) {
 
 	assert.Error(t, rateLimitedErr)
 	assert.True(t, errors.IsResourceExhausted(rateLimitedErr))
+}
+
+func TestAdminFilterContains(t *testing.T) {
+	ctx := context.Background()
+	adminEventSink, _, filter := CreateMockAdminEventSink(t, 1, 1)
+	filter.OnAddMatch(mock.Anything, mock.Anything).Return(true)
+	filter.OnContainsMatch(mock.Anything, mock.Anything).Return(true)
+
+	wfErr := adminEventSink.Sink(ctx, wfEvent)
+	assert.NoError(t, wfErr)
+
+	nodeErr := adminEventSink.Sink(ctx, nodeEvent)
+	assert.NoError(t, nodeErr)
+
+	taskErr := adminEventSink.Sink(ctx, taskEvent)
+	assert.NoError(t, taskErr)
 }
