@@ -30,6 +30,9 @@ var (
 				},
 			},
 		},
+		VaultSecretManagerConfig: VaultSecretManagerConfig{
+			Role: "flyte",
+		},
 	}
 
 	configSection = config.MustRegisterSection("webhook", DefaultConfig)
@@ -55,18 +58,23 @@ const (
 )
 
 type Config struct {
-	MetricsPrefix          string                 `json:"metrics-prefix" pflag:",An optional prefix for all published metrics."`
-	CertDir                string                 `json:"certDir" pflag:",Certificate directory to use to write generated certs. Defaults to /etc/webhook/certs/"`
-	ListenPort             int                    `json:"listenPort" pflag:",The port to use to listen to webhook calls. Defaults to 9443"`
-	ServiceName            string                 `json:"serviceName" pflag:",The name of the webhook service."`
-	SecretName             string                 `json:"secretName" pflag:",Secret name to write generated certs to."`
-	SecretManagerType      SecretManagerType      `json:"secretManagerType" pflag:"-,Secret manager type to use if secrets are not found in global secrets."`
-	AWSSecretManagerConfig AWSSecretManagerConfig `json:"awsSecretManager" pflag:",AWS Secret Manager config."`
+	MetricsPrefix            string                   `json:"metrics-prefix" pflag:",An optional prefix for all published metrics."`
+	CertDir                  string                   `json:"certDir" pflag:",Certificate directory to use to write generated certs. Defaults to /etc/webhook/certs/"`
+	ListenPort               int                      `json:"listenPort" pflag:",The port to use to listen to webhook calls. Defaults to 9443"`
+	ServiceName              string                   `json:"serviceName" pflag:",The name of the webhook service."`
+	SecretName               string                   `json:"secretName" pflag:",Secret name to write generated certs to."`
+	SecretManagerType        SecretManagerType        `json:"secretManagerType" pflag:"-,Secret manager type to use if secrets are not found in global secrets."`
+	AWSSecretManagerConfig   AWSSecretManagerConfig   `json:"awsSecretManager" pflag:",AWS Secret Manager config."`
+	VaultSecretManagerConfig VaultSecretManagerConfig `json:"vaultSecretManager" pflag:",Vault Secret Manager config."`
 }
 
 type AWSSecretManagerConfig struct {
 	SidecarImage string                      `json:"sidecarImage" pflag:",Specifies the sidecar docker image to use"`
 	Resources    corev1.ResourceRequirements `json:"resources" pflag:"-,Specifies resource requirements for the init container."`
+}
+
+type VaultSecretManagerConfig struct {
+	Role string `json:"role" pflag:",Specifies the vault role to use"`
 }
 
 func GetConfig() *Config {

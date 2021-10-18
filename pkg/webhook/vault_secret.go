@@ -26,6 +26,7 @@ var (
 // Environment variables will be named _FSEC_<SecretGroup>_<SecretKey>. Files will be mounted on
 // /etc/flyte/secrets/<SecretGroup>/<SecretKey>
 type VaultSecretInjector struct {
+	cfg config.VaultSecretManagerConfig
 }
 
 func (i VaultSecretInjector) Type() config.SecretManagerType {
@@ -61,7 +62,7 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 		generalVaultAnnotations := map[string]string{
 			"vault.hashicorp.com/agent-inject":            "true",
 			"vault.hashicorp.com/secret-volume-path":      filepath.Join(VaultSecretPathPrefix...),
-			"vault.hashicorp.com/role":                    "internal-app",
+			"vault.hashicorp.com/role":                    i.cfg.Role,
 			"vault.hashicorp.com/agent-pre-populate-only": "true",
 		}
 
@@ -81,6 +82,8 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 	return p, true, nil
 }
 
-func NewVaultSecretsInjector() VaultSecretInjector {
-	return VaultSecretInjector{}
+func NewVaultSecretsInjector(cfg config.VaultSecretManagerConfig) VaultSecretInjector {
+	return VaultSecretInjector{
+		cfg: cfg,
+	}
 }
