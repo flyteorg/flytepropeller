@@ -82,7 +82,7 @@ func (f FallbackClientBuilder) Build(cache cache.Cache, config *rest.Config, opt
 	})
 }
 
-// Creates a new k8s client that uses the cached client for reads and falls back to making API
+// NewFallbackClientBuilder Creates a new k8s client that uses the cached client for reads and falls back to making API
 // calls if it failed. Write calls will always go to raw client directly.
 func NewFallbackClientBuilder(scope promutils.Scope) *FallbackClientBuilder {
 	return &FallbackClientBuilder{
