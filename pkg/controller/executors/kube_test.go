@@ -3,15 +3,16 @@ package executors
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"testing"
+
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"testing"
 )
 
 func TestIdFromObject(t *testing.T) {
@@ -74,7 +75,6 @@ func (f *singleInvokeClient) Delete(ctx context.Context, obj client.Object, opts
 	return nil
 }
 
-
 func TestWriteThroughCachingWriter_Create(t *testing.T) {
 	ctx := context.TODO()
 	c := &singleInvokeClient{}
@@ -101,7 +101,6 @@ func TestWriteThroughCachingWriter_Create(t *testing.T) {
 	err = w.Create(ctx, p)
 	assert.NoError(t, err)
 }
-
 
 func TestWriteThroughCachingWriter_Delete(t *testing.T) {
 	ctx := context.TODO()
@@ -130,6 +129,6 @@ func TestWriteThroughCachingWriter_Delete(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func init()  {
+func init() {
 	labeled.SetMetricKeys(contextutils.ExecIDKey)
 }
