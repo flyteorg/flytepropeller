@@ -11,8 +11,6 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-const maxErrorMessageLength = 104857600 //100Kb
-
 type recordingMetrics struct {
 	EventRecordingFailure           labeled.StopWatch
 	EventRecordingSuccess           labeled.StopWatch
