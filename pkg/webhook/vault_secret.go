@@ -67,6 +67,7 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 			"vault.hashicorp.com/agent-inject": "true",
 			"vault.hashicorp.com/secret-volume-path": filepath.Join(VaultSecretPathPrefix...),
 			"vault.hashicorp.com/role": "internal-app",
+			"vault.hashicorp.com/agent-pre-populate-only": "true",
 		}
 
 		secretVaultAnnotations := map[string]string {
