@@ -19,6 +19,7 @@ package nodes
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
@@ -129,7 +130,7 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 		return fmt.Errorf("event recording attempt of with nil node Event ID")
 	}
 
-	logger.Infof(ctx, "Recording event p[%+v]", nodeEvent)
+	logger.Infof(ctx, "Recording event p[%s]", nodeEvent.GetId().String())
 	err := c.nodeRecorder.RecordNodeEvent(ctx, nodeEvent, c.eventConfig)
 	if err != nil {
 		if nodeEvent.GetId().NodeId == v1alpha1.EndNodeID {
@@ -445,6 +446,7 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		return executors.NodeStatusPending, nil
 	}
 
+	nCtx.ExecutionContext().IncrementParallelism()
 	np, err := ToNodePhase(p.GetPhase())
 	if err != nil {
 		return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "failed to move from queued")
@@ -625,6 +627,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 		return c.handleNotYetStartedNode(ctx, dag, nCtx, h)
 	}
 
+	nCtx.ExecutionContext().IncrementParallelism()
 	if currentPhase == v1alpha1.NodePhaseFailing {
 		logger.Debugf(ctx, "node failing")
 		if err := c.finalize(ctx, h, nCtx); err != nil {
@@ -705,7 +708,12 @@ func (c *nodeExecutor) handleDownstream(ctx context.Context, execContext executo
 	partialNodeCompletion := false
 	onFailurePolicy := execContext.GetOnFailurePolicy()
 	stateOnComplete := executors.NodeStatusComplete
+	// should sort the dataset
+	sort.Sort(sort.StringSlice(downstreamNodes))
 	for _, downstreamNodeName := range downstreamNodes {
+		if execContext.CurrentParallelism() >= execContext.GetExecutionConfig().MaxParallelism {
+			return executors.NodeStatusPending, nil
+		}
 		downstreamNode, ok := nl.GetNode(downstreamNodeName)
 		if !ok {
 			return executors.NodeStatusFailed(&core.ExecutionError{
@@ -823,24 +831,20 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 
 		// Now if the node is of type task, then let us check if we are within the parallelism limit, only if the node
 		// has been queued already
-		if currentNode.GetKind() == v1alpha1.NodeKindTask && nodeStatus.GetPhase() == v1alpha1.NodePhaseQueued {
-			maxParallelism := execContext.GetExecutionConfig().MaxParallelism
-			if maxParallelism > 0 {
-				// If we are queued, let us see if we can proceed within the node parallelism bounds
-				if execContext.CurrentParallelism() >= maxParallelism {
-					logger.Infof(ctx, "Maximum Parallelism for task nodes achieved [%d] >= Max [%d], Round will be short-circuited.", execContext.CurrentParallelism(), maxParallelism)
-					return executors.NodeStatusRunning, nil
-				}
-				// We know that Propeller goes through each workflow in a single thread, thus every node is really processed
-				// sequentially. So, we can continue - now that we know we are under the parallelism limits and increment the
-				// parallelism if the node, enters a running state
-				logger.Debugf(ctx, "Parallelism criteria not met, Current [%d], Max [%d]", execContext.CurrentParallelism(), maxParallelism)
-			} else {
-				logger.Debugf(ctx, "Parallelism control disabled")
+		maxParallelism := execContext.GetExecutionConfig().MaxParallelism
+		if maxParallelism > 0 {
+			// If we are queued, let us see if we can proceed within the node parallelism bounds
+			if execContext.CurrentParallelism() >= maxParallelism {
+				logger.Infof(ctx, "Maximum Parallelism for task nodes achieved [%d] >= Max [%d], Round will be short-circuited. [%s]", execContext.CurrentParallelism(), maxParallelism, currentNode.GetID())
+				return executors.NodeStatusRunning, nil
 			}
+
+			// We know that Propeller goes through each workflow in a single thread, thus every node is really processed
+			// sequentially. So, we can continue - now that we know we are under the parallelism limits and increment the
+			// parallelism if the node, enters a running state
+			logger.Debugf(ctx, "Parallelism criteria not met, Current [%d], Max [%d], [%s]", execContext.CurrentParallelism(), maxParallelism, currentNode.GetID())
 		} else {
-			logger.Debugf(ctx, "NodeKind: %s in status [%s]. Parallelism control is not applicable. Current Parallelism [%d]",
-				currentNode.GetKind().String(), nodeStatus.GetPhase().String(), execContext.CurrentParallelism())
+			logger.Debugf(ctx, "Parallelism control disabled")
 		}
 
 		nCtx, err := c.newNodeExecContextDefault(ctx, currentNode.GetID(), execContext, nl)
@@ -874,7 +878,6 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 		if err != nil {
 			return executors.NodeStatusUndefined, err
 		}
-
 		return executors.NodeStatusFailed(nodeStatus.GetExecutionError()), nil
 	} else if nodePhase == v1alpha1.NodePhaseTimedOut {
 		logger.Debugf(currentNodeCtx, "Node has timed out, traversing downstream.")
