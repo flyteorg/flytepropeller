@@ -129,7 +129,7 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 		return fmt.Errorf("event recording attempt of with nil node Event ID")
 	}
 
-	logger.Infof(ctx, "Recording event p[%s]", nodeEvent.GetId().String())
+	logger.Infof(ctx, "Recording NodeEvent [%s] phase[%s]", nodeEvent.GetId().String(), nodeEvent.Phase.String())
 	err := c.nodeRecorder.RecordNodeEvent(ctx, nodeEvent, c.eventConfig)
 	if err != nil {
 		if nodeEvent.GetId().NodeId == v1alpha1.EndNodeID {
