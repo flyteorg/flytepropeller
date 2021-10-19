@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	coreIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -33,14 +33,14 @@ func (i VaultSecretInjector) Type() config.SecretManagerType {
 	return config.SecretManagerTypeVault
 }
 
-func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
+func (i VaultSecretInjector) Inject(ctx context.Context, secret *coreIdl.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
 	if len(secret.Group) == 0 || len(secret.Key) == 0 {
 		return nil, false, fmt.Errorf("Vault Secrets Webhook requires both key and group to be set. "+
 			"Secret: [%v]", secret)
 	}
 
 	switch secret.MountRequirement {
-	case core.Secret_ANY:
+	case coreIdl.Secret_ANY:
 		// Set environment variable to let the container know where to find the mounted files.
 		defaultDirEnvVar := corev1.EnvVar{
 			Name:  SecretPathDefaultDirEnvVar,
