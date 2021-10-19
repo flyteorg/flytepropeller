@@ -17,23 +17,23 @@ var (
 	VaultSecretPathPrefix = []string{string(os.PathSeparator), "etc", "flyte", "secrets"}
 )
 
-// VaultSecretInjector allows injecting of secrets into pods by specifying either EnvVarSource or SecretVolumeSource in
-// the Pod Spec. It'll, by default, mount secrets as files into pods.
-// The current version does not allow mounting an entire secret object (with all keys inside it). It only supports mounting
-// a single key from the referenced secret object.
-// The secret.Group will be used to reference the k8s secret object, the Secret.Key will be used to reference a key inside
-// and the secret.Version will be ignored.
-// Environment variables will be named _FSEC_<SecretGroup>_<SecretKey>. Files will be mounted on
-// /etc/flyte/secrets/<SecretGroup>/<SecretKey>
-type VaultSecretInjector struct {
+// VaultSecretManagerInjector allows injecting of secrets into pods by leveraging an existing deployment of Vault Agent
+// Vault Agent functions as an additional webhook that is triggered through annotations and then retrieves and mounts
+// the requested secrets from Vault. This injector parses a secret Request into vault annotations, interpreting the secret
+// Group as the vault secret path and the secret Key as the key for which to extract a value from a Vault secret.
+// It supports adding multiple secrets. (The common annotations will simply be overwritten if added several times)
+// Note that you need to configure the Vault role that this injector will try to use and add Vault policies for
+// the service account and namespaces that your workflows run under.
+// Files will be mounted at /etc/flyte/secrets/<SecretGroup>/<SecretKey>
+type VaultSecretManagerInjector struct {
 	cfg config.VaultSecretManagerConfig
 }
 
-func (i VaultSecretInjector) Type() config.SecretManagerType {
+func (i VaultSecretManagerInjector) Type() config.SecretManagerType {
 	return config.SecretManagerTypeVault
 }
 
-func (i VaultSecretInjector) Inject(ctx context.Context, secret *coreIdl.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
+func (i VaultSecretManagerInjector) Inject(ctx context.Context, secret *coreIdl.Secret, p *corev1.Pod) (newP *corev1.Pod, injected bool, err error) {
 	if len(secret.Group) == 0 || len(secret.Key) == 0 {
 		return nil, false, fmt.Errorf("Vault Secrets Webhook requires both key and group to be set. "+
 			"Secret: [%v]", secret)
@@ -59,7 +59,7 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *coreIdl.Secret,
 		p.Spec.InitContainers = AppendEnvVars(p.Spec.InitContainers, prefixEnvVar)
 		p.Spec.Containers = AppendEnvVars(p.Spec.Containers, prefixEnvVar)
 
-		generalVaultAnnotations := map[string]string{
+		commonVaultAnnotations := map[string]string{
 			"vault.hashicorp.com/agent-inject":            "true",
 			"vault.hashicorp.com/secret-volume-path":      filepath.Join(VaultSecretPathPrefix...),
 			"vault.hashicorp.com/role":                    i.cfg.Role,
@@ -68,7 +68,7 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *coreIdl.Secret,
 
 		secretVaultAnnotations := CreateAnnotationsForSecret(secret)
 
-		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, generalVaultAnnotations)
+		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, commonVaultAnnotations)
 		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, secretVaultAnnotations)
 
 	default:
@@ -80,8 +80,8 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *coreIdl.Secret,
 	return p, true, nil
 }
 
-func NewVaultSecretManagerInjector(cfg config.VaultSecretManagerConfig) VaultSecretInjector {
-	return VaultSecretInjector{
+func NewVaultSecretManagerInjector(cfg config.VaultSecretManagerConfig) VaultSecretManagerInjector {
+	return VaultSecretManagerInjector{
 		cfg: cfg,
 	}
 }
