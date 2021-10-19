@@ -66,7 +66,7 @@ func (f FallbackClientBuilder) Build(cache cache.Cache, config *rest.Config, opt
 		return nil, err
 	}
 
-	c, err = newWriteThroughCachingWriter(c, 20000, f.scope)
+	c, err = newWriteThroughCachingWriter(c, 50000, f.scope)
 	if err != nil {
 		return nil, err
 	}
