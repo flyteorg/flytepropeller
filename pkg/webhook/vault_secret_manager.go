@@ -71,8 +71,6 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, generalVaultAnnotations)
 		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, secretVaultAnnotations)
 
-		fmt.Println(p.ObjectMeta.Annotations)
-
 	default:
 		err := fmt.Errorf("unrecognized mount requirement [%v] for secret [%v]", secret.MountRequirement.String(), secret.Key)
 		logger.Error(ctx, err)
@@ -82,7 +80,7 @@ func (i VaultSecretInjector) Inject(ctx context.Context, secret *core.Secret, p 
 	return p, true, nil
 }
 
-func NewVaultSecretsInjector(cfg config.VaultSecretManagerConfig) VaultSecretInjector {
+func NewVaultSecretManagerInjector(cfg config.VaultSecretManagerConfig) VaultSecretInjector {
 	return VaultSecretInjector{
 		cfg: cfg,
 	}
