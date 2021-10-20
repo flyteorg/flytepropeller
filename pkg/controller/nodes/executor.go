@@ -621,7 +621,14 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 	// Optimization!
 	// If it is start node we directly move it to Queued without needing to run preExecute
 	if currentPhase == v1alpha1.NodePhaseNotYetStarted && !nCtx.Node().IsStartNode() {
-		return c.handleNotYetStartedNode(ctx, dag, nCtx, h)
+		p, err := c.handleNotYetStartedNode(ctx, dag, nCtx, h)
+		if err != nil {
+			return p, err
+		}
+		if p.NodePhase == executors.NodePhaseQueued {
+			logger.Infof(ctx, "Node was queued, parallelism is now [%d]", nCtx.ExecutionContext().IncrementParallelism())
+		}
+		return p, err
 	}
 
 	if currentPhase == v1alpha1.NodePhaseFailing {
