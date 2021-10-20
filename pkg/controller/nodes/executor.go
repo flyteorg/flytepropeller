@@ -799,23 +799,23 @@ func canHandleNode(phase v1alpha1.NodePhase) bool {
 // by one workflow execution. A setting of `0` indicates that it is disabled.
 func IsMaxParallelismAchieved(ctx context.Context, currentNode v1alpha1.ExecutableNode, currentPhase v1alpha1.NodePhase,
 	execContext executors.ExecutionContext) bool {
-	if currentNode.GetKind() == v1alpha1.NodeKindTask ||
-		(currentNode.GetKind() == v1alpha1.NodeKindWorkflow && currentNode.GetWorkflowNode().GetLaunchPlanRefID() != nil)  {
+	maxParallelism := execContext.GetExecutionConfig().MaxParallelism
+	if maxParallelism == 0 {
+		logger.Debugf(ctx, "Parallelism control disabled")
+		return false
+	}
 
-		maxParallelism := execContext.GetExecutionConfig().MaxParallelism
-		if maxParallelism > 0 {
-			// If we are queued, let us see if we can proceed within the node parallelism bounds
-			if execContext.CurrentParallelism() >= maxParallelism {
-				logger.Infof(ctx, "Maximum Parallelism for task/launch-plan nodes achieved [%d] >= Max [%d], Round will be short-circuited.", execContext.CurrentParallelism(), maxParallelism)
-				return true
-			}
-			// We know that Propeller goes through each workflow in a single thread, thus every node is really processed
-			// sequentially. So, we can continue - now that we know we are under the parallelism limits and increment the
-			// parallelism if the node, enters a running state
-			logger.Debugf(ctx, "Parallelism criteria not met, Current [%d], Max [%d]", execContext.CurrentParallelism(), maxParallelism)
-		} else {
-			logger.Debugf(ctx, "Parallelism control disabled")
+	if currentNode.GetKind() == v1alpha1.NodeKindTask ||
+		(currentNode.GetKind() == v1alpha1.NodeKindWorkflow && currentNode.GetWorkflowNode() != nil && currentNode.GetWorkflowNode().GetLaunchPlanRefID() != nil) {
+		// If we are queued, let us see if we can proceed within the node parallelism bounds
+		if execContext.CurrentParallelism() >= maxParallelism {
+			logger.Infof(ctx, "Maximum Parallelism for task/launch-plan nodes achieved [%d] >= Max [%d], Round will be short-circuited.", execContext.CurrentParallelism(), maxParallelism)
+			return true
 		}
+		// We know that Propeller goes through each workflow in a single thread, thus every node is really processed
+		// sequentially. So, we can continue - now that we know we are under the parallelism limits and increment the
+		// parallelism if the node, enters a running state
+		logger.Debugf(ctx, "Parallelism criteria not met, Current [%d], Max [%d]", execContext.CurrentParallelism(), maxParallelism)
 	} else {
 		logger.Debugf(ctx, "NodeKind: %s in status [%s]. Parallelism control is not applicable. Current Parallelism [%d]",
 			currentNode.GetKind().String(), currentPhase.String(), execContext.CurrentParallelism())

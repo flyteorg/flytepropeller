@@ -96,7 +96,7 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 		}
 	} else {
 		eCtx := nCtx.ExecutionContext()
-		logger.Infof(ctx, "Launched launchplan with ID [%s], Parallelism is not set to [%d]", childID.Name, eCtx.IncrementParallelism())
+		logger.Infof(ctx, "Launched launchplan with ID [%s], Parallelism is now set to [%d]", childID.Name, eCtx.IncrementParallelism())
 	}
 
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{
