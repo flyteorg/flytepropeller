@@ -126,7 +126,7 @@ func TestVaultSecretManagerInjector_Inject(t *testing.T) {
 		{
 			name: "KVv1 Secret",
 			args: args{
-				cfg:    config.VaultSecretManagerConfig{Role: "flyte", KVVersion: 1},
+				cfg:    config.VaultSecretManagerConfig{Role: "flyte", KVVersion: config.KVVersion1},
 				secret: inputSecret,
 				p:      NewInputPod(),
 			},
@@ -136,7 +136,7 @@ func TestVaultSecretManagerInjector_Inject(t *testing.T) {
 		{
 			name: "KVv2 Secret",
 			args: args{
-				cfg:    config.VaultSecretManagerConfig{Role: "flyte", KVVersion: 2},
+				cfg:    config.VaultSecretManagerConfig{Role: "flyte", KVVersion: config.KVVersion2},
 				secret: inputSecret,
 				p:      NewInputPod(),
 			},

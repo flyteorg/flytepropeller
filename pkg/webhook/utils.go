@@ -126,12 +126,12 @@ func CreateVaultAnnotationsForSecret(secret *core.Secret, kvversion config.KVVer
 	// Version 1 stores plain k:v pairs under .Data, version 2 supports versioned secrets
 	// and wraps the k:v pairs into an additional subfield.
 	var query string
-	if kvversion == 1 {
+	if kvversion == config.KVVersion1 {
 		query = ".Data"
-	} else if kvversion == 2 {
+	} else if kvversion == config.KVVersion2 {
 		query = ".Data.data"
 	} else {
-		err := fmt.Errorf("unsupported KV Version [%v], supported versions are 1 and 2", kvversion)
+		err := fmt.Errorf("unsupported KV Version %v, supported versions are 1 and 2", kvversion)
 		return nil, err
 	}
 	secretVaultAnnotations := map[string]string{
