@@ -451,20 +451,24 @@ func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason st
 		if in.StartedAt == nil {
 			in.StartedAt = &n
 		}
-		if p == NodePhaseSucceeded {
-			in.Message = ""
-			in.QueuedAt = nil
-			in.StartedAt = nil
-			in.LastAttemptStartedAt = nil
-			in.DynamicNodeStatus = nil
-			in.BranchStatus = nil
-			in.SubNodeStatus = nil
-			in.TaskNodeStatus = nil
-			in.WorkflowNodeStatus = nil
-		}
 	}
-
 	in.LastUpdatedAt = &n
+
+	// For cases in which the node is either Succeeded or Skipped we clear most fields from the status
+	// except for StoppedAt and Phase. StoppedAt is used to calculate transition latency between this node and
+	// any downstream nodes and Phase is required for propeller to continue to downstream nodes.
+	if p == NodePhaseSucceeded || p == NodePhaseSkipped {
+		in.Message = ""
+		in.QueuedAt = nil
+		in.StartedAt = nil
+		in.LastAttemptStartedAt = nil
+		in.DynamicNodeStatus = nil
+		in.BranchStatus = nil
+		in.SubNodeStatus = nil
+		in.TaskNodeStatus = nil
+		in.WorkflowNodeStatus = nil
+		in.LastUpdatedAt = nil
+	}
 	in.SetDirty()
 }
 
