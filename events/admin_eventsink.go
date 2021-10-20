@@ -101,6 +101,7 @@ func (s *adminEventSink) Close() error {
 	return nil
 }
 
+// Generates an ID which uniquely represents the admin event entity and associated phase.
 func IDFromMessage(message proto.Message) ([]byte, error) {
 	var id string
 	switch eventMessage := message.(type) {
