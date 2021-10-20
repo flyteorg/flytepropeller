@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/encoding"
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
@@ -118,7 +119,7 @@ func AppendVolume(volumes []corev1.Volume, volume corev1.Volume) []corev1.Volume
 	return append(volumes, volume)
 }
 
-func CreateVaultAnnotationsForSecret(secret *core.Secret, kvversion int) (map[string]string, error) {
+func CreateVaultAnnotationsForSecret(secret *core.Secret, kvversion config.KVVersion) (map[string]string, error) {
 	id := string(uuid.NewUUID())
 
 	// Set the consul template language query depending on the KV Secrets Engine version.

@@ -57,6 +57,5 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "secretName"), DefaultConfig.SecretName, "Secret name to write generated certs to.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "awsSecretManager.sidecarImage"), DefaultConfig.AWSSecretManagerConfig.SidecarImage, "Specifies the sidecar docker image to use")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "vaultSecretManager.role"), DefaultConfig.VaultSecretManagerConfig.Role, "Specifies the vault role to use")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "vaultSecretManager.kvVersion"), DefaultConfig.VaultSecretManagerConfig.KVVersion, "The KV Engine Version. Defaults to 2. Use 1 for unversioned secrets.")
 	return cmdFlags
 }
