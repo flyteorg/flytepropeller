@@ -49,16 +49,13 @@ func ExpectedKVv1(uuid string) *corev1.Pod {
 	expected := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
-				"vault.hashicorp.com/agent-inject":                              "true",
-				"vault.hashicorp.com/secret-volume-path":                        "/etc/flyte/secrets",
-				"vault.hashicorp.com/role":                                      "flyte",
-				"vault.hashicorp.com/agent-pre-populate-only":                   "true",
-				fmt.Sprintf("vault.hashicorp.com/agent-inject-secret-%s", uuid): "foo",
-				fmt.Sprintf("vault.hashicorp.com/agent-inject-file-%s", uuid):   "foo/bar",
-				fmt.Sprintf("vault.hashicorp.com/agent-inject-template-%s", uuid): `
-		{{- with secret "foo" -}}
-		{{ .Data.bar }}
-		{{- end -}}`,
+				"vault.hashicorp.com/agent-inject":                                "true",
+				"vault.hashicorp.com/secret-volume-path":                          "/etc/flyte/secrets",
+				"vault.hashicorp.com/role":                                        "flyte",
+				"vault.hashicorp.com/agent-pre-populate-only":                     "true",
+				fmt.Sprintf("vault.hashicorp.com/agent-inject-secret-%s", uuid):   "foo",
+				fmt.Sprintf("vault.hashicorp.com/agent-inject-file-%s", uuid):     "foo/bar",
+				fmt.Sprintf("vault.hashicorp.com/agent-inject-template-%s", uuid): `{{- with secret "foo" -}}{{ .Data.bar }}{{- end -}}`,
 			},
 		},
 		Spec: PodSpec,
@@ -71,16 +68,13 @@ func ExpectedKVv2(uuid string) *corev1.Pod {
 	expected := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
-				"vault.hashicorp.com/agent-inject":                              "true",
-				"vault.hashicorp.com/secret-volume-path":                        "/etc/flyte/secrets",
-				"vault.hashicorp.com/role":                                      "flyte",
-				"vault.hashicorp.com/agent-pre-populate-only":                   "true",
-				fmt.Sprintf("vault.hashicorp.com/agent-inject-secret-%s", uuid): "foo",
-				fmt.Sprintf("vault.hashicorp.com/agent-inject-file-%s", uuid):   "foo/bar",
-				fmt.Sprintf("vault.hashicorp.com/agent-inject-template-%s", uuid): `
-		{{- with secret "foo" -}}
-		{{ .Data.data.bar }}
-		{{- end -}}`,
+				"vault.hashicorp.com/agent-inject":                                "true",
+				"vault.hashicorp.com/secret-volume-path":                          "/etc/flyte/secrets",
+				"vault.hashicorp.com/role":                                        "flyte",
+				"vault.hashicorp.com/agent-pre-populate-only":                     "true",
+				fmt.Sprintf("vault.hashicorp.com/agent-inject-secret-%s", uuid):   "foo",
+				fmt.Sprintf("vault.hashicorp.com/agent-inject-file-%s", uuid):     "foo/bar",
+				fmt.Sprintf("vault.hashicorp.com/agent-inject-template-%s", uuid): `{{- with secret "foo" -}}{{ .Data.data.bar }}{{- end -}}`,
 			},
 		},
 		Spec: PodSpec,

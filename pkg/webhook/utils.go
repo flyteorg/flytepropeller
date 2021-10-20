@@ -134,13 +134,11 @@ func CreateVaultAnnotationsForSecret(secret *core.Secret, kvversion config.KVVer
 		err := fmt.Errorf("unsupported KV Version %v, supported versions are 1 and 2", kvversion)
 		return nil, err
 	}
+	template := fmt.Sprintf(`{{- with secret "%s" -}}{{ %s.%s }}{{- end -}}`, secret.Group, query, secret.Key)
 	secretVaultAnnotations := map[string]string{
-		fmt.Sprintf("vault.hashicorp.com/agent-inject-secret-%s", id): secret.Group,
-		fmt.Sprintf("vault.hashicorp.com/agent-inject-file-%s", id):   fmt.Sprintf("%s/%s", secret.Group, secret.Key),
-		fmt.Sprintf("vault.hashicorp.com/agent-inject-template-%s", id): fmt.Sprintf(`
-		{{- with secret "%s" -}}
-		{{ %s.%s }}
-		{{- end -}}`, secret.Group, query, secret.Key),
+		fmt.Sprintf("vault.hashicorp.com/agent-inject-secret-%s", id):   secret.Group,
+		fmt.Sprintf("vault.hashicorp.com/agent-inject-file-%s", id):     fmt.Sprintf("%s/%s", secret.Group, secret.Key),
+		fmt.Sprintf("vault.hashicorp.com/agent-inject-template-%s", id): template,
 	}
 	return secretVaultAnnotations, nil
 }
