@@ -160,9 +160,6 @@ func TestVaultSecretManagerInjector_Inject(t *testing.T) {
 			i := NewVaultSecretManagerInjector(tt.args.cfg)
 			got, _, err := i.Inject(ctx, tt.args.secret, tt.args.p)
 
-			// fmt.Println(tt.args.cfg)
-			// fmt.Println(got.ObjectMeta.Annotations)
-
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Inject() error = %v, wantErr %v", err, tt.wantErr)
 				return
