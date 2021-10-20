@@ -118,7 +118,7 @@ func AppendVolume(volumes []corev1.Volume, volume corev1.Volume) []corev1.Volume
 	return append(volumes, volume)
 }
 
-func CreateAnnotationsForSecret(secret *core.Secret) map[string]string {
+func CreateVaultAnnotationsForSecret(secret *core.Secret) map[string]string {
 	id := string(uuid.NewUUID())
 	secretVaultAnnotations := map[string]string{
 		fmt.Sprintf("vault.hashicorp.com/agent-inject-secret-%s", id): secret.Group,
