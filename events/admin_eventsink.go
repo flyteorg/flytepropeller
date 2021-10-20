@@ -44,7 +44,7 @@ func (s *adminEventSink) Sink(ctx context.Context, message proto.Message) error 
 	logger.Debugf(ctx, "AdminEventSink received a new event %s", message.String())
 
 	// Short-circuit if event has already been sent
-	id, err := idFromMessage(message)
+	id, err := IDFromMessage(message)
 	if err != nil {
 		return fmt.Errorf("Failed to parse message id [%v]", message.String())
 	}
@@ -101,7 +101,7 @@ func (s *adminEventSink) Close() error {
 	return nil
 }
 
-func idFromMessage(message proto.Message) ([]byte, error) {
+func IDFromMessage(message proto.Message) ([]byte, error) {
 	var id string
 	switch eventMessage := message.(type) {
 	case *event.WorkflowExecutionEvent:
@@ -115,7 +115,7 @@ func idFromMessage(message proto.Message) ([]byte, error) {
 		tid := eventMessage.TaskId
 		nid := eventMessage.ParentNodeExecutionId
 		wid := nid.ExecutionId
-		id = fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%s:%d:%d", tid.Project, tid.Domain, tid.Name, tid.Version, wid.Project, wid.Domain, wid.Name, nid.NodeId, eventMessage.Phase, eventMessage.PhaseVersion)
+		id = fmt.Sprintf("%s:%s:%s:%s:%s:%s:%d:%d", wid.Project, wid.Domain, wid.Name, nid.NodeId, tid.Name, tid.Version, eventMessage.Phase, eventMessage.PhaseVersion)
 	default:
 		return nil, fmt.Errorf("unknown event type [%s]", eventMessage.String())
 	}

@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/flyteorg/flyteidl/clients/go/admin/mocks"
@@ -10,6 +11,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flytepropeller/events/errors"
 	fastcheckMocks "github.com/flyteorg/flytestdlib/fastcheck/mocks"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -189,4 +191,26 @@ func TestAdminFilterContains(t *testing.T) {
 
 	taskErr := adminEventSink.Sink(ctx, taskEvent)
 	assert.NoError(t, taskErr)
+}
+
+func TestIDFromMessage(t *testing.T) {
+	tests := []struct {
+		name    string
+		message proto.Message
+		want    string
+	}{
+		{"workflow", wfEvent, "p:d:n:2"},
+		{"node", nodeEvent, "p:d:n:node-id:5"},
+		{"task", taskEvent, "p:d:n:node-id:task-id::3:0"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := IDFromMessage(tt.message)
+			assert.NoError(t, err)
+
+			if !reflect.DeepEqual(got, []byte(tt.want)) {
+				t.Errorf("IDFromMessage() = %s, want %s", string(got), tt.want)
+			}
+		})
+	}
 }
