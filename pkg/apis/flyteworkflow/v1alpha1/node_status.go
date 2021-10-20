@@ -442,15 +442,20 @@ func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason st
 		if in.LastAttemptStartedAt == nil {
 			in.LastAttemptStartedAt = &n
 		}
-	} else if IsPhaseTerminal(p) && in.StoppedAt == nil {
-		if in.StartedAt == nil {
-			in.StartedAt = &n
+	} else if IsPhaseTerminal(p) {
+		// If we are in terminal phase then we will clear out all our fields as they are not required anymore
+		// Only thing required is stopped at and lastupdatedat time
+		if in.StoppedAt == nil {
+			in.StoppedAt = &n
 		}
-		if in.LastAttemptStartedAt == nil {
-			in.LastAttemptStartedAt = &n
-		}
-
-		in.StoppedAt = &n
+		in.Message = ""
+		in.QueuedAt = nil
+		in.StartedAt = nil
+		in.LastAttemptStartedAt = nil
+		in.DynamicNodeStatus = nil
+		in.BranchStatus = nil
+		in.SubNodeStatus = nil
+		in.TaskNodeStatus = nil
 	}
 
 	in.LastUpdatedAt = &n
