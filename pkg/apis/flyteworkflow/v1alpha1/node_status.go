@@ -448,14 +448,19 @@ func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason st
 		if in.StoppedAt == nil {
 			in.StoppedAt = &n
 		}
-		in.Message = ""
-		in.QueuedAt = nil
-		in.StartedAt = nil
-		in.LastAttemptStartedAt = nil
-		in.DynamicNodeStatus = nil
-		in.BranchStatus = nil
-		in.SubNodeStatus = nil
-		in.TaskNodeStatus = nil
+		if in.StartedAt == nil {
+			in.StartedAt = &n
+		}
+		if p == NodePhaseSucceeded {
+			in.Message = ""
+			in.QueuedAt = nil
+			in.StartedAt = nil
+			in.LastAttemptStartedAt = nil
+			in.DynamicNodeStatus = nil
+			in.BranchStatus = nil
+			in.SubNodeStatus = nil
+			in.TaskNodeStatus = nil
+		}
 	}
 
 	in.LastUpdatedAt = &n
