@@ -2,7 +2,6 @@ package config
 
 import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-	"crypto/tls"
 )
 
 //go:generate pflags Config --default-var=defaultConfig
@@ -39,10 +38,24 @@ type RedisConfig struct {
 	HostPaths   []string `json:"hostPaths" pflag:",Redis hosts locations."`
 	PrimaryName string   `json:"primaryName" pflag:",Redis primary name, fill in only if you are connecting to a redis sentinel cluster."`
 	// deprecated: Please use HostPaths instead
-	HostPath   string `json:"hostPath" pflag:",Redis host location"`
-	HostKey    string `json:"hostKey" pflag:",Key for local Redis access"`
-	MaxRetries int    `json:"maxRetries" pflag:",See Redis client options for more info"`
-	TLSConfig  *tls.Config `json:"TLSConfig" pflag:",See the crytpo/tls config object for more info"`
+	HostPath   string    `json:"hostPath" pflag:",Redis host location"`
+	HostKey    string    `json:"hostKey" pflag:",Key for local Redis access"`
+	MaxRetries int       `json:"maxRetries" pflag:",See Redis client options for more info"`
+	TLSConfig  TLSConfig `json:"tlsConfig" pflag:",See the crytpo/tls config object for more info"`
+}
+
+// Specific configs for Redis TLS
+// Ref: https://pkg.go.dev/crypto/tls#Config for informations on how to fill in these fields.
+type TLSConfig struct {
+	NextProtos                  []string `json:"nextProtos" pflag:",List of supported application level protocols, in order of preference."`
+	ServerName                  string   `json:"serverName" pflag:",Used to verify the hostname on the returned certificates unless InsecureSkipVerify is given."`
+	InsecureSkipVerify          bool     `json:"insecureSkipVerify" pflag:",Whether a client verifies the server's certificate chain and host name"`
+	SessionTicketsDisabled      bool     `json:"sessionTicketsDisabled" pflag:",May be set to true to disable session ticket and PSK (resumption) support"`
+	MinVersion                  uint16   `json:"minVersion" pflag:",Minimum TLS version that is acceptable"`
+	MaxVersion                  uint16   `json:"maxVersion" pflag:",Maximum TLS version that is acceptable."`
+	CurvePreferences            uint16   `json:"curvePreferences" pflag:",CurvePreferences contains the elliptic curves that will be used in an ECDHE handshake, in preference order. If empty, the default will be used. See https://pkg.go.dev/crypto/tls#CurveID."`
+	DynamicRecordSizingDisabled bool     `json:"dynamicRecordSizingDisabled" pflag:",Disables adaptive sizing of TLS records.When true, the largest possible TLS record size is always used."`
+	Renegotiation               int      `json:"renegotiation" pflag:",What type of renegotiations are supported. The default, none, is correct for most applications."`
 }
 
 // Retrieves the current config value or default.
