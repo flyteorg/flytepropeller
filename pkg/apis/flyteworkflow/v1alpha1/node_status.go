@@ -460,6 +460,7 @@ func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason st
 			in.BranchStatus = nil
 			in.SubNodeStatus = nil
 			in.TaskNodeStatus = nil
+			in.WorkflowNodeStatus = nil
 		}
 	}
 
