@@ -67,13 +67,13 @@ func (i VaultSecretManagerInjector) Inject(ctx context.Context, secret *coreIdl.
 			"vault.hashicorp.com/agent-pre-populate-only": "true",
 		}
 
-		secretVaultAnnotations := CreateAnnotationsForSecret(secret)
+		secretVaultAnnotations := CreateVaultAnnotationsForSecret(secret)
 
 		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, commonVaultAnnotations)
 		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, secretVaultAnnotations)
 
-        case coreIdl.SECRET_ENV_VAR:
-            return p, false, fmt.Errorf("Env_Var is not a supported mount requirement for Vault Secret Manager")
+	case coreIdl.SECRET_ENV_VAR:
+		return p, false, fmt.Errorf("Env_Var is not a supported mount requirement for Vault Secret Manager")
 	default:
 		err := fmt.Errorf("unrecognized mount requirement [%v] for secret [%v]", secret.MountRequirement.String(), secret.Key)
 		logger.Error(ctx, err)
