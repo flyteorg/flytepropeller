@@ -118,15 +118,28 @@ func AppendVolume(volumes []corev1.Volume, volume corev1.Volume) []corev1.Volume
 	return append(volumes, volume)
 }
 
-func CreateVaultAnnotationsForSecret(secret *core.Secret) map[string]string {
+func CreateVaultAnnotationsForSecret(secret *core.Secret, kvversion int) (map[string]string, error) {
 	id := string(uuid.NewUUID())
+
+	// Set the consul template language query depending on the KV Secrets Engine version.
+	// Version 1 stores plain k:v pairs under .Data, version 2 supports versioned secrets
+	// and wraps the k:v pairs into an additional subfield.
+	var query string
+	if kvversion == 1 {
+		query = ".Data"
+	} else if kvversion == 2 {
+		query = ".Data.data"
+	} else {
+		err := fmt.Errorf("unsupported KV Version [%v], supported versions are 1 and 2", kvversion)
+		return nil, err
+	}
 	secretVaultAnnotations := map[string]string{
 		fmt.Sprintf("vault.hashicorp.com/agent-inject-secret-%s", id): secret.Group,
 		fmt.Sprintf("vault.hashicorp.com/agent-inject-file-%s", id):   fmt.Sprintf("%s/%s", secret.Group, secret.Key),
 		fmt.Sprintf("vault.hashicorp.com/agent-inject-template-%s", id): fmt.Sprintf(`
 		{{- with secret "%s" -}}
-		{{ .Data.data.%s }}
-		{{- end -}}`, secret.Group, secret.Key),
+		{{ %s.%s }}
+		{{- end -}}`, secret.Group, query, secret.Key),
 	}
-	return secretVaultAnnotations
+	return secretVaultAnnotations, nil
 }

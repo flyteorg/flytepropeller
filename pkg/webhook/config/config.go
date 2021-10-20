@@ -31,7 +31,8 @@ var (
 			},
 		},
 		VaultSecretManagerConfig: VaultSecretManagerConfig{
-			Role: "flyte",
+			Role:      "flyte",
+			KVVersion: 2,
 		},
 	}
 
@@ -74,7 +75,8 @@ type AWSSecretManagerConfig struct {
 }
 
 type VaultSecretManagerConfig struct {
-	Role string `json:"role" pflag:",Specifies the vault role to use"`
+	Role      string `json:"role" pflag:",Specifies the vault role to use"`
+	KVVersion int    `json:"kvVersion" pflag:",The KV Engine Version. Defaults to 2. Use 1 for unversioned secrets."`
 }
 
 func GetConfig() *Config {

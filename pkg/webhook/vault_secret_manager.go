@@ -41,6 +41,7 @@ func (i VaultSecretManagerInjector) Inject(ctx context.Context, secret *coreIdl.
 
 	switch secret.MountRequirement {
 	case coreIdl.Secret_ANY:
+		fallthrough
 	case coreIdl.Secret_FILE:
 		// Set environment variable to let the container know where to find the mounted files.
 		defaultDirEnvVar := corev1.EnvVar{
@@ -67,12 +68,16 @@ func (i VaultSecretManagerInjector) Inject(ctx context.Context, secret *coreIdl.
 			"vault.hashicorp.com/agent-pre-populate-only": "true",
 		}
 
-		secretVaultAnnotations := CreateVaultAnnotationsForSecret(secret)
+		secretVaultAnnotations, err := CreateVaultAnnotationsForSecret(secret, i.cfg.KVVersion)
+		// Creating annotations can break with an unsupported KVVersion
+		if err != nil {
+			return p, false, err
+		}
 
 		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, commonVaultAnnotations)
 		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, secretVaultAnnotations)
 
-	case coreIdl.SECRET_ENV_VAR:
+	case coreIdl.Secret_ENV_VAR:
 		return p, false, fmt.Errorf("Env_Var is not a supported mount requirement for Vault Secret Manager")
 	default:
 		err := fmt.Errorf("unrecognized mount requirement [%v] for secret [%v]", secret.MountRequirement.String(), secret.Key)
