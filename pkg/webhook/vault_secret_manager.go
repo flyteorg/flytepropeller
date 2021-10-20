@@ -41,6 +41,7 @@ func (i VaultSecretManagerInjector) Inject(ctx context.Context, secret *coreIdl.
 
 	switch secret.MountRequirement {
 	case coreIdl.Secret_ANY:
+	case coreIdl.Secret_FILE:
 		// Set environment variable to let the container know where to find the mounted files.
 		defaultDirEnvVar := corev1.EnvVar{
 			Name:  SecretPathDefaultDirEnvVar,
