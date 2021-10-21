@@ -120,6 +120,10 @@ func AppendVolume(volumes []corev1.Volume, volume corev1.Volume) []corev1.Volume
 }
 
 func CreateVaultAnnotationsForSecret(secret *core.Secret, kvversion config.KVVersion) (map[string]string, error) {
+	// Creates three grouped annotations "agent-inject-secret", "agent-inject-file" and "agent-inject-template"
+	// for a given secret request and KV engine version. The annotations respectively handle: 1. retrieving the
+	// secret from a vault path specified in secret.Group, 2. storing it in a file named after secret.Group/secret.Key
+	// and 3. creating a template that retrieves only secret.Key from the multiple k:v pairs present in a vault secret.
 	id := string(uuid.NewUUID())
 
 	// Set the consul template language query depending on the KV Secrets Engine version.
