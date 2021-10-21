@@ -729,4 +729,32 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_include-shard-key", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := join_Config("1,1", ",")
+
+			cmdFlags.Set("include-shard-key", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("include-shard-key"); err == nil {
+				testDecodeRaw_Config(t, join_Config(vStringSlice, ","), &actual.IncludeShardKey)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_exclude-shard-key", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := join_Config("1,1", ",")
+
+			cmdFlags.Set("exclude-shard-key", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("exclude-shard-key"); err == nil {
+				testDecodeRaw_Config(t, join_Config(vStringSlice, ","), &actual.ExcludeShardKey)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }
