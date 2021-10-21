@@ -3,9 +3,10 @@ package v1alpha1
 import (
 	"context"
 	"encoding/json"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/flyteorg/flytestdlib/storage"
 
@@ -255,7 +256,7 @@ func TestNodeStatus_GetNodeExecutionStatus(t *testing.T) {
 	})
 }
 
-func TestNodeStatus_UpdatePhase(t *testing.T)  {
+func TestNodeStatus_UpdatePhase(t *testing.T) {
 	n := metav1.NewTime(time.Now())
 
 	t.Run("identical-phase", func(t *testing.T) {
@@ -289,7 +290,7 @@ func TestNodeStatus_UpdatePhase(t *testing.T)  {
 		assert.Nil(t, ns.StoppedAt)
 		assert.Equal(t, p, ns.Phase)
 		assert.Equal(t, msg, ns.Message)
-		assert.Nil(t,ns.Error)
+		assert.Nil(t, ns.Error)
 	})
 
 	t.Run("non-terminal-running", func(t *testing.T) {
@@ -322,7 +323,7 @@ func TestNodeStatus_UpdatePhase(t *testing.T)  {
 		assert.Equal(t, *ns.StoppedAt, n)
 		assert.Equal(t, p, ns.Phase)
 		assert.Equal(t, msg, ns.Message)
-		assert.Equal(t,ns.Error.ExecutionError, err)
+		assert.Equal(t, ns.Error.ExecutionError, err)
 	})
 
 	t.Run("terminal-timeout", func(t *testing.T) {
@@ -339,7 +340,7 @@ func TestNodeStatus_UpdatePhase(t *testing.T)  {
 		assert.Equal(t, *ns.StoppedAt, n)
 		assert.Equal(t, p, ns.Phase)
 		assert.Equal(t, msg, ns.Message)
-		assert.Equal(t,ns.Error.ExecutionError, err)
+		assert.Equal(t, ns.Error.ExecutionError, err)
 	})
 
 	t.Run("terminal-success", func(t *testing.T) {
@@ -355,7 +356,7 @@ func TestNodeStatus_UpdatePhase(t *testing.T)  {
 		assert.Equal(t, *ns.StoppedAt, n)
 		assert.Equal(t, p, ns.Phase)
 		assert.Empty(t, ns.Message)
-		assert.Nil(t,ns.Error)
+		assert.Nil(t, ns.Error)
 	})
 
 	t.Run("terminal-skipped", func(t *testing.T) {
@@ -371,20 +372,20 @@ func TestNodeStatus_UpdatePhase(t *testing.T)  {
 		assert.Equal(t, *ns.StoppedAt, n)
 		assert.Equal(t, p, ns.Phase)
 		assert.Empty(t, ns.Message)
-		assert.Nil(t,ns.Error)
+		assert.Nil(t, ns.Error)
 	})
 
 	t.Run("terminal-success-preset", func(t *testing.T) {
 		ns := NodeStatus{
-			QueuedAt: &n,
-			StartedAt: &n,
-			LastUpdatedAt: &n,
+			QueuedAt:             &n,
+			StartedAt:            &n,
+			LastUpdatedAt:        &n,
 			LastAttemptStartedAt: &n,
-			WorkflowNodeStatus: &WorkflowNodeStatus{},
-			BranchStatus: &BranchNodeStatus{},
-			DynamicNodeStatus: &DynamicNodeStatus{},
-			TaskNodeStatus: &TaskNodeStatus{},
-			SubNodeStatus: map[NodeID]*NodeStatus{},
+			WorkflowNodeStatus:   &WorkflowNodeStatus{},
+			BranchStatus:         &BranchNodeStatus{},
+			DynamicNodeStatus:    &DynamicNodeStatus{},
+			TaskNodeStatus:       &TaskNodeStatus{},
+			SubNodeStatus:        map[NodeID]*NodeStatus{},
 		}
 		p := NodePhaseSucceeded
 		msg := "success"
@@ -397,7 +398,7 @@ func TestNodeStatus_UpdatePhase(t *testing.T)  {
 		assert.Equal(t, *ns.StoppedAt, n)
 		assert.Equal(t, p, ns.Phase)
 		assert.Empty(t, ns.Message)
-		assert.Nil(t,ns.Error)
+		assert.Nil(t, ns.Error)
 		assert.Nil(t, ns.SubNodeStatus)
 		assert.Nil(t, ns.DynamicNodeStatus)
 		assert.Nil(t, ns.WorkflowNodeStatus)
@@ -407,15 +408,15 @@ func TestNodeStatus_UpdatePhase(t *testing.T)  {
 
 	t.Run("non-terminal-preset", func(t *testing.T) {
 		ns := NodeStatus{
-			QueuedAt: &n,
-			StartedAt: &n,
-			LastUpdatedAt: &n,
+			QueuedAt:             &n,
+			StartedAt:            &n,
+			LastUpdatedAt:        &n,
 			LastAttemptStartedAt: &n,
-			WorkflowNodeStatus: &WorkflowNodeStatus{},
-			BranchStatus: &BranchNodeStatus{},
-			DynamicNodeStatus: &DynamicNodeStatus{},
-			TaskNodeStatus: &TaskNodeStatus{},
-			SubNodeStatus: map[NodeID]*NodeStatus{},
+			WorkflowNodeStatus:   &WorkflowNodeStatus{},
+			BranchStatus:         &BranchNodeStatus{},
+			DynamicNodeStatus:    &DynamicNodeStatus{},
+			TaskNodeStatus:       &TaskNodeStatus{},
+			SubNodeStatus:        map[NodeID]*NodeStatus{},
 		}
 		n2 := metav1.NewTime(time.Now())
 		p := NodePhaseRunning
