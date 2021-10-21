@@ -10,7 +10,7 @@ require (
 	github.com/flyteorg/flyteplugins v0.7.1
 	github.com/flyteorg/flytestdlib v0.4.0
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-openapi/spec v0.19.3
+	github.com/go-openapi/spec v0.20.3
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/go-test/deep v1.0.7
 	github.com/golang/protobuf v1.4.3

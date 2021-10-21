@@ -716,7 +716,7 @@ type TaskNodeStatus struct {
 	PluginState        []byte    `json:"pState,omitempty"`
 	PluginStateVersion uint32    `json:"psv,omitempty"`
 	BarrierClockTick   uint32    `json:"tick,omitempty"`
-	LastPhaseUpdatedAt time.Time `json:"-"`
+	LastPhaseUpdatedAt time.Time `json:"updAt,omitempty"`
 }
 
 func (in *TaskNodeStatus) GetBarrierClockTick() uint32 {
