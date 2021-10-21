@@ -59,7 +59,7 @@ const (
 	SecretManagerTypeVault
 )
 
-// Defines with KV Engine Version to use with VaultSecretManager
+// Defines with KV Engine Version to use with VaultSecretManager - https://www.vaultproject.io/docs/secrets/kv#kv-secrets-engine
 type KVVersion int
 
 const (
@@ -87,7 +87,7 @@ type AWSSecretManagerConfig struct {
 
 type VaultSecretManagerConfig struct {
 	Role      string    `json:"role" pflag:",Specifies the vault role to use"`
-	KVVersion KVVersion `json:"kvVersion" pflag:"-,The KV Engine Version. Defaults to 2. Use 1 for unversioned secrets."`
+	KVVersion KVVersion `json:"kvVersion" pflag:"-,The KV Engine Version. Defaults to 2. Use 1 for unversioned secrets. Refer to - https://www.vaultproject.io/docs/secrets/kv#kv-secrets-engine."`
 }
 
 func GetConfig() *Config {
