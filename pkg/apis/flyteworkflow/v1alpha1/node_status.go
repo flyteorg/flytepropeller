@@ -733,7 +733,7 @@ func (in *TaskNodeStatus) SetPluginState(s []byte) {
 	in.SetDirty()
 }
 
-func (in TaskNodeStatus) SetLastPhaseUpdatedAt(updatedAt time.Time) {
+func (in *TaskNodeStatus) SetLastPhaseUpdatedAt(updatedAt time.Time) {
 	in.LastPhaseUpdatedAt = updatedAt
 }
 

@@ -259,12 +259,13 @@ func TestNodeStatus_GetNodeExecutionStatus(t *testing.T) {
 func TestNodeStatus_UpdatePhase(t *testing.T) {
 	n := metav1.NewTime(time.Now())
 
+	const queued = "queued"
 	t.Run("identical-phase", func(t *testing.T) {
 		p := NodePhaseQueued
 		ns := NodeStatus{
 			Phase: p,
 		}
-		msg := "queued"
+		msg := queued
 		ns.UpdatePhase(p, n, msg, nil)
 		assert.Nil(t, ns.QueuedAt)
 	})
@@ -272,7 +273,7 @@ func TestNodeStatus_UpdatePhase(t *testing.T) {
 	t.Run("zero", func(t *testing.T) {
 		p := NodePhaseQueued
 		ns := NodeStatus{}
-		msg := "queued"
+		msg := queued
 		ns.UpdatePhase(p, metav1.NewTime(time.Time{}), msg, nil)
 		assert.NotNil(t, ns.QueuedAt)
 	})
@@ -280,7 +281,7 @@ func TestNodeStatus_UpdatePhase(t *testing.T) {
 	t.Run("non-terminal", func(t *testing.T) {
 		ns := NodeStatus{}
 		p := NodePhaseQueued
-		msg := "queued"
+		msg := queued
 		ns.UpdatePhase(p, n, msg, nil)
 
 		assert.Equal(t, *ns.LastUpdatedAt, n)
@@ -343,10 +344,11 @@ func TestNodeStatus_UpdatePhase(t *testing.T) {
 		assert.Equal(t, ns.Error.ExecutionError, err)
 	})
 
+	const success = "success"
 	t.Run("terminal-success", func(t *testing.T) {
 		ns := NodeStatus{}
 		p := NodePhaseSucceeded
-		msg := "success"
+		msg := success
 		ns.UpdatePhase(p, n, msg, nil)
 
 		assert.Nil(t, ns.LastUpdatedAt)
@@ -362,7 +364,7 @@ func TestNodeStatus_UpdatePhase(t *testing.T) {
 	t.Run("terminal-skipped", func(t *testing.T) {
 		ns := NodeStatus{}
 		p := NodePhaseSucceeded
-		msg := "success"
+		msg := success
 		ns.UpdatePhase(p, n, msg, nil)
 
 		assert.Nil(t, ns.LastUpdatedAt)
@@ -388,7 +390,7 @@ func TestNodeStatus_UpdatePhase(t *testing.T) {
 			SubNodeStatus:        map[NodeID]*NodeStatus{},
 		}
 		p := NodePhaseSucceeded
-		msg := "success"
+		msg := success
 		ns.UpdatePhase(p, n, msg, nil)
 
 		assert.Nil(t, ns.LastUpdatedAt)
