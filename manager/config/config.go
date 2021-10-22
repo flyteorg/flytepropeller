@@ -10,16 +10,16 @@ import (
 
 var (
 	DefaultConfig = &Config{
-		PodApplication: "flytepropeller",
-		PodNamespace: "flyte",
-		PodTemplate: "flytepropeller-template",
+		PodApplication:       "flytepropeller",
+		PodNamespace:         "flyte",
+		PodTemplate:          "flytepropeller-template",
 		PodTemplateNamespace: "flyte",
 		ScanInterval: config.Duration{
 			Duration: 10 * time.Second,
 		},
 		ShardConfig: ShardConfig{
 			Type: "consistent-hashing",
-			PodCount: 2,
+			PodCount: 3,
 			KeyspaceSize: 32,
 		},
 	}
@@ -42,12 +42,12 @@ type ShardConfig struct {
 }
 
 type Config struct {
-	PodApplication       string          `json:"pod-application" pflag:"\"flytepropeller\", Application name for managed pods"`
-	PodNamespace         string          `json:"pod-namespace" pflag:"\"flyte\", Namespace to use for managing FlytePropeller pods"`
-	PodTemplate          string          `json:"pod-template" pflag:"\"flytepropeller-template\", K8s PodTemplate name to use for starting FlytePropeller pods"`
-	PodTemplateNamespace string          `json:"pod-template-namespace" pflag:"\"flyte\", Namespace where the k8s PodTemplate is located"`
-	ScanInterval         config.Duration `json:"scan-interval" pflag:"\"5s\", Frequency to scan FlytePropeller pods and start / restart if necessary"`
-	ShardConfig          ShardConfig  `json:"shard" pflag:", configure the shard strategy for this manager"`
+	PodApplication       string          `json:"pod-application" pflag:"\"flytepropeller\",Application name for managed pods"`
+	PodNamespace         string          `json:"pod-namespace" pflag:"\"flyte\",Namespace to use for managing FlytePropeller pods"`
+	PodTemplate          string          `json:"pod-template" pflag:"\"flytepropeller-template\",K8s PodTemplate name to use for starting FlytePropeller pods"`
+	PodTemplateNamespace string          `json:"pod-template-namespace" pflag:"\"flyte\",Namespace where the k8s PodTemplate is located"`
+	ScanInterval         config.Duration `json:"scan-interval" pflag:"\"5s\",Frequency to scan FlytePropeller pods and start / restart if necessary"`
+	ShardConfig          ShardConfig     `json:"shard" pflag:",Configure the shard strategy for this manager"`
 }
 
 func GetConfig() *Config {

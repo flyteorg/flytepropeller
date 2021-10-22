@@ -57,6 +57,8 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 	// note: we are unable to short-circuit if 'len(pods) == len(m.podNames)' because there may be
 	// unmanaged flytepropeller pods - which is invalid configuration but will be detected later
 
+	// TODO - check if a running pods spec is stale (compared to podtemplate)
+
 	// determine missing managed pods
 	podExists := make(map[string]bool)
 	for _, podName := range m.podNames {
@@ -129,6 +131,8 @@ func (m *Manager) Run(ctx context.Context) error {
 	logger.Info(ctx, "started manager")
 	<-ctx.Done()
 	logger.Info(ctx, "shutting down manager")
+
+	// TODO hamersaw - shutdown pods
 
 	return nil
 }

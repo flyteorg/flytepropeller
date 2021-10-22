@@ -11,10 +11,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-func updatePod(pod *v1.Pod) {
-	pod.ObjectMeta.Name = "foobar"
-}
-
 type ShardStrategy interface {
 	GetPodCount() (int, error)
 	UpdatePodSpec(pod *v1.PodSpec, podIndex int) error
@@ -132,7 +128,7 @@ node 2 "token not in [4, 8, 3, 7, 12]" // handle all unhandled CRDs
 type ProjectDomainShardStrategy struct {
 }
 
-func (l *ProjectDomainShardStrategy) GetPodCount() (int, error) {
+func (p *ProjectDomainShardStrategy) GetPodCount() (int, error) {
 	return -1, errors.New("unimplemented")
 }
 

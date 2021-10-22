@@ -46,7 +46,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   appName,
 	Short: "TODO",
-	Long: `TODO`,
+	Long:  `TODO`,
 	PersistentPreRunE: initConfig,
 	Run: func(cmd *cobra.Command, args []string) {
 		executeRootCmd(propellerConfig.GetConfig(), managerConfig.GetConfig())
