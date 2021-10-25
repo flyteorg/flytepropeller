@@ -59,7 +59,7 @@ func (r *eventRecorder) sinkEvent(ctx context.Context, event proto.Message) erro
 
 func (r *eventRecorder) RecordNodeEvent(ctx context.Context, e *event.NodeExecutionEvent) error {
 	if err, ok := e.GetOutputResult().(*event.NodeExecutionEvent_Error); ok {
-		truncateErrorMessage(err.Error)
+		truncateErrorMessage(err.Error, maxErrorMessageLength)
 	}
 
 	return r.sinkEvent(ctx, e)
@@ -67,7 +67,7 @@ func (r *eventRecorder) RecordNodeEvent(ctx context.Context, e *event.NodeExecut
 
 func (r *eventRecorder) RecordTaskEvent(ctx context.Context, e *event.TaskExecutionEvent) error {
 	if err, ok := e.GetOutputResult().(*event.TaskExecutionEvent_Error); ok {
-		truncateErrorMessage(err.Error)
+		truncateErrorMessage(err.Error, maxErrorMessageLength)
 	}
 
 	return r.sinkEvent(ctx, e)
@@ -75,7 +75,7 @@ func (r *eventRecorder) RecordTaskEvent(ctx context.Context, e *event.TaskExecut
 
 func (r *eventRecorder) RecordWorkflowEvent(ctx context.Context, e *event.WorkflowExecutionEvent) error {
 	if err, ok := e.GetOutputResult().(*event.WorkflowExecutionEvent_Error); ok {
-		truncateErrorMessage(err.Error)
+		truncateErrorMessage(err.Error, maxErrorMessageLength)
 	}
 
 	return r.sinkEvent(ctx, e)
@@ -83,9 +83,9 @@ func (r *eventRecorder) RecordWorkflowEvent(ctx context.Context, e *event.Workfl
 
 // If error message too large, truncate to mitigate grpc message size limit. Split the truncated size equally between
 // the beginning and the end of the message to capture the most relevant information.
-func truncateErrorMessage(err *core.ExecutionError) {
-	if len(err.Message) > maxErrorMessageLength {
-		err.Message = fmt.Sprintf("%s%s", err.Message[:maxErrorMessageLength/2], err.Message[(len(err.Message)-maxErrorMessageLength/2):])
+func truncateErrorMessage(err *core.ExecutionError, length int) {
+	if len(err.Message) > length {
+		err.Message = fmt.Sprintf("%s%s", err.Message[:length/2], err.Message[(len(err.Message)-length/2):])
 	}
 }
 
