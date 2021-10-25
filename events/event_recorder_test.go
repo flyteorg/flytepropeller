@@ -90,14 +90,9 @@ func TestRecordErrorEvent(t *testing.T) {
 
 func TestTruncateErrorMessage(t *testing.T) {
 	length := 100
-	messages := make([]string, 0)
 	for i := 0; i <= length*2; i += 5 {
-		messages = append(messages, createRandomString(i))
-	}
-
-	for _, message := range messages {
 		executionError := core.ExecutionError{
-			Message: message,
+			Message: createRandomString(i),
 		}
 
 		truncateErrorMessage(&executionError, length)
