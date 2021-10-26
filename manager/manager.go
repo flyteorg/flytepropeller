@@ -11,7 +11,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
@@ -60,13 +59,14 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 	}
 
 	// retrieve existing pods
-	// TODO hamersaw - use existing LabelSelector API (AddLabel...)
-	podLabels := map[string]string{
-		"app": m.podApplication,
+	labelSelector := &metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			"app": m.podApplication,
+		},
 	}
 
 	listOptions := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(podLabels).String(),
+		LabelSelector: labelSelector.String(),
 	}
 
 	pods, err := m.kubePodsClient.List(ctx, listOptions)
@@ -153,6 +153,20 @@ func (m *Manager) Run(ctx context.Context) error {
 	logger.Info(ctx, "shutting down manager")
 
 	// TODO hamersaw - shutdown pods
+	/*podNames, err := m.getPodNames()
+	if err != nil {
+		return err
+	}
+
+	for _, podName := range podNames {
+		err := m.kubePodsClient.Delete(ctx, podName, metav1.DeleteOptions{})
+		if err != nil {
+			logger.Errorf(ctx, "failed to delete pod '%s' [%v]", podName, err)
+			continue
+		}
+
+		logger.Infof(ctx, "deleted pod '%s'", podName)
+	}*/
 
 	return nil
 }

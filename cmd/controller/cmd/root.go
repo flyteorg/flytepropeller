@@ -163,11 +163,6 @@ func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption
 		}),
 	}
 
-	/*opts := []informers.SharedInformerOption{
-		informers.WithTweakListOptions(func(options *v1.ListOptions) {
-			options.LabelSelector = v1.FormatLabelSelector(controller.IgnoreCompletedWorkflowsLabelSelector())
-		}),
-	}*/
 	if cfg.LimitNamespace != defaultNamespace {
 		opts = append(opts, informers.WithNamespace(cfg.LimitNamespace))
 	}
