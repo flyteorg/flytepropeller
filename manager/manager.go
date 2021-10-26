@@ -20,7 +20,6 @@ type Manager struct {
 	kubePodsClient corev1.PodInterface
 	pod            *v1.Pod
 	podApplication string
-	podNames       []string
 	scanInterval   time.Duration
 	shardStrategy  ShardStrategy
 
@@ -35,9 +34,30 @@ type Manager struct {
 	EnqueueCountTask prometheus.Counter
 }*/
 
+// TODO hamersaw - document: deterministically generate pod names - separate function to facilitate auto-scaling
+func (m *Manager) getPodNames() ([]string, error) {
+	// generate pod names
+	podCount, err := m.shardStrategy.GetPodCount()
+	if err != nil {
+		return nil, err
+	}
+
+	var podNames []string
+	for i := 0; i < podCount; i++ {
+		podNames = append(podNames, fmt.Sprintf("%s-%d", m.podApplication, i))
+	}
+
+	return podNames, nil
+}
+
 func (m *Manager) recoverPods(ctx context.Context) error {
 	// TODO hamersaw - do we need to handle pods with Error status?
 	// with 3 pods locally we get "too many open files"
+
+	podNames, err := m.getPodNames()
+	if err != nil {
+		return err
+	}
 
 	// retrieve existing pods
 	// TODO hamersaw - use existing LabelSelector API (AddLabel...)
@@ -61,7 +81,7 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 
 	// determine missing managed pods
 	podExists := make(map[string]bool)
-	for _, podName := range m.podNames {
+	for _, podName := range podNames {
 		podExists[podName] = false
 	}
 
@@ -75,7 +95,7 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 	}
 
 	// create non-existent pods
-	for i, podName := range m.podNames {
+	for i, podName := range podNames {
 		if exists, _ := podExists[podName]; !exists {
 			pod := m.pod.DeepCopy()
 			pod.ObjectMeta.Name = podName
@@ -164,22 +184,10 @@ func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interfac
 		Spec: podTemplate.Template.Spec,
 	}
 
-	// generate pod names
-	podCount, err := shardStrategy.GetPodCount()
-	if err != nil {
-		return nil, err
-	}
-
-	var podNames []string
-	for i := 0; i < podCount; i++ {
-		podNames = append(podNames, fmt.Sprintf("%s-%d", cfg.PodApplication, i))
-	}
-
 	manager := &Manager{
 		kubePodsClient: kubeClient.CoreV1().Pods(cfg.PodNamespace),
 		pod:            pod,
 		podApplication: cfg.PodApplication,
-		podNames:       podNames,
 		scanInterval:   cfg.ScanInterval.Duration,
 		shardStrategy:  shardStrategy,
 	}
