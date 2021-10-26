@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
+	rscConfig "github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
 
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/go-redis/redis"
@@ -67,7 +68,7 @@ func NewRedisClient(ctx context.Context, config config.RedisConfig) (RedisClient
 			Password:   config.HostKey,
 			DB:         0, // use default DB
 			MaxRetries: config.MaxRetries,
-			TLSConfig:  config.TLSConfig,
+			TLSConfig:  rscConfig.ParseTLSConfig(config.TLSConfig),
 		}),
 	}
 

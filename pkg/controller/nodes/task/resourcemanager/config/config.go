@@ -1,6 +1,9 @@
 package config
 
 import (
+	"crypto/tls"
+	"fmt"
+
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 )
 
@@ -47,15 +50,45 @@ type RedisConfig struct {
 // Specific configs for Redis TLS
 // Ref: https://pkg.go.dev/crypto/tls#Config for informations on how to fill in these fields.
 type TLSConfig struct {
-	NextProtos                  []string `json:"nextProtos" pflag:",List of supported application level protocols, in order of preference."`
-	ServerName                  string   `json:"serverName" pflag:",Used to verify the hostname on the returned certificates unless InsecureSkipVerify is given."`
-	InsecureSkipVerify          bool     `json:"insecureSkipVerify" pflag:",Whether a client verifies the server's certificate chain and host name"`
-	SessionTicketsDisabled      bool     `json:"sessionTicketsDisabled" pflag:",May be set to true to disable session ticket and PSK (resumption) support"`
-	MinVersion                  uint16   `json:"minVersion" pflag:",Minimum TLS version that is acceptable"`
-	MaxVersion                  uint16   `json:"maxVersion" pflag:",Maximum TLS version that is acceptable."`
-	CurvePreferences            uint16   `json:"curvePreferences" pflag:",CurvePreferences contains the elliptic curves that will be used in an ECDHE handshake, in preference order. If empty, the default will be used. See https://pkg.go.dev/crypto/tls#CurveID."`
-	DynamicRecordSizingDisabled bool     `json:"dynamicRecordSizingDisabled" pflag:",Disables adaptive sizing of TLS records.When true, the largest possible TLS record size is always used."`
-	Renegotiation               int      `json:"renegotiation" pflag:",What type of renegotiations are supported. The default, none, is correct for most applications."`
+	ServerName string `json:"serverName" pflag:",Used to verify the hostname."`
+	MinVersion string `json:"minVersion" pflag:",Minimum TLS version that is acceptable"`
+	MaxVersion string `json:"maxVersion" pflag:",Maximum TLS version that is acceptable."`
+}
+
+func GetTLSVersion(version string) uint16 {
+	// Parses string version specifiers into correct tls Version specifier.
+	// Returns zero if unsuccessful which tls.Config will interpret as respective
+	// default for minimum or maximum version.
+	switch version {
+	case "1.0":
+		return tls.VersionTLS10
+	case "1.1":
+		return tls.VersionTLS11
+	case "1.2":
+		return tls.VersionTLS12
+	case "1.3":
+		return tls.VersionTLS13
+	}
+	fmt.Printf("Received unsupported TLS Version %s, reverting to default TLS settings.", version)
+	return 0
+}
+
+func ParseTLSConfig(cfg TLSConfig) *tls.Config {
+	// Parses TLSConfig settings into a proper tls.Config object. Returns a pointer
+	// to nil if no settings were manually defined (i.e. cfg is empty) to keep tls disabled.
+	if cfg != (TLSConfig{}) {
+
+		return &tls.Config{
+			//Certificates []Certificate,
+			//RootCAs *x509.CertPool,
+			ServerName: cfg.ServerName,
+			//ClientCAs *x509.CertPool,
+			MinVersion: GetTLSVersion(cfg.MinVersion),
+			MaxVersion: GetTLSVersion(cfg.MaxVersion),
+		}
+	} else {
+		return nil
+	}
 }
 
 // Retrieves the current config value or default.

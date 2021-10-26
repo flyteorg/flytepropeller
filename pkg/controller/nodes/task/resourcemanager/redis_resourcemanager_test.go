@@ -2,11 +2,14 @@ package resourcemanager
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager/mocks"
+
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -133,4 +136,14 @@ func TestRedisResourceManager_checkAgainstConstraints(t *testing.T) {
 		assert.False(t, ok)
 		assert.Equal(t, 0, idx)
 	})
+}
+
+func TestRedisTLSConfig(t *testing.T) {
+	var st config.TLSConfig
+	cfg := config.GetConfig()
+	fmt.Println(cfg)
+
+	if st == cfg.RedisConfig.TLSConfig {
+		fmt.Println("Nothing set")
+	}
 }
