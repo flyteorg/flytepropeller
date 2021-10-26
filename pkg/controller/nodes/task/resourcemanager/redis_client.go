@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
-	rscConfig "github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
 
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/go-redis/redis"
@@ -55,29 +54,29 @@ func (r *Redis) Ping() (string, error) {
 	return r.c.Ping().Result()
 }
 
-func NewRedisClient(ctx context.Context, config config.RedisConfig) (RedisClient, error) {
+func NewRedisClient(ctx context.Context, cfg config.RedisConfig) (RedisClient, error) {
 	// Backward compatibility
-	if len(config.HostPaths) == 0 && len(config.HostPath) > 0 {
-		config.HostPaths = []string{config.HostPath}
+	if len(cfg.HostPaths) == 0 && len(cfg.HostPath) > 0 {
+		cfg.HostPaths = []string{cfg.HostPath}
 	}
 
 	client := &Redis{
 		c: redis.NewUniversalClient(&redis.UniversalOptions{
-			Addrs:      config.HostPaths,
-			MasterName: config.PrimaryName,
-			Password:   config.HostKey,
+			Addrs:      cfg.HostPaths,
+			MasterName: cfg.PrimaryName,
+			Password:   cfg.HostKey,
 			DB:         0, // use default DB
-			MaxRetries: config.MaxRetries,
-			TLSConfig:  rscConfig.ParseTLSConfig(config.TLSConfig),
+			MaxRetries: cfg.MaxRetries,
+			TLSConfig:  config.ParseTLSConfig(cfg.TLSConfig),
 		}),
 	}
 
 	_, err := client.Ping()
 	if err != nil {
-		logger.Errorf(ctx, "Error creating Redis client at [%+v]. Error: %v", config.HostPaths, err)
+		logger.Errorf(ctx, "Error creating Redis client at [%+v]. Error: %v", cfg.HostPaths, err)
 		return nil, err
 	}
 
-	logger.Infof(ctx, "Created Redis client with host [%+v]...", config.HostPaths)
+	logger.Infof(ctx, "Created Redis client with host [%+v]...", cfg.HostPaths)
 	return client, nil
 }
