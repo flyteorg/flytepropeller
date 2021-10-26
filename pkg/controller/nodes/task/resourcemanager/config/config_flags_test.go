@@ -197,4 +197,46 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_redis.tlsConfig.serverName", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("redis.tlsConfig.serverName", testValue)
+			if vString, err := cmdFlags.GetString("redis.tlsConfig.serverName"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.RedisConfig.TLSConfig.ServerName)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_redis.tlsConfig.minVersion", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("redis.tlsConfig.minVersion", testValue)
+			if vString, err := cmdFlags.GetString("redis.tlsConfig.minVersion"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.RedisConfig.TLSConfig.MinVersion)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_redis.tlsConfig.maxVersion", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("redis.tlsConfig.maxVersion", testValue)
+			if vString, err := cmdFlags.GetString("redis.tlsConfig.maxVersion"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.RedisConfig.TLSConfig.MaxVersion)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

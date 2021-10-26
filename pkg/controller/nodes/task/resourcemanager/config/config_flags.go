@@ -57,5 +57,8 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "redis.hostPath"), defaultConfig.RedisConfig.HostPath, "Redis host location")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "redis.hostKey"), defaultConfig.RedisConfig.HostKey, "Key for local Redis access")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "redis.maxRetries"), defaultConfig.RedisConfig.MaxRetries, "See Redis client options for more info")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "redis.tlsConfig.serverName"), defaultConfig.RedisConfig.TLSConfig.ServerName, "Used to verify the hostname.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "redis.tlsConfig.minVersion"), defaultConfig.RedisConfig.TLSConfig.MinVersion, "Minimum TLS version that is acceptable")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "redis.tlsConfig.maxVersion"), defaultConfig.RedisConfig.TLSConfig.MaxVersion, "Maximum TLS version that is acceptable.")
 	return cmdFlags
 }
