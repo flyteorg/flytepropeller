@@ -10,6 +10,7 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -59,14 +60,12 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 	}
 
 	// retrieve existing pods
-	labelSelector := &metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			"app": m.podApplication,
-		},
+	podLabels := map[string]string{
+		"app": m.podApplication,
 	}
 
 	listOptions := metav1.ListOptions{
-		LabelSelector: labelSelector.String(),
+		LabelSelector: labels.SelectorFromSet(podLabels).String(),
 	}
 
 	pods, err := m.kubePodsClient.List(ctx, listOptions)
@@ -152,8 +151,11 @@ func (m *Manager) Run(ctx context.Context) error {
 	<-ctx.Done()
 	logger.Info(ctx, "shutting down manager")
 
-	// TODO hamersaw - shutdown pods
-	/*podNames, err := m.getPodNames()
+	// delete pods using a new timeout context to bound the shutdown time
+	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	defer cancel()
+
+	podNames, err := m.getPodNames()
 	if err != nil {
 		return err
 	}
@@ -166,7 +168,7 @@ func (m *Manager) Run(ctx context.Context) error {
 		}
 
 		logger.Infof(ctx, "deleted pod '%s'", podName)
-	}*/
+	}
 
 	return nil
 }
