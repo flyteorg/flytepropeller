@@ -1,11 +1,14 @@
 package utils
 
 import (
+	"context"
+	"os"
 	"regexp"
 	"strings"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/pkg/errors"
@@ -13,6 +16,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var NotTheOwnerError = errors.Errorf("FlytePropeller is not the owner")
@@ -82,6 +88,33 @@ func ToK8sResourceRequirements(resources *core.Resources) (*v1.ResourceRequireme
 	res.Limits = lim
 	res.Requests = req
 	return res, nil
+}
+
+func GetKubeConfig(_ context.Context, cfg *config.Config) (*kubernetes.Clientset, *restclient.Config, error) {
+	var kubecfg *restclient.Config
+	var err error
+	if cfg.KubeConfigPath != "" {
+		kubeConfigPath := os.ExpandEnv(cfg.KubeConfigPath)
+		kubecfg, err = clientcmd.BuildConfigFromFlags(cfg.MasterURL, kubeConfigPath)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "Error building kubeconfig")
+		}
+	} else {
+		kubecfg, err = restclient.InClusterConfig()
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "Cannot get InCluster kubeconfig")
+		}
+	}
+
+	kubecfg.QPS = cfg.KubeConfig.QPS
+	kubecfg.Burst = cfg.KubeConfig.Burst
+	kubecfg.Timeout = cfg.KubeConfig.Timeout.Duration
+
+	kubeClient, err := kubernetes.NewForConfig(kubecfg)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "Error building kubernetes clientset")
+	}
+	return kubeClient, kubecfg, err
 }
 
 func GetWorkflowIDFromOwner(reference *metav1.OwnerReference, namespace string) (v1alpha1.WorkflowID, error) {

@@ -11,8 +11,7 @@ import (
 	"github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/config/viper"
 	"github.com/flyteorg/flytestdlib/logger"
-	// TODO hamersaw - enable
-	//"github.com/flyteorg/flytestdlib/profutils"
+	//"github.com/flyteorg/flytestdlib/profutils" // TODO hamersaw - enable
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/version"
 
@@ -20,15 +19,11 @@ import (
 	managerConfig "github.com/flyteorg/flytepropeller/manager/config"
 	propellerConfig "github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/signals"
-
-	"github.com/pkg/errors"
+	"github.com/flyteorg/flytepropeller/pkg/utils"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"k8s.io/client-go/kubernetes"
-	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 )
 
@@ -103,40 +98,13 @@ func logAndExit(err error) {
 	os.Exit(-1)
 }
 
-func getKubeConfig(_ context.Context, cfg *propellerConfig.Config) (*kubernetes.Clientset, *restclient.Config, error) {
-	var kubecfg *restclient.Config
-	var err error
-	if cfg.KubeConfigPath != "" {
-		kubeConfigPath := os.ExpandEnv(cfg.KubeConfigPath)
-		kubecfg, err = clientcmd.BuildConfigFromFlags(cfg.MasterURL, kubeConfigPath)
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "Error building kubeconfig")
-		}
-	} else {
-		kubecfg, err = restclient.InClusterConfig()
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "Cannot get InCluster kubeconfig")
-		}
-	}
-
-	kubecfg.QPS = cfg.KubeConfig.QPS
-	kubecfg.Burst = cfg.KubeConfig.Burst
-	kubecfg.Timeout = cfg.KubeConfig.Timeout.Duration
-
-	kubeClient, err := kubernetes.NewForConfig(kubecfg)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "Error building kubernetes clientset")
-	}
-	return kubeClient, kubecfg, err
-}
-
 func executeRootCmd(propellerCfg *propellerConfig.Config, cfg *managerConfig.Config) {
 	baseCtx := context.Background()
 
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler(baseCtx)
 
-	kubeClient, _, err := getKubeConfig(ctx, propellerCfg)
+	kubeClient, _, err := utils.GetKubeConfig(ctx, propellerCfg)
 	if err != nil {
 		logger.Fatalf(ctx, "Error building kubernetes clientset: %s", err.Error())
 	}

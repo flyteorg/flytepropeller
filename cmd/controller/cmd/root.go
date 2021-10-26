@@ -27,20 +27,15 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/profutils"
 	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 
 	"github.com/spf13/cobra"
-
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-
-	restclient "k8s.io/client-go/rest"
 
 	clientset "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned"
 	informers "github.com/flyteorg/flytepropeller/pkg/client/informers/externalversions"
 	"github.com/flyteorg/flytepropeller/pkg/controller"
 	"github.com/flyteorg/flytepropeller/pkg/signals"
+	"github.com/flyteorg/flytepropeller/pkg/utils"
 )
 
 const (
@@ -116,33 +111,6 @@ func logAndExit(err error) {
 	os.Exit(-1)
 }
 
-func getKubeConfig(_ context.Context, cfg *config2.Config) (*kubernetes.Clientset, *restclient.Config, error) {
-	var kubecfg *restclient.Config
-	var err error
-	if cfg.KubeConfigPath != "" {
-		kubeConfigPath := os.ExpandEnv(cfg.KubeConfigPath)
-		kubecfg, err = clientcmd.BuildConfigFromFlags(cfg.MasterURL, kubeConfigPath)
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "Error building kubeconfig")
-		}
-	} else {
-		kubecfg, err = restclient.InClusterConfig()
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "Cannot get InCluster kubeconfig")
-		}
-	}
-
-	kubecfg.QPS = cfg.KubeConfig.QPS
-	kubecfg.Burst = cfg.KubeConfig.Burst
-	kubecfg.Timeout = cfg.KubeConfig.Timeout.Duration
-
-	kubeClient, err := kubernetes.NewForConfig(kubecfg)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "Error building kubernetes clientset")
-	}
-	return kubeClient, kubecfg, err
-}
-
 func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption {
 	labelSelector := controller.IgnoreCompletedWorkflowsLabelSelector()
 	if len(cfg.IncludeShardKey) > 0 {
@@ -180,7 +148,7 @@ func executeRootCmd(cfg *config2.Config) {
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler(baseCtx)
 
-	kubeClient, kubecfg, err := getKubeConfig(ctx, cfg)
+	kubeClient, kubecfg, err := utils.GetKubeConfig(ctx, cfg)
 	if err != nil {
 		logger.Fatalf(ctx, "Error building kubernetes clientset: %s", err.Error())
 	}
