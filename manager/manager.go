@@ -8,6 +8,9 @@ import (
 	"github.com/flyteorg/flytepropeller/manager/config"
 
 	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
+
+	"github.com/prometheus/client_golang/prometheus"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -16,23 +19,32 @@ import (
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
+type metrics struct {
+	Scope       promutils.Scope
+	RoundTime   promutils.StopWatch
+	PodsCreated prometheus.Counter
+	PodsDeleted prometheus.Counter
+	PodsRunning prometheus.Gauge
+}
+
+func newManagerMetrics(scope promutils.Scope) *metrics {
+	return &metrics{
+		Scope:       scope,
+		RoundTime:   scope.MustNewStopWatch("round_time", "Time to perform one round of validating managed pod status'", time.Millisecond),
+		PodsCreated: scope.MustNewCounter("pods_created_count", "Total number of pods created"),
+		PodsDeleted: scope.MustNewCounter("pods_deleted_count", "Total number of pods deleted"),
+		PodsRunning: scope.MustNewGauge("pods_running_count", "Number of managed pods currently running"),
+	}
+}
+
 type Manager struct {
 	kubePodsClient corev1.PodInterface
+	metrics        *metrics
 	pod            *v1.Pod
 	podApplication string
 	scanInterval   time.Duration
 	shardStrategy  ShardStrategy
-
-	// Kubernetes API.
-	//metrics       *metrics
 }
-
-// TODO hamersaw - integrate prometheus metrics
-/*type metrics struct {
-	Scope            promutils.Scope
-	EnqueueCountWf   prometheus.Counter
-	EnqueueCountTask prometheus.Counter
-}*/
 
 // TODO hamersaw - document: deterministically generate pod names - separate function to facilitate auto-scaling
 func (m *Manager) getPodNames() ([]string, error) {
@@ -50,7 +62,32 @@ func (m *Manager) getPodNames() ([]string, error) {
 	return podNames, nil
 }
 
+// TODO hamersaw - document
+func (m *Manager) deletePods(ctx context.Context) error {
+	podNames, err := m.getPodNames()
+	if err != nil {
+		return err
+	}
+
+	for _, podName := range podNames {
+		err := m.kubePodsClient.Delete(ctx, podName, metav1.DeleteOptions{})
+		if err != nil {
+			logger.Errorf(ctx, "failed to delete pod '%s' [%v]", podName, err)
+			continue
+		}
+
+		m.metrics.PodsCreated.Inc()
+		logger.Infof(ctx, "deleted pod '%s'", podName)
+	}
+
+	return nil
+}
+
+// TODO hamersaw - document
 func (m *Manager) recoverPods(ctx context.Context) error {
+	t := m.metrics.RoundTime.Start()
+	defer t.Stop()
+
 	// TODO hamersaw - do we need to handle pods with Error status?
 	// with 3 pods locally we get "too many open files"
 
@@ -84,14 +121,21 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 		podExists[podName] = false
 	}
 
+	podsRunning := 0
 	for _, pod := range pods.Items {
 		podName := pod.ObjectMeta.Name
 		if _, ok := podExists[podName]; ok {
 			podExists[podName] = true
+
+			if pod.Status.Phase == v1.PodRunning {
+				podsRunning++
+			}
 		} else {
 			logger.Warnf(ctx, "detected unmanaged pod '%s'", podName)
 		}
 	}
+
+	m.metrics.PodsRunning.Set(float64(podsRunning))
 
 	// create non-existent pods
 	for i, podName := range podNames {
@@ -105,20 +149,13 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 				continue
 			}
 
-			// TODO hamersaw - tmp
-			/*for _, container := range pod.Spec.Containers {
-				fmt.Printf("CONTAINER: %v\n", container.Image)
-				for _, arg := range container.Args {
-					fmt.Printf("  %s\n", arg)
-				}
-			}*/
-
 			_, err = m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
 			if err != nil {
 				logger.Errorf(ctx, "failed to create pod '%s' [%v]", podName, err)
 				continue
 			}
 
+			m.metrics.PodsCreated.Inc()
 			logger.Infof(ctx, "created pod '%s'", podName)
 		}
 	}
@@ -126,7 +163,10 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 	return nil
 }
 
+// TODO hamersaw - document
 func (m *Manager) Run(ctx context.Context) error {
+	// TODO hamersaw - switch to wait.UntilWithContext
+	// https://github.com/kubernetes/apimachinery/blob/master/pkg/util/wait/wait.go#L98
 	ticker := time.NewTicker(m.scanInterval)
 	defer ticker.Stop()
 
@@ -155,25 +195,14 @@ func (m *Manager) Run(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
 	defer cancel()
 
-	podNames, err := m.getPodNames()
-	if err != nil {
-		return err
-	}
-
-	for _, podName := range podNames {
-		err := m.kubePodsClient.Delete(ctx, podName, metav1.DeleteOptions{})
-		if err != nil {
-			logger.Errorf(ctx, "failed to delete pod '%s' [%v]", podName, err)
-			continue
-		}
-
-		logger.Infof(ctx, "deleted pod '%s'", podName)
+	if err := m.deletePods(ctx); err != nil {
+		logger.Errorf(ctx, "failed to delete pods [%v]", err)
 	}
 
 	return nil
 }
 
-func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interface) (*Manager, error) {
+func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interface, scope promutils.Scope) (*Manager, error) {
 	shardStrategy, err := NewShardStrategy(ctx, cfg.ShardConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to intialize shard strategy [%v]", err)
@@ -202,6 +231,7 @@ func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interfac
 
 	manager := &Manager{
 		kubePodsClient: kubeClient.CoreV1().Pods(cfg.PodNamespace),
+		metrics:        newManagerMetrics(scope),
 		pod:            pod,
 		podApplication: cfg.PodApplication,
 		scanInterval:   cfg.ScanInterval.Duration,

@@ -31,8 +31,7 @@ type ShardType = string
 
 const (
 	ConsistentHashingShardType ShardType = "consistent-hashing"
-	// TODO - implement
-	//ProjectShardType           ShardType = "project"
+	//ProjectShardType           ShardType = "project" // TODO hamersaw - implement
 )
 
 type ShardConfig struct {

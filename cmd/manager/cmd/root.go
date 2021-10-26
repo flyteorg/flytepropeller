@@ -7,14 +7,13 @@ import (
 	"os"
 	"runtime"
 	//"runtime/pprof" // TODO hamersaw - add pprof
-	"strings"
 
 	"github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/config/viper"
 	"github.com/flyteorg/flytestdlib/logger"
 	// TODO hamersaw - enable
 	//"github.com/flyteorg/flytestdlib/profutils"
-	//"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/version"
 
 	"github.com/flyteorg/flytepropeller/manager"
@@ -131,11 +130,6 @@ func getKubeConfig(_ context.Context, cfg *propellerConfig.Config) (*kubernetes.
 	return kubeClient, kubecfg, err
 }
 
-func safeMetricName(original string) string {
-	// TODO: Replace all non-prom-compatible charset
-	return strings.Replace(original, "-", "_", -1)
-}
-
 func executeRootCmd(propellerCfg *propellerConfig.Config, cfg *managerConfig.Config) {
 	baseCtx := context.Background()
 
@@ -147,42 +141,18 @@ func executeRootCmd(propellerCfg *propellerConfig.Config, cfg *managerConfig.Con
 		logger.Fatalf(ctx, "Error building kubernetes clientset: %s", err.Error())
 	}
 
-	// TODO hamersaw - reenable for metrics
-	/*// Add the propeller subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
-	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(safeMetricName(propellerCfg.LimitNamespace))
+	// Add the propeller_manager subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
+	scope := promutils.NewScope(propellerCfg.MetricsPrefix).NewSubScope("propeller_manager")
 
-	go func() {
+	// TODO hamersaw - reenable for metrics
+	/*go func() {
 		err := profutils.StartProfilingServerWithDefaultHandlers(ctx, propellerCfg.ProfilerPort.Port, nil)
 		if err != nil {
 			logger.Panicf(ctx, "Failed to Start profiling and metrics server. Error: %v", err)
 		}
 	}()*/
 
-
-	/*limitNamespace := ""
-	if propellerCfg.LimitNamespace != defaultNamespace {
-		limitNamespace = propellerCfg.LimitNamespace
-	}
-
-	// Creates a MutationConfig to instruct ApiServer to call this service whenever a Pod is being created.
-	err = createMutationConfig(ctx, kubeClient, secretsManager)
-	if err != nil {
-		return err
-	}
-
-	mgr, err := manager.New(kubecfg, manager.Options{
-		Port:          cfg.ListenPort,
-		CertDir:       cfg.CertDir,
-		Namespace:     limitNamespace,
-		SyncPeriod:    &propellerCfg.DownstreamEval.Duration,
-		ClientBuilder: executors.NewFallbackClientBuilder(),
-	})
-
-	if err != nil {
-		logger.Fatalf(ctx, "Failed to initialize controller run-time manager. Error: %v", err)
-	}*/
-
-	m, err := manager.New(ctx, cfg, kubeClient)
+	m, err := manager.New(ctx, cfg, kubeClient, scope)
 	if err != nil {
 		logger.Fatalf(ctx, "Failed to start Manager - [%v]", err.Error())
 	} else if m == nil {
