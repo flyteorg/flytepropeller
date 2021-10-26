@@ -152,4 +152,3 @@ func getFlytePropellerContainer(pod *v1.PodSpec) (*v1.Container, error) {
 
 	return containers[0], nil
 }
-

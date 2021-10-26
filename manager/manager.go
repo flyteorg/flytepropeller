@@ -13,8 +13,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
@@ -62,7 +63,6 @@ func (m *Manager) getPodNames() ([]string, error) {
 	return podNames, nil
 }
 
-// TODO hamersaw - document
 func (m *Manager) deletePods(ctx context.Context) error {
 	podNames, err := m.getPodNames()
 	if err != nil {
@@ -83,7 +83,6 @@ func (m *Manager) deletePods(ctx context.Context) error {
 	return nil
 }
 
-// TODO hamersaw - document
 func (m *Manager) recoverPods(ctx context.Context) error {
 	t := m.metrics.RoundTime.Start()
 	defer t.Stop()
@@ -163,29 +162,17 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 	return nil
 }
 
-// TODO hamersaw - document
 func (m *Manager) Run(ctx context.Context) error {
-	// TODO hamersaw - switch to wait.UntilWithContext
-	// https://github.com/kubernetes/apimachinery/blob/master/pkg/util/wait/wait.go#L98
-	ticker := time.NewTicker(m.scanInterval)
-	defer ticker.Stop()
-
-	go func() {
-		for {
+	wait.UntilWithContext(ctx,
+		func(ctx context.Context) {
 			logger.Debugf(ctx, "validating managed pod(s) state")
 			err := m.recoverPods(ctx)
 			if err != nil {
 				logger.Errorf(ctx, "failed to recover pods [%v]", err)
 			}
-
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				continue
-			}
-		}
-	}()
+		},
+		m.scanInterval,
+	)
 
 	logger.Info(ctx, "started manager")
 	<-ctx.Done()
