@@ -77,7 +77,6 @@ func ParseTLSConfig(cfg TLSConfig) *tls.Config {
 	// Parses TLSConfig settings into a proper tls.Config object. Returns a pointer
 	// to nil if no settings were manually defined (i.e. cfg is empty) to keep tls disabled.
 	if cfg != (TLSConfig{}) {
-
 		return &tls.Config{
 			//Certificates []Certificate,
 			//RootCAs *x509.CertPool,
@@ -86,9 +85,8 @@ func ParseTLSConfig(cfg TLSConfig) *tls.Config {
 			MinVersion: GetTLSVersion(cfg.MinVersion),
 			MaxVersion: GetTLSVersion(cfg.MaxVersion),
 		}
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // Retrieves the current config value or default.
