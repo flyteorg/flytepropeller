@@ -40,7 +40,7 @@ type ReplicaConfig struct {
 type ShardConfig struct {
 	Type              ShardType       `json:"type" pflag:",Shard implementation to use"`
 	//StartUncoveredInstance bool // TODO hamersaw - add
-	NamespaceReplicas []ReplicaConfig `json:"replicas" pflag:",A list of replicas for managing different namespace collections"`
+	NamespaceReplicas []ReplicaConfig `json:"replicas" pflag:"-"`
 	PodCount          int             `json:"pod-count" pflag:",The number of pods to manage for consistent hashing"`
 }
 

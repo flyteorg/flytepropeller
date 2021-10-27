@@ -729,28 +729,56 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_include-shard-key", func(t *testing.T) {
+	t.Run("Test_include-namespace-label", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
 			testValue := join_Config("1,1", ",")
 
-			cmdFlags.Set("include-shard-key", testValue)
-			if vStringSlice, err := cmdFlags.GetStringSlice("include-shard-key"); err == nil {
-				testDecodeRaw_Config(t, join_Config(vStringSlice, ","), &actual.IncludeShardKey)
+			cmdFlags.Set("include-namespace-label", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("include-namespace-label"); err == nil {
+				testDecodeRaw_Config(t, join_Config(vStringSlice, ","), &actual.IncludeNamespaceLabel)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_exclude-shard-key", func(t *testing.T) {
+	t.Run("Test_exclude-namespace-label", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
 			testValue := join_Config("1,1", ",")
 
-			cmdFlags.Set("exclude-shard-key", testValue)
-			if vStringSlice, err := cmdFlags.GetStringSlice("exclude-shard-key"); err == nil {
-				testDecodeRaw_Config(t, join_Config(vStringSlice, ","), &actual.ExcludeShardKey)
+			cmdFlags.Set("exclude-namespace-label", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("exclude-namespace-label"); err == nil {
+				testDecodeRaw_Config(t, join_Config(vStringSlice, ","), &actual.ExcludeNamespaceLabel)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_include-shard-label", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := join_Config("1,1", ",")
+
+			cmdFlags.Set("include-shard-label", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("include-shard-label"); err == nil {
+				testDecodeRaw_Config(t, join_Config(vStringSlice, ","), &actual.IncludeShardLabel)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_exclude-shard-label", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := join_Config("1,1", ",")
+
+			cmdFlags.Set("exclude-shard-label", testValue)
+			if vStringSlice, err := cmdFlags.GetStringSlice("exclude-shard-label"); err == nil {
+				testDecodeRaw_Config(t, join_Config(vStringSlice, ","), &actual.ExcludeShardLabel)
 
 			} else {
 				assert.FailNow(t, err.Error())

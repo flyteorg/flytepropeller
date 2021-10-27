@@ -113,17 +113,10 @@ func logAndExit(err error) {
 
 func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption {
 	labelSelector := controller.IgnoreCompletedWorkflowsLabelSelector()
-	if len(cfg.IncludeShardKey) > 0 {
-		labelSelectorRequirement := v1.LabelSelectorRequirement{"shardKey", v1.LabelSelectorOpIn, cfg.IncludeShardKey}
-
-		labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, labelSelectorRequirement)
-	}
-
-	if len(cfg.ExcludeShardKey) > 0 {
-		labelSelectorRequirement := v1.LabelSelectorRequirement{"shardKey", v1.LabelSelectorOpNotIn, cfg.ExcludeShardKey}
-
-		labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, labelSelectorRequirement)
-	}
+	addLabelSelector(labelSelector, "shard", v1.LabelSelectorOpIn, cfg.IncludeShardLabel)
+	addLabelSelector(labelSelector, "shard", v1.LabelSelectorOpNotIn, cfg.ExcludeShardLabel)
+	addLabelSelector(labelSelector, "namespace", v1.LabelSelectorOpIn, cfg.IncludeNamespaceLabel)
+	addLabelSelector(labelSelector, "namespace", v1.LabelSelectorOpNotIn, cfg.ExcludeNamespaceLabel)
 
 	opts := []informers.SharedInformerOption{
 		informers.WithTweakListOptions(func(options *v1.ListOptions) {
@@ -135,6 +128,14 @@ func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption
 		opts = append(opts, informers.WithNamespace(cfg.LimitNamespace))
 	}
 	return opts
+}
+
+func addLabelSelector(labelSelector *v1.LabelSelector, key string, labelSelectorOp v1.LabelSelectorOperator, values []string) {
+	if len(values) > 0 {
+		labelSelectorRequirement := v1.LabelSelectorRequirement{key, labelSelectorOp, values}
+
+		labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, labelSelectorRequirement)
+	}
 }
 
 func safeMetricName(original string) string {
