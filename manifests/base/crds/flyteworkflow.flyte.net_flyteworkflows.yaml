@@ -4,15 +4,17 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.0
+    controller-gen.kubebuilder.io/version: v0.7.0
   creationTimestamp: null
-  name: flyteworkflows.flyteworkflow.flyte.net
+  name: flyteworkflows.flyte.lyft.com
 spec:
-  group: flyteworkflow.flyte.net
+  group: flyte.lyft.com
   names:
     kind: FlyteWorkflow
     listKind: FlyteWorkflowList
     plural: flyteworkflows
+    shortNames:
+    - fly
     singular: flyteworkflow
   scope: Namespaced
   versions:
@@ -175,13 +177,6 @@ spec:
                 type: string
             type: object
           inputs:
-            properties:
-              literals:
-                additionalProperties:
-                  description: A simple value. This supports any level of nesting
-                    (e.g. array of array of array of Blobs) as well as simple primitives.
-                  type: object
-                type: object
             type: object
           kind:
             description: 'Kind is a string value representing the REST resource this
@@ -2796,7 +2791,7 @@ spec:
                       format: date-time
                       type: string
                     subNodeStatus:
-                      additionalProperties: {}
+                      additionalProperties: true
                       type: object
                     systemFailures:
                       format: int32

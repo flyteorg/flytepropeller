@@ -20,7 +20,7 @@ const EndNodeID = "end-node"
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
+// +kubebuilder:resource:shortName=fly
 // FlyteWorkflow: represents one Execution Workflow object
 type FlyteWorkflow struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -153,6 +153,7 @@ func (in *FlyteWorkflow) GetRawOutputDataConfig() RawOutputDataConfig {
 	return in.RawOutputDataConfig
 }
 
+// +kubebuilder:validation:Type=object
 type Inputs struct {
 	*core.LiteralMap `json:",inline"`
 }

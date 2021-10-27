@@ -3,18 +3,24 @@ include boilerplate/flyte/docker_build/Makefile
 include boilerplate/flyte/golang_test_targets/Makefile
 include boilerplate/flyte/end2end/Makefile
 
-CRD_OPTIONS ?= "crd:preserveUnknownFields=false,generateEmbeddedObjectMeta=true"
+CRD_OPTIONS ?= "crd:generateEmbeddedObjectMeta=true"
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 OPENAPI_GEN = $(shell pwd)/bin/openapi-gen
+CRD_FILE =  $(shell pwd)/manifests/base/crds/flyteworkflow.flyte.net_flyteworkflows.yaml
 
 controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.0)
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.7.0)
 
 openapi-gen:
 	$(call go-get-tool,$(OPENAPI_GEN),k8s.io/kube-openapi/cmd/openapi-gen@v0.0.0-20200805222855-6aeccd4b50c6)
 
 manifests: controller-gen ## Generate CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/flyteworkflow/..." output:crd:artifacts:config=manifests/base/crds || true
+	# Kubernetes cannot allow additionalProperties value to be empty.
+	# More detail: https://github.com/kubernetes/kubernetes/issues/90504
+	perl -p -i -e 's/additionalProperties: {}/additionalProperties: true/g' $(CRD_FILE)
+	perl -p -i -e 's/flyteworkflows.flyteworkflow.flyte.net/flyteworkflows.flyte.lyft.com/g' $(CRD_FILE)
+	perl -p -i -e 's/flyteworkflow.flyte.net/flyte.lyft.com/g' $(CRD_FILE)
 
 .PHONY: update_boilerplate
 update_boilerplate:
@@ -41,7 +47,7 @@ cross_compile:
 openapi_generate: openapi-gen
 	$(OPENAPI_GEN) -i github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1 \
 				   -p github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1 \
-				   --go-header-file hack/boilerplate.go.txt
+				   --go-header-file hack/boilerplate.go.txt 2>&1 > /dev/null
 
 op_code_generate: openapi_generate manifests
 	@RESOURCE_NAME=flyteworkflow OPERATOR_PKG=github.com/flyteorg/flytepropeller ./hack/update-codegen.sh

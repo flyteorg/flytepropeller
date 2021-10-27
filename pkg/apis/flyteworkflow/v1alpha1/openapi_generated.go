@@ -84,8 +84,18 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_Binding(ref common.ReferenceCallback
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"Binding": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core.Binding"),
+						},
+					},
+				},
+				Required: []string{"Binding"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core.Binding"},
 	}
 }
 
@@ -94,8 +104,18 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_BooleanExpression(ref common.Referen
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"BooleanExpression": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core.BooleanExpression"),
+						},
+					},
+				},
+				Required: []string{"BooleanExpression"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core.BooleanExpression"},
 	}
 }
 
@@ -235,7 +255,7 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_DeprecatedConnections(ref common.Ref
 				Description: "Deprecated: Please use Connections instead",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"downstreamEdges": {
+					"DownstreamEdges": {
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
@@ -256,7 +276,7 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_DeprecatedConnections(ref common.Ref
 							},
 						},
 					},
-					"upstreamEdges": {
+					"UpstreamEdges": {
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
@@ -978,7 +998,7 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_NodeStatus(ref common.ReferenceCallb
 						},
 					},
 				},
-				Required: []string{"phase", "attempts", "cached"},
+				Required: []string{"phase"},
 			},
 		},
 		Dependencies: []string{
@@ -991,8 +1011,18 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_OutputVarMap(ref common.ReferenceCal
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"VariableMap": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core.VariableMap"),
+						},
+					},
+				},
+				Required: []string{"VariableMap"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core.VariableMap"},
 	}
 }
 
@@ -1074,6 +1104,12 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_TaskNodeStatus(ref common.ReferenceC
 							Format: "int64",
 						},
 					},
+					"updAt": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "date-time",
+						},
+					},
 				},
 			},
 		},
@@ -1086,7 +1122,7 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_TaskPluginOverride(ref common.Refere
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"pluginIDs": {
+					"PluginsIDs": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
 								"x-kubernetes-list-type": "atomic",
@@ -1104,14 +1140,14 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_TaskPluginOverride(ref common.Refere
 							},
 						},
 					},
-					"missingPluginBehavior": {
+					"MissingPluginBehavior": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
 							Format: "int32",
 						},
 					},
 				},
-				Required: []string{"missingPluginBehavior"},
+				Required: []string{"MissingPluginBehavior"},
 			},
 		},
 	}
@@ -1144,8 +1180,12 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_TaskResourceSpec(ref common.Referenc
 							Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
 						},
 					},
+					"GPU": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+						},
+					},
 				},
-				Required: []string{"CPU", "Memory", "EphemeralStorage", "Storage"},
 			},
 		},
 		Dependencies: []string{
@@ -1186,8 +1226,18 @@ func schema_pkg_apis_flyteworkflow_v1alpha1_TaskSpec(ref common.ReferenceCallbac
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"TaskTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core.TaskTemplate"),
+						},
+					},
+				},
+				Required: []string{"TaskTemplate"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core.TaskTemplate"},
 	}
 }
 

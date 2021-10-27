@@ -184,6 +184,7 @@ func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
 	}
 }
 
+// +kubebuilder:validation:type=object
 type NodeStatus struct {
 	MutableStruct        `json:"-"`
 	Phase                NodePhase     `json:"phase"`

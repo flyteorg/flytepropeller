@@ -12,6 +12,7 @@ import (
 
 var marshaler = jsonpb.Marshaler{}
 
+// +kubebuilder:validation:Type=object
 type OutputVarMap struct {
 	*core.VariableMap
 }
@@ -37,6 +38,7 @@ func (in *OutputVarMap) DeepCopyInto(out *OutputVarMap) {
 	// Once we figure out the autogenerate story we can replace this
 }
 
+// +kubebuilder:validation:Type=object
 type Binding struct {
 	*core.Binding
 }

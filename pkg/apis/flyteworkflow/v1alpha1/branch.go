@@ -36,6 +36,7 @@ func (in *Error) DeepCopyInto(out *Error) {
 
 }
 
+// +kubebuilder:validation:Type=object
 type BooleanExpression struct {
 	*core.BooleanExpression
 }
