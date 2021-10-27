@@ -106,7 +106,7 @@ func executeRootCmd(propellerCfg *propellerConfig.Config, cfg *managerConfig.Con
 
 	kubeClient, _, err := utils.GetKubeConfig(ctx, propellerCfg)
 	if err != nil {
-		logger.Fatalf(ctx, "Error building kubernetes clientset: %s", err.Error())
+		logger.Fatalf(ctx, "error building kubernetes clientset: %s", err.Error())
 	}
 
 	// Add the propeller_manager subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
@@ -122,12 +122,12 @@ func executeRootCmd(propellerCfg *propellerConfig.Config, cfg *managerConfig.Con
 
 	m, err := manager.New(ctx, cfg, kubeClient, scope)
 	if err != nil {
-		logger.Fatalf(ctx, "Failed to start Manager - [%v]", err.Error())
+		logger.Fatalf(ctx, "failed to start Manager - [%v]", err.Error())
 	} else if m == nil {
-		logger.Fatalf(ctx, "Failed to start Manager, nil manager received.")
+		logger.Fatalf(ctx, "failed to start Manager, nil manager received.")
 	}
 
 	if err = m.Run(ctx); err != nil {
-		logger.Fatalf(ctx, "Error running Manager: %s", err.Error())
+		logger.Fatalf(ctx, "error running Manager: %s", err.Error())
 	}
 }

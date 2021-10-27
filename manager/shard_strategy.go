@@ -11,6 +11,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+const ConsistentHashingKeyspaceSize = 32;
+
 type ShardStrategy interface {
 	GetPodCount() (int, error)
 	UpdatePodSpec(pod *v1.PodSpec, podIndex int) error
@@ -19,9 +21,9 @@ type ShardStrategy interface {
 func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (ShardStrategy, error) {
 	switch shardConfig.Type {
 	case config.ConsistentHashingShardType:
+		// TODO - validate podCount < ConsistentHashingKeyspaceSize
 		return &ConsistentHashingShardStrategy{
 			podCount: shardConfig.PodCount,
-			keyspaceSize: shardConfig.KeyspaceSize,
 		}, nil
 	}
 
@@ -30,7 +32,6 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 
 type ConsistentHashingShardStrategy struct {
 	podCount int
-	keyspaceSize int
 }
 
 func (c *ConsistentHashingShardStrategy) GetPodCount() (int, error) {
@@ -43,7 +44,7 @@ func (c *ConsistentHashingShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex
 		return err
 	}
 
-	startKey, endKey := computeKeyRange(c.keyspaceSize, c.podCount, podIndex)
+	startKey, endKey := computeKeyRange(ConsistentHashingKeyspaceSize, c.podCount, podIndex)
 	for i := startKey; i < endKey; i++ {
 		container.Args = append(container.Args, "--propeller.include-shard-key", fmt.Sprintf("%d", i))
 	}
@@ -66,7 +67,7 @@ func computeStartKey(keysPerPod, keysRemainder, podIndex int) int {
 }
 
 func intMin(a, b int) int {
-	if a < b{
+	if a < b {
 		return a
 	}
 
@@ -74,7 +75,7 @@ func intMin(a, b int) int {
 }
 
 func intMax(a, b int) int {
-	if a > b{
+	if a > b {
 		return a
 	}
 

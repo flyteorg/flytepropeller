@@ -3,9 +3,11 @@ package k8s
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytepropeller/manager"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
@@ -198,7 +200,10 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: namespace,
-			Labels:    map[string]string{},
+			Labels:    map[string]string{
+				"namespace": namespace,
+				"shard":     string(rand.Intn(manager.ConsistentHashingKeyspaceSize)),
+			},
 		},
 		Inputs:       &v1alpha1.Inputs{LiteralMap: inputs},
 		WorkflowSpec: primarySpec,

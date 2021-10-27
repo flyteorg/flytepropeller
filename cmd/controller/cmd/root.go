@@ -120,7 +120,7 @@ func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption
 	}
 
 	if len(cfg.ExcludeShardKey) > 0 {
-		labelSelectorRequirement := v1.LabelSelectorRequirement{"shardKey", v1.LabelSelectorOpNotIn, cfg.IncludeShardKey}
+		labelSelectorRequirement := v1.LabelSelectorRequirement{"shardKey", v1.LabelSelectorOpNotIn, cfg.ExcludeShardKey}
 
 		labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, labelSelectorRequirement)
 	}

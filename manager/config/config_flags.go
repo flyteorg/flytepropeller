@@ -50,13 +50,12 @@ func (Config) mustMarshalJSON(v json.Marshaler) string {
 // flags is json-name.json-sub-name... etc.
 func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags := pflag.NewFlagSet("Config", pflag.ExitOnError)
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-application"), DefaultConfig.PodApplication, " Application name for managed pods")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-namespace"), DefaultConfig.PodNamespace, " Namespace to use for managing FlytePropeller pods")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-template"), DefaultConfig.PodTemplate, " K8s PodTemplate name to use for starting FlytePropeller pods")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-template-namespace"), DefaultConfig.PodTemplateNamespace, " Namespace where the k8s PodTemplate is located")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "scan-interval"), DefaultConfig.ScanInterval.String(), " Frequency to scan FlytePropeller pods and start / restart if necessary")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-application"), DefaultConfig.PodApplication, "Application name for managed pods")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-namespace"), DefaultConfig.PodNamespace, "Namespace to use for managing FlytePropeller pods")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-template"), DefaultConfig.PodTemplate, "K8s PodTemplate name to use for starting FlytePropeller pods")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-template-namespace"), DefaultConfig.PodTemplateNamespace, "Namespace where the k8s PodTemplate is located")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "scan-interval"), DefaultConfig.ScanInterval.String(), "Frequency to scan FlytePropeller pods and start / restart if necessary")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "shard.type"), DefaultConfig.ShardConfig.Type, "Shard implementation to use")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "shard.pod-count"), DefaultConfig.ShardConfig.PodCount, "The number of pods to manage for consistent hashing")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "shard.keyspace-size"), DefaultConfig.ShardConfig.KeyspaceSize, "Size of the keyspace to use in consistent hashing")
 	return cmdFlags
 }
