@@ -25,6 +25,15 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 		return &ConsistentHashingShardStrategy{
 			podCount: shardConfig.PodCount,
 		}, nil
+	case config.NamespaceShardType:
+		namespaceReplicas := make([][]string, 0)
+		for _, namespaceReplica := range shardConfig.NamespaceReplicas {
+			namespaceReplicas = append(namespaceReplicas, namespaceReplica.Namespaces)
+		}
+
+		return &NamespaceShardStrategy{
+			namespaceReplicas: namespaceReplicas,
+		}, nil
 	}
 
 	return nil, fmt.Errorf("shard strategy '%s' does not exist", shardConfig.Type)
@@ -39,6 +48,7 @@ func (c *ConsistentHashingShardStrategy) GetPodCount() (int, error) {
 }
 
 func (c *ConsistentHashingShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
+	// TODO hamersaw - validate podIndex
 	container, err := getFlytePropellerContainer(pod)
 	if err != nil {
 		return err
@@ -83,58 +93,36 @@ func intMax(a, b int) int {
 }
 
 /*
-TODO hamersaw - implement LoadBalancingShardStrategy
-
-add "--report-metrics=id" statistics to flytepropeller command
-
-report metrics does two things
-(1) uses label selectors on FlyteWorkflow CRD for the specified id
-(2) launches a periodic metric report of workflow(s) / node(s) / task(s)
-
-flyteadmin uses the metric reports to label FlyteWorkflow CRDs based on usage
-*/
-type LoadBalancingShardStrategy struct {
-}
-
-func (l *LoadBalancingShardStrategy) GetPodCount() (int, error) {
-	return -1, errors.New("unimplemented")
-}
-
-func (l *LoadBalancingShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
-	return errors.New("unimplemented")
-}
-
-/*
-TODO hamersaw - implement ProjectDomainShardStrategy
-
-project domain shard strategy configuration includes a list of lists of <project, domain> KV pairs. for example:
+namespace shard strategy configuration includes a list namespaces for example:
 strategy:
-- node:
-  - pair:
-    project: flytesnacks
-    domain: development
-  - pair:
-    project: flytesnacks
-    domain: staging
-- node:
-  - pair:
-    project: flytefoo
-
-this strategy starts len(node) + 1 nodes where each node is responsible for the project:domain hashes (with a large hashspace - 64bits?) defined and one more for everything else. nodes for the previous example:
-
-node 0 "token in [4, 8]" // one hash for each KV pair
-node 1 "token in [3, 7, 12]" // for staging, development, production domains
-node 2 "token not in [4, 8, 3, 7, 12]" // handle all unhandled CRDs
+- replicas:
+  - namespaces:
+    - flytesnacks-production
+    - flyteexamples-production
+  - namespaces:
+    - flytesnacks-development
 */
-type ProjectDomainShardStrategy struct {
+
+type NamespaceShardStrategy struct {
+	namespaceReplicas [][]string
 }
 
-func (p *ProjectDomainShardStrategy) GetPodCount() (int, error) {
-	return -1, errors.New("unimplemented")
+func (n *NamespaceShardStrategy) GetPodCount() (int, error) {
+	return len(n.namespaceReplicas), nil
 }
 
-func (p *ProjectDomainShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
-	return errors.New("unimplemented")
+func (n *NamespaceShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
+	// TODO hamersaw - validate podIndex
+	container, err := getFlytePropellerContainer(pod)
+	if err != nil {
+		return err
+	}
+
+	for _, namespace := range n.namespaceReplicas[podIndex] {
+		container.Args = append(container.Args, "--propeller.include-namespace-label", fmt.Sprintf("%s", namespace))
+	}
+
+	return nil
 }
 
 func getFlytePropellerContainer(pod *v1.PodSpec) (*v1.Container, error) {

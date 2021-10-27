@@ -30,12 +30,18 @@ type ShardType = string
 
 const (
 	ConsistentHashingShardType ShardType = "consistent-hashing"
-	//ProjectShardType           ShardType = "project" // TODO hamersaw - implement
+	NamespaceShardType         ShardType = "namespace"
 )
 
+type ReplicaConfig struct {
+	Namespaces []string `json:"namespaces" pflag:",The list of namespaces to be managed"`
+}
+
 type ShardConfig struct {
-	Type         ShardType `json:"type" pflag:",Shard implementation to use"`
-	PodCount     int       `json:"pod-count" pflag:",The number of pods to manage for consistent hashing"`
+	Type              ShardType       `json:"type" pflag:",Shard implementation to use"`
+	//StartUncoveredInstance bool // TODO hamersaw - add
+	NamespaceReplicas []ReplicaConfig `json:"replicas" pflag:",A list of replicas for managing different namespace collections"`
+	PodCount          int             `json:"pod-count" pflag:",The number of pods to manage for consistent hashing"`
 }
 
 type Config struct {
