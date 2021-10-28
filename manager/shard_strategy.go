@@ -11,7 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-const ConsistentHashingKeyspaceSize = 32;
+const ShardKeyspaceSize = 32;
 
 type ShardStrategy interface {
 	GetPodCount() (int, error)
@@ -20,14 +20,14 @@ type ShardStrategy interface {
 
 func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (ShardStrategy, error) {
 	switch shardConfig.Type {
-	case config.ConsistentHashingShardType:
+	case config.RandomShardType:
 		if shardConfig.PodCount <= 0 {
 			return nil, fmt.Errorf("configured PodCount (%d) must be greater than zero", shardConfig.PodCount)
-		} else if shardConfig.PodCount > ConsistentHashingKeyspaceSize {
-			return nil, fmt.Errorf("configured PodCount (%d) is larger than available keyspace size (%d)", shardConfig.PodCount, ConsistentHashingKeyspaceSize)
+		} else if shardConfig.PodCount > ShardKeyspaceSize {
+			return nil, fmt.Errorf("configured PodCount (%d) is larger than available keyspace size (%d)", shardConfig.PodCount, ShardKeyspaceSize)
 		}
 
-		return &ConsistentHashingShardStrategy{
+		return &RandomShardStrategy{
 			podCount: shardConfig.PodCount,
 		}, nil
 	case config.NamespaceShardType:
@@ -48,24 +48,25 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 	return nil, fmt.Errorf("shard strategy '%s' does not exist", shardConfig.Type)
 }
 
-// The ConsistentHashingShardStrategy load-balances FlyteWorkflow processing by evenly distributing
-// keyspace range responsibilities between a collection of pods. Each keyspace token is assigned to
-// a single FlytePropeller controller ensuring deterministic processing.
-type ConsistentHashingShardStrategy struct {
+
+// RandomShardStrategy evenly assigns disjoint keyspace responsiblities over a collection of pods.
+// All FlyteWorkflows are labeled with a pseudo-random keyspace token (ie. shard) and are then
+// processed by the FlytePropeller instance responsible for that keyspace token.
+type RandomShardStrategy struct {
 	podCount int
 }
 
-func (c *ConsistentHashingShardStrategy) GetPodCount() (int, error) {
+func (c *RandomShardStrategy) GetPodCount() (int, error) {
 	return c.podCount, nil
 }
 
-func (c *ConsistentHashingShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
+func (c *RandomShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 	container, err := getFlytePropellerContainer(pod)
 	if err != nil {
 		return err
 	}
 
-	startKey, endKey := computeKeyRange(ConsistentHashingKeyspaceSize, c.podCount, podIndex)
+	startKey, endKey := computeKeyRange(ShardKeyspaceSize, c.podCount, podIndex)
 	for i := startKey; i < endKey; i++ {
 		container.Args = append(container.Args, "--propeller.include-shard-label", fmt.Sprintf("%d", i))
 	}
@@ -102,9 +103,9 @@ func intMax(a, b int) int {
 	return b
 }
 
-// The NamespaceShardStrategy distributes FlyteWorkflow processing using namespace labels. Each
-// FlytePropeller instance is responsible for FlyteWorkflows defined within the configured
-// namespace(s).
+
+// The NamespaceShardStrategy assigns namespace(s) to individual FlytePropeller instances to
+// determine FlyteWorkflow processing responsibility. 
 type NamespaceShardStrategy struct {
 	namespaceReplicas [][]string
 }

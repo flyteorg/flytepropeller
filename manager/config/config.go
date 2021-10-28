@@ -18,7 +18,7 @@ var (
 			Duration: 10 * time.Second,
 		},
 		ShardConfig: ShardConfig{
-			Type: "consistent-hashing",
+			Type: "random",
 			PodCount: 3,
 		},
 	}
@@ -29,8 +29,8 @@ var (
 type ShardType = string
 
 const (
-	ConsistentHashingShardType ShardType = "consistent-hashing"
-	NamespaceShardType         ShardType = "namespace"
+	NamespaceShardType ShardType = "namespace"
+	RandomShardType    ShardType = "random"
 )
 
 type ReplicaConfig struct {
@@ -41,7 +41,7 @@ type ShardConfig struct {
 	Type              ShardType       `json:"type" pflag:",Shard implementation to use"`
 	//StartUncoveredInstance bool // TODO hamersaw - add
 	NamespaceReplicas []ReplicaConfig `json:"replicas" pflag:"-"`
-	PodCount          int             `json:"pod-count" pflag:",The number of pods to manage for consistent hashing"`
+	PodCount          int             `json:"pod-count" pflag:",The number of pods to manage for a random shard type"`
 }
 
 type Config struct {
