@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	v1 "k8s.io/api/core/v1"
+	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -124,7 +125,11 @@ func (m *Manager) deletePods(ctx context.Context) error {
 	for _, podName := range podNames {
 		err := m.kubePodsClient.Delete(ctx, podName, metav1.DeleteOptions{})
 		if err != nil {
-			// TODO - continue on "does not exist"
+			if kubeerrors.IsNotFound(err) {
+				logger.Warnf(ctx, "deleting pod '%s' does not exist", podName)
+				continue
+			}
+
 			return err
 		}
 
