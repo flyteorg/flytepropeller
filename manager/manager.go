@@ -49,40 +49,6 @@ type Manager struct {
 	shardStrategy  ShardStrategy
 }
 
-func (m *Manager) getPodNames() ([]string, error) {
-	podCount, err := m.shardStrategy.GetPodCount()
-	if err != nil {
-		return nil, err
-	}
-
-	var podNames []string
-	for i := 0; i < podCount; i++ {
-		podNames = append(podNames, fmt.Sprintf("%s-%d", m.podApplication, i))
-	}
-
-	return podNames, nil
-}
-
-func (m *Manager) deletePods(ctx context.Context) error {
-	podNames, err := m.getPodNames()
-	if err != nil {
-		return err
-	}
-
-	for _, podName := range podNames {
-		err := m.kubePodsClient.Delete(ctx, podName, metav1.DeleteOptions{})
-		if err != nil {
-			// TODO - continue on "does not exist"
-			return err
-		}
-
-		m.metrics.PodsCreated.Inc()
-		logger.Infof(ctx, "deleted pod '%s'", podName)
-	}
-
-	return nil
-}
-
 func (m *Manager) createPods(ctx context.Context) error {
 	t := m.metrics.RoundTime.Start()
 	defer t.Stop()
@@ -93,15 +59,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 	}
 
 	// retrieve existing pods
-	podLabels := map[string]string{
-		"app": m.podApplication,
-	}
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(podLabels).String(),
-	}
-
-	pods, err := m.kubePodsClient.List(ctx, listOptions)
+	pods, err := listPods(ctx, m.kubePodsClient, m.podApplication)
 	if err != nil {
 		return err
 	}
@@ -157,6 +115,57 @@ func (m *Manager) createPods(ctx context.Context) error {
 	return nil
 }
 
+func (m *Manager) deletePods(ctx context.Context) error {
+	podNames, err := m.getPodNames()
+	if err != nil {
+		return err
+	}
+
+	for _, podName := range podNames {
+		err := m.kubePodsClient.Delete(ctx, podName, metav1.DeleteOptions{})
+		if err != nil {
+			// TODO - continue on "does not exist"
+			return err
+		}
+
+		m.metrics.PodsCreated.Inc()
+		logger.Infof(ctx, "deleted pod '%s'", podName)
+	}
+
+	return nil
+}
+
+func (m *Manager) getPodNames() ([]string, error) {
+	podCount, err := m.shardStrategy.GetPodCount()
+	if err != nil {
+		return nil, err
+	}
+
+	var podNames []string
+	for i := 0; i < podCount; i++ {
+		podNames = append(podNames, fmt.Sprintf("%s-%d", m.podApplication, i))
+	}
+
+	return podNames, nil
+}
+
+func listPods(ctx context.Context, kubePodsClient corev1.PodInterface, podApplication string) (*v1.PodList, error) {
+	podLabels := map[string]string{
+		"app": podApplication,
+	}
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(podLabels).String(),
+	}
+
+	pods, err := kubePodsClient.List(ctx, listOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return pods, nil
+}
+
 func (m *Manager) Run(ctx context.Context) error {
 	wait.UntilWithContext(ctx,
 		func(ctx context.Context) {
@@ -190,7 +199,16 @@ func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interfac
 		return nil, fmt.Errorf("failed to intialize shard strategy [%v]", err)
 	}
 
-	// TODO - check for running pod(s)
+	// check for running pod(s)
+	kubePodsClient := kubeClient.CoreV1().Pods(cfg.PodNamespace)
+	pods, err := listPods(ctx, kubePodsClient, cfg.PodApplication)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve existing pod(s) [%v]", err)
+	}
+
+	if len(pods.Items) > 0 {
+		return nil, fmt.Errorf("detected %d running '%s' application pod(s) in namespace '%s'", len(pods.Items), cfg.PodApplication, cfg.PodNamespace)
+	}
 
 	// retrieve and validate pod template
 	podTemplate, err := kubeClient.CoreV1().PodTemplates(cfg.PodTemplateNamespace).Get(ctx, cfg.PodTemplate, metav1.GetOptions{})
@@ -214,7 +232,7 @@ func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interfac
 	}
 
 	manager := &Manager{
-		kubePodsClient: kubeClient.CoreV1().Pods(cfg.PodNamespace),
+		kubePodsClient: kubePodsClient,
 		metrics:        newManagerMetrics(scope),
 		pod:            pod,
 		podApplication: cfg.PodApplication,
