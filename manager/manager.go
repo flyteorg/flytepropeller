@@ -38,6 +38,8 @@ func newManagerMetrics(scope promutils.Scope) *metrics {
 	}
 }
 
+// The Manager periodically scans k8s to ensure liveness of multiple FlytePropeller controller
+// instances and rectifies state based on the configured sharding strategy.
 type Manager struct {
 	kubePodsClient corev1.PodInterface
 	metrics        *metrics
@@ -47,9 +49,7 @@ type Manager struct {
 	shardStrategy  ShardStrategy
 }
 
-// TODO hamersaw - document: deterministically generate pod names - separate function to facilitate auto-scaling
 func (m *Manager) getPodNames() ([]string, error) {
-	// generate pod names
 	podCount, err := m.shardStrategy.GetPodCount()
 	if err != nil {
 		return nil, err
@@ -72,8 +72,8 @@ func (m *Manager) deletePods(ctx context.Context) error {
 	for _, podName := range podNames {
 		err := m.kubePodsClient.Delete(ctx, podName, metav1.DeleteOptions{})
 		if err != nil {
-			logger.Errorf(ctx, "failed to delete pod '%s' [%v]", podName, err)
-			continue
+			// TODO - continue on "does not exist"
+			return err
 		}
 
 		m.metrics.PodsCreated.Inc()
@@ -83,12 +83,9 @@ func (m *Manager) deletePods(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) recoverPods(ctx context.Context) error {
+func (m *Manager) createPods(ctx context.Context) error {
 	t := m.metrics.RoundTime.Start()
 	defer t.Stop()
-
-	// TODO hamersaw - do we need to handle pods with Error status?
-	// with 3 pods locally we get "too many open files"
 
 	podNames, err := m.getPodNames()
 	if err != nil {
@@ -111,8 +108,6 @@ func (m *Manager) recoverPods(ctx context.Context) error {
 
 	// note: we are unable to short-circuit if 'len(pods) == len(m.podNames)' because there may be
 	// unmanaged flytepropeller pods - which is invalid configuration but will be detected later
-
-	// TODO - check if a running pods spec is stale (compared to podtemplate)
 
 	// determine missing managed pods
 	podExists := make(map[string]bool)
@@ -166,9 +161,9 @@ func (m *Manager) Run(ctx context.Context) error {
 	wait.UntilWithContext(ctx,
 		func(ctx context.Context) {
 			logger.Debugf(ctx, "validating managed pod(s) state")
-			err := m.recoverPods(ctx)
+			err := m.createPods(ctx)
 			if err != nil {
-				logger.Errorf(ctx, "failed to recover pods [%v]", err)
+				logger.Errorf(ctx, "failed to create pod(s) [%v]", err)
 			}
 		},
 		m.scanInterval,
@@ -179,11 +174,11 @@ func (m *Manager) Run(ctx context.Context) error {
 	logger.Info(ctx, "shutting down manager")
 
 	// delete pods using a new timeout context to bound the shutdown time
-	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second)
 	defer cancel()
 
 	if err := m.deletePods(ctx); err != nil {
-		logger.Errorf(ctx, "failed to delete pods [%v]", err)
+		logger.Errorf(ctx, "failed to delete pod(s) [%v]", err)
 	}
 
 	return nil
@@ -194,6 +189,8 @@ func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interfac
 	if err != nil {
 		return nil, fmt.Errorf("failed to intialize shard strategy [%v]", err)
 	}
+
+	// TODO - check for running pod(s)
 
 	// retrieve and validate pod template
 	podTemplate, err := kubeClient.CoreV1().PodTemplates(cfg.PodTemplateNamespace).Get(ctx, cfg.PodTemplate, metav1.GetOptions{})
