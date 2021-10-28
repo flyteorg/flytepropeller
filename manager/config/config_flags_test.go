@@ -127,14 +127,14 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_pod-template", func(t *testing.T) {
+	t.Run("Test_pod-template-name", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("pod-template", testValue)
-			if vString, err := cmdFlags.GetString("pod-template"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.PodTemplate)
+			cmdFlags.Set("pod-template-name", testValue)
+			if vString, err := cmdFlags.GetString("pod-template-name"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.PodTemplateName)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -177,6 +177,20 @@ func TestConfig_SetFlags(t *testing.T) {
 			cmdFlags.Set("shard.type", testValue)
 			if vString, err := cmdFlags.GetString("shard.type"); err == nil {
 				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.ShardConfig.Type)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_shard.enable-uncovered-replica", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("shard.enable-uncovered-replica", testValue)
+			if vBool, err := cmdFlags.GetBool("shard.enable-uncovered-replica"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vBool), &actual.ShardConfig.EnableUncoveredReplica)
 
 			} else {
 				assert.FailNow(t, err.Error())

@@ -216,7 +216,7 @@ func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interfac
 	}
 
 	// retrieve and validate pod template
-	podTemplate, err := kubeClient.CoreV1().PodTemplates(cfg.PodTemplateNamespace).Get(ctx, cfg.PodTemplate, metav1.GetOptions{})
+	podTemplate, err := kubeClient.CoreV1().PodTemplates(cfg.PodTemplateNamespace).Get(ctx, cfg.PodTemplateName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

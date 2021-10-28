@@ -28,7 +28,8 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 		}
 
 		return &RandomShardStrategy{
-			podCount: shardConfig.PodCount,
+			enableUncoveredReplica: shardConfig.EnableUncoveredReplica,
+			podCount:               shardConfig.PodCount,
 		}, nil
 	case config.NamespaceShardType:
 		namespaceReplicas := make([][]string, 0)
@@ -41,7 +42,8 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 		}
 
 		return &NamespaceShardStrategy{
-			namespaceReplicas: namespaceReplicas,
+			enableUncoveredReplica: shardConfig.EnableUncoveredReplica,
+			namespaceReplicas:      namespaceReplicas,
 		}, nil
 	}
 
@@ -53,22 +55,33 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 // All FlyteWorkflows are labeled with a pseudo-random keyspace token (ie. shard) and are then
 // processed by the FlytePropeller instance responsible for that keyspace token.
 type RandomShardStrategy struct {
-	podCount int
+	enableUncoveredReplica bool
+	podCount               int
 }
 
-func (c *RandomShardStrategy) GetPodCount() (int, error) {
-	return c.podCount, nil
+func (r *RandomShardStrategy) GetPodCount() (int, error) {
+	if r.enableUncoveredReplica {
+		return r.podCount + 1, nil
+	} else {
+		return r.podCount, nil
+	}
 }
 
-func (c *RandomShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
+func (r *RandomShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 	container, err := getFlytePropellerContainer(pod)
 	if err != nil {
 		return err
 	}
 
-	startKey, endKey := computeKeyRange(ShardKeyspaceSize, c.podCount, podIndex)
-	for i := startKey; i < endKey; i++ {
-		container.Args = append(container.Args, "--propeller.include-shard-label", fmt.Sprintf("%d", i))
+	if podIndex < r.podCount {
+		startKey, endKey := computeKeyRange(ShardKeyspaceSize, r.podCount, podIndex)
+		for i := startKey; i < endKey; i++ {
+			container.Args = append(container.Args, "--propeller.include-shard-label", fmt.Sprintf("%d", i))
+		}
+	} else {
+		for i := 0; i < ShardKeyspaceSize; i++ {
+			container.Args = append(container.Args, "--propeller.exclude-shard-label", fmt.Sprintf("%d", i))
+		}
 	}
 
 	return nil
@@ -103,15 +116,19 @@ func intMax(a, b int) int {
 	return b
 }
 
-
 // The NamespaceShardStrategy assigns namespace(s) to individual FlytePropeller instances to
 // determine FlyteWorkflow processing responsibility. 
 type NamespaceShardStrategy struct {
-	namespaceReplicas [][]string
+	enableUncoveredReplica bool
+	namespaceReplicas      [][]string
 }
 
 func (n *NamespaceShardStrategy) GetPodCount() (int, error) {
-	return len(n.namespaceReplicas), nil
+	if n.enableUncoveredReplica {
+		return len(n.namespaceReplicas) + 1, nil
+	} else {
+		return len(n.namespaceReplicas), nil
+	}
 }
 
 func (n *NamespaceShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
@@ -120,8 +137,16 @@ func (n *NamespaceShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) er
 		return err
 	}
 
-	for _, namespace := range n.namespaceReplicas[podIndex] {
-		container.Args = append(container.Args, "--propeller.include-namespace-label", fmt.Sprintf("%s", namespace))
+	if podIndex < len(n.namespaceReplicas) {
+		for _, namespace := range n.namespaceReplicas[podIndex] {
+			container.Args = append(container.Args, "--propeller.include-namespace-label", fmt.Sprintf("%s", namespace))
+		}
+	} else {
+		for _, namespaceReplica := range n.namespaceReplicas {
+			for _, namespace := range namespaceReplica {
+				container.Args = append(container.Args, "--propeller.exclude-namespace-label", fmt.Sprintf("%s", namespace))
+			}
+		}
 	}
 
 	return nil
