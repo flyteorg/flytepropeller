@@ -251,7 +251,7 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 	}
 
 	// disable leader election on all managed pods
-	container.Args = append(container.Args, "--propeller.leader-election.enabled", "false")
+	container.Args = append(container.Args, "--propeller.leader-election.enabled=false")
 
 	// create singular pod spec to ensure uniformity in managed pods
 	pod := &v1.Pod{
@@ -287,6 +287,7 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 	if lock != nil {
 		logger.Infof(ctx, "creating leader elector for the controller")
 		manager.leaderElector, err = leader.NewLeaderElector(lock, propellerCfg.LeaderElection, manager.onStartedLeading, func() {
+			// TODO hamersaw - delete pods on completion
 			logger.Fatal(ctx, "lost leader state, shutting down")
 		})
 
