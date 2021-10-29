@@ -3,6 +3,7 @@ package k8s
 
 import (
 	"fmt"
+	"hash/fnv"
 	"strings"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -191,6 +192,12 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		interruptible = wf.GetMetadataDefaults().GetInterruptible()
 	}
 
+	h := fnv.New32a()
+	h.Write([]byte(executionID.Project))
+	h.Write([]byte(executionID.Domain))
+	h.Write([]byte(executionID.Name))
+	hash := h.Sum32() % 32
+
 	obj := &v1alpha1.FlyteWorkflow{
 		TypeMeta: v1.TypeMeta{
 			Kind:       v1alpha1.FlyteWorkflowKind,
@@ -198,7 +205,11 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: namespace,
-			Labels:    map[string]string{},
+			Labels:    map[string]string{
+				"shard": fmt.Sprint(hash),
+				"project": executionID.Project,
+				"domain": executionID.Domain,
+			},
 		},
 		Inputs:       &v1alpha1.Inputs{LiteralMap: inputs},
 		WorkflowSpec: primarySpec,
