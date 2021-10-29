@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/flyteorg/flytepropeller/manager/config"
+	managerConfig "github.com/flyteorg/flytepropeller/manager/config"
+	propellerConfig "github.com/flyteorg/flytepropeller/pkg/controller/config"
+	leader "github.com/flyteorg/flytepropeller/pkg/leaderelection"
+	"github.com/flyteorg/flytepropeller/pkg/utils"
 
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -13,11 +16,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	v1 "k8s.io/api/core/v1"
+
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
+
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/leaderelection"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -43,6 +49,7 @@ func newManagerMetrics(scope promutils.Scope) *metrics {
 // instances and rectifies state based on the configured sharding strategy.
 type Manager struct {
 	kubePodsClient corev1.PodInterface
+	leaderElector  *leaderelection.LeaderElector
 	metrics        *metrics
 	pod            *v1.Pod
 	podApplication string
@@ -171,7 +178,35 @@ func listPods(ctx context.Context, kubePodsClient corev1.PodInterface, podApplic
 	return pods, nil
 }
 
+// Called from leader elector -if configured- to start running as the leader.
+func (m *Manager) onStartedLeading(ctx context.Context) {
+	ctx, cancelNow := context.WithCancel(context.Background())
+	logger.Infof(ctx, "acquired leader lease")
+	go func() {
+		if err := m.run(ctx); err != nil {
+			logger.Panic(ctx, err)
+		}
+	}()
+
+	<-ctx.Done()
+	logger.Infof(ctx, "lost leader lease")
+	cancelNow()
+}
+
+// Runs either as a leader -if configured- or as a standalone process.
 func (m *Manager) Run(ctx context.Context) error {
+	if m.leaderElector == nil {
+		logger.Infof(ctx, "running without leader election")
+		return m.run(ctx)
+	}
+
+	logger.Infof(ctx, "attempting to acquire leader lease and act as leader")
+	go m.leaderElector.Run(ctx)
+	<-ctx.Done()
+	return nil
+}
+
+func (m *Manager) run(ctx context.Context) error {
 	wait.UntilWithContext(ctx,
 		func(ctx context.Context) {
 			logger.Debugf(ctx, "validating managed pod(s) state")
@@ -198,32 +233,25 @@ func (m *Manager) Run(ctx context.Context) error {
 	return nil
 }
 
-func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interface, scope promutils.Scope) (*Manager, error) {
+func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *managerConfig.Config, kubeClient kubernetes.Interface, scope promutils.Scope) (*Manager, error) {
 	shardStrategy, err := NewShardStrategy(ctx, cfg.ShardConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to intialize shard strategy [%v]", err)
 	}
 
-	// check for running pod(s)
-	kubePodsClient := kubeClient.CoreV1().Pods(cfg.PodNamespace)
-	pods, err := listPods(ctx, kubePodsClient, cfg.PodApplication)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve existing pod(s) [%v]", err)
-	}
-
-	if len(pods.Items) > 0 {
-		return nil, fmt.Errorf("detected %d running '%s' application pod(s) in namespace '%s'", len(pods.Items), cfg.PodApplication, cfg.PodNamespace)
-	}
-
 	// retrieve and validate pod template
 	podTemplate, err := kubeClient.CoreV1().PodTemplates(cfg.PodTemplateNamespace).Get(ctx, cfg.PodTemplateName, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to retrieve pod template '%s' from namespace '%s' [%v]", cfg.PodTemplateName, cfg.PodTemplateNamespace, err)
 	}
 
-	if _, err := getFlytePropellerContainer(&podTemplate.Template.Spec); err != nil {
-		return nil, err
+	container, err := getFlytePropellerContainer(&podTemplate.Template.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve flytepropeller container from pod template [%v]", err)
 	}
+
+	// disable leader election on all managed pods
+	container.Args = append(container.Args, "--propeller.leader-election.enabled", "false")
 
 	// create singular pod spec to ensure uniformity in managed pods
 	pod := &v1.Pod{
@@ -237,12 +265,34 @@ func New(ctx context.Context, cfg *config.Config, kubeClient kubernetes.Interfac
 	}
 
 	manager := &Manager{
-		kubePodsClient: kubePodsClient,
+		kubePodsClient: kubeClient.CoreV1().Pods(cfg.PodNamespace),
 		metrics:        newManagerMetrics(scope),
 		pod:            pod,
 		podApplication: cfg.PodApplication,
 		scanInterval:   cfg.ScanInterval.Duration,
 		shardStrategy:  shardStrategy,
+	}
+
+	// configure leader elector
+	eventRecorder, err := utils.NewK8sEventRecorder(ctx, kubeClient, "flytepropeller-manager", propellerCfg.PublishK8sEvents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to intialize k8s event recorder [%v]", err)
+	}
+
+	lock, err := leader.NewResourceLock(kubeClient.CoreV1(), kubeClient.CoordinationV1(), eventRecorder, propellerCfg.LeaderElection)
+	if err != nil {
+		return nil, fmt.Errorf("failed to intialize resource lock [%v]", err)
+	}
+
+	if lock != nil {
+		logger.Infof(ctx, "creating leader elector for the controller")
+		manager.leaderElector, err = leader.NewLeaderElector(lock, propellerCfg.LeaderElection, manager.onStartedLeading, func() {
+			logger.Fatal(ctx, "lost leader state, shutting down")
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to intialize leader elector [%v]", err)
+		}
 	}
 
 	return manager, nil

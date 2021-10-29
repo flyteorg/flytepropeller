@@ -8,7 +8,9 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	flyteScheme "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned/scheme"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+    "github.com/flyteorg/flytestdlib/logger"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/pkg/errors"
@@ -17,8 +19,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
+    "k8s.io/client-go/kubernetes/scheme"
+    typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+    "k8s.io/client-go/tools/record"
 )
 
 var NotTheOwnerError = errors.Errorf("FlytePropeller is not the owner")
@@ -145,4 +150,21 @@ func SanitizeLabelValue(name string) string {
 		name = name[0:validation.DNS1123LabelMaxLength]
 	}
 	return strings.Trim(name, "-")
+}
+
+func NewK8sEventRecorder(ctx context.Context, kubeclientset kubernetes.Interface, controllerAgentName string, publishK8sEvents bool) (record.EventRecorder, error) {
+	// Create event broadcaster
+	// Add FlyteWorkflow controller types to the default Kubernetes Scheme so Events can be
+	// logged for FlyteWorkflow Controller types.
+	err := flyteScheme.AddToScheme(scheme.Scheme)
+	if err != nil {
+		return nil, err
+	}
+	logger.Info(ctx, "Creating event broadcaster")
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(logger.InfofNoCtx)
+	if publishK8sEvents {
+		eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
+	}
+	return eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: controllerAgentName}), nil
 }

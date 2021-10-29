@@ -120,7 +120,7 @@ func executeRootCmd(propellerCfg *propellerConfig.Config, cfg *managerConfig.Con
 		}
 	}()*/
 
-	m, err := manager.New(ctx, cfg, kubeClient, scope)
+	m, err := manager.New(ctx, propellerCfg, cfg, kubeClient, scope)
 	if err != nil {
 		logger.Fatalf(ctx, "failed to start Manager - [%v]", err.Error())
 	} else if m == nil {

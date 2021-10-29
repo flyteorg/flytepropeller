@@ -50,7 +50,6 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 	return nil, fmt.Errorf("shard strategy '%s' does not exist", shardConfig.Type)
 }
 
-
 // RandomShardStrategy evenly assigns disjoint keyspace responsiblities over a collection of pods.
 // All FlyteWorkflows are labeled with a pseudo-random keyspace token (ie. shard) and are then
 // processed by the FlytePropeller instance responsible for that keyspace token.

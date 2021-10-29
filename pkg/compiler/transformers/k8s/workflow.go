@@ -202,7 +202,7 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 			Namespace: namespace,
 			Labels:    map[string]string{
 				"namespace": namespace,
-				"shard":     fmt.Sprint(rand.Intn(manager.ShardingKeyspaceSize)),
+				"shard":     fmt.Sprint(rand.Intn(manager.ShardKeyspaceSize)),
 			},
 		},
 		Inputs:       &v1alpha1.Inputs{LiteralMap: inputs},
