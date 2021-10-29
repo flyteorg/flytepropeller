@@ -51,7 +51,7 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	version.LogBuildInformation(appName)
-	logger.Infof(context.TODO(), "Detected: %d CPU's\n", runtime.NumCPU())
+	logger.Infof(context.TODO(), "detected %d CPU's\n", runtime.NumCPU())
 	if err := rootCmd.Execute(); err != nil {
 		logger.Error(context.TODO(), err)
 		os.Exit(1)
@@ -106,7 +106,7 @@ func executeRootCmd(propellerCfg *propellerConfig.Config, cfg *managerConfig.Con
 
 	kubeClient, _, err := utils.GetKubeConfig(ctx, propellerCfg)
 	if err != nil {
-		logger.Fatalf(ctx, "error building kubernetes clientset: %s", err.Error())
+		logger.Fatalf(ctx, "error building kubernetes clientset [%v]", err)
 	}
 
 	// Add the propeller_manager subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
@@ -122,12 +122,12 @@ func executeRootCmd(propellerCfg *propellerConfig.Config, cfg *managerConfig.Con
 
 	m, err := manager.New(ctx, propellerCfg, cfg, kubeClient, scope)
 	if err != nil {
-		logger.Fatalf(ctx, "failed to start Manager - [%v]", err.Error())
+		logger.Fatalf(ctx, "failed to start manager [%v]", err)
 	} else if m == nil {
-		logger.Fatalf(ctx, "failed to start Manager, nil manager received.")
+		logger.Fatalf(ctx, "failed to start manager, nil manager received")
 	}
 
 	if err = m.Run(ctx); err != nil {
-		logger.Fatalf(ctx, "error running Manager: %s", err.Error())
+		logger.Fatalf(ctx, "error running manager [%v]", err)
 	}
 }

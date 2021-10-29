@@ -67,7 +67,15 @@ func (m *Manager) createPods(ctx context.Context) error {
 	}
 
 	// retrieve existing pods
-	pods, err := listPods(ctx, m.kubePodsClient, m.podApplication)
+	podLabels := map[string]string{
+		"app": m.podApplication,
+	}
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(podLabels).String(),
+	}
+
+	pods, err := m.kubePodsClient.List(ctx, listOptions)
 	if err != nil {
 		return err
 	}
@@ -159,23 +167,6 @@ func (m *Manager) getPodNames() ([]string, error) {
 	}
 
 	return podNames, nil
-}
-
-func listPods(ctx context.Context, kubePodsClient corev1.PodInterface, podApplication string) (*v1.PodList, error) {
-	podLabels := map[string]string{
-		"app": podApplication,
-	}
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(podLabels).String(),
-	}
-
-	pods, err := kubePodsClient.List(ctx, listOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	return pods, nil
 }
 
 // Called from leader elector -if configured- to start running as the leader.
