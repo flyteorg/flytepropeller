@@ -409,7 +409,6 @@ func TestBranches(t *testing.T) {
 				}
 
 				k8sObjectFilepath := filepath.Join(filepath.Dir(path), "k8s", filepath.Base(path))
-				t.Log(k8sObjectFilepath)
 				if *update {
 					err = ioutil.WriteFile(k8sObjectFilepath, raw, os.ModePerm)
 					if !assert.NoError(t, err) {
