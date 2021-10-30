@@ -14,7 +14,10 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const DomainLabel = "domain"
 const ExecutionIDLabel = "execution-id"
+const ProjectLabel = "project"
+const ShardLabel = "shard"
 const WorkflowNameLabel = "workflow-name"
 
 func requiresInputs(w *core.WorkflowTemplate) bool {
@@ -192,12 +195,6 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		interruptible = wf.GetMetadataDefaults().GetInterruptible()
 	}
 
-	h := fnv.New32a()
-	h.Write([]byte(executionID.Project))
-	h.Write([]byte(executionID.Domain))
-	h.Write([]byte(executionID.Name))
-	hash := h.Sum32() % 32
-
 	obj := &v1alpha1.FlyteWorkflow{
 		TypeMeta: v1.TypeMeta{
 			Kind:       v1alpha1.FlyteWorkflowKind,
@@ -205,11 +202,7 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: namespace,
-			Labels:    map[string]string{
-				"shard": fmt.Sprint(hash),
-				"project": executionID.Project,
-				"domain": executionID.Domain,
-			},
+			Labels:    map[string]string{},
 		},
 		Inputs:       &v1alpha1.Inputs{LiteralMap: inputs},
 		WorkflowSpec: primarySpec,
@@ -225,6 +218,17 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		errs.Collect(errors.NewWorkflowBuildError(err))
 	}
 	obj.ObjectMeta.Labels[WorkflowNameLabel] = utils.SanitizeLabelValue(WorkflowNameFromID(primarySpec.ID))
+
+	if executionID != nil {
+		obj.ObjectMeta.Labels[ProjectLabel] = executionID.Project
+		obj.ObjectMeta.Labels[DomainLabel] = executionID.Domain
+	}
+
+	h := fnv.New32a()
+	h.Write([]byte(obj.ObjectMeta.Labels[ExecutionIDLabel]))
+	hash := h.Sum32() % 32
+
+	obj.ObjectMeta.Labels[ShardLabel] = fmt.Sprint(hash)
 
 	if obj.Nodes == nil || obj.Connections.Downstream == nil {
 		// If we come here, we'd better have an error generated earlier. Otherwise, add one to make sure build fails.
