@@ -130,22 +130,18 @@ func withSeparatorIfNotEmpty(value string) string {
 }
 
 func generateName(wfID *core.Identifier, execID *core.WorkflowExecutionIdentifier) (
-	name string, generateName string, label string, err error) {
+	name string, generateName string, label string, project string, domain string, err error) {
 
 	if execID != nil {
-		return execID.Name, "", execID.Name, nil
+		return execID.Name, "", execID.Name, execID.Project, execID.Domain, nil
 	} else if wfID != nil {
-		wid := fmt.Sprintf("%v%v%v",
-			withSeparatorIfNotEmpty(wfID.Project),
-			withSeparatorIfNotEmpty(wfID.Domain),
-			wfID.Name,
-		)
+		wid := fmt.Sprintf("%v%v%v", withSeparatorIfNotEmpty(wfID.Project), withSeparatorIfNotEmpty(wfID.Domain), wfID.Name)
 
 		// TODO: this is a hack until we figure out how to restrict generated names. K8s has a limitation of 63 chars
 		wid = wid[:minInt(32, len(wid))]
-		return "", fmt.Sprintf("%v-", wid), wid, nil
+		return "", fmt.Sprintf("%v-", wid), wid, wfID.Project, wfID.Domain, nil
 	} else {
-		return "", "", "", fmt.Errorf("expected param not set. wfID or execID must be non-nil values")
+		return "", "", "", "", "", fmt.Errorf("expected param not set. wfID or execID must be non-nil values")
 	}
 }
 
@@ -211,18 +207,13 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		NodeDefaults: v1alpha1.NodeDefaults{Interruptible: interruptible},
 	}
 
-	obj.ObjectMeta.Name, obj.ObjectMeta.GenerateName, obj.ObjectMeta.Labels[ExecutionIDLabel], err =
-		generateName(wf.GetId(), executionID)
+	obj.ObjectMeta.Name, obj.ObjectMeta.GenerateName, obj.ObjectMeta.Labels[ExecutionIDLabel], obj.ObjectMeta.Labels[ProjectLabel],
+		obj.ObjectMeta.Labels[DomainLabel], err = generateName(wf.GetId(), executionID)
 
 	if err != nil {
 		errs.Collect(errors.NewWorkflowBuildError(err))
 	}
 	obj.ObjectMeta.Labels[WorkflowNameLabel] = utils.SanitizeLabelValue(WorkflowNameFromID(primarySpec.ID))
-
-	if executionID != nil {
-		obj.ObjectMeta.Labels[ProjectLabel] = executionID.Project
-		obj.ObjectMeta.Labels[DomainLabel] = executionID.Domain
-	}
 
 	h := fnv.New32a()
 	h.Write([]byte(obj.ObjectMeta.Labels[ExecutionIDLabel]))
