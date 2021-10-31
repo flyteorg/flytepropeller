@@ -48,13 +48,13 @@ func newManagerMetrics(scope promutils.Scope) *metrics {
 // The Manager periodically scans k8s to ensure liveness of multiple FlytePropeller controller
 // instances and rectifies state based on the configured sharding strategy.
 type Manager struct {
-	kubePodsClient corev1.PodInterface
-	leaderElector  *leaderelection.LeaderElector
-	metrics        *metrics
-	pod            *v1.Pod
-	podApplication string
-	scanInterval   time.Duration
-	shardStrategy  ShardStrategy
+	kubePodsClient  corev1.PodInterface
+	leaderElector   *leaderelection.LeaderElector
+	metrics         *metrics
+	pod             *v1.Pod
+	podApplication  string
+	scanInterval    time.Duration
+	shardStrategy   ShardStrategy
 }
 
 func (m *Manager) createPods(ctx context.Context) error {
@@ -169,35 +169,24 @@ func (m *Manager) getPodNames() ([]string, error) {
 	return podNames, nil
 }
 
-// Called from leader elector -if configured- to start running as the leader.
-func (m *Manager) onStartedLeading(ctx context.Context) {
-	ctx, cancelNow := context.WithCancel(context.Background())
-	logger.Infof(ctx, "acquired leader lease")
-	go func() {
-		if err := m.run(ctx); err != nil {
-			logger.Panic(ctx, err)
-		}
-	}()
-
-	<-ctx.Done()
-	logger.Infof(ctx, "lost leader lease")
-	cancelNow()
-}
-
 // Runs either as a leader -if configured- or as a standalone process.
 func (m *Manager) Run(ctx context.Context) error {
-	if m.leaderElector == nil {
+	if m.leaderElector != nil {
+		logger.Infof(ctx, "running with leader election")
+		m.leaderElector.Run(ctx)
+	} else {
 		logger.Infof(ctx, "running without leader election")
-		return m.run(ctx)
+		if err := m.run(ctx); err != nil {
+			return err
+		}
+		m.shutdown()
 	}
 
-	logger.Infof(ctx, "attempting to acquire leader lease and act as leader")
-	go m.leaderElector.Run(ctx)
-	<-ctx.Done()
 	return nil
 }
 
 func (m *Manager) run(ctx context.Context) error {
+	logger.Infof(ctx, "started manager")
 	wait.UntilWithContext(ctx,
 		func(ctx context.Context) {
 			logger.Debugf(ctx, "validating managed pod(s) state")
@@ -209,19 +198,18 @@ func (m *Manager) run(ctx context.Context) error {
 		m.scanInterval,
 	)
 
-	logger.Info(ctx, "started manager")
-	<-ctx.Done()
-	logger.Info(ctx, "shutting down manager")
+	logger.Infof(ctx, "shutting down manager")
+	return nil
+}
 
+func (m *Manager) shutdown() {
 	// delete pods using a new timeout context to bound the shutdown time
-	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), 30 * time.Second)
 	defer cancel()
 
 	if err := m.deletePods(ctx); err != nil {
 		logger.Errorf(ctx, "failed to delete pod(s) [%v]", err)
 	}
-
-	return nil
 }
 
 func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *managerConfig.Config, kubeClient kubernetes.Interface, scope promutils.Scope) (*Manager, error) {
@@ -256,12 +244,12 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 	}
 
 	manager := &Manager{
-		kubePodsClient: kubeClient.CoreV1().Pods(cfg.PodNamespace),
-		metrics:        newManagerMetrics(scope),
-		pod:            pod,
-		podApplication: cfg.PodApplication,
-		scanInterval:   cfg.ScanInterval.Duration,
-		shardStrategy:  shardStrategy,
+		kubePodsClient:  kubeClient.CoreV1().Pods(cfg.PodNamespace),
+		metrics:         newManagerMetrics(scope),
+		pod:             pod,
+		podApplication:  cfg.PodApplication,
+		scanInterval:    cfg.ScanInterval.Duration,
+		shardStrategy:   shardStrategy,
 	}
 
 	// configure leader elector
@@ -277,10 +265,23 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 
 	if lock != nil {
 		logger.Infof(ctx, "creating leader elector for the controller")
-		manager.leaderElector, err = leader.NewLeaderElector(lock, propellerCfg.LeaderElection, manager.onStartedLeading, func() {
-			// TODO hamersaw - delete pods on completion
-			logger.Fatal(ctx, "lost leader state, shutting down")
-		})
+		manager.leaderElector, err = leader.NewLeaderElector(
+			lock, 
+			propellerCfg.LeaderElection, 
+			func(ctx context.Context) {
+				logger.Infof(ctx, "started leading")
+				if err := manager.run(ctx); err != nil {
+					logger.Error(ctx, err)
+				}
+			},
+			func() {
+				// Need to check if this elector obtained leadership until k8s client-go api is fixed. Currently the
+				// OnStoppingLeader func is called as a defer on every elector run, regardless of election status.
+				if manager.leaderElector.IsLeader() {
+					logger.Info(ctx, "stopped leading")
+					manager.shutdown();
+				}
+			})
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to intialize leader elector [%v]", err)
