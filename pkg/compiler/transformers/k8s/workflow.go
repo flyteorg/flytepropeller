@@ -29,11 +29,6 @@ const (
 	ShardKeyLabel = "shard-key"
 	// The fully qualified FlyteWorkflow name
 	WorkflowNameLabel = "workflow-name"
-
-	// Defines a non-configurable keyspace size for shard keys. This needs to be a small value because we use label
-	// selectors to define shard key ranges which do not support range queries. It should only be modified increasingly
-	// to ensure backward compatibility.
-	ShardKeyspaceSize = 32
 )
 
 func requiresInputs(w *core.WorkflowTemplate) bool {
@@ -237,7 +232,7 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 
 	h := fnv.New32a()
 	h.Write([]byte(label))
-	hash := h.Sum32() % 32
+	hash := h.Sum32() % v1alpha1.ShardKeyspaceSize
 
 	obj.ObjectMeta.Labels[ShardKeyLabel] = fmt.Sprint(hash)
 
