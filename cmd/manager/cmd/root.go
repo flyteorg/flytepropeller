@@ -6,12 +6,11 @@ import (
 	"flag"
 	"os"
 	"runtime"
-	//"runtime/pprof" // TODO hamersaw - add pprof
 
 	"github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/config/viper"
 	"github.com/flyteorg/flytestdlib/logger"
-	//"github.com/flyteorg/flytestdlib/profutils" // TODO hamersaw - enable
+	"github.com/flyteorg/flytestdlib/profutils"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/version"
 
@@ -112,13 +111,12 @@ func executeRootCmd(propellerCfg *propellerConfig.Config, cfg *managerConfig.Con
 	// Add the propeller_manager subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
 	scope := promutils.NewScope(propellerCfg.MetricsPrefix).NewSubScope("propeller_manager")
 
-	// TODO hamersaw - reenable for metrics
-	/*go func() {
+	go func() {
 		err := profutils.StartProfilingServerWithDefaultHandlers(ctx, propellerCfg.ProfilerPort.Port, nil)
 		if err != nil {
-			logger.Panicf(ctx, "Failed to Start profiling and metrics server. Error: %v", err)
+			logger.Panicf(ctx, "failed to start profiling and metrics server [%v]", err)
 		}
-	}()*/
+	}()
 
 	m, err := manager.New(ctx, propellerCfg, cfg, kubeClient, scope)
 	if err != nil {
