@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 
@@ -13,7 +12,7 @@ import (
 )
 
 type ShardStrategy interface {
-	GetPodCount() (int, error)
+	GetPodCount() int
 	UpdatePodSpec(pod *v1.PodSpec, podIndex int) error
 }
 
@@ -66,11 +65,11 @@ type HashShardStrategy struct {
 	podCount               int
 }
 
-func (h *HashShardStrategy) GetPodCount() (int, error) {
+func (h *HashShardStrategy) GetPodCount() int {
 	if h.enableUncoveredReplica {
-		return h.podCount + 1, nil
+		return h.podCount + 1
 	} else {
-		return h.podCount, nil
+		return h.podCount
 	}
 }
 
@@ -90,7 +89,7 @@ func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 			container.Args = append(container.Args, "--propeller.exclude-shard-label", fmt.Sprintf("%d", i))
 		}
 	} else {
-		// TODO hamersaw - throw invalid pod index
+		return fmt.Errorf("invalid podIndex '%d' out of range [0,%d)", podIndex, h.GetPodCount())
 	}
 
 	return nil
@@ -144,11 +143,11 @@ func (e environmentType) String() string {
 	return [...]string{"project", "domain"}[e]
 }
 
-func (e *EnvironmentShardStrategy) GetPodCount() (int, error) {
+func (e *EnvironmentShardStrategy) GetPodCount() int {
 	if e.enableUncoveredReplica {
-		return len(e.replicas) + 1, nil
+		return len(e.replicas) + 1
 	} else {
-		return len(e.replicas), nil
+		return len(e.replicas)
 	}
 }
 
@@ -169,7 +168,7 @@ func (e *EnvironmentShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) 
 			}
 		}
 	} else {
-		// TODO - throw invalid podIndex
+		return fmt.Errorf("invalid podIndex '%d' out of range [0,%d)", podIndex, e.GetPodCount())
 	}
 
 	return nil
@@ -186,7 +185,7 @@ func getFlytePropellerContainer(pod *v1.PodSpec) (*v1.Container, error) {
 	}
 
 	if len(containers) != 1 {
-		return nil, errors.New(fmt.Sprintf("expecting 1 flytepropeller container in podtemplate but found %d, ", len(containers)))
+		return nil, fmt.Errorf("expecting 1 flytepropeller container in podtemplate but found %d, ", len(containers))
 	}
 
 	return containers[0], nil

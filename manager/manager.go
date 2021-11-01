@@ -156,11 +156,7 @@ func (m *Manager) deletePods(ctx context.Context) error {
 }
 
 func (m *Manager) getPodNames() ([]string, error) {
-	podCount, err := m.shardStrategy.GetPodCount()
-	if err != nil {
-		return nil, err
-	}
-
+	podCount := m.shardStrategy.GetPodCount()
 	var podNames []string
 	for i := 0; i < podCount; i++ {
 		podNames = append(podNames, fmt.Sprintf("%s-%d", m.podApplication, i))
