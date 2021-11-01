@@ -90,7 +90,7 @@ func (r *RandomShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error
 // given the keyspaceSize and podCount parameters
 func computeKeyRange(keyspaceSize, podCount, podIndex int) (int, int) {
 	keysPerPod := int(math.Floor(float64(keyspaceSize / podCount)))
-	keyRemainder := keyspaceSize % keysPerPod
+	keyRemainder := keyspaceSize - (podCount * keysPerPod)
 
 	return computeStartKey(keysPerPod, keyRemainder, podIndex), computeStartKey(keysPerPod, keyRemainder, podIndex+1)
 }
