@@ -9,7 +9,7 @@
       "domain": "domain",
       "execution-id": "name",
       "project": "hello",
-      "shard": "6",
+      "shard-key": "6",
       "workflow-name": "test-serialization-my-wf"
     }
   },

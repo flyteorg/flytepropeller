@@ -14,11 +14,27 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const DomainLabel = "domain"
-const ExecutionIDLabel = "execution-id"
-const ProjectLabel = "project"
-const ShardLabel = "shard"
-const WorkflowNameLabel = "workflow-name"
+const (
+	// Labels are set on the FlyteWorkflow CRD to aid downstream processing
+
+	// The FlyteWorkflow domain according to registration ownership
+	DomainLabel = "domain"
+	// A concatenation of project, domain, workflow name, and a unique ID
+	ExecutionIDLabel = "execution-id"
+	// The FlyteWorkflow project according to registration ownership
+	ProjectLabel = "project"
+	// Shard keys are used during FlytePropeller sharding, this value is set to a hash of the FlyteWorkflow ExecutionID.
+	// The pseudo-random unique ID component means this value is deterministic for the same ExecutionID, but will vary
+	// across executions of the same workflow.
+	ShardKeyLabel = "shard-key"
+	// The fully qualified FlyteWorkflow name
+	WorkflowNameLabel = "workflow-name"
+
+	// Defines a non-configurable keyspace size for shard keys. This needs to be a small value because we use label
+	// selectors to define shard key ranges which do not support range queries. It should only be modified increasingly
+	// to ensure backward compatibility.
+	ShardKeyspaceSize = 32
+)
 
 func requiresInputs(w *core.WorkflowTemplate) bool {
 	if w == nil || w.GetInterface() == nil || w.GetInterface().GetInputs() == nil ||
@@ -207,19 +223,23 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		NodeDefaults: v1alpha1.NodeDefaults{Interruptible: interruptible},
 	}
 
-	obj.ObjectMeta.Name, obj.ObjectMeta.GenerateName, obj.ObjectMeta.Labels[ExecutionIDLabel], obj.ObjectMeta.Labels[ProjectLabel],
-		obj.ObjectMeta.Labels[DomainLabel], err = generateName(wf.GetId(), executionID)
-
+	name, generatedName, label, project, domain, err := generateName(wf.GetId(), executionID)
 	if err != nil {
 		errs.Collect(errors.NewWorkflowBuildError(err))
 	}
+
+	obj.ObjectMeta.Name = name
+	obj.ObjectMeta.GenerateName = generatedName
+	obj.ObjectMeta.Labels[ExecutionIDLabel] = label
+	obj.ObjectMeta.Labels[ProjectLabel] = project
+	obj.ObjectMeta.Labels[DomainLabel] = domain
 	obj.ObjectMeta.Labels[WorkflowNameLabel] = utils.SanitizeLabelValue(WorkflowNameFromID(primarySpec.ID))
 
 	h := fnv.New32a()
-	h.Write([]byte(obj.ObjectMeta.Labels[ExecutionIDLabel]))
+	h.Write([]byte(label))
 	hash := h.Sum32() % 32
 
-	obj.ObjectMeta.Labels[ShardLabel] = fmt.Sprint(hash)
+	obj.ObjectMeta.Labels[ShardKeyLabel] = fmt.Sprint(hash)
 
 	if obj.Nodes == nil || obj.Connections.Downstream == nil {
 		// If we come here, we'd better have an error generated earlier. Otherwise, add one to make sure build fails.
