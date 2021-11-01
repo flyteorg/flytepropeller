@@ -41,6 +41,11 @@ benchmark:
 server:
 	@go run ./cmd/controller/main.go --alsologtostderr --propeller.kube-config=$(HOME)/.kube/config
 
+# manager starts the manager service in development mode
+.PHONY: manager
+manager:
+	@go run ./cmd/manager/main.go --alsologtostderr --propeller.kube-config=$(HOME)/.kube/config
+
 clean:
 	rm -rf bin
 
