@@ -7,11 +7,10 @@ import (
 	"math"
 
 	"github.com/flyteorg/flytepropeller/manager/config"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 
 	v1 "k8s.io/api/core/v1"
 )
-
-const ShardKeyspaceSize = 32;
 
 type ShardStrategy interface {
 	GetPodCount() (int, error)
@@ -23,8 +22,8 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 	case config.RandomShardType:
 		if shardConfig.PodCount <= 0 {
 			return nil, fmt.Errorf("configured PodCount (%d) must be greater than zero", shardConfig.PodCount)
-		} else if shardConfig.PodCount > ShardKeyspaceSize {
-			return nil, fmt.Errorf("configured PodCount (%d) is larger than available keyspace size (%d)", shardConfig.PodCount, ShardKeyspaceSize)
+		} else if shardConfig.PodCount > v1alpha1.ShardKeyspaceSize {
+			return nil, fmt.Errorf("configured PodCount (%d) is larger than available keyspace size (%d)", shardConfig.PodCount, v1alpha1.ShardKeyspaceSize)
 		}
 
 		return &RandomShardStrategy{
@@ -73,12 +72,12 @@ func (r *RandomShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error
 	}
 
 	if podIndex < r.podCount {
-		startKey, endKey := computeKeyRange(ShardKeyspaceSize, r.podCount, podIndex)
+		startKey, endKey := computeKeyRange(v1alpha1.ShardKeyspaceSize, r.podCount, podIndex)
 		for i := startKey; i < endKey; i++ {
 			container.Args = append(container.Args, "--propeller.include-shard-label", fmt.Sprintf("%d", i))
 		}
 	} else {
-		for i := 0; i < ShardKeyspaceSize; i++ {
+		for i := 0; i < v1alpha1.ShardKeyspaceSize; i++ {
 			container.Args = append(container.Args, "--propeller.exclude-shard-label", fmt.Sprintf("%d", i))
 		}
 	}
