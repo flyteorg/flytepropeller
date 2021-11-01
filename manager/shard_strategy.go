@@ -19,67 +19,78 @@ type ShardStrategy interface {
 
 func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (ShardStrategy, error) {
 	switch shardConfig.Type {
-	case config.RandomShardType:
+	case config.HashShardType:
 		if shardConfig.PodCount <= 0 {
 			return nil, fmt.Errorf("configured PodCount (%d) must be greater than zero", shardConfig.PodCount)
 		} else if shardConfig.PodCount > v1alpha1.ShardKeyspaceSize {
 			return nil, fmt.Errorf("configured PodCount (%d) is larger than available keyspace size (%d)", shardConfig.PodCount, v1alpha1.ShardKeyspaceSize)
 		}
 
-		return &RandomShardStrategy{
+		return &HashShardStrategy{
 			enableUncoveredReplica: shardConfig.EnableUncoveredReplica,
 			podCount:               shardConfig.PodCount,
 		}, nil
-	case config.NamespaceShardType:
-		namespaceReplicas := make([][]string, 0)
-		for _, namespaceReplica := range shardConfig.NamespaceReplicas {
-			if len(namespaceReplica.Namespaces) == 0 {
-				return nil, fmt.Errorf("unable to create namespace replica with 0 configured namespace(s)")
+	case config.ProjectShardType, config.DomainShardType:
+		replicas := make([][]string, 0)
+		for _, replica := range shardConfig.Replicas {
+			if len(replica.Entities) == 0 {
+				return nil, fmt.Errorf("unable to create replica with 0 configured entity(ies)")
 			}
 
-			namespaceReplicas = append(namespaceReplicas, namespaceReplica.Namespaces)
+			replicas = append(replicas, replica.Entities)
 		}
 
-		return &NamespaceShardStrategy{
+		var envType environmentType
+		switch (shardConfig.Type) {
+		case config.ProjectShardType:
+			envType = project
+		case config.DomainShardType:
+			envType = domain
+		}
+
+		return &EnvironmentShardStrategy{
 			enableUncoveredReplica: shardConfig.EnableUncoveredReplica,
-			namespaceReplicas:      namespaceReplicas,
+			envType:                envType,
+			replicas:               replicas,
 		}, nil
 	}
 
 	return nil, fmt.Errorf("shard strategy '%s' does not exist", shardConfig.Type)
 }
 
-// RandomShardStrategy evenly assigns disjoint keyspace responsiblities over a collection of pods.
-// All FlyteWorkflows are labeled with a pseudo-random keyspace token (ie. shard) and are then
-// processed by the FlytePropeller instance responsible for that keyspace token.
-type RandomShardStrategy struct {
+// HashShardStrategy evenly assigns disjoint keyspace responsiblities over a collection of pods.
+// All FlyteWorkflows are assigned a shard-key using a hash of their executionID and are then
+// processed by the FlytePropeller instance responsible for that keyspace range.
+type HashShardStrategy struct {
 	enableUncoveredReplica bool
 	podCount               int
 }
 
-func (r *RandomShardStrategy) GetPodCount() (int, error) {
-	if r.enableUncoveredReplica {
-		return r.podCount + 1, nil
+func (h *HashShardStrategy) GetPodCount() (int, error) {
+	if h.enableUncoveredReplica {
+		return h.podCount + 1, nil
 	} else {
-		return r.podCount, nil
+		return h.podCount, nil
 	}
 }
 
-func (r *RandomShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
+func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 	container, err := getFlytePropellerContainer(pod)
 	if err != nil {
 		return err
 	}
 
-	if podIndex < r.podCount {
-		startKey, endKey := computeKeyRange(v1alpha1.ShardKeyspaceSize, r.podCount, podIndex)
+	if podIndex >= 0 && podIndex < h.podCount {
+		startKey, endKey := computeKeyRange(v1alpha1.ShardKeyspaceSize, h.podCount, podIndex)
 		for i := startKey; i < endKey; i++ {
 			container.Args = append(container.Args, "--propeller.include-shard-label", fmt.Sprintf("%d", i))
 		}
-	} else {
+	} else if h.enableUncoveredReplica && podIndex == h.podCount {
 		for i := 0; i < v1alpha1.ShardKeyspaceSize; i++ {
 			container.Args = append(container.Args, "--propeller.exclude-shard-label", fmt.Sprintf("%d", i))
 		}
+	} else {
+		// TODO hamersaw - throw invalid pod index
 	}
 
 	return nil
@@ -114,37 +125,51 @@ func intMax(a, b int) int {
 	return b
 }
 
-// The NamespaceShardStrategy assigns namespace(s) to individual FlytePropeller instances to
+// The ProjectShardStrategy assigns project(s) to individual FlytePropeller instances to
 // determine FlyteWorkflow processing responsibility. 
-type NamespaceShardStrategy struct {
+type EnvironmentShardStrategy struct {
+	envType                environmentType
 	enableUncoveredReplica bool
-	namespaceReplicas      [][]string
+	replicas               [][]string
 }
 
-func (n *NamespaceShardStrategy) GetPodCount() (int, error) {
-	if n.enableUncoveredReplica {
-		return len(n.namespaceReplicas) + 1, nil
+type environmentType int
+
+const (
+	project environmentType = iota
+	domain
+)
+
+func (e environmentType) String() string {
+	return [...]string{"project", "domain"}[e]
+}
+
+func (e *EnvironmentShardStrategy) GetPodCount() (int, error) {
+	if e.enableUncoveredReplica {
+		return len(e.replicas) + 1, nil
 	} else {
-		return len(n.namespaceReplicas), nil
+		return len(e.replicas), nil
 	}
 }
 
-func (n *NamespaceShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
+func (e *EnvironmentShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 	container, err := getFlytePropellerContainer(pod)
 	if err != nil {
 		return err
 	}
 
-	if podIndex < len(n.namespaceReplicas) {
-		for _, namespace := range n.namespaceReplicas[podIndex] {
-			container.Args = append(container.Args, "--propeller.include-namespace-label", fmt.Sprintf("%s", namespace))
+	if podIndex >= 0 && podIndex < len(e.replicas) {
+		for _, entity := range e.replicas[podIndex] {
+			container.Args = append(container.Args, fmt.Sprintf("--propeller.include-%s-label", e.envType), fmt.Sprintf("%s", entity))
 		}
-	} else {
-		for _, namespaceReplica := range n.namespaceReplicas {
-			for _, namespace := range namespaceReplica {
-				container.Args = append(container.Args, "--propeller.exclude-namespace-label", fmt.Sprintf("%s", namespace))
+	} else if e.enableUncoveredReplica && podIndex == len(e.replicas) {
+		for _, replica := range e.replicas {
+			for _, entity := range replica {
+				container.Args = append(container.Args, fmt.Sprintf("--propeller.exclude-%s-label", e.envType), fmt.Sprintf("%s", entity))
 			}
 		}
+	} else {
+		// TODO - throw invalid podIndex
 	}
 
 	return nil

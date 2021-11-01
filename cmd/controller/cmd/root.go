@@ -11,6 +11,7 @@ import (
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 
+	transformers "github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"k8s.io/klog"
 
@@ -113,10 +114,12 @@ func logAndExit(err error) {
 
 func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption {
 	labelSelector := controller.IgnoreCompletedWorkflowsLabelSelector()
-	addLabelSelector(labelSelector, "shard", v1.LabelSelectorOpIn, cfg.IncludeShardLabel)
-	addLabelSelector(labelSelector, "shard", v1.LabelSelectorOpNotIn, cfg.ExcludeShardLabel)
-	addLabelSelector(labelSelector, "namespace", v1.LabelSelectorOpIn, cfg.IncludeNamespaceLabel)
-	addLabelSelector(labelSelector, "namespace", v1.LabelSelectorOpNotIn, cfg.ExcludeNamespaceLabel)
+	addLabelSelector(labelSelector, transformers.ShardKeyLabel, v1.LabelSelectorOpIn, cfg.IncludeShardKeyLabel)
+	addLabelSelector(labelSelector, transformers.ShardKeyLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeShardKeyLabel)
+	addLabelSelector(labelSelector, transformers.ProjectLabel, v1.LabelSelectorOpIn, cfg.IncludeProjectLabel)
+	addLabelSelector(labelSelector, transformers.ProjectLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeProjectLabel)
+	addLabelSelector(labelSelector, transformers.DomainLabel, v1.LabelSelectorOpIn, cfg.IncludeDomainLabel)
+	addLabelSelector(labelSelector, transformers.DomainLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeDomainLabel)
 
 	opts := []informers.SharedInformerOption{
 		informers.WithTweakListOptions(func(options *v1.ListOptions) {

@@ -18,7 +18,7 @@ var (
 			Duration: 10 * time.Second,
 		},
 		ShardConfig: ShardConfig{
-			Type:                   "random",
+			Type:                   "hash",
 			EnableUncoveredReplica: false,
 			PodCount:               3,
 		},
@@ -30,19 +30,20 @@ var (
 type ShardType = string
 
 const (
-	NamespaceShardType ShardType = "namespace"
-	RandomShardType    ShardType = "random"
+	DomainShardType  ShardType = "domain"
+	ProjectShardType ShardType = "project"
+	HashShardType    ShardType = "hash"
 )
 
 type ReplicaConfig struct {
-	Namespaces []string `json:"namespaces" pflag:",The list of namespaces to be managed"`
+	Entities []string `json:"entities" pflag:",The list of entities to be managed"`
 }
 
 type ShardConfig struct {
-	Type                   ShardType       `json:"type" pflag:"\"random\",Shard implementation to use"`
+	Type                   ShardType       `json:"type" pflag:"\"hash\",Shard implementation to use"`
 	EnableUncoveredReplica bool            `json:"enable-uncovered-replica" pflag:"\"true\",Start a replica to process FlyteWorkflows that are uncovered by the configured shard label selectors"`
-	NamespaceReplicas      []ReplicaConfig `json:"replicas" pflag:"-"`
-	PodCount               int             `json:"pod-count" pflag:"\"3\",The number of pods to manage for a random shard type"`
+	Replicas               []ReplicaConfig `json:"replicas" pflag:"-"`
+	PodCount               int             `json:"pod-count" pflag:"\"3\",The number of pods to manage for a 'hash' shard type"`
 }
 
 type Config struct {

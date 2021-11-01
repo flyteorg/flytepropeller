@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytepropeller/manager"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
@@ -210,10 +209,7 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: namespace,
-			Labels:    map[string]string{
-				"namespace": namespace,
-				"shard":     fmt.Sprint(rand.Intn(manager.ShardKeyspaceSize)),
-			},
+			Labels:    map[string]string{},
 		},
 		Inputs:       &v1alpha1.Inputs{LiteralMap: inputs},
 		WorkflowSpec: primarySpec,
