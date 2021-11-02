@@ -81,11 +81,11 @@ func TestGetPodCount(t *testing.T) {
 		podCount      int
 	}{
 		{"hash", hashShardStrategy, 3},
-		{"hash-uncovered", hashShardStrategyUncovered, 4},
+		{"hash_uncovered", hashShardStrategyUncovered, 4},
 		{"project", projectShardStrategy, 2},
-		{"project-uncovered", projectShardStrategyUncovered, 3},
+		{"project_uncovered", projectShardStrategyUncovered, 3},
 		{"domain", domainShardStrategy, 2},
-		{"domain-uncovered", domainShardStrategyUncovered, 3},
+		{"domain_uncovered", domainShardStrategyUncovered, 3},
 	}
 
 	for _, tt := range tests {
@@ -96,16 +96,17 @@ func TestGetPodCount(t *testing.T) {
 }
 
 func TestUpdatePodSpec(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		shardStrategy ShardStrategy
 	}{
 		{"hash", hashShardStrategy},
-		{"hash-uncovered", hashShardStrategyUncovered},
+		{"hash_uncovered", hashShardStrategyUncovered},
 		{"project", projectShardStrategy},
-		{"project-uncovered", projectShardStrategyUncovered},
+		{"project_uncovered", projectShardStrategyUncovered},
 		{"domain", domainShardStrategy},
-		{"domain-uncovered", domainShardStrategyUncovered},
+		{"domain_uncovered", domainShardStrategyUncovered},
 	}
 
 	for _, tt := range tests {
@@ -122,24 +123,23 @@ func TestUpdatePodSpec(t *testing.T) {
 
 				err := tt.shardStrategy.UpdatePodSpec(&podSpec, podIndex)
 				assert.NoError(t, err)
-
-				// TODO hamersaw - validate podSpec.Args
 			}
 		})
 	}
 }
 
 func TestUpdatePodSpecInvalidPodIndex(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		shardStrategy ShardStrategy
 	}{
 		{"hash", hashShardStrategy},
-		{"hash-uncovered", hashShardStrategyUncovered},
+		{"hash_uncovered", hashShardStrategyUncovered},
 		{"project", projectShardStrategy},
-		{"project-uncovered", projectShardStrategyUncovered},
+		{"project_uncovered", projectShardStrategyUncovered},
 		{"domain", domainShardStrategy},
-		{"domain-uncovered", domainShardStrategyUncovered},
+		{"domain_uncovered", domainShardStrategyUncovered},
 	}
 
 	for _, tt := range tests {
@@ -153,26 +153,27 @@ func TestUpdatePodSpecInvalidPodIndex(t *testing.T) {
 				},
 			}
 
-			err := tt.shardStrategy.UpdatePodSpec(&podSpec, -1)
-			assert.Error(t, err)
+			lowerErr := tt.shardStrategy.UpdatePodSpec(&podSpec, -1)
+			assert.Error(t, lowerErr)
 
-			err = tt.shardStrategy.UpdatePodSpec(&podSpec, tt.shardStrategy.GetPodCount()+1)
-			assert.Error(t, err)
+			upperErr := tt.shardStrategy.UpdatePodSpec(&podSpec, tt.shardStrategy.GetPodCount())
+			assert.Error(t, upperErr)
 		})
 	}
 }
 
 func TestUpdatePodSpecInvalidPodSpec(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		shardStrategy ShardStrategy
 	}{
 		{"hash", hashShardStrategy},
-		{"hash-uncovered", hashShardStrategyUncovered},
+		{"hash_uncovered", hashShardStrategyUncovered},
 		{"project", projectShardStrategy},
-		{"project-uncovered", projectShardStrategyUncovered},
+		{"project_uncovered", projectShardStrategyUncovered},
 		{"domain", domainShardStrategy},
-		{"domain-uncovered", domainShardStrategyUncovered},
+		{"domain_uncovered", domainShardStrategyUncovered},
 	}
 
 	for _, tt := range tests {

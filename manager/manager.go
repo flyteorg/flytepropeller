@@ -94,6 +94,8 @@ func (m *Manager) createPods(ctx context.Context) error {
 
 			if pod.Status.Phase == v1.PodRunning {
 				podsRunning++
+			} else if pod.Status.Phase == v1.PodFailed {
+				logger.Warnf(ctx, "flytepropeller pod '%s' in 'failed' state", podName)
 			}
 		} else {
 			logger.Warnf(ctx, "detected unmanaged pod '%s'", podName)
