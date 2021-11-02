@@ -135,7 +135,11 @@ func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption
 
 func addLabelSelector(labelSelector *v1.LabelSelector, key string, labelSelectorOp v1.LabelSelectorOperator, values []string) {
 	if len(values) > 0 {
-		labelSelectorRequirement := v1.LabelSelectorRequirement{key, labelSelectorOp, values}
+		labelSelectorRequirement := v1.LabelSelectorRequirement{
+			Key:      key,
+			Operator: labelSelectorOp,
+			Values:   values,
+		}
 
 		labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, labelSelectorRequirement)
 	}

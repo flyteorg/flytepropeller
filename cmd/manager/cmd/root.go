@@ -38,8 +38,44 @@ var (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   appName,
-	Short: "TODO",
-	Long:  `TODO`,
+	Short: "Runs FlytePropeller Manager to scale out FlytePropeller by executing multiple instances configured according to the defined sharding scheme.",
+	Long: `
+FlytePropeller Manager is used to effectively scale out FlyteWorkflow processing among a collection of FlytePropeller instances. Users configure a sharding mechanism (ex. 'hash', 'project', or 'domain') to define the sharding environment.
+
+The FlytePropeller Manager uses a kubernetes PodTemplate to construct the base FlytePropeller PodSpec. This means, apart from the configured sharding scheme, all managed FlytePropeller instances will be identical.
+
+The Manager ensures liveness and correctness by periodically scanning kubernets pods and recovering state (ie. starting missing pods, etc). Live configuration updates are currently unsupported, meaning configuration changes require an application restart.
+
+Sample configuration, illustrating 3 separate sharding techniques, is provided below: 
+
+      manager:
+        pod-application: "flytepropeller"
+        pod-namespace: "flyte"
+        pod-template-name: "flytepropeller-template"
+        pod-template-namespace: "flyte"
+        scan-interval: 10s
+        shard:
+          # distribute FlyteWorkflow processing over 3 machines evenly
+          type: hash
+          pod-count: 3
+
+		  # process the specified projects on defined replicas and all uncovered projects on another
+          type: project
+		  enableUncoveredReplica: true
+          replicas:
+            - entities:
+              - flytesnacks
+            - entities:
+              - flyteexamples
+              - flytelab
+
+		  # process the 'production' domain on a single instace and all other domains on another
+          type: domain
+		  enableUncoveredReplica: true
+          replicas:
+            - entities:
+              - production
+	`,
 	PersistentPreRunE: initConfig,
 	Run: func(cmd *cobra.Command, args []string) {
 		executeRootCmd(propellerConfig.GetConfig(), managerConfig.GetConfig())
@@ -58,7 +94,7 @@ func Execute() {
 }
 
 func init() {
-	// allows `$ flytepropeller --logtostderr` to work
+	// allows `$ flytepropeller-manager --logtostderr` to work
 	klog.InitFlags(flag.CommandLine)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	err := flag.CommandLine.Parse([]string{})

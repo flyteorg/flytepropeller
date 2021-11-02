@@ -3,7 +3,6 @@ package manager
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"github.com/flyteorg/flytepropeller/manager/config"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -40,7 +39,7 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 		}
 
 		var envType environmentType
-		switch (shardConfig.Type) {
+		switch shardConfig.Type {
 		case config.ProjectShardType:
 			envType = project
 		case config.DomainShardType:
@@ -57,7 +56,7 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 	return nil, fmt.Errorf("shard strategy '%s' does not exist", shardConfig.Type)
 }
 
-// HashShardStrategy evenly assigns disjoint keyspace responsiblities over a collection of pods.
+// HashShardStrategy evenly assigns disjoint keyspace responsibilities over a collection of pods.
 // All FlyteWorkflows are assigned a shard-key using a hash of their executionID and are then
 // processed by the FlytePropeller instance responsible for that keyspace range.
 type HashShardStrategy struct {
@@ -68,9 +67,9 @@ type HashShardStrategy struct {
 func (h *HashShardStrategy) GetPodCount() int {
 	if h.enableUncoveredReplica {
 		return h.podCount + 1
-	} else {
-		return h.podCount
 	}
+
+	return h.podCount
 }
 
 func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
@@ -98,14 +97,14 @@ func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 // Computes a [startKey, endKey) pair denoting the key responsibilities for the provided pod index
 // given the keyspaceSize and podCount parameters
 func computeKeyRange(keyspaceSize, podCount, podIndex int) (int, int) {
-	keysPerPod := int(math.Floor(float64(keyspaceSize / podCount)))
+	keysPerPod := keyspaceSize / podCount
 	keyRemainder := keyspaceSize - (podCount * keysPerPod)
 
 	return computeStartKey(keysPerPod, keyRemainder, podIndex), computeStartKey(keysPerPod, keyRemainder, podIndex+1)
 }
 
 func computeStartKey(keysPerPod, keysRemainder, podIndex int) int {
-	return (intMin(podIndex, keysRemainder) * (keysPerPod + 1)) + (intMax(0, podIndex - keysRemainder) * keysPerPod)
+	return (intMin(podIndex, keysRemainder) * (keysPerPod + 1)) + (intMax(0, podIndex-keysRemainder) * keysPerPod)
 }
 
 func intMin(a, b int) int {
@@ -125,7 +124,7 @@ func intMax(a, b int) int {
 }
 
 // The ProjectShardStrategy assigns project(s) to individual FlytePropeller instances to
-// determine FlyteWorkflow processing responsibility. 
+// determine FlyteWorkflow processing responsibility.
 type EnvironmentShardStrategy struct {
 	envType                environmentType
 	enableUncoveredReplica bool
@@ -146,9 +145,9 @@ func (e environmentType) String() string {
 func (e *EnvironmentShardStrategy) GetPodCount() int {
 	if e.enableUncoveredReplica {
 		return len(e.replicas) + 1
-	} else {
-		return len(e.replicas)
 	}
+
+	return len(e.replicas)
 }
 
 func (e *EnvironmentShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
@@ -159,12 +158,12 @@ func (e *EnvironmentShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) 
 
 	if podIndex >= 0 && podIndex < len(e.replicas) {
 		for _, entity := range e.replicas[podIndex] {
-			container.Args = append(container.Args, fmt.Sprintf("--propeller.include-%s-label", e.envType), fmt.Sprintf("%s", entity))
+			container.Args = append(container.Args, fmt.Sprintf("--propeller.include-%s-label", e.envType), entity)
 		}
 	} else if e.enableUncoveredReplica && podIndex == len(e.replicas) {
 		for _, replica := range e.replicas {
 			for _, entity := range replica {
-				container.Args = append(container.Args, fmt.Sprintf("--propeller.exclude-%s-label", e.envType), fmt.Sprintf("%s", entity))
+				container.Args = append(container.Args, fmt.Sprintf("--propeller.exclude-%s-label", e.envType), entity)
 			}
 		}
 	} else {

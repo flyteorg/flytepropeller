@@ -10,7 +10,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	flyteScheme "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned/scheme"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-    "github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/pkg/errors"
@@ -19,11 +19,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
-    "k8s.io/client-go/kubernetes/scheme"
-    typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-    "k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/record"
 )
 
 var NotTheOwnerError = errors.Errorf("FlytePropeller is not the owner")

@@ -23,8 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/leaderelection"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/leaderelection"
 )
 
 type metrics struct {
@@ -48,23 +48,20 @@ func newManagerMetrics(scope promutils.Scope) *metrics {
 // The Manager periodically scans k8s to ensure liveness of multiple FlytePropeller controller
 // instances and rectifies state based on the configured sharding strategy.
 type Manager struct {
-	kubePodsClient  corev1.PodInterface
-	leaderElector   *leaderelection.LeaderElector
-	metrics         *metrics
-	pod             *v1.Pod
-	podApplication  string
-	scanInterval    time.Duration
-	shardStrategy   ShardStrategy
+	kubePodsClient corev1.PodInterface
+	leaderElector  *leaderelection.LeaderElector
+	metrics        *metrics
+	pod            *v1.Pod
+	podApplication string
+	scanInterval   time.Duration
+	shardStrategy  ShardStrategy
 }
 
 func (m *Manager) createPods(ctx context.Context) error {
 	t := m.metrics.RoundTime.Start()
 	defer t.Stop()
 
-	podNames, err := m.getPodNames()
-	if err != nil {
-		return err
-	}
+	podNames := m.getPodNames()
 
 	// retrieve existing pods
 	podLabels := map[string]string{
@@ -107,7 +104,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 
 	// create non-existent pods
 	for i, podName := range podNames {
-		if exists, _ := podExists[podName]; !exists {
+		if exists := podExists[podName]; !exists {
 			pod := m.pod.DeepCopy()
 			pod.ObjectMeta.Name = podName
 
@@ -132,11 +129,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 }
 
 func (m *Manager) deletePods(ctx context.Context) error {
-	podNames, err := m.getPodNames()
-	if err != nil {
-		return err
-	}
-
+	podNames := m.getPodNames()
 	for _, podName := range podNames {
 		err := m.kubePodsClient.Delete(ctx, podName, metav1.DeleteOptions{})
 		if err != nil {
@@ -155,14 +148,14 @@ func (m *Manager) deletePods(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) getPodNames() ([]string, error) {
+func (m *Manager) getPodNames() []string {
 	podCount := m.shardStrategy.GetPodCount()
 	var podNames []string
 	for i := 0; i < podCount; i++ {
 		podNames = append(podNames, fmt.Sprintf("%s-%d", m.podApplication, i))
 	}
 
-	return podNames, nil
+	return podNames
 }
 
 // Runs either as a leader -if configured- or as a standalone process.
@@ -200,7 +193,7 @@ func (m *Manager) run(ctx context.Context) error {
 
 func (m *Manager) shutdown() {
 	// delete pods using a new timeout context to bound the shutdown time
-	ctx, cancel := context.WithTimeout(context.TODO(), 30 * time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
 
 	if err := m.deletePods(ctx); err != nil {
@@ -211,7 +204,7 @@ func (m *Manager) shutdown() {
 func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *managerConfig.Config, kubeClient kubernetes.Interface, scope promutils.Scope) (*Manager, error) {
 	shardStrategy, err := NewShardStrategy(ctx, cfg.ShardConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to intialize shard strategy [%v]", err)
+		return nil, fmt.Errorf("failed to initialize shard strategy [%v]", err)
 	}
 
 	// retrieve and validate pod template
@@ -240,30 +233,30 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 	}
 
 	manager := &Manager{
-		kubePodsClient:  kubeClient.CoreV1().Pods(cfg.PodNamespace),
-		metrics:         newManagerMetrics(scope),
-		pod:             pod,
-		podApplication:  cfg.PodApplication,
-		scanInterval:    cfg.ScanInterval.Duration,
-		shardStrategy:   shardStrategy,
+		kubePodsClient: kubeClient.CoreV1().Pods(cfg.PodNamespace),
+		metrics:        newManagerMetrics(scope),
+		pod:            pod,
+		podApplication: cfg.PodApplication,
+		scanInterval:   cfg.ScanInterval.Duration,
+		shardStrategy:  shardStrategy,
 	}
 
 	// configure leader elector
 	eventRecorder, err := utils.NewK8sEventRecorder(ctx, kubeClient, "flytepropeller-manager", propellerCfg.PublishK8sEvents)
 	if err != nil {
-		return nil, fmt.Errorf("failed to intialize k8s event recorder [%v]", err)
+		return nil, fmt.Errorf("failed to initialize k8s event recorder [%v]", err)
 	}
 
 	lock, err := leader.NewResourceLock(kubeClient.CoreV1(), kubeClient.CoordinationV1(), eventRecorder, propellerCfg.LeaderElection)
 	if err != nil {
-		return nil, fmt.Errorf("failed to intialize resource lock [%v]", err)
+		return nil, fmt.Errorf("failed to initialize resource lock [%v]", err)
 	}
 
 	if lock != nil {
 		logger.Infof(ctx, "creating leader elector for the controller")
 		manager.leaderElector, err = leader.NewLeaderElector(
-			lock, 
-			propellerCfg.LeaderElection, 
+			lock,
+			propellerCfg.LeaderElection,
 			func(ctx context.Context) {
 				logger.Infof(ctx, "started leading")
 				if err := manager.run(ctx); err != nil {
@@ -275,12 +268,12 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 				// OnStoppingLeader func is called as a defer on every elector run, regardless of election status.
 				if manager.leaderElector.IsLeader() {
 					logger.Info(ctx, "stopped leading")
-					manager.shutdown();
+					manager.shutdown()
 				}
 			})
 
 		if err != nil {
-			return nil, fmt.Errorf("failed to intialize leader elector [%v]", err)
+			return nil, fmt.Errorf("failed to initialize leader elector [%v]", err)
 		}
 	}
 
