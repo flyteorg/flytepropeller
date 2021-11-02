@@ -115,7 +115,7 @@ func TestDeletePods(t *testing.T) {
 				podApplication: "flytepropeller",
 				shardStrategy:  tt.shardStrategy,
 			}
-			
+
 			// ensure all pods are "running"
 			pods, err := kubePodsClient.List(ctx, metav1.ListOptions{})
 			assert.NoError(t, err)
@@ -151,7 +151,7 @@ func TestGetPodNames(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			manager := Manager{
 				podApplication: "flytepropeller",
-				shardStrategy: tt.shardStrategy,
+				shardStrategy:  tt.shardStrategy,
 			}
 
 			assert.Equal(t, tt.podCount, len(manager.getPodNames()))
