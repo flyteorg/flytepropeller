@@ -36,8 +36,8 @@ func (in MutableStruct) IsDirty() bool {
 
 type BranchNodeStatus struct {
 	MutableStruct
-	Phase           BranchNodePhase `json:"phase"`
-	FinalizedNodeID *NodeID         `json:"finalNodeId"`
+	Phase           BranchNodePhase `json:"phase,omitempty"`
+	FinalizedNodeID *NodeID         `json:"finalNodeId,omitempty"`
 }
 
 func (in *BranchNodeStatus) GetPhase() BranchNodePhase {
@@ -96,7 +96,7 @@ const (
 
 type DynamicNodeStatus struct {
 	MutableStruct
-	Phase  DynamicNodePhase `json:"phase"`
+	Phase  DynamicNodePhase `json:"phase,omitempty"`
 	Reason string           `json:"reason,omitempty"`
 	Error  *ExecutionError  `json:"error,omitempty"`
 }
@@ -158,8 +158,8 @@ const (
 
 type WorkflowNodeStatus struct {
 	MutableStruct
-	Phase          WorkflowNodePhase    `json:"phase"`
-	ExecutionError *core.ExecutionError `json:"executionError"`
+	Phase          WorkflowNodePhase    `json:"phase,omitempty"`
+	ExecutionError *core.ExecutionError `json:"executionError,omitempty"`
 }
 
 func (in *WorkflowNodeStatus) SetExecutionError(executionError *core.ExecutionError) {
@@ -186,7 +186,7 @@ func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
 
 type NodeStatus struct {
 	MutableStruct
-	Phase                NodePhase     `json:"phase"`
+	Phase                NodePhase     `json:"phase,omitempty"`
 	QueuedAt             *metav1.Time  `json:"queuedAt,omitempty"`
 	StartedAt            *metav1.Time  `json:"startedAt,omitempty"`
 	StoppedAt            *metav1.Time  `json:"stoppedAt,omitempty"`
@@ -195,9 +195,9 @@ type NodeStatus struct {
 	Message              string        `json:"message,omitempty"`
 	DataDir              DataReference `json:"-"`
 	OutputDir            DataReference `json:"-"`
-	Attempts             uint32        `json:"attempts"`
+	Attempts             uint32        `json:"attempts,omitempty"`
 	SystemFailures       uint32        `json:"systemFailures,omitempty"`
-	Cached               bool          `json:"cached"`
+	Cached               bool          `json:"cached,omitempty"`
 
 	// This is useful only for branch nodes. If this is set, then it can be used to determine if execution can proceed
 	ParentNode    *NodeID                  `json:"parentNode,omitempty"`
@@ -442,18 +442,36 @@ func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason st
 		if in.LastAttemptStartedAt == nil {
 			in.LastAttemptStartedAt = &n
 		}
-	} else if IsPhaseTerminal(p) && in.StoppedAt == nil {
+	} else if IsPhaseTerminal(p) {
+		// If we are in terminal phase then we will clear out all our fields as they are not required anymore
+		// Only thing required is stopped at and lastupdatedat time
+		if in.StoppedAt == nil {
+			in.StoppedAt = &n
+		}
 		if in.StartedAt == nil {
 			in.StartedAt = &n
 		}
 		if in.LastAttemptStartedAt == nil {
 			in.LastAttemptStartedAt = &n
 		}
-
-		in.StoppedAt = &n
 	}
-
 	in.LastUpdatedAt = &n
+
+	// For cases in which the node is either Succeeded or Skipped we clear most fields from the status
+	// except for StoppedAt and Phase. StoppedAt is used to calculate transition latency between this node and
+	// any downstream nodes and Phase is required for propeller to continue to downstream nodes.
+	if p == NodePhaseSucceeded || p == NodePhaseSkipped {
+		in.Message = ""
+		in.QueuedAt = nil
+		in.StartedAt = nil
+		in.LastAttemptStartedAt = nil
+		in.DynamicNodeStatus = nil
+		in.BranchStatus = nil
+		in.SubNodeStatus = nil
+		in.TaskNodeStatus = nil
+		in.WorkflowNodeStatus = nil
+		in.LastUpdatedAt = nil
+	}
 	in.SetDirty()
 }
 
@@ -715,7 +733,7 @@ func (in *TaskNodeStatus) SetPluginState(s []byte) {
 	in.SetDirty()
 }
 
-func (in TaskNodeStatus) SetLastPhaseUpdatedAt(updatedAt time.Time) {
+func (in *TaskNodeStatus) SetLastPhaseUpdatedAt(updatedAt time.Time) {
 	in.LastPhaseUpdatedAt = updatedAt
 }
 

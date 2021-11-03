@@ -8,14 +8,10 @@ import (
 	"testing"
 	"time"
 
-	controllerEvents "github.com/flyteorg/flytepropeller/pkg/controller/events"
-
 	"github.com/golang/protobuf/proto"
 
 	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	storageMocks "github.com/flyteorg/flytestdlib/storage/mocks"
-
-	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
 
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
@@ -27,15 +23,16 @@ import (
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/flyteorg/flytepropeller/events"
+	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
+	eventMocks "github.com/flyteorg/flytepropeller/events/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
-	eventMocks "github.com/flyteorg/flytepropeller/pkg/controller/events/mocks"
 	mocks4 "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	nodeHandlerMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
 
-	"github.com/flyteorg/flyteidl/clients/go/events"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
@@ -66,7 +63,7 @@ func TestSetInputsForStartNode(t *testing.T) {
 	enQWf := func(workflowID v1alpha1.WorkflowID) {}
 
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
-	exec, err := NewExecutor(ctx, config.GetConfig().NodeConfig, mockStorage, enQWf, events.NewMockEventSink(), adminClient,
+	exec, err := NewExecutor(ctx, config.GetConfig().NodeConfig, mockStorage, enQWf, eventMocks.NewMockEventSink(), adminClient,
 		adminClient, 10, "s3://bucket/", fakeKubeClient, catalogClient, recoveryClient, eventConfig, promutils.NewTestScope())
 	assert.NoError(t, err)
 	inputs := &core.LiteralMap{
@@ -113,7 +110,7 @@ func TestSetInputsForStartNode(t *testing.T) {
 	})
 
 	failStorage := createFailingDatastore(t, testScope.NewSubScope("failing"))
-	execFail, err := NewExecutor(ctx, config.GetConfig().NodeConfig, failStorage, enQWf, events.NewMockEventSink(), adminClient,
+	execFail, err := NewExecutor(ctx, config.GetConfig().NodeConfig, failStorage, enQWf, eventMocks.NewMockEventSink(), adminClient,
 		adminClient, 10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, promutils.NewTestScope())
 	assert.NoError(t, err)
 	t.Run("StorageFailure", func(t *testing.T) {
@@ -133,7 +130,7 @@ func TestNodeExecutor_Initialize(t *testing.T) {
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
 
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 	memStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 	assert.NoError(t, err)
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
@@ -171,7 +168,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 
@@ -275,7 +272,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 
@@ -347,7 +344,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 				hf := &mocks2.HandlerFactory{}
 				exec.nodeHandlerFactory = hf
 				h := &nodeHandlerMocks.Node{}
-				hf.On("GetHandler", v1alpha1.NodeKindEnd).Return(h, nil)
+				hf.OnGetHandler(v1alpha1.NodeKindEnd).Return(h, nil)
 
 				mockWf, mockNode, mockNodeStatus := createSingleNodeWf(test.parentNodePhase, 0)
 				execContext := executors.NewExecutionContext(mockWf, nil, nil, nil, executors.InitializeControlFlow())
@@ -484,7 +481,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	defaultNodeID := "n1"
 	taskID := taskID
@@ -994,7 +991,7 @@ func TestNodeExecutor_RecursiveNodeHandler_NoDownstream(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
@@ -1104,7 +1101,7 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 
@@ -1220,7 +1217,7 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 	ctx := context.TODO()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 
@@ -1286,6 +1283,7 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 				eCtx.OnGetRawOutputDataConfig().Return(v1alpha1.RawOutputDataConfig{
 					RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
 				})
+				eCtx.OnIncrementParallelism().Return(0)
 				eCtx.OnCurrentParallelism().Return(0)
 				eCtx.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
 
@@ -1337,7 +1335,7 @@ func Test_nodeExecutor_RecordTransitionLatency(t *testing.T) {
 		nodeHandlerFactory HandlerFactory
 		enqueueWorkflow    v1alpha1.EnqueueWorkflow
 		store              *storage.DataStore
-		nodeRecorder       controllerEvents.NodeEventRecorder
+		nodeRecorder       events.NodeEventRecorder
 		metrics            *nodeMetrics
 	}
 	type args struct {
@@ -1769,7 +1767,7 @@ func TestNodeExecutor_RecursiveNodeHandler_ParallelismLimit(t *testing.T) {
 	ctx := context.Background()
 	enQWf := func(workflowID v1alpha1.WorkflowID) {
 	}
-	mockEventSink := events.NewMockEventSink().(*events.MockEventSink)
+	mockEventSink := eventMocks.NewMockEventSink()
 
 	store := createInmemoryDataStore(t, promutils.NewTestScope())
 
@@ -1879,6 +1877,17 @@ func TestNodeExecutor_RecursiveNodeHandler_ParallelismLimit(t *testing.T) {
 		assert.Equal(t, s.NodePhase.String(), executors.NodePhaseRunning.String())
 	})
 
+	t.Run("parallelism-met-not-yet-started", func(t *testing.T) {
+		mockWf, mockNode, _ := createSingleNodeWf(v1alpha1.NodePhaseNotYetStarted, 1)
+		cf := executors.InitializeControlFlow()
+		cf.IncrementParallelism()
+		eCtx := executors.NewExecutionContext(mockWf, mockWf, nil, nil, cf)
+
+		s, err := exec.RecursiveNodeHandler(ctx, eCtx, mockWf, mockWf, mockNode)
+		assert.NoError(t, err)
+		assert.Equal(t, s.NodePhase.String(), executors.NodePhaseRunning.String())
+	})
+
 	t.Run("parallelism-disabled", func(t *testing.T) {
 		mockWf, mockNode, _ := createSingleNodeWf(v1alpha1.NodePhaseQueued, 0)
 		cf := executors.InitializeControlFlow()
@@ -1921,7 +1930,7 @@ func Test_nodeExecutor_IdempotentRecordEvent(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		rec     controllerEvents.NodeEventRecorder
+		rec     events.NodeEventRecorder
 		p       core.NodeExecution_Phase
 		wantErr bool
 	}{
@@ -2298,4 +2307,65 @@ func TestRecover(t *testing.T) {
 		assert.Equal(t, phaseInfo.GetPhase(), handler.EPhaseRecovered)
 		mockPBStore.AssertNumberOfCalls(t, "ReadProtobuf", 1)
 	})
+}
+
+func TestIsMaxParallelismAchieved(t *testing.T) {
+
+	// Creates an execution context for the test
+	createExecContext := func(maxParallelism, currentParallelism uint32) executors.ExecutionContext {
+		m := &mocks4.ExecutionContext{}
+		m.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{
+			MaxParallelism: maxParallelism,
+		})
+		m.OnCurrentParallelism().Return(currentParallelism)
+		return m
+	}
+
+	createNode := func(kind v1alpha1.NodeKind, lpRef bool) v1alpha1.ExecutableNode {
+		en := &mocks.ExecutableNode{}
+		en.OnGetKind().Return(kind)
+		if kind == v1alpha1.NodeKindWorkflow {
+			wn := &mocks.ExecutableWorkflowNode{}
+			var lp *v1alpha1.LaunchPlanRefID
+			if lpRef {
+				lp = &v1alpha1.LaunchPlanRefID{}
+			}
+			wn.OnGetLaunchPlanRefID().Return(lp)
+			en.OnGetWorkflowNode().Return(wn)
+		}
+		return en
+	}
+
+	type args struct {
+		currentNode  v1alpha1.ExecutableNode
+		currentPhase v1alpha1.NodePhase
+		execContext  executors.ExecutionContext
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{"start", args{createNode(v1alpha1.NodeKindStart, false), v1alpha1.NodePhaseQueued, createExecContext(1, 1)}, false},
+		{"end", args{createNode(v1alpha1.NodeKindEnd, false), v1alpha1.NodePhaseQueued, createExecContext(1, 1)}, false},
+		{"branch", args{createNode(v1alpha1.NodeKindBranch, false), v1alpha1.NodePhaseQueued, createExecContext(1, 1)}, false},
+		{"subworkflow", args{createNode(v1alpha1.NodeKindWorkflow, false), v1alpha1.NodePhaseQueued, createExecContext(1, 1)}, false},
+		{"lp-met", args{createNode(v1alpha1.NodeKindWorkflow, true), v1alpha1.NodePhaseQueued, createExecContext(1, 1)}, true},
+		{"lp-met-larger", args{createNode(v1alpha1.NodeKindWorkflow, true), v1alpha1.NodePhaseQueued, createExecContext(1, 2)}, true},
+		{"lp-disabled", args{createNode(v1alpha1.NodeKindWorkflow, true), v1alpha1.NodePhaseQueued, createExecContext(0, 1)}, false},
+		{"lp-not-met", args{createNode(v1alpha1.NodeKindWorkflow, true), v1alpha1.NodePhaseQueued, createExecContext(4, 1)}, false},
+		{"lp-not-met-1", args{createNode(v1alpha1.NodeKindWorkflow, true), v1alpha1.NodePhaseQueued, createExecContext(2, 1)}, false},
+		{"task-met", args{createNode(v1alpha1.NodeKindTask, false), v1alpha1.NodePhaseQueued, createExecContext(1, 1)}, true},
+		{"task-met-larger", args{createNode(v1alpha1.NodeKindTask, false), v1alpha1.NodePhaseQueued, createExecContext(1, 2)}, true},
+		{"task-disabled", args{createNode(v1alpha1.NodeKindTask, false), v1alpha1.NodePhaseQueued, createExecContext(0, 1)}, false},
+		{"task-not-met", args{createNode(v1alpha1.NodeKindTask, false), v1alpha1.NodePhaseQueued, createExecContext(4, 1)}, false},
+		{"task-not-met-1", args{createNode(v1alpha1.NodeKindTask, false), v1alpha1.NodePhaseQueued, createExecContext(2, 1)}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsMaxParallelismAchieved(context.TODO(), tt.args.currentNode, tt.args.currentPhase, tt.args.execContext); got != tt.want {
+				t.Errorf("IsMaxParallelismAchieved() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

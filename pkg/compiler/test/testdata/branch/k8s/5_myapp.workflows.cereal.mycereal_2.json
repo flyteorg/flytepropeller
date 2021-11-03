@@ -6,7 +6,10 @@
     "namespace": "namespace",
     "creationTimestamp": null,
     "labels": {
+      "domain": "domain",
       "execution-id": "name",
+      "project": "hello",
+      "shard-key": "6",
       "workflow-name": "myapp-workflows-cereal-mycereal"
     }
   },
@@ -653,13 +656,15 @@
         "CPU": "0",
         "Memory": "0",
         "EphemeralStorage": "0",
-        "Storage": "0"
+        "Storage": "0",
+        "GPU": "0"
       },
       "Limits": {
         "CPU": "0",
         "Memory": "0",
         "EphemeralStorage": "0",
-        "Storage": "0"
+        "Storage": "0",
+        "GPU": "0"
       }
     }
   }

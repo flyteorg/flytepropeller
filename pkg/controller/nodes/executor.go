@@ -1,4 +1,4 @@
-// Core Nodes Executor implementation
+// Package nodes contains the Core Nodes Executor implementation and a subpackage for every node kind
 // This module implements the core Nodes executor.
 // This executor is the starting point for executing any node in the workflow. Since Nodes in a workflow are composable,
 // i.e., one node may contain other nodes, the Node Handler is recursive in nature.
@@ -9,7 +9,7 @@
 // - Task: Arguably the most important handler as it handles all tasks. These include all plugins. The goal of the workflow is
 //         is to run tasks, thus every workflow will contain atleast one TaskNode (except for the case, where the workflow
 //          is purely a meta-workflow and can run other workflows
-// - SubWorkflow: This is one of the most important handlers. It can executes Workflows that are nested inside a workflow
+// - SubWorkflow: This is one of the most important handlers. It can execute Workflows that are nested inside a workflow
 // - DynamicTask Handler: This is just a decorator on the Task Handler. It handles cases, in which the Task returns a futures
 //                        file. Every Task is actually executed through the DynamicTaskHandler
 // - Branch Handler: This handler is used to execute branches
@@ -30,11 +30,10 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	errors2 "github.com/flyteorg/flytestdlib/errors"
 
-	"github.com/flyteorg/flyteidl/clients/go/events"
-	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	controllerEvents "github.com/flyteorg/flytepropeller/pkg/controller/events"
+	"github.com/flyteorg/flytepropeller/events"
+	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -89,8 +88,8 @@ type nodeExecutor struct {
 	nodeHandlerFactory              HandlerFactory
 	enqueueWorkflow                 v1alpha1.EnqueueWorkflow
 	store                           *storage.DataStore
-	nodeRecorder                    controllerEvents.NodeEventRecorder
-	taskRecorder                    controllerEvents.TaskEventRecorder
+	nodeRecorder                    events.NodeEventRecorder
+	taskRecorder                    events.TaskEventRecorder
 	metrics                         *nodeMetrics
 	maxDatasetSizeBytes             int64
 	outputResolver                  OutputResolver
@@ -129,7 +128,7 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 		return fmt.Errorf("event recording attempt of with nil node Event ID")
 	}
 
-	logger.Infof(ctx, "Recording event p[%+v]", nodeEvent)
+	logger.Infof(ctx, "Recording NodeEvent [%s] phase[%s]", nodeEvent.GetId().String(), nodeEvent.Phase.String())
 	err := c.nodeRecorder.RecordNodeEvent(ctx, nodeEvent, c.eventConfig)
 	if err != nil {
 		if nodeEvent.GetId().NodeId == v1alpha1.EndNodeID {
@@ -622,7 +621,14 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 	// Optimization!
 	// If it is start node we directly move it to Queued without needing to run preExecute
 	if currentPhase == v1alpha1.NodePhaseNotYetStarted && !nCtx.Node().IsStartNode() {
-		return c.handleNotYetStartedNode(ctx, dag, nCtx, h)
+		p, err := c.handleNotYetStartedNode(ctx, dag, nCtx, h)
+		if err != nil {
+			return p, err
+		}
+		if p.NodePhase == executors.NodePhaseQueued {
+			logger.Infof(ctx, "Node was queued, parallelism is now [%d]", nCtx.ExecutionContext().IncrementParallelism())
+		}
+		return p, err
 	}
 
 	if currentPhase == v1alpha1.NodePhaseFailing {
@@ -658,10 +664,19 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 		if err := c.finalize(ctx, h, nCtx); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
+		t := v1.Now()
 
+		started := nodeStatus.GetStartedAt()
+		if started == nil {
+			started = &t
+		}
+		stopped := nodeStatus.GetStoppedAt()
+		if stopped == nil {
+			stopped = &t
+		}
+		c.metrics.SuccessDuration.Observe(ctx, started.Time, stopped.Time)
 		nodeStatus.ClearSubNodeStatus()
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully", nil)
-		c.metrics.SuccessDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, t, "completed successfully", nil)
 		if nCtx.md.IsInterruptible() {
 			c.metrics.InterruptibleNodesTerminated.Inc(ctx)
 		}
@@ -794,6 +809,39 @@ func canHandleNode(phase v1alpha1.NodePhase) bool {
 		phase == v1alpha1.NodePhaseDynamicRunning
 }
 
+// IsMaxParallelismAchieved checks if we have already achieved max parallelism. It returns true, if the desired max parallelism
+// value is achieved, false otherwise
+// MaxParallelism is defined as the maximum number of TaskNodes and LaunchPlans (together) that can be executed concurrently
+// by one workflow execution. A setting of `0` indicates that it is disabled.
+func IsMaxParallelismAchieved(ctx context.Context, currentNode v1alpha1.ExecutableNode, currentPhase v1alpha1.NodePhase,
+	execContext executors.ExecutionContext) bool {
+	maxParallelism := execContext.GetExecutionConfig().MaxParallelism
+	if maxParallelism == 0 {
+		logger.Debugf(ctx, "Parallelism control disabled")
+		return false
+	}
+
+	if currentNode.GetKind() == v1alpha1.NodeKindTask ||
+		(currentNode.GetKind() == v1alpha1.NodeKindWorkflow && currentNode.GetWorkflowNode() != nil && currentNode.GetWorkflowNode().GetLaunchPlanRefID() != nil) {
+		// If we are queued, let us see if we can proceed within the node parallelism bounds
+		if execContext.CurrentParallelism() >= maxParallelism {
+			logger.Infof(ctx, "Maximum Parallelism for task/launch-plan nodes achieved [%d] >= Max [%d], Round will be short-circuited.", execContext.CurrentParallelism(), maxParallelism)
+			return true
+		}
+		// We know that Propeller goes through each workflow in a single thread, thus every node is really processed
+		// sequentially. So, we can continue - now that we know we are under the parallelism limits and increment the
+		// parallelism if the node, enters a running state
+		logger.Debugf(ctx, "Parallelism criteria not met, Current [%d], Max [%d]", execContext.CurrentParallelism(), maxParallelism)
+	} else {
+		logger.Debugf(ctx, "NodeKind: %s in status [%s]. Parallelism control is not applicable. Current Parallelism [%d]",
+			currentNode.GetKind().String(), currentPhase.String(), execContext.CurrentParallelism())
+	}
+	return false
+}
+
+// RecursiveNodeHandler This is the entrypoint of executing a node in a workflow. A workflow consists of nodes, that are
+// nested within other nodes. The system follows an actor model, where the parent nodes control the execution of nested nodes
+// The recursive node-handler uses a modified depth-first type of algorithm to execute non-blocked nodes.
 func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext executors.ExecutionContext,
 	dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) (
 	executors.NodeStatus, error) {
@@ -821,26 +869,8 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 			return executors.NodeStatusRunning, nil
 		}
 
-		// Now if the node is of type task, then let us check if we are within the parallelism limit, only if the node
-		// has been queued already
-		if currentNode.GetKind() == v1alpha1.NodeKindTask && nodeStatus.GetPhase() == v1alpha1.NodePhaseQueued {
-			maxParallelism := execContext.GetExecutionConfig().MaxParallelism
-			if maxParallelism > 0 {
-				// If we are queued, let us see if we can proceed within the node parallelism bounds
-				if execContext.CurrentParallelism() >= maxParallelism {
-					logger.Infof(ctx, "Maximum Parallelism for task nodes achieved [%d] >= Max [%d], Round will be short-circuited.", execContext.CurrentParallelism(), maxParallelism)
-					return executors.NodeStatusRunning, nil
-				}
-				// We know that Propeller goes through each workflow in a single thread, thus every node is really processed
-				// sequentially. So, we can continue - now that we know we are under the parallelism limits and increment the
-				// parallelism if the node, enters a running state
-				logger.Debugf(ctx, "Parallelism criteria not met, Current [%d], Max [%d]", execContext.CurrentParallelism(), maxParallelism)
-			} else {
-				logger.Debugf(ctx, "Parallelism control disabled")
-			}
-		} else {
-			logger.Debugf(ctx, "NodeKind: %s in status [%s]. Parallelism control is not applicable. Current Parallelism [%d]",
-				currentNode.GetKind().String(), nodeStatus.GetPhase().String(), execContext.CurrentParallelism())
+		if IsMaxParallelismAchieved(ctx, currentNode, nodePhase, execContext) {
+			return executors.NodeStatusRunning, nil
 		}
 
 		nCtx, err := c.newNodeExecContextDefault(ctx, currentNode.GetID(), execContext, nl)
@@ -1063,8 +1093,8 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 	exec := &nodeExecutor{
 		store:               store,
 		enqueueWorkflow:     enQWorkflow,
-		nodeRecorder:        controllerEvents.NewNodeEventRecorder(eventSink, nodeScope, store),
-		taskRecorder:        controllerEvents.NewTaskEventRecorder(eventSink, scope.NewSubScope("task"), store),
+		nodeRecorder:        events.NewNodeEventRecorder(eventSink, nodeScope, store),
+		taskRecorder:        events.NewTaskEventRecorder(eventSink, scope.NewSubScope("task"), store),
 		maxDatasetSizeBytes: maxDatasetSize,
 		metrics: &nodeMetrics{
 			Scope:                         nodeScope,

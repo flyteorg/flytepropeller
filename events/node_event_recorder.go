@@ -6,7 +6,6 @@ import (
 
 	"github.com/flyteorg/flytestdlib/logger"
 
-	"github.com/flyteorg/flyteidl/clients/go/events"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
@@ -19,21 +18,21 @@ import (
 
 //go:generate mockery -all -output=mocks -case=underscore
 
-// Recorder for Task events
-type TaskEventRecorder interface {
-	// Records task execution events indicating the task has undergone a phase change and additional metadata.
-	RecordTaskEvent(ctx context.Context, event *event.TaskExecutionEvent, eventConfig *config.EventConfig) error
+// NodeEventRecorder records Node events
+type NodeEventRecorder interface {
+	// RecordNodeEvent records execution events indicating the node has undergone a phase change and additional metadata.
+	RecordNodeEvent(ctx context.Context, event *event.NodeExecutionEvent, eventConfig *config.EventConfig) error
 }
 
-type taskEventRecorder struct {
-	eventRecorder events.TaskEventRecorder
+type nodeEventRecorder struct {
+	eventRecorder EventRecorder
 	store         *storage.DataStore
 }
 
-// In certain cases, a successful task execution event can be configured to include raw output data inline. However,
+// In certain cases, a successful node execution event can be configured to include raw output data inline. However,
 // for large outputs these events may exceed the event recipient's message size limit, so we fallback to passing
 // the offloaded output URI instead.
-func (r *taskEventRecorder) handleFailure(ctx context.Context, ev *event.TaskExecutionEvent, err error) error {
+func (r *nodeEventRecorder) handleFailure(ctx context.Context, ev *event.NodeExecutionEvent, err error) error {
 	st, ok := status.FromError(err)
 	if !ok || st.Code() != codes.ResourceExhausted {
 		// Error was not a status error
@@ -44,10 +43,10 @@ func (r *taskEventRecorder) handleFailure(ctx context.Context, ev *event.TaskExe
 	}
 
 	// This time, we attempt to record the event with the output URI set.
-	return r.eventRecorder.RecordTaskEvent(ctx, ev)
+	return r.eventRecorder.RecordNodeEvent(ctx, ev)
 }
 
-func (r *taskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskExecutionEvent, eventConfig *config.EventConfig) error {
+func (r *nodeEventRecorder) RecordNodeEvent(ctx context.Context, ev *event.NodeExecutionEvent, eventConfig *config.EventConfig) error {
 	var origEvent = ev
 	var rawOutputPolicy = eventConfig.RawOutputPolicy
 	if rawOutputPolicy == config.RawOutputPolicyInline && len(ev.GetOutputUri()) > 0 {
@@ -58,19 +57,19 @@ func (r *taskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskE
 			logger.Warnf(ctx, "failed to fetch outputs by ref [%s] to send inline with err: %v", ev.GetOutputUri(), err)
 			rawOutputPolicy = config.RawOutputPolicyReference
 		} else {
-			origEvent = proto.Clone(ev).(*event.TaskExecutionEvent)
-			ev.OutputResult = &event.TaskExecutionEvent_OutputData{
+			origEvent = proto.Clone(ev).(*event.NodeExecutionEvent)
+			ev.OutputResult = &event.NodeExecutionEvent_OutputData{
 				OutputData: outputs,
 			}
 		}
 	}
 
-	err := r.eventRecorder.RecordTaskEvent(ctx, ev)
+	err := r.eventRecorder.RecordNodeEvent(ctx, ev)
 	if err != nil {
-		logger.Infof(ctx, "Failed to record task event [%+v] with err: %v", ev, err)
+		logger.Infof(ctx, "Failed to record node event [%+v] with err: %v", ev, err)
 		// Only attempt to retry sending an event in the case we tried to send raw output data inline
 		if eventConfig.FallbackToOutputReference && rawOutputPolicy == config.RawOutputPolicyInline {
-			logger.Infof(ctx, "Falling back to sending task event outputs by reference for [%+v]", ev.TaskId)
+			logger.Infof(ctx, "Falling back to sending node event outputs by reference for [%+v]", ev.Id)
 			return r.handleFailure(ctx, origEvent, err)
 		}
 		return err
@@ -78,9 +77,9 @@ func (r *taskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskE
 	return nil
 }
 
-func NewTaskEventRecorder(eventSink events.EventSink, scope promutils.Scope, store *storage.DataStore) TaskEventRecorder {
-	return &taskEventRecorder{
-		eventRecorder: events.NewTaskEventRecorder(eventSink, scope),
+func NewNodeEventRecorder(eventSink EventSink, scope promutils.Scope, store *storage.DataStore) NodeEventRecorder {
+	return &nodeEventRecorder{
+		eventRecorder: NewEventRecorder(eventSink, scope),
 		store:         store,
 	}
 }
