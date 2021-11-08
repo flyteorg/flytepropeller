@@ -190,8 +190,8 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	assert.Equal(t, anotherTaskExecCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), "fpmmhh6q")
 	assert.NotNil(t, anotherTaskExecCtx.ow)
 	assert.Equal(t, storage.DataReference("s3://sandbox/x/fpmmhh6q"), anotherTaskExecCtx.ow.GetRawOutputPrefix())
-	assert.Equal(t, storage.DataReference("s3://sandbox/x/fpmmhh6q/checkpoint"), anotherTaskExecCtx.ow.GetCheckpointPrefix())
-	assert.Equal(t, storage.DataReference("s3://sandbox/x/fpqmhlei/checkpoint"), anotherTaskExecCtx.ow.GetPreviousCheckpointsPrefix())
+	assert.Equal(t, storage.DataReference("s3://sandbox/x/fpmmhh6q/_flytecheckpoints"), anotherTaskExecCtx.ow.GetCheckpointPrefix())
+	assert.Equal(t, storage.DataReference("s3://sandbox/x/fpqmhlei/_flytecheckpoints"), anotherTaskExecCtx.ow.GetPreviousCheckpointsPrefix())
 	assert.NotNil(t, anotherTaskExecCtx.psm)
 	assert.NotNil(t, anotherTaskExecCtx.ber)
 	assert.NotNil(t, anotherTaskExecCtx.rm)
@@ -415,6 +415,6 @@ func TestComputePreviousCheckpointPath(t *testing.T) {
 	t.Run("attempt-1-nCtx", func(t *testing.T) {
 		c, err := ComputePreviousCheckpointPath(context.TODO(), 100, nCtx, "n1", 1)
 		assert.NoError(t, err)
-		assert.Equal(t, storage.DataReference("s3://sandbox/x/name-n1-0/checkpoint"), c)
+		assert.Equal(t, storage.DataReference("s3://sandbox/x/name-n1-0/_flytecheckpoints"), c)
 	})
 }
