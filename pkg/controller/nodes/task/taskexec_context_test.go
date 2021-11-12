@@ -371,9 +371,9 @@ func TestComputeRawOutputPrefix(t *testing.T) {
 
 	pre, uid, err := ComputeRawOutputPrefix(context.TODO(), 100, nCtx, "n1", 0)
 	assert.NoError(t, err)
-	assert.Equal(t, uid, "name-n1-0")
+	assert.Equal(t, "name-n1-0", uid)
 	assert.NotNil(t, pre)
-	assert.Equal(t, pre.GetRawOutputPrefix(), storage.DataReference("s3://sandbox/x/name-n1-0"))
+	assert.Equal(t, storage.DataReference("s3://sandbox/x/name-n1-0"), pre.GetRawOutputPrefix())
 
 	pre, uid, err = ComputeRawOutputPrefix(context.TODO(), 8, nCtx, "n1", 0)
 	assert.NoError(t, err)
