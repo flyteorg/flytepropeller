@@ -36,8 +36,8 @@ func (in MutableStruct) IsDirty() bool {
 
 type BranchNodeStatus struct {
 	MutableStruct   `json:"-"`
-	Phase           BranchNodePhase `json:"phase"`
-	FinalizedNodeID *NodeID         `json:"finalNodeId"`
+	Phase           BranchNodePhase `json:"phase,omitempty"`
+	FinalizedNodeID *NodeID         `json:"finalNodeId,omitempty"`
 }
 
 func (in *BranchNodeStatus) GetPhase() BranchNodePhase {
@@ -96,7 +96,7 @@ const (
 
 type DynamicNodeStatus struct {
 	MutableStruct `json:"-"`
-	Phase         DynamicNodePhase `json:"phase"`
+	Phase         DynamicNodePhase `json:"phase,omitempty"`
 	Reason        string           `json:"reason,omitempty"`
 	Error         *ExecutionError  `json:"error,omitempty"`
 }
@@ -158,8 +158,8 @@ const (
 
 type WorkflowNodeStatus struct {
 	MutableStruct  `json:"-"`
-	Phase          WorkflowNodePhase    `json:"phase"`
-	ExecutionError *core.ExecutionError `json:"executionError"`
+	Phase          WorkflowNodePhase    `json:"phase,omitempty"`
+	ExecutionError *core.ExecutionError `json:"executionError,omitempty"`
 }
 
 func (in *WorkflowNodeStatus) SetExecutionError(executionError *core.ExecutionError) {
@@ -187,7 +187,7 @@ func (in *WorkflowNodeStatus) SetWorkflowNodePhase(phase WorkflowNodePhase) {
 // +kubebuilder:validation:type=object
 type NodeStatus struct {
 	MutableStruct        `json:"-"`
-	Phase                NodePhase     `json:"phase"`
+	Phase                NodePhase     `json:"phase,omitempty"`
 	QueuedAt             *metav1.Time  `json:"queuedAt,omitempty"`
 	StartedAt            *metav1.Time  `json:"startedAt,omitempty"`
 	StoppedAt            *metav1.Time  `json:"stoppedAt,omitempty"`

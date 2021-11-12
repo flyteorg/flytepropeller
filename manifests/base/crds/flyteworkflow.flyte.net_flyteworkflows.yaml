@@ -116,6 +116,12 @@ spec:
                         - type: string
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
+                    required:
+                    - CPU
+                    - EphemeralStorage
+                    - GPU
+                    - Memory
+                    - Storage
                     type: object
                   Requests:
                     description: If the node where a task is running has enough of
@@ -152,6 +158,12 @@ spec:
                         - type: string
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
+                    required:
+                    - CPU
+                    - EphemeralStorage
+                    - GPU
+                    - Memory
+                    - Storage
                     type: object
                 required:
                 - Limits
@@ -2702,9 +2714,6 @@ spec:
                             used by the child nodes to ensure that the branch node
                             is in the right state
                           type: integer
-                      required:
-                      - finalNodeId
-                      - phase
                       type: object
                     cached:
                       type: boolean
@@ -2735,8 +2744,6 @@ spec:
                           type: integer
                         reason:
                           type: string
-                      required:
-                      - phase
                       type: object
                     error:
                       description: In case of Failing/Failed Phase, an execution error
@@ -2864,12 +2871,7 @@ spec:
                           type: object
                         phase:
                           type: integer
-                      required:
-                      - executionError
-                      - phase
                       type: object
-                  required:
-                  - phase
                   type: object
                 type: object
               outputRef:
