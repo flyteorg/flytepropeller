@@ -10,22 +10,22 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
 OUT="${DIR}/tmp"
-rm -rf ${OUT}
+rm -rf "${OUT}"
 git clone https://github.com/flyteorg/flyte.git "${OUT}"
 
-pushd ${OUT}
+pushd "${OUT}"
 
 if [ ! -z "$IMAGE" ]; 
 then
-  kind load docker-image ${IMAGE}
-  if [ ${IMAGE_NAME} -eq "flytepropeller" ]
+  kind load docker-image "${IMAGE}"
+  if [ "${IMAGE_NAME}" == "flytepropeller" ]
   then
-    sed -i.bak -e "s_${IMAGE_NAME}:.*_${IMAGE}_g" ${OUT}/kustomize/base/propeller/deployment.yaml
+    sed -i.bak -e "s_${IMAGE_NAME}:.*_${IMAGE}_g" "${OUT}"/kustomize/base/propeller/deployment.yaml
   fi
 
-  if [ ${IMAGE} -eq "flyteadmin" ]
+  if [ "${IMAGE}" == "flyteadmin" ]
   then
-    sed -i.bak -e "s_${IMAGE_NAME}:.*_${IMAGE}_g" ${OUT}/kustomize/base/admindeployment/deployment.yaml
+    sed -i.bak -e "s_${IMAGE_NAME}:.*_${IMAGE}_g" "${OUT}"/kustomize/base/admindeployment/deployment.yaml
   fi
 fi
 
