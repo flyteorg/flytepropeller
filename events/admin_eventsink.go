@@ -111,7 +111,7 @@ func IDFromMessage(message proto.Message) ([]byte, error) {
 	case *event.NodeExecutionEvent:
 		nid := eventMessage.Id
 		wid := nid.ExecutionId
-		id = fmt.Sprintf("%s:%s:%s:%s:%d", wid.Project, wid.Domain, wid.Name, nid.NodeId, eventMessage.Phase)
+		id = fmt.Sprintf("%s:%s:%s:%s:%s:%d", wid.Project, wid.Domain, wid.Name, nid.NodeId, eventMessage.RetryGroup, eventMessage.Phase)
 	case *event.TaskExecutionEvent:
 		tid := eventMessage.TaskId
 		nid := eventMessage.ParentNodeExecutionId

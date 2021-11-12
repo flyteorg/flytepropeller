@@ -190,6 +190,23 @@ func TestAdminFilterContains(t *testing.T) {
 }
 
 func TestIDFromMessage(t *testing.T) {
+	nodeEventRetryGroup := &event.NodeExecutionEvent{
+		Id: &core.NodeExecutionIdentifier{
+			NodeId: "node-id",
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "p",
+				Domain:  "d",
+				Name:    "n",
+			},
+		},
+		Phase:        core.NodeExecution_FAILED,
+		OccurredAt:   ptypes.TimestampNow(),
+		ProducerId:   "",
+		InputUri:     "input-uri",
+		OutputResult: &event.NodeExecutionEvent_OutputUri{OutputUri: ""},
+		RetryGroup:   "1",
+	}
+
 	retry0 := &event.TaskExecutionEvent{
 		Phase:        core.TaskExecution_SUCCEEDED,
 		OccurredAt:   ptypes.TimestampNow(),
@@ -229,7 +246,8 @@ func TestIDFromMessage(t *testing.T) {
 		want    string
 	}{
 		{"workflow", wfEvent, "p:d:n:2"},
-		{"node", nodeEvent, "p:d:n:node-id:5"},
+		{"node", nodeEvent, "p:d:n:node-id::5"},
+		{"node", nodeEventRetryGroup, "p:d:n:node-id:1:5"},
 		{"task", taskEvent, "p:d:n:node-id:task-id::1:3:0"},
 		{"task", retry0, "p:d:n:node-id:task-id::0:3:0"},
 		{"task", pv1, "p:d:n:node-id:task-id::0:3:1"},
