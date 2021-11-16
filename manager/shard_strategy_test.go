@@ -62,7 +62,7 @@ func TestComputeKeyRange(t *testing.T) {
 		keysCovered := 0
 		minKeyRangeSize := keyspaceSize / podCount
 		for podIndex := 0; podIndex < podCount; podIndex++ {
-			startIndex, endIndex := computeKeyRange(keyspaceSize, podCount, podIndex)
+			startIndex, endIndex := ComputeKeyRange(keyspaceSize, podCount, podIndex)
 
 			rangeSize := endIndex - startIndex
 			keysCovered += rangeSize

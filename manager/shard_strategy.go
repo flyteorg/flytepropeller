@@ -83,7 +83,7 @@ func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 	}
 
 	if podIndex >= 0 && podIndex < h.podCount {
-		startKey, endKey := computeKeyRange(v1alpha1.ShardKeyspaceSize, h.podCount, podIndex)
+		startKey, endKey := ComputeKeyRange(v1alpha1.ShardKeyspaceSize, h.podCount, podIndex)
 		for i := startKey; i < endKey; i++ {
 			container.Args = append(container.Args, "--propeller.include-shard-label", fmt.Sprintf("%d", i))
 		}
@@ -100,7 +100,7 @@ func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 
 // Computes a [startKey, endKey) pair denoting the key responsibilities for the provided pod index
 // given the keyspaceSize and podCount parameters
-func computeKeyRange(keyspaceSize, podCount, podIndex int) (int, int) {
+func ComputeKeyRange(keyspaceSize, podCount, podIndex int) (int, int) {
 	keysPerPod := keyspaceSize / podCount
 	keyRemainder := keyspaceSize - (podCount * keysPerPod)
 

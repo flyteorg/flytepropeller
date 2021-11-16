@@ -114,12 +114,13 @@ func logAndExit(err error) {
 
 func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption {
 	labelSelector := controller.IgnoreCompletedWorkflowsLabelSelector()
-	addLabelSelector(labelSelector, transformers.ShardKeyLabel, v1.LabelSelectorOpIn, cfg.IncludeShardKeyLabel)
-	addLabelSelector(labelSelector, transformers.ShardKeyLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeShardKeyLabel)
-	addLabelSelector(labelSelector, transformers.ProjectLabel, v1.LabelSelectorOpIn, cfg.IncludeProjectLabel)
-	addLabelSelector(labelSelector, transformers.ProjectLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeProjectLabel)
-	addLabelSelector(labelSelector, transformers.DomainLabel, v1.LabelSelectorOpIn, cfg.IncludeDomainLabel)
-	addLabelSelector(labelSelector, transformers.DomainLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeDomainLabel)
+
+	addLabelSelectorIfExists(labelSelector, transformers.ShardKeyLabel, v1.LabelSelectorOpIn, cfg.IncludeShardKeyLabel)
+	addLabelSelectorIfExists(labelSelector, transformers.ShardKeyLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeShardKeyLabel)
+	addLabelSelectorIfExists(labelSelector, transformers.ProjectLabel, v1.LabelSelectorOpIn, cfg.IncludeProjectLabel)
+	addLabelSelectorIfExists(labelSelector, transformers.ProjectLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeProjectLabel)
+	addLabelSelectorIfExists(labelSelector, transformers.DomainLabel, v1.LabelSelectorOpIn, cfg.IncludeDomainLabel)
+	addLabelSelectorIfExists(labelSelector, transformers.DomainLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeDomainLabel)
 
 	opts := []informers.SharedInformerOption{
 		informers.WithTweakListOptions(func(options *v1.ListOptions) {
@@ -133,7 +134,7 @@ func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption
 	return opts
 }
 
-func addLabelSelector(labelSelector *v1.LabelSelector, key string, labelSelectorOp v1.LabelSelectorOperator, values []string) {
+func addLabelSelectorIfExists(labelSelector *v1.LabelSelector, key string, labelSelectorOp v1.LabelSelectorOperator, values []string) {
 	if len(values) > 0 {
 		labelSelectorRequirement := v1.LabelSelectorRequirement{
 			Key:      key,
