@@ -10,11 +10,15 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+// Defines necessary functionality for a sharding strategy
 type ShardStrategy interface {
+	// Returns the total number of pods for the sharding strategy
 	GetPodCount() int
+	// Updates the PodSpec for the specified index to include label selectors
 	UpdatePodSpec(pod *v1.PodSpec, podIndex int) error
 }
 
+// Creates and validates a new ShardStrategy defined by the configuration
 func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (ShardStrategy, error) {
 	switch shardConfig.Type {
 	case config.HashShardType:

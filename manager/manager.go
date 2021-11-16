@@ -203,6 +203,7 @@ func (m *Manager) shutdown() {
 	}
 }
 
+// Creates a new FlytePropeller Manager instance
 func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *managerConfig.Config, kubeClient kubernetes.Interface, scope promutils.Scope) (*Manager, error) {
 	shardStrategy, err := NewShardStrategy(ctx, cfg.ShardConfig)
 	if err != nil {
