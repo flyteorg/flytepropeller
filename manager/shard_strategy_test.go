@@ -115,13 +115,12 @@ func TestUpdatePodSpec(t *testing.T) {
 				podSpec := v1.PodSpec{
 					Containers: []v1.Container{
 						v1.Container{
-							Command: []string{"flytepropeller"},
-							Args:    []string{"--config", "/etc/flyte/config/*.yaml"},
+							Name: "flytepropeller",
 						},
 					},
 				}
 
-				err := tt.shardStrategy.UpdatePodSpec(&podSpec, podIndex)
+				err := tt.shardStrategy.UpdatePodSpec(&podSpec, "flytepropeller", podIndex)
 				assert.NoError(t, err)
 			}
 		})
@@ -147,16 +146,15 @@ func TestUpdatePodSpecInvalidPodIndex(t *testing.T) {
 			podSpec := v1.PodSpec{
 				Containers: []v1.Container{
 					v1.Container{
-						Command: []string{"flytepropeller"},
-						Args:    []string{"--config", "/etc/flyte/config/*.yaml"},
+						Name: "flytepropeller",
 					},
 				},
 			}
 
-			lowerErr := tt.shardStrategy.UpdatePodSpec(&podSpec, -1)
+			lowerErr := tt.shardStrategy.UpdatePodSpec(&podSpec, "flytepropeller", -1)
 			assert.Error(t, lowerErr)
 
-			upperErr := tt.shardStrategy.UpdatePodSpec(&podSpec, tt.shardStrategy.GetPodCount())
+			upperErr := tt.shardStrategy.UpdatePodSpec(&podSpec, "flytepropeller", tt.shardStrategy.GetPodCount())
 			assert.Error(t, upperErr)
 		})
 	}
@@ -181,13 +179,12 @@ func TestUpdatePodSpecInvalidPodSpec(t *testing.T) {
 			podSpec := v1.PodSpec{
 				Containers: []v1.Container{
 					v1.Container{
-						Command: []string{"flytefoo"},
-						Args:    []string{"--config", "/etc/flyte/config/*.yaml"},
+						Name: "flytefoo",
 					},
 				},
 			}
 
-			err := tt.shardStrategy.UpdatePodSpec(&podSpec, 0)
+			err := tt.shardStrategy.UpdatePodSpec(&podSpec, "flytepropeller", 0)
 			assert.Error(t, err)
 		})
 	}

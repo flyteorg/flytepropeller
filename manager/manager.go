@@ -51,15 +51,16 @@ func newManagerMetrics(scope promutils.Scope) *metrics {
 // The Manager periodically scans k8s to ensure liveness of multiple FlytePropeller controller
 // instances and rectifies state based on the configured sharding strategy.
 type Manager struct {
-	kubeClient           kubernetes.Interface
-	leaderElector        *leaderelection.LeaderElector
-	metrics              *metrics
-	podApplication       string
-	podNamespace         string
-	podTemplateName      string
-	podTemplateNamespace string
-	scanInterval         time.Duration
-	shardStrategy        ShardStrategy
+	kubeClient               kubernetes.Interface
+	leaderElector            *leaderelection.LeaderElector
+	metrics                  *metrics
+	podApplication           string
+	podNamespace             string
+	podTemplateContainerName string
+	podTemplateName          string
+	podTemplateNamespace     string
+	scanInterval             time.Duration
+	shardStrategy            ShardStrategy
 }
 
 func getPodTemplate(ctx context.Context, kubeClient kubernetes.Interface, podTemplateName, podTemplateNamespace string) (*v1.PodTemplate, error) {
@@ -96,7 +97,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 	}
 
 	// disable leader election on all managed pods
-	container, err := getFlytePropellerContainer(&podTemplate.Template.Spec)
+	container, err := getContainer(&podTemplate.Template.Spec, m.podTemplateContainerName)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve flytepropeller container from pod template [%v]", err)
 	}
@@ -129,7 +130,6 @@ func (m *Manager) createPods(ctx context.Context) error {
 		// validate existing pod annotations
 		validAnnotations := true
 		for key, value := range podAnnotations {
-			logger.Infof(ctx, "POD:%s KEY:%s VALUE:%s", podName, key, value)
 			if pod.ObjectMeta.Annotations[key] != value {
 				validAnnotations = false
 				break
@@ -175,7 +175,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 				Spec: *podTemplate.Template.Spec.DeepCopy(),
 			}
 
-			err := m.shardStrategy.UpdatePodSpec(&pod.Spec, i)
+			err := m.shardStrategy.UpdatePodSpec(&pod.Spec, m.podTemplateContainerName, i)
 			if err != nil {
 				logger.Errorf(ctx, "failed to update pod spec for '%s' [%v]", podName, err)
 				continue
@@ -245,14 +245,15 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 	}
 
 	manager := &Manager{
-		kubeClient:           kubeClient,
-		metrics:              newManagerMetrics(scope),
-		podApplication:       cfg.PodApplication,
-		podNamespace:         cfg.PodNamespace,
-		podTemplateName:      cfg.PodTemplateName,
-		podTemplateNamespace: cfg.PodTemplateNamespace,
-		scanInterval:         cfg.ScanInterval.Duration,
-		shardStrategy:        shardStrategy,
+		kubeClient:               kubeClient,
+		metrics:                  newManagerMetrics(scope),
+		podApplication:           cfg.PodApplication,
+		podNamespace:             cfg.PodNamespace,
+		podTemplateContainerName: cfg.PodTemplateContainerName,
+		podTemplateName:          cfg.PodTemplateName,
+		podTemplateNamespace:     cfg.PodTemplateNamespace,
+		scanInterval:             cfg.ScanInterval.Duration,
+		shardStrategy:            shardStrategy,
 	}
 
 	// configure leader elector

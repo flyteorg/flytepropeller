@@ -20,7 +20,7 @@ type ShardStrategy interface {
 	// Generates a unique hash code to identify shard strategy updates
 	HashCode() (uint32, error)
 	// Updates the PodSpec for the specified index to include label selectors
-	UpdatePodSpec(pod *v1.PodSpec, podIndex int) error
+	UpdatePodSpec(pod *v1.PodSpec, containerName string, podIndex int) error
 }
 
 // Creates and validates a new ShardStrategy defined by the configuration
@@ -85,8 +85,8 @@ func (h *HashShardStrategy) HashCode() (uint32, error) {
 	return computeHashCode(config.HashShardType, h)
 }
 
-func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
-	container, err := getFlytePropellerContainer(pod)
+func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, containerName string, podIndex int) error {
+	container, err := getContainer(pod, containerName)
 	if err != nil {
 		return err
 	}
@@ -167,8 +167,8 @@ func (e *EnvironmentShardStrategy) HashCode() (uint32, error) {
 	return computeHashCode(e.EnvType.String(), e)
 }
 
-func (e *EnvironmentShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
-	container, err := getFlytePropellerContainer(pod)
+func (e *EnvironmentShardStrategy) UpdatePodSpec(pod *v1.PodSpec, containerName string, podIndex int) error {
+	container, err := getContainer(pod, containerName)
 	if err != nil {
 		return err
 	}
@@ -190,12 +190,11 @@ func (e *EnvironmentShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) 
 	return nil
 }
 
-func getFlytePropellerContainer(pod *v1.PodSpec) (*v1.Container, error) {
+func getContainer(pod *v1.PodSpec, containerName string) (*v1.Container, error) {
 	// find flytepropeller container(s)
 	var containers []*v1.Container
 	for i := 0; i < len(pod.Containers); i++ {
-		commands := pod.Containers[i].Command
-		if len(commands) > 0 && commands[0] == "flytepropeller" {
+		if pod.Containers[i].Name == containerName {
 			containers = append(containers, &pod.Containers[i])
 		}
 	}
