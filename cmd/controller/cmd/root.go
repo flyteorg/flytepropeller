@@ -113,14 +113,31 @@ func logAndExit(err error) {
 }
 
 func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption {
-	labelSelector := controller.IgnoreCompletedWorkflowsLabelSelector()
+	selectors := []struct {
+		label     string
+		operation v1.LabelSelectorOperator
+		values    []string
+	}{
+		{transformers.ShardKeyLabel, v1.LabelSelectorOpIn, cfg.IncludeShardKeyLabel},
+		{transformers.ShardKeyLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeShardKeyLabel},
+		{transformers.ProjectLabel, v1.LabelSelectorOpIn, cfg.IncludeProjectLabel},
+		{transformers.ProjectLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeProjectLabel},
+		{transformers.DomainLabel, v1.LabelSelectorOpIn, cfg.IncludeDomainLabel},
+		{transformers.DomainLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeDomainLabel},
+	}
 
-	addLabelSelectorIfExists(labelSelector, transformers.ShardKeyLabel, v1.LabelSelectorOpIn, cfg.IncludeShardKeyLabel)
-	addLabelSelectorIfExists(labelSelector, transformers.ShardKeyLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeShardKeyLabel)
-	addLabelSelectorIfExists(labelSelector, transformers.ProjectLabel, v1.LabelSelectorOpIn, cfg.IncludeProjectLabel)
-	addLabelSelectorIfExists(labelSelector, transformers.ProjectLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeProjectLabel)
-	addLabelSelectorIfExists(labelSelector, transformers.DomainLabel, v1.LabelSelectorOpIn, cfg.IncludeDomainLabel)
-	addLabelSelectorIfExists(labelSelector, transformers.DomainLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeDomainLabel)
+	labelSelector := controller.IgnoreCompletedWorkflowsLabelSelector()
+	for _, selector := range selectors {
+		if len(selector.values) > 0 {
+			labelSelectorRequirement := v1.LabelSelectorRequirement{
+				Key:      selector.label,
+				Operator: selector.operation,
+				Values:   selector.values,
+			}
+
+			labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, labelSelectorRequirement)
+		}
+	}
 
 	opts := []informers.SharedInformerOption{
 		informers.WithTweakListOptions(func(options *v1.ListOptions) {
@@ -132,18 +149,6 @@ func sharedInformerOptions(cfg *config2.Config) []informers.SharedInformerOption
 		opts = append(opts, informers.WithNamespace(cfg.LimitNamespace))
 	}
 	return opts
-}
-
-func addLabelSelectorIfExists(labelSelector *v1.LabelSelector, key string, labelSelectorOp v1.LabelSelectorOperator, values []string) {
-	if len(values) > 0 {
-		labelSelectorRequirement := v1.LabelSelectorRequirement{
-			Key:      key,
-			Operator: labelSelectorOp,
-			Values:   values,
-		}
-
-		labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, labelSelectorRequirement)
-	}
 }
 
 func safeMetricName(original string) string {
