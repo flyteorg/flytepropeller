@@ -1,8 +1,11 @@
 package manager
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"fmt"
+	"hash/fnv"
 
 	"github.com/flyteorg/flytepropeller/manager/config"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -14,6 +17,8 @@ import (
 type ShardStrategy interface {
 	// Returns the total number of pods for the sharding strategy
 	GetPodCount() int
+	// Generates a unique hash code to identify shard strategy updates
+	HashCode() (uint32, error)
 	// Updates the PodSpec for the specified index to include label selectors
 	UpdatePodSpec(pod *v1.PodSpec, podIndex int) error
 }
@@ -29,8 +34,8 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 		}
 
 		return &HashShardStrategy{
-			enableUncoveredReplica: shardConfig.EnableUncoveredReplica,
-			podCount:               shardConfig.PodCount,
+			EnableUncoveredReplica: shardConfig.EnableUncoveredReplica,
+			PodCount:               shardConfig.PodCount,
 		}, nil
 	case config.ProjectShardType, config.DomainShardType:
 		replicas := make([][]string, 0)
@@ -51,9 +56,9 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 		}
 
 		return &EnvironmentShardStrategy{
-			enableUncoveredReplica: shardConfig.EnableUncoveredReplica,
-			envType:                envType,
-			replicas:               replicas,
+			EnableUncoveredReplica: shardConfig.EnableUncoveredReplica,
+			EnvType:                envType,
+			Replicas:               replicas,
 		}, nil
 	}
 
@@ -64,16 +69,20 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 // All FlyteWorkflows are assigned a shard-key using a hash of their executionID and are then
 // processed by the FlytePropeller instance responsible for that keyspace range.
 type HashShardStrategy struct {
-	enableUncoveredReplica bool
-	podCount               int
+	EnableUncoveredReplica bool
+	PodCount               int
 }
 
 func (h *HashShardStrategy) GetPodCount() int {
-	if h.enableUncoveredReplica {
-		return h.podCount + 1
+	if h.EnableUncoveredReplica {
+		return h.PodCount + 1
 	}
 
-	return h.podCount
+	return h.PodCount
+}
+
+func (h *HashShardStrategy) HashCode() (uint32, error) {
+	return computeHashCode(config.HashShardType, h)
 }
 
 func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
@@ -82,14 +91,14 @@ func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
 		return err
 	}
 
-	if podIndex >= 0 && podIndex < h.podCount {
-		startKey, endKey := ComputeKeyRange(v1alpha1.ShardKeyspaceSize, h.podCount, podIndex)
+	if podIndex >= 0 && podIndex < h.PodCount {
+		startKey, endKey := ComputeKeyRange(v1alpha1.ShardKeyspaceSize, h.PodCount, podIndex)
 		for i := startKey; i < endKey; i++ {
-			container.Args = append(container.Args, "--propeller.include-shard-label", fmt.Sprintf("%d", i))
+			container.Args = append(container.Args, "--propeller.include-shard-key-label", fmt.Sprintf("%d", i))
 		}
-	} else if h.enableUncoveredReplica && podIndex == h.podCount {
+	} else if h.EnableUncoveredReplica && podIndex == h.PodCount {
 		for i := 0; i < v1alpha1.ShardKeyspaceSize; i++ {
-			container.Args = append(container.Args, "--propeller.exclude-shard-label", fmt.Sprintf("%d", i))
+			container.Args = append(container.Args, "--propeller.exclude-shard-key-label", fmt.Sprintf("%d", i))
 		}
 	} else {
 		return fmt.Errorf("invalid podIndex '%d' out of range [0,%d)", podIndex, h.GetPodCount())
@@ -130,9 +139,9 @@ func intMax(a, b int) int {
 // The ProjectShardStrategy assigns project(s) to individual FlytePropeller instances to
 // determine FlyteWorkflow processing responsibility.
 type EnvironmentShardStrategy struct {
-	envType                environmentType
-	enableUncoveredReplica bool
-	replicas               [][]string
+	EnvType                environmentType
+	EnableUncoveredReplica bool
+	Replicas               [][]string
 }
 
 type environmentType int
@@ -147,11 +156,15 @@ func (e environmentType) String() string {
 }
 
 func (e *EnvironmentShardStrategy) GetPodCount() int {
-	if e.enableUncoveredReplica {
-		return len(e.replicas) + 1
+	if e.EnableUncoveredReplica {
+		return len(e.Replicas) + 1
 	}
 
-	return len(e.replicas)
+	return len(e.Replicas)
+}
+
+func (e *EnvironmentShardStrategy) HashCode() (uint32, error) {
+	return computeHashCode(fmt.Sprintf("%s", e.EnvType), e)
 }
 
 func (e *EnvironmentShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {
@@ -160,14 +173,14 @@ func (e *EnvironmentShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) 
 		return err
 	}
 
-	if podIndex >= 0 && podIndex < len(e.replicas) {
-		for _, entity := range e.replicas[podIndex] {
-			container.Args = append(container.Args, fmt.Sprintf("--propeller.include-%s-label", e.envType), entity)
+	if podIndex >= 0 && podIndex < len(e.Replicas) {
+		for _, entity := range e.Replicas[podIndex] {
+			container.Args = append(container.Args, fmt.Sprintf("--propeller.include-%s-label", e.EnvType), entity)
 		}
-	} else if e.enableUncoveredReplica && podIndex == len(e.replicas) {
-		for _, replica := range e.replicas {
+	} else if e.EnableUncoveredReplica && podIndex == len(e.Replicas) {
+		for _, replica := range e.Replicas {
 			for _, entity := range replica {
-				container.Args = append(container.Args, fmt.Sprintf("--propeller.exclude-%s-label", e.envType), entity)
+				container.Args = append(container.Args, fmt.Sprintf("--propeller.exclude-%s-label", e.EnvType), entity)
 			}
 		}
 	} else {
@@ -192,4 +205,23 @@ func getFlytePropellerContainer(pod *v1.PodSpec) (*v1.Container, error) {
 	}
 
 	return containers[0], nil
+}
+
+func computeHashCode(name string, data interface{}) (uint32, error) {
+	hash := fnv.New32a()
+	if _, err := hash.Write([]byte(name)); err != nil {
+		return 0, err
+	}
+
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	if err := encoder.Encode(data); err != nil {
+		return 0, err
+	}
+
+	if _, err := hash.Write(buffer.Bytes()); err != nil {
+		return 0, err
+	}
+
+	return hash.Sum32(), nil
 }

@@ -23,8 +23,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"k8s.io/client-go/kubernetes"
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	//corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/leaderelection"
+)
+
+const (
+	podTemplateResourceVersion = "podTemplateResourceVersion"
+	shardConfigHash = "shardConfigHash"
 )
 
 type metrics struct {
@@ -48,31 +53,56 @@ func newManagerMetrics(scope promutils.Scope) *metrics {
 // The Manager periodically scans k8s to ensure liveness of multiple FlytePropeller controller
 // instances and rectifies state based on the configured sharding strategy.
 type Manager struct {
-	kubePodsClient corev1.PodInterface
-	leaderElector  *leaderelection.LeaderElector
-	metrics        *metrics
-	pod            *v1.Pod
-	podApplication string
-	scanInterval   time.Duration
-	shardStrategy  ShardStrategy
+	kubeClient           kubernetes.Interface
+	leaderElector        *leaderelection.LeaderElector
+	metrics              *metrics
+	podApplication       string
+	podNamespace         string
+	podTemplateName      string
+	podTemplateNamespace string
+	scanInterval         time.Duration
+	shardStrategy        ShardStrategy
+}
+
+func getPodTemplate(ctx context.Context, kubeClient kubernetes.Interface, podTemplateName, podTemplateNamespace string) (*v1.PodTemplate, error) {
+	podTemplate, err := kubeClient.CoreV1().PodTemplates(podTemplateNamespace).Get(ctx, podTemplateName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve pod template '%s' from namespace '%s' [%v]", podTemplateName, podTemplateNamespace, err)
+	}
+
+	return podTemplate, nil
 }
 
 func (m *Manager) createPods(ctx context.Context) error {
 	t := m.metrics.RoundTime.Start()
 	defer t.Stop()
 
-	podNames := m.getPodNames()
+	// retrieve templateResourceVersion and shardConfigHash
+	podTemplate, err := getPodTemplate(ctx, m.kubeClient, m.podTemplateName, m.podTemplateNamespace)
+	if err != nil {
+		return err
+	}
 
-	// retrieve existing pods
+	shardConfigHash, err  := m.shardStrategy.HashCode()
+	if err != nil {
+		return err
+	}
+
+	podAnnotations := map[string]string{
+		"podTemplateResourceVersion": podTemplate.ObjectMeta.ResourceVersion,
+		"shardConfigHash":            fmt.Sprintf("%d", shardConfigHash),
+	}
+	podNames := m.getPodNames()
 	podLabels := map[string]string{
 		"app": m.podApplication,
 	}
 
+	// retrieve existing pods
 	listOptions := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(podLabels).String(),
 	}
 
-	pods, err := m.kubePodsClient.List(ctx, listOptions)
+	pods, err := m.kubeClient.CoreV1().Pods(m.podNamespace).List(ctx, listOptions)
 	if err != nil {
 		return err
 	}
@@ -89,6 +119,29 @@ func (m *Manager) createPods(ctx context.Context) error {
 	podsRunning := 0
 	for _, pod := range pods.Items {
 		podName := pod.ObjectMeta.Name
+
+		// validate existing pod annotations
+		validAnnotations := true
+		for key, value := range podAnnotations {
+			if pod.ObjectMeta.Annotations[key] != value {
+				validAnnotations = false
+				break
+			}
+		}
+
+		if !validAnnotations {
+			// delete stale pod
+			err := m.kubeClient.CoreV1().Pods(m.podNamespace).Delete(ctx, podName, metav1.DeleteOptions{})
+			if err != nil {
+				return err
+			}
+
+			m.metrics.PodsDeleted.Inc()
+			logger.Infof(ctx, "deleted pod '%s'", podName)
+			continue
+		}
+
+		// update podExists to track existing pods
 		if _, ok := podExists[podName]; ok {
 			podExists[podName] = true
 
@@ -97,9 +150,9 @@ func (m *Manager) createPods(ctx context.Context) error {
 			} else if pod.Status.Phase == v1.PodFailed {
 				logger.Warnf(ctx, "flytepropeller pod '%s' in 'failed' state", podName)
 			}
-		} else {
+		}/* else {
 			logger.Warnf(ctx, "detected unmanaged pod '%s'", podName)
-		}
+		}*/
 	}
 
 	m.metrics.PodsRunning.Set(float64(podsRunning))
@@ -107,8 +160,18 @@ func (m *Manager) createPods(ctx context.Context) error {
 	// create non-existent pods
 	for i, podName := range podNames {
 		if exists := podExists[podName]; !exists {
-			pod := m.pod.DeepCopy()
-			pod.ObjectMeta.Name = podName
+			pod := &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: podAnnotations,
+					Name:        podName,
+					Namespace:   m.podNamespace,
+					Labels:      podLabels,
+				},
+				Spec: *podTemplate.Template.Spec.DeepCopy(), // TODO - ensure the * is correct
+			}
+
+			/*pod := m.pod.DeepCopy()
+			pod.ObjectMeta.Name = podName*/
 
 			err := m.shardStrategy.UpdatePodSpec(&pod.Spec, i)
 			if err != nil {
@@ -116,7 +179,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 				continue
 			}
 
-			_, err = m.kubePodsClient.Create(ctx, pod, metav1.CreateOptions{})
+			_, err = m.kubeClient.CoreV1().Pods(m.podNamespace).Create(ctx, pod, metav1.CreateOptions{})
 			if err != nil {
 				logger.Errorf(ctx, "failed to create pod '%s' [%v]", podName, err)
 				continue
@@ -133,7 +196,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 func (m *Manager) deletePods(ctx context.Context) error {
 	podNames := m.getPodNames()
 	for _, podName := range podNames {
-		err := m.kubePodsClient.Delete(ctx, podName, metav1.DeleteOptions{})
+		err := m.kubeClient.CoreV1().Pods(m.podNamespace).Delete(ctx, podName, metav1.DeleteOptions{})
 		if err != nil {
 			if kubeerrors.IsNotFound(err) {
 				logger.Warnf(ctx, "deleting pod '%s' does not exist", podName)
@@ -143,7 +206,7 @@ func (m *Manager) deletePods(ctx context.Context) error {
 			return err
 		}
 
-		m.metrics.PodsCreated.Inc()
+		m.metrics.PodsDeleted.Inc()
 		logger.Infof(ctx, "deleted pod '%s'", podName)
 	}
 
@@ -170,7 +233,7 @@ func (m *Manager) Run(ctx context.Context) error {
 		if err := m.run(ctx); err != nil {
 			return err
 		}
-		m.shutdown()
+		//m.shutdown() // TODO - remove
 	}
 
 	return nil
@@ -210,7 +273,7 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 		return nil, fmt.Errorf("failed to initialize shard strategy [%v]", err)
 	}
 
-	// retrieve and validate pod template
+	/*// retrieve and validate pod template
 	podTemplate, err := kubeClient.CoreV1().PodTemplates(cfg.PodTemplateNamespace).Get(ctx, cfg.PodTemplateName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve pod template '%s' from namespace '%s' [%v]", cfg.PodTemplateName, cfg.PodTemplateNamespace, err)
@@ -233,15 +296,17 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 			},
 		},
 		Spec: podTemplate.Template.Spec,
-	}
+	}*/
 
 	manager := &Manager{
-		kubePodsClient: kubeClient.CoreV1().Pods(cfg.PodNamespace),
-		metrics:        newManagerMetrics(scope),
-		pod:            pod,
-		podApplication: cfg.PodApplication,
-		scanInterval:   cfg.ScanInterval.Duration,
-		shardStrategy:  shardStrategy,
+		kubeClient:           kubeClient,
+		metrics:              newManagerMetrics(scope),
+		podApplication:       cfg.PodApplication,
+		podNamespace:         cfg.PodNamespace,
+		podTemplateName:      cfg.PodTemplateName,
+		podTemplateNamespace: cfg.PodTemplateNamespace,
+		scanInterval:         cfg.ScanInterval.Duration,
+		shardStrategy:        shardStrategy,
 	}
 
 	// configure leader elector
@@ -271,7 +336,7 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 				// OnStoppingLeader func is called as a defer on every elector run, regardless of election status.
 				if manager.leaderElector.IsLeader() {
 					logger.Info(ctx, "stopped leading")
-					manager.shutdown()
+					//manager.shutdown() // TODO - remove
 				}
 			})
 
