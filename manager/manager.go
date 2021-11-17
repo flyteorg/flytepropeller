@@ -17,13 +17,11 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"k8s.io/client-go/kubernetes"
-	//corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/leaderelection"
 )
 
@@ -77,7 +75,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 	t := m.metrics.RoundTime.Start()
 	defer t.Stop()
 
-	// retrieve templateResourceVersion and shardConfigHash
+	// retrieve pod list / create metadata
 	podTemplate, err := getPodTemplate(ctx, m.kubeClient, m.podTemplateName, m.podTemplateNamespace)
 	if err != nil {
 		return err
@@ -96,6 +94,14 @@ func (m *Manager) createPods(ctx context.Context) error {
 	podLabels := map[string]string{
 		"app": m.podApplication,
 	}
+
+	// disable leader election on all managed pods
+	container, err := getFlytePropellerContainer(&podTemplate.Template.Spec)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve flytepropeller container from pod template [%v]", err)
+	}
+
+	container.Args = append(container.Args, "--propeller.leader-election.enabled=false")
 
 	// retrieve existing pods
 	listOptions := metav1.ListOptions{
@@ -150,9 +156,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 			} else if pod.Status.Phase == v1.PodFailed {
 				logger.Warnf(ctx, "flytepropeller pod '%s' in 'failed' state", podName)
 			}
-		}/* else {
-			logger.Warnf(ctx, "detected unmanaged pod '%s'", podName)
-		}*/
+		}
 	}
 
 	m.metrics.PodsRunning.Set(float64(podsRunning))
@@ -170,9 +174,6 @@ func (m *Manager) createPods(ctx context.Context) error {
 				Spec: *podTemplate.Template.Spec.DeepCopy(), // TODO - ensure the * is correct
 			}
 
-			/*pod := m.pod.DeepCopy()
-			pod.ObjectMeta.Name = podName*/
-
 			err := m.shardStrategy.UpdatePodSpec(&pod.Spec, i)
 			if err != nil {
 				logger.Errorf(ctx, "failed to update pod spec for '%s' [%v]", podName, err)
@@ -188,26 +189,6 @@ func (m *Manager) createPods(ctx context.Context) error {
 			m.metrics.PodsCreated.Inc()
 			logger.Infof(ctx, "created pod '%s'", podName)
 		}
-	}
-
-	return nil
-}
-
-func (m *Manager) deletePods(ctx context.Context) error {
-	podNames := m.getPodNames()
-	for _, podName := range podNames {
-		err := m.kubeClient.CoreV1().Pods(m.podNamespace).Delete(ctx, podName, metav1.DeleteOptions{})
-		if err != nil {
-			if kubeerrors.IsNotFound(err) {
-				logger.Warnf(ctx, "deleting pod '%s' does not exist", podName)
-				continue
-			}
-
-			return err
-		}
-
-		m.metrics.PodsDeleted.Inc()
-		logger.Infof(ctx, "deleted pod '%s'", podName)
 	}
 
 	return nil
@@ -233,7 +214,6 @@ func (m *Manager) Run(ctx context.Context) error {
 		if err := m.run(ctx); err != nil {
 			return err
 		}
-		//m.shutdown() // TODO - remove
 	}
 
 	return nil
@@ -256,47 +236,12 @@ func (m *Manager) run(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) shutdown() {
-	// delete pods using a new timeout context to bound the shutdown time
-	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
-	defer cancel()
-
-	if err := m.deletePods(ctx); err != nil {
-		logger.Errorf(ctx, "failed to delete pod(s) [%v]", err)
-	}
-}
-
 // Creates a new FlytePropeller Manager instance
 func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *managerConfig.Config, kubeClient kubernetes.Interface, scope promutils.Scope) (*Manager, error) {
 	shardStrategy, err := NewShardStrategy(ctx, cfg.ShardConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize shard strategy [%v]", err)
 	}
-
-	/*// retrieve and validate pod template
-	podTemplate, err := kubeClient.CoreV1().PodTemplates(cfg.PodTemplateNamespace).Get(ctx, cfg.PodTemplateName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve pod template '%s' from namespace '%s' [%v]", cfg.PodTemplateName, cfg.PodTemplateNamespace, err)
-	}
-
-	container, err := getFlytePropellerContainer(&podTemplate.Template.Spec)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve flytepropeller container from pod template [%v]", err)
-	}
-
-	// disable leader election on all managed pods
-	container.Args = append(container.Args, "--propeller.leader-election.enabled=false")
-
-	// create singular pod spec to ensure uniformity in managed pods
-	pod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: cfg.PodNamespace,
-			Labels: map[string]string{
-				"app": cfg.PodApplication,
-			},
-		},
-		Spec: podTemplate.Template.Spec,
-	}*/
 
 	manager := &Manager{
 		kubeClient:           kubeClient,
@@ -336,7 +281,6 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 				// OnStoppingLeader func is called as a defer on every elector run, regardless of election status.
 				if manager.leaderElector.IsLeader() {
 					logger.Info(ctx, "stopped leading")
-					//manager.shutdown() // TODO - remove
 				}
 			})
 
