@@ -15,6 +15,24 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
+var (
+	podTemplate = &v1.PodTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			ResourceVersion: "0",
+		},
+		Template: v1.PodTemplateSpec{
+			Spec: v1.PodSpec{
+				Containers: []v1.Container{
+					v1.Container{
+						Command: []string{"flytepropeller"},
+						Args:    []string{"--config", "/etc/flyte/config/*.yaml"},
+					},
+				},
+			},
+		},
+	}
+)
+
 func TestCreatePods(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -29,33 +47,21 @@ func TestCreatePods(t *testing.T) {
 		{"domain_uncovered", domainShardStrategyUncovered},
 	}
 
-	pod := &v1.Pod{
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				v1.Container{
-					Command: []string{"flytepropeller"},
-					Args:    []string{"--config", "/etc/flyte/config/*.yaml"},
-				},
-			},
-		},
-	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
 			scope := promutils.NewScope(fmt.Sprintf("create_%s", tt.name))
-
-			kubePodsClient := fake.NewSimpleClientset().CoreV1().Pods("")
+			kubeClient := fake.NewSimpleClientset(podTemplate)
 
 			manager := Manager{
-				kubePodsClient: kubePodsClient,
+				kubeClient:     kubeClient,
 				metrics:        newManagerMetrics(scope),
-				pod:            pod,
 				podApplication: "flytepropeller",
 				shardStrategy:  tt.shardStrategy,
 			}
 
 			// ensure no pods are "running"
+			kubePodsClient := kubeClient.CoreV1().Pods("")
 			pods, err := kubePodsClient.List(ctx, metav1.ListOptions{})
 			assert.NoError(t, err)
 			assert.Equal(t, 0, len(pods.Items))
@@ -79,7 +85,7 @@ func TestCreatePods(t *testing.T) {
 	}
 }
 
-func TestDeletePods(t *testing.T) {
+func TestUpdatePods(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name          string
@@ -96,38 +102,52 @@ func TestDeletePods(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			scope := promutils.NewScope(fmt.Sprintf("delete_%s", tt.name))
+			scope := promutils.NewScope(fmt.Sprintf("update_%s", tt.name))
 
-			initPods := make([]runtime.Object, 0)
+			initObjects := []runtime.Object{podTemplate}
 			for i := 0; i < tt.shardStrategy.GetPodCount(); i++ {
-				initPods = append(initPods, &v1.Pod{
+				initObjects = append(initObjects, &v1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							podTemplateResourceVersion: "1",
+							shardConfigHash:            "1",
+						},
+						Labels: map[string]string{
+							"app": "flytepropeller",
+						},
 						Name: fmt.Sprintf("flytepropeller-%d", i),
 					},
 				})
 			}
 
-			kubePodsClient := fake.NewSimpleClientset(initPods...).CoreV1().Pods("")
+			kubeClient := fake.NewSimpleClientset(initObjects...)
 
 			manager := Manager{
-				kubePodsClient: kubePodsClient,
+				kubeClient:     kubeClient,
 				metrics:        newManagerMetrics(scope),
 				podApplication: "flytepropeller",
 				shardStrategy:  tt.shardStrategy,
 			}
 
 			// ensure all pods are "running"
+			kubePodsClient := kubeClient.CoreV1().Pods("")
 			pods, err := kubePodsClient.List(ctx, metav1.ListOptions{})
 			assert.NoError(t, err)
 			assert.Equal(t, tt.shardStrategy.GetPodCount(), len(pods.Items))
+			for _, pod := range pods.Items {
+				assert.Equal(t, "1", pod.ObjectMeta.Annotations[podTemplateResourceVersion])
+			}
 
-			// delete pods and validate state
-			err = manager.deletePods(ctx)
+			// create all pods and validate state
+			err = manager.createPods(ctx)
 			assert.NoError(t, err)
 
 			pods, err = kubePodsClient.List(ctx, metav1.ListOptions{})
 			assert.NoError(t, err)
-			assert.Equal(t, 0, len(pods.Items))
+			assert.Equal(t, tt.shardStrategy.GetPodCount(), len(pods.Items))
+			for _, pod := range pods.Items {
+				assert.Equal(t, podTemplate.ObjectMeta.ResourceVersion, pod.ObjectMeta.Annotations[podTemplateResourceVersion])
+			}
 		})
 	}
 }

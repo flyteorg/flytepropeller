@@ -164,7 +164,7 @@ func (e *EnvironmentShardStrategy) GetPodCount() int {
 }
 
 func (e *EnvironmentShardStrategy) HashCode() (uint32, error) {
-	return computeHashCode(fmt.Sprintf("%s", e.EnvType), e)
+	return computeHashCode(e.EnvType.String(), e)
 }
 
 func (e *EnvironmentShardStrategy) UpdatePodSpec(pod *v1.PodSpec, podIndex int) error {

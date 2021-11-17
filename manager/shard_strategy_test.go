@@ -10,46 +10,46 @@ import (
 
 var (
 	hashShardStrategy = &HashShardStrategy{
-		enableUncoveredReplica: false,
-		podCount:               3,
+		EnableUncoveredReplica: false,
+		PodCount:               3,
 	}
 
 	hashShardStrategyUncovered = &HashShardStrategy{
-		enableUncoveredReplica: true,
-		podCount:               3,
+		EnableUncoveredReplica: true,
+		PodCount:               3,
 	}
 
 	projectShardStrategy = &EnvironmentShardStrategy{
-		enableUncoveredReplica: false,
-		envType:                project,
-		replicas: [][]string{
+		EnableUncoveredReplica: false,
+		EnvType:                project,
+		Replicas: [][]string{
 			[]string{"flytesnacks"},
 			[]string{"flytefoo", "flytebar"},
 		},
 	}
 
 	projectShardStrategyUncovered = &EnvironmentShardStrategy{
-		enableUncoveredReplica: true,
-		envType:                project,
-		replicas: [][]string{
+		EnableUncoveredReplica: true,
+		EnvType:                project,
+		Replicas: [][]string{
 			[]string{"flytesnacks"},
 			[]string{"flytefoo", "flytebar"},
 		},
 	}
 
 	domainShardStrategy = &EnvironmentShardStrategy{
-		enableUncoveredReplica: false,
-		envType:                domain,
-		replicas: [][]string{
+		EnableUncoveredReplica: false,
+		EnvType:                domain,
+		Replicas: [][]string{
 			[]string{"production"},
 			[]string{"foo", "bar"},
 		},
 	}
 
 	domainShardStrategyUncovered = &EnvironmentShardStrategy{
-		enableUncoveredReplica: true,
-		envType:                domain,
-		replicas: [][]string{
+		EnableUncoveredReplica: true,
+		EnvType:                domain,
+		Replicas: [][]string{
 			[]string{"production"},
 			[]string{"foo", "bar"},
 		},

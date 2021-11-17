@@ -27,7 +27,7 @@ import (
 
 const (
 	podTemplateResourceVersion = "podTemplateResourceVersion"
-	shardConfigHash = "shardConfigHash"
+	shardConfigHash            = "shardConfigHash"
 )
 
 type metrics struct {
@@ -75,13 +75,13 @@ func (m *Manager) createPods(ctx context.Context) error {
 	t := m.metrics.RoundTime.Start()
 	defer t.Stop()
 
-	// retrieve pod list / create metadata
+	// retrieve pod metadata
 	podTemplate, err := getPodTemplate(ctx, m.kubeClient, m.podTemplateName, m.podTemplateNamespace)
 	if err != nil {
 		return err
 	}
 
-	shardConfigHash, err  := m.shardStrategy.HashCode()
+	shardConfigHash, err := m.shardStrategy.HashCode()
 	if err != nil {
 		return err
 	}
@@ -129,6 +129,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 		// validate existing pod annotations
 		validAnnotations := true
 		for key, value := range podAnnotations {
+			logger.Infof(ctx, "POD:%s KEY:%s VALUE:%s", podName, key, value)
 			if pod.ObjectMeta.Annotations[key] != value {
 				validAnnotations = false
 				break
@@ -171,7 +172,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 					Namespace:   m.podNamespace,
 					Labels:      podLabels,
 				},
-				Spec: *podTemplate.Template.Spec.DeepCopy(), // TODO - ensure the * is correct
+				Spec: *podTemplate.Template.Spec.DeepCopy(),
 			}
 
 			err := m.shardStrategy.UpdatePodSpec(&pod.Spec, i)
