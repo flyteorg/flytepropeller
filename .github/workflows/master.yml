@@ -51,7 +51,8 @@ jobs:
       - name: Create Sandbox Cluster
         run: |
           cp /tmp/tmp/docker-images/snapshot.tar snapshot.tar
-          flytectl config init
+          curl -sL https://raw.githubusercontent.com/flyteorg/flytectl/master/config.yaml
+          flytectl config init --config=config.yaml
           flytectl sandbox start --source=$(pwd)
       - name: Prime docker cache
         run: |

@@ -82,8 +82,9 @@ jobs:
       - name: Create Sandbox Cluster
         run: |
           cp /tmp/tmp/docker-images/snapshot-builder.tar snapshot.tar
-          flytectl config init
-          flytectl sandbox start --source=$(pwd)
+          curl -sL https://raw.githubusercontent.com/flyteorg/flytectl/master/config.yaml
+          flytectl config init --config=config.yaml
+          flytectl sandbox start --source=$(pwd) --config=config.yaml
       - name: Prime docker cache
         run: flytectl sandbox exec -- docker load -i /root/snapshot.tar
       - name: Upgrade Helm charts
