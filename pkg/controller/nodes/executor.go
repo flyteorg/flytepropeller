@@ -30,11 +30,10 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	errors2 "github.com/flyteorg/flytestdlib/errors"
 
-	"github.com/flyteorg/flyteidl/clients/go/events"
-	eventsErr "github.com/flyteorg/flyteidl/clients/go/events/errors"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	controllerEvents "github.com/flyteorg/flytepropeller/pkg/controller/events"
+	"github.com/flyteorg/flytepropeller/events"
+	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -89,8 +88,8 @@ type nodeExecutor struct {
 	nodeHandlerFactory              HandlerFactory
 	enqueueWorkflow                 v1alpha1.EnqueueWorkflow
 	store                           *storage.DataStore
-	nodeRecorder                    controllerEvents.NodeEventRecorder
-	taskRecorder                    controllerEvents.TaskEventRecorder
+	nodeRecorder                    events.NodeEventRecorder
+	taskRecorder                    events.TaskEventRecorder
 	metrics                         *nodeMetrics
 	maxDatasetSizeBytes             int64
 	outputResolver                  OutputResolver
@@ -665,10 +664,19 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 		if err := c.finalize(ctx, h, nCtx); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
+		t := v1.Now()
 
+		started := nodeStatus.GetStartedAt()
+		if started == nil {
+			started = &t
+		}
+		stopped := nodeStatus.GetStoppedAt()
+		if stopped == nil {
+			stopped = &t
+		}
+		c.metrics.SuccessDuration.Observe(ctx, started.Time, stopped.Time)
 		nodeStatus.ClearSubNodeStatus()
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully", nil)
-		c.metrics.SuccessDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, t, "completed successfully", nil)
 		if nCtx.md.IsInterruptible() {
 			c.metrics.InterruptibleNodesTerminated.Inc(ctx)
 		}
@@ -1085,8 +1093,8 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 	exec := &nodeExecutor{
 		store:               store,
 		enqueueWorkflow:     enQWorkflow,
-		nodeRecorder:        controllerEvents.NewNodeEventRecorder(eventSink, nodeScope, store),
-		taskRecorder:        controllerEvents.NewTaskEventRecorder(eventSink, scope.NewSubScope("task"), store),
+		nodeRecorder:        events.NewNodeEventRecorder(eventSink, nodeScope, store),
+		taskRecorder:        events.NewTaskEventRecorder(eventSink, scope.NewSubScope("task"), store),
 		maxDatasetSizeBytes: maxDatasetSize,
 		metrics: &nodeMetrics{
 			Scope:                         nodeScope,
