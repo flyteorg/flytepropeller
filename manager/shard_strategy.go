@@ -212,8 +212,8 @@ func computeHashCode(name string, data interface{}) (uint32, error) {
 		return 0, err
 	}
 
-	var buffer bytes.Buffer
-	encoder := gob.NewEncoder(&buffer)
+	buffer := new(bytes.Buffer)
+	encoder := gob.NewEncoder(buffer)
 	if err := encoder.Encode(data); err != nil {
 		return 0, err
 	}
