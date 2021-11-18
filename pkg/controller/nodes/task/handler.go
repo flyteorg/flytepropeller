@@ -561,7 +561,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 		pluginTrns.PopulateReservationInfo(reservation)
 
-		if reservation.GetStatus() == core.CatalogReservationStatus_RESERVATION_ACQUIRED &&
+		if reservation.GetStatus() == core.CatalogReservation_RESERVATION_ACQUIRED &&
 			(ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache) {
 			logger.Infof(ctx, "Acquired cache reservation")
 		}
@@ -569,7 +569,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		// If we do not own the reservation then we transition to WaitingForCache phase. If we are
 		// already running (ie. in a phase other than PhaseUndefined or PhaseWaitingForCache) and
 		// somehow lost the reservation (ex. by expiration), continue to execute until completion.
-		if reservation.GetStatus() == core.CatalogReservationStatus_RESERVATION_EXISTS {
+		if reservation.GetStatus() == core.CatalogReservation_RESERVATION_EXISTS {
 			if ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache {
 				pluginTrns.ttype = handler.TransitionTypeEphemeral
 				pluginTrns.pInfo = pluginCore.PhaseInfoWaitingForCache(pluginCore.DefaultPhaseVersion, nil)

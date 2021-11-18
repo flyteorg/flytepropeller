@@ -76,7 +76,7 @@ func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID str
 	tk, err := tr.Read(ctx)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
-		return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_FAILURE), err
+		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
 	}
 
 	if tk.Metadata.Discoverable && tk.Metadata.DiscoverySerializable {
@@ -92,24 +92,24 @@ func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID str
 		if err != nil {
 			t.metrics.reservationGetFailureCount.Inc(ctx)
 			logger.Errorf(ctx, "Catalog Failure: reservation get or extend failed. err: %v", err.Error())
-			return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_FAILURE), err
+			return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
 		}
 
 		expiresAt := reservation.ExpiresAt.AsTime()
 		heartbeatInterval := reservation.HeartbeatInterval.AsDuration()
 
-		var status core.CatalogReservationStatus
+		var status core.CatalogReservation_Status
 		if reservation.OwnerId == ownerID {
-			status = core.CatalogReservationStatus_RESERVATION_ACQUIRED
+			status = core.CatalogReservation_RESERVATION_ACQUIRED
 		} else {
-			status = core.CatalogReservationStatus_RESERVATION_EXISTS
+			status = core.CatalogReservation_RESERVATION_EXISTS
 		}
 
 		t.metrics.reservationGetSuccessCount.Inc(ctx)
 		return catalog.NewReservationEntry(expiresAt, heartbeatInterval, reservation.OwnerId, status), nil
 	}
 	logger.Infof(ctx, "Catalog CacheSerializeDisabled: for Task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
-	return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_DISABLED), nil
+	return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), nil
 }
 
 func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader,
@@ -234,7 +234,7 @@ func (t *Handler) ReleaseCatalogReservation(ctx context.Context, ownerID string,
 	tk, err := tr.Read(ctx)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
-		return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_FAILURE), err
+		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
 	}
 
 	if tk.Metadata.Discoverable && tk.Metadata.DiscoverySerializable {
@@ -250,12 +250,12 @@ func (t *Handler) ReleaseCatalogReservation(ctx context.Context, ownerID string,
 		if err != nil {
 			t.metrics.reservationReleaseFailureCount.Inc(ctx)
 			logger.Errorf(ctx, "Catalog Failure: reservation get or extend failed. err: %v", err.Error())
-			return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_FAILURE), err
+			return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
 		}
 
 		t.metrics.reservationReleaseSuccessCount.Inc(ctx)
-		return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_RELEASED), nil
+		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_RELEASED), nil
 	}
 	logger.Infof(ctx, "Catalog CacheSerializeDisabled: for Task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
-	return catalog.NewReservationEntryStatus(core.CatalogReservationStatus_RESERVATION_DISABLED), nil
+	return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), nil
 }
