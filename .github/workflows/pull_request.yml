@@ -23,11 +23,11 @@ jobs:
         run: (docker load -i /tmp/tmp/docker-images/snapshot-builder.tar || true) && (docker load -i /tmp/tmp/docker-images/snapshot.tar || true)
       - name: Build dockerfile
         run: |
-          docker build -t cr.flyte.org/flyteorg/${{ github.event.repository.name }}:builder --target builder --cache-from=cr.flyte.org/flyteorg/${{ github.event.repository.name }}:builder .
-          docker build -t cr.flyte.org/flyteorg/${{ github.event.repository.name }}:latest --cache-from=cr.flyte.org/flyteorg/${{ github.event.repository.name }}:latest .
+          docker build -t flyteorg/${{ github.event.repository.name }}:builder --target builder --cache-from=flyteorg/${{ github.event.repository.name }}:builder .
+          docker build -t flyteorg/${{ github.event.repository.name }}:latest --cache-from=flyteorg/${{ github.event.repository.name }}:builder .
 
       - name: Tag and cache docker image
-        run: mkdir -p /tmp/tmp/docker-images && docker save cr.flyte.org/flyteorg/${{ github.event.repository.name }}:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save cr.flyte.org/flyteorg/${{ github.event.repository.name }}:latest -o /tmp/tmp/docker-images/snapshot.tar
+        run: mkdir -p /tmp/tmp/docker-images && docker save flyteorg/${{ github.event.repository.name }}:builder -o /tmp/tmp/docker-images/snapshot-builder.tar && docker save flyteorg/${{ github.event.repository.name }}:latest -o /tmp/tmp/docker-images/snapshot.tar
 
   endtoend:
     name: End to End tests
@@ -47,14 +47,13 @@ jobs:
       - name: Create Sandbox Cluster
         run: |
           cp /tmp/tmp/docker-images/snapshot.tar snapshot.tar
-          flytectl config init
           flytectl sandbox start --source=$(pwd)
+          flytectl config init
       - name: Prime docker cache
         run: |
           flytectl sandbox exec -- docker load -i /root/snapshot.tar
-          flytectl sandbox exec -- docker images
       - name: Upgrade Helm charts
-        run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml /flyteorg/share/flyte -f /flyteorg/share/flyte/values-sandbox.yaml --set flyteadmin.image.repository=cr.flyte.org/flyteorg/flyteadmin,flyteadmin.image.tag=latest
+        run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml /flyteorg/share/flyte -f /flyteorg/share/flyte/values-sandbox.yaml --set flytepropeller.image.repository=flyteorg/${{ github.event.repository.name }},flytepropeller.image.tag=latest
       - name: End2End
         env:
           KUBECONFIG: /home/runner/.flyte/k3s/k3s.yaml
@@ -65,6 +64,7 @@ jobs:
           echo "environment-kubeconfig:" ${KUBECONFIG}
           kubectl get pods -n flyte -oyaml
           make end2end_execute
+
   integration:
     name: Integration tests
     runs-on: ubuntu-latest
@@ -82,14 +82,15 @@ jobs:
       - name: Create Sandbox Cluster
         run: |
           cp /tmp/tmp/docker-images/snapshot-builder.tar snapshot.tar
-          curl -sL https://raw.githubusercontent.com/flyteorg/flytectl/master/config.yaml
-          flytectl config init --config=config.yaml
-          flytectl sandbox start --source=$(pwd) --config=config.yaml
+          flytectl sandbox start --source=$(pwd)
+          flytectl config init
       - name: Prime docker cache
         run: flytectl sandbox exec -- docker load -i /root/snapshot.tar
       - name: Upgrade Helm charts
-        run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml /flyteorg/share/flyte -f /flyteorg/share/flyte/values-sandbox.yaml --set flytepropeller.image.repository=cr.flyte.org/flyteorg/${{ github.event.repository.name }},flytepropeller.image.tag=builder
+        run:  flytectl sandbox exec -- helm upgrade flyte -n flyte --kubeconfig=/etc/rancher/k3s/k3s.yaml /flyteorg/share/flyte -f /flyteorg/share/flyte/values-sandbox.yaml --set flytepropeller.image.repository=flyteorg/${{ github.event.repository.name }},flytepropeller.image.tag=builder
       - name: Integration
+        env:
+          KUBECONFIG: /home/runner/.flyte/k3s/k3s.yaml
         run: |
           kubectl cluster-info
           kubectl get pods -n kube-system
