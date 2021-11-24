@@ -972,8 +972,8 @@ func Test_task_Handle_Reservation(t *testing.T) {
 			Id:   taskID,
 			Type: "test",
 			Metadata: &core.TaskMetadata{
-				Discoverable:          true,
-				DiscoverySerializable: true,
+				Discoverable:      true,
+				CacheSerializable: true,
 			},
 			Interface: &core.TypedInterface{
 				Outputs: &core.VariableMap{

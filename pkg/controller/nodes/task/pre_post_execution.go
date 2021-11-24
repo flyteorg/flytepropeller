@@ -79,7 +79,7 @@ func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID str
 		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
 	}
 
-	if tk.Metadata.Discoverable && tk.Metadata.DiscoverySerializable {
+	if tk.Metadata.Discoverable && tk.Metadata.CacheSerializable {
 		logger.Infof(ctx, "Catalog CacheSerializeEnabled: creating catalog reservation.")
 		key := catalog.Key{
 			Identifier:     *tk.Id,
@@ -237,7 +237,7 @@ func (t *Handler) ReleaseCatalogReservation(ctx context.Context, ownerID string,
 		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
 	}
 
-	if tk.Metadata.Discoverable && tk.Metadata.DiscoverySerializable {
+	if tk.Metadata.Discoverable && tk.Metadata.CacheSerializable {
 		logger.Infof(ctx, "Catalog CacheSerializeEnabled: releasing catalog reservation.")
 		key := catalog.Key{
 			Identifier:     *tk.Id,
