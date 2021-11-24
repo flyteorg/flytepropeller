@@ -476,13 +476,6 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		} else {
 			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), &event.TaskNodeMetadata{CacheStatus: cacheStatus.GetCacheStatus(), CatalogKey: cacheStatus.GetMetadata()})
 		}
-
-		ownerID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-		reservation, err := t.ReleaseCatalogReservation(ctx, ownerID, tCtx.tr, tCtx.InputReader())
-		if err != nil {
-			logger.Errorf(ctx, "failed to release reservation. error %v", err)
-		}
-		pluginTrns.PopulateReservationInfo(reservation)
 	}
 
 	return pluginTrns, nil
@@ -790,6 +783,14 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 				err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", ttype, string(stack))
 			}
 		}()
+
+		// release catalog reservation (if exists)
+		ownerID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+		_, err = t.ReleaseCatalogReservation(ctx, ownerID, tCtx.tr, tCtx.InputReader())
+		if err != nil {
+			return errors.Wrapf(errors.CatalogCallFailed, nCtx.NodeID(), err, "failed to release reservation")
+		}
+
 		childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
 		err = p.Finalize(childCtx, tCtx)
 		return

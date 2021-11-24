@@ -249,7 +249,7 @@ func (t *Handler) ReleaseCatalogReservation(ctx context.Context, ownerID string,
 		err := t.catalog.ReleaseReservation(ctx, key, ownerID)
 		if err != nil {
 			t.metrics.reservationReleaseFailureCount.Inc(ctx)
-			logger.Errorf(ctx, "Catalog Failure: reservation get or extend failed. err: %v", err.Error())
+			logger.Errorf(ctx, "Catalog Failure: release reservation failed. err: %v", err.Error())
 			return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
 		}
 
