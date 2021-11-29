@@ -29,24 +29,39 @@ type ShardStrategy interface {
 func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (ShardStrategy, error) {
 	switch shardConfig.Type {
 	case config.HashShardType:
-		if shardConfig.PodCount <= 0 {
-			return nil, fmt.Errorf("configured PodCount (%d) must be greater than zero", shardConfig.PodCount)
-		} else if shardConfig.PodCount > v1alpha1.ShardKeyspaceSize {
-			return nil, fmt.Errorf("configured PodCount (%d) is larger than available keyspace size (%d)", shardConfig.PodCount, v1alpha1.ShardKeyspaceSize)
+		if shardConfig.ShardCount <= 0 {
+			return nil, fmt.Errorf("configured ShardCount (%d) must be greater than zero", shardConfig.ShardCount)
+		} else if shardConfig.ShardCount > v1alpha1.ShardKeyspaceSize {
+			return nil, fmt.Errorf("configured ShardCount (%d) is larger than available keyspace size (%d)", shardConfig.ShardCount, v1alpha1.ShardKeyspaceSize)
 		}
 
 		return &HashShardStrategy{
-			EnableUncoveredReplica: shardConfig.EnableUncoveredReplica,
-			PodCount:               shardConfig.PodCount,
+			ShardCount: shardConfig.ShardCount,
 		}, nil
 	case config.ProjectShardType, config.DomainShardType:
-		replicas := make([][]string, 0)
-		for _, replica := range shardConfig.Replicas {
-			if len(replica.Entities) == 0 {
-				return nil, fmt.Errorf("unable to create replica with 0 configured entity(ies)")
+		perShardIDs := make([][]string, 0)
+		wildcardIDFound := false
+		for _, perShardMapping := range shardConfig.PerShardMappings {
+			if len(perShardMapping.IDs) == 0 {
+				return nil, fmt.Errorf("unable to create shard with 0 configured ids")
 			}
 
-			replicas = append(replicas, replica.Entities)
+			// validate wildcard ID
+			for _, id := range perShardMapping.IDs {
+				if id == "*" {
+					if len(perShardMapping.IDs) != 1 {
+						return nil, fmt.Errorf("shards responsible for the wildcard id (ie. '*') may only contain one id")
+					}
+
+					if wildcardIDFound {
+						return nil, fmt.Errorf("may only define one shard responsible for the wildcard id (ie. '*')")
+					}
+
+					wildcardIDFound = true
+				}
+			}
+
+			perShardIDs = append(perShardIDs, perShardMapping.IDs)
 		}
 
 		var envType environmentType
@@ -58,9 +73,8 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 		}
 
 		return &EnvironmentShardStrategy{
-			EnableUncoveredReplica: shardConfig.EnableUncoveredReplica,
-			EnvType:                envType,
-			Replicas:               replicas,
+			EnvType:     envType,
+			PerShardIDs: perShardIDs,
 		}, nil
 	}
 

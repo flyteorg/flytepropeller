@@ -10,48 +10,40 @@ import (
 
 var (
 	hashShardStrategy = &HashShardStrategy{
-		EnableUncoveredReplica: false,
-		PodCount:               3,
-	}
-
-	hashShardStrategyUncovered = &HashShardStrategy{
-		EnableUncoveredReplica: true,
-		PodCount:               3,
+		ShardCount: 3,
 	}
 
 	projectShardStrategy = &EnvironmentShardStrategy{
-		EnableUncoveredReplica: false,
-		EnvType:                Project,
-		Replicas: [][]string{
+		EnvType: Project,
+		PerShardIDs: [][]string{
 			[]string{"flytesnacks"},
 			[]string{"flytefoo", "flytebar"},
 		},
 	}
 
-	projectShardStrategyUncovered = &EnvironmentShardStrategy{
-		EnableUncoveredReplica: true,
-		EnvType:                Project,
-		Replicas: [][]string{
+	projectShardStrategyWildcard = &EnvironmentShardStrategy{
+		EnvType: Project,
+		PerShardIDs: [][]string{
 			[]string{"flytesnacks"},
 			[]string{"flytefoo", "flytebar"},
+			[]string{"*"},
 		},
 	}
 
 	domainShardStrategy = &EnvironmentShardStrategy{
-		EnableUncoveredReplica: false,
-		EnvType:                Domain,
-		Replicas: [][]string{
+		EnvType: Domain,
+		PerShardIDs: [][]string{
 			[]string{"production"},
 			[]string{"foo", "bar"},
 		},
 	}
 
-	domainShardStrategyUncovered = &EnvironmentShardStrategy{
-		EnableUncoveredReplica: true,
-		EnvType:                Domain,
-		Replicas: [][]string{
+	domainShardStrategyWildcard = &EnvironmentShardStrategy{
+		EnvType: Domain,
+		PerShardIDs: [][]string{
 			[]string{"production"},
 			[]string{"foo", "bar"},
+			[]string{"*"},
 		},
 	}
 )
@@ -63,11 +55,10 @@ func TestGetPodCount(t *testing.T) {
 		podCount      int
 	}{
 		{"hash", hashShardStrategy, 3},
-		{"hash_uncovered", hashShardStrategyUncovered, 4},
 		{"project", projectShardStrategy, 2},
-		{"project_uncovered", projectShardStrategyUncovered, 3},
+		{"project_wildcard", projectShardStrategyWildcard, 3},
 		{"domain", domainShardStrategy, 2},
-		{"domain_uncovered", domainShardStrategyUncovered, 3},
+		{"domain_wildcard", domainShardStrategyWildcard, 3},
 	}
 
 	for _, tt := range tests {
@@ -84,11 +75,10 @@ func TestUpdatePodSpec(t *testing.T) {
 		shardStrategy ShardStrategy
 	}{
 		{"hash", hashShardStrategy},
-		{"hash_uncovered", hashShardStrategyUncovered},
 		{"project", projectShardStrategy},
-		{"project_uncovered", projectShardStrategyUncovered},
+		{"project_wildcard", projectShardStrategyWildcard},
 		{"domain", domainShardStrategy},
-		{"domain_uncovered", domainShardStrategyUncovered},
+		{"domain_wildcard", domainShardStrategyWildcard},
 	}
 
 	for _, tt := range tests {
@@ -116,11 +106,10 @@ func TestUpdatePodSpecInvalidPodIndex(t *testing.T) {
 		shardStrategy ShardStrategy
 	}{
 		{"hash", hashShardStrategy},
-		{"hash_uncovered", hashShardStrategyUncovered},
 		{"project", projectShardStrategy},
-		{"project_uncovered", projectShardStrategyUncovered},
+		{"project_wildcard", projectShardStrategyWildcard},
 		{"domain", domainShardStrategy},
-		{"domain_uncovered", domainShardStrategyUncovered},
+		{"domain_wildcard", domainShardStrategyWildcard},
 	}
 
 	for _, tt := range tests {
@@ -149,11 +138,10 @@ func TestUpdatePodSpecInvalidPodSpec(t *testing.T) {
 		shardStrategy ShardStrategy
 	}{
 		{"hash", hashShardStrategy},
-		{"hash_uncovered", hashShardStrategyUncovered},
 		{"project", projectShardStrategy},
-		{"project_uncovered", projectShardStrategyUncovered},
+		{"project_wildcard", projectShardStrategyWildcard},
 		{"domain", domainShardStrategy},
-		{"domain_uncovered", domainShardStrategyUncovered},
+		{"domain_wildcard", domainShardStrategyWildcard},
 	}
 
 	for _, tt := range tests {

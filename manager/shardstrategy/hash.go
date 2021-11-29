@@ -14,16 +14,11 @@ import (
 // All FlyteWorkflows are assigned a shard-key using a hash of their executionID and are then
 // processed by the FlytePropeller instance responsible for that keyspace range.
 type HashShardStrategy struct {
-	EnableUncoveredReplica bool
-	PodCount               int
+	ShardCount int
 }
 
 func (h *HashShardStrategy) GetPodCount() int {
-	if h.EnableUncoveredReplica {
-		return h.PodCount + 1
-	}
-
-	return h.PodCount
+	return h.ShardCount
 }
 
 func (h *HashShardStrategy) HashCode() (uint32, error) {
@@ -36,17 +31,13 @@ func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, containerName string,
 		return err
 	}
 
-	if podIndex >= 0 && podIndex < h.PodCount {
-		startKey, endKey := ComputeKeyRange(v1alpha1.ShardKeyspaceSize, h.PodCount, podIndex)
-		for i := startKey; i < endKey; i++ {
-			container.Args = append(container.Args, "--propeller.include-shard-key-label", fmt.Sprintf("%d", i))
-		}
-	} else if h.EnableUncoveredReplica && podIndex == h.PodCount {
-		for i := 0; i < v1alpha1.ShardKeyspaceSize; i++ {
-			container.Args = append(container.Args, "--propeller.exclude-shard-key-label", fmt.Sprintf("%d", i))
-		}
-	} else {
+	if podIndex < 0 || podIndex >= h.GetPodCount() {
 		return fmt.Errorf("invalid podIndex '%d' out of range [0,%d)", podIndex, h.GetPodCount())
+	}
+
+	startKey, endKey := ComputeKeyRange(v1alpha1.ShardKeyspaceSize, h.GetPodCount(), podIndex)
+	for i := startKey; i < endKey; i++ {
+		container.Args = append(container.Args, "--propeller.include-shard-key-label", fmt.Sprintf("%d", i))
 	}
 
 	return nil

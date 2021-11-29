@@ -11,9 +11,8 @@ import (
 // EnvironmentShardStrategy assigns either project or domain identifers to individual
 // FlytePropeller instances to determine FlyteWorkflow processing responsibility.
 type EnvironmentShardStrategy struct {
-	EnvType                environmentType
-	EnableUncoveredReplica bool
-	Replicas               [][]string
+	EnvType     environmentType
+	PerShardIDs [][]string
 }
 
 type environmentType int
@@ -28,11 +27,7 @@ func (e environmentType) String() string {
 }
 
 func (e *EnvironmentShardStrategy) GetPodCount() int {
-	if e.EnableUncoveredReplica {
-		return len(e.Replicas) + 1
-	}
-
-	return len(e.Replicas)
+	return len(e.PerShardIDs)
 }
 
 func (e *EnvironmentShardStrategy) HashCode() (uint32, error) {
@@ -45,18 +40,22 @@ func (e *EnvironmentShardStrategy) UpdatePodSpec(pod *v1.PodSpec, containerName 
 		return err
 	}
 
-	if podIndex >= 0 && podIndex < len(e.Replicas) {
-		for _, entity := range e.Replicas[podIndex] {
-			container.Args = append(container.Args, fmt.Sprintf("--propeller.include-%s-label", e.EnvType), entity)
-		}
-	} else if e.EnableUncoveredReplica && podIndex == len(e.Replicas) {
-		for _, replica := range e.Replicas {
-			for _, entity := range replica {
-				container.Args = append(container.Args, fmt.Sprintf("--propeller.exclude-%s-label", e.EnvType), entity)
+	if podIndex < 0 || podIndex >= e.GetPodCount() {
+		return fmt.Errorf("invalid podIndex '%d' out of range [0,%d)", podIndex, e.GetPodCount())
+	}
+
+	if len(e.PerShardIDs[podIndex]) == 1 && e.PerShardIDs[podIndex][0] == "*" {
+		for i, shardIDs := range e.PerShardIDs {
+			if i != podIndex {
+				for _, id := range shardIDs {
+					container.Args = append(container.Args, fmt.Sprintf("--propeller.exclude-%s-label", e.EnvType), id)
+				}
 			}
 		}
 	} else {
-		return fmt.Errorf("invalid podIndex '%d' out of range [0,%d)", podIndex, e.GetPodCount())
+		for _, id := range e.PerShardIDs[podIndex] {
+			container.Args = append(container.Args, fmt.Sprintf("--propeller.include-%s-label", e.EnvType), id)
+		}
 	}
 
 	return nil

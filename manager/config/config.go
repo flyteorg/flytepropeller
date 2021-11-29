@@ -19,9 +19,8 @@ var (
 			Duration: 10 * time.Second,
 		},
 		ShardConfig: ShardConfig{
-			Type:                   "hash",
-			EnableUncoveredReplica: false,
-			PodCount:               3,
+			Type:       "hash",
+			ShardCount: 3,
 		},
 	}
 
@@ -37,16 +36,15 @@ const (
 )
 
 // Configuration for defining shard replicas when using project or domain shard types
-type ReplicaConfig struct {
-	Entities []string `json:"entities" pflag:",The list of entities to be managed"`
+type PerShardMappingsConfig struct {
+	IDs []string `json:"ids" pflag:",The list of ids to be managed"`
 }
 
 // Configuration for the FlytePropeller sharding strategy
 type ShardConfig struct {
-	Type                   ShardType       `json:"type" pflag:"\"hash\",Shard implementation to use"`
-	EnableUncoveredReplica bool            `json:"enable-uncovered-replica" pflag:"\"true\",Start a replica to process FlyteWorkflows that are uncovered by the configured shard label selectors"`
-	Replicas               []ReplicaConfig `json:"replicas" pflag:"-"`
-	PodCount               int             `json:"pod-count" pflag:"\"3\",The number of pods to manage for a 'hash' shard type"`
+	Type             ShardType                `json:"type" pflag:"\"hash\",Shard implementation to use"`
+	PerShardMappings []PerShardMappingsConfig `json:"per-shard-mapping" pflag:"-"`
+	ShardCount       int                      `json:"shard-count" pflag:"\"3\",The number of shards to manage for a 'hash' shard type"`
 }
 
 // Configuration for the FlytePropeller Manager instance

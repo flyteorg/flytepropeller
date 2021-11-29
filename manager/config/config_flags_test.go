@@ -197,28 +197,14 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_shard.enable-uncovered-replica", func(t *testing.T) {
+	t.Run("Test_shard.shard-count", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("shard.enable-uncovered-replica", testValue)
-			if vBool, err := cmdFlags.GetBool("shard.enable-uncovered-replica"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vBool), &actual.ShardConfig.EnableUncoveredReplica)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
-	t.Run("Test_shard.pod-count", func(t *testing.T) {
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("shard.pod-count", testValue)
-			if vInt, err := cmdFlags.GetInt("shard.pod-count"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.ShardConfig.PodCount)
+			cmdFlags.Set("shard.shard-count", testValue)
+			if vInt, err := cmdFlags.GetInt("shard.shard-count"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.ShardConfig.ShardCount)
 
 			} else {
 				assert.FailNow(t, err.Error())
