@@ -37,11 +37,11 @@ var (
 	}
 )
 
-func createShardStrategy(podCount int, hashCode uint32, err error) shardstrategy.ShardStrategy {
+func createShardStrategy(podCount int) shardstrategy.ShardStrategy {
 	shardStrategy := mocks.ShardStrategy{}
 	shardStrategy.OnGetPodCount().Return(podCount)
-	shardStrategy.OnHashCode().Return(hashCode, nil)
-	shardStrategy.OnUpdatePodSpecMatch(mock.Anything, mock.Anything, mock.Anything).Return(err)
+	shardStrategy.OnHashCode().Return(0, nil)
+	shardStrategy.OnUpdatePodSpecMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	return &shardStrategy
 }
@@ -52,9 +52,9 @@ func TestCreatePods(t *testing.T) {
 		name          string
 		shardStrategy shardstrategy.ShardStrategy
 	}{
-		{"2", createShardStrategy(2, 0, nil)},
-		{"3", createShardStrategy(3, 0, nil)},
-		{"4", createShardStrategy(4, 0, nil)},
+		{"2", createShardStrategy(2)},
+		{"3", createShardStrategy(3)},
+		{"4", createShardStrategy(4)},
 	}
 
 	for _, tt := range tests {
@@ -101,9 +101,9 @@ func TestUpdatePods(t *testing.T) {
 		name          string
 		shardStrategy shardstrategy.ShardStrategy
 	}{
-		{"2", createShardStrategy(2, 0, nil)},
-		{"3", createShardStrategy(3, 0, nil)},
-		{"4", createShardStrategy(4, 0, nil)},
+		{"2", createShardStrategy(2)},
+		{"3", createShardStrategy(3)},
+		{"4", createShardStrategy(4)},
 	}
 
 	for _, tt := range tests {
@@ -166,9 +166,9 @@ func TestGetPodNames(t *testing.T) {
 		shardStrategy shardstrategy.ShardStrategy
 		podCount      int
 	}{
-		{"2", createShardStrategy(2, 0, nil), 2},
-		{"3", createShardStrategy(3, 0, nil), 3},
-		{"4", createShardStrategy(4, 0, nil), 4},
+		{"2", createShardStrategy(2), 2},
+		{"3", createShardStrategy(3), 3},
+		{"4", createShardStrategy(4), 4},
 	}
 
 	for _, tt := range tests {
