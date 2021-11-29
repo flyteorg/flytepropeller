@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -93,6 +94,22 @@ func ToK8sResourceRequirements(resources *core.Resources) (*v1.ResourceRequireme
 	res.Limits = lim
 	res.Requests = req
 	return res, nil
+}
+
+func GetContainer(pod *v1.PodSpec, containerName string) (*v1.Container, error) {
+	// find flytepropeller container(s)
+	var containers []*v1.Container
+	for i := 0; i < len(pod.Containers); i++ {
+		if pod.Containers[i].Name == containerName {
+			containers = append(containers, &pod.Containers[i])
+		}
+	}
+
+	if len(containers) != 1 {
+		return nil, fmt.Errorf("expecting 1 '%s' container in podtemplate but found %d, ", containerName, len(containers))
+	}
+
+	return containers[0], nil
 }
 
 func GetKubeConfig(_ context.Context, cfg *config.Config) (*kubernetes.Clientset, *restclient.Config, error) {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	managerConfig "github.com/flyteorg/flytepropeller/manager/config"
+	"github.com/flyteorg/flytepropeller/manager/shardstrategy"
 	propellerConfig "github.com/flyteorg/flytepropeller/pkg/controller/config"
 	leader "github.com/flyteorg/flytepropeller/pkg/leaderelection"
 	"github.com/flyteorg/flytepropeller/pkg/utils"
@@ -60,7 +61,7 @@ type Manager struct {
 	podTemplateName          string
 	podTemplateNamespace     string
 	scanInterval             time.Duration
-	shardStrategy            ShardStrategy
+	shardStrategy            shardstrategy.ShardStrategy
 }
 
 func getPodTemplate(ctx context.Context, kubeClient kubernetes.Interface, podTemplateName, podTemplateNamespace string) (*v1.PodTemplate, error) {
@@ -97,7 +98,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 	}
 
 	// disable leader election on all managed pods
-	container, err := getContainer(&podTemplate.Template.Spec, m.podTemplateContainerName)
+	container, err := utils.GetContainer(&podTemplate.Template.Spec, m.podTemplateContainerName)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve flytepropeller container from pod template [%v]", err)
 	}
@@ -239,7 +240,7 @@ func (m *Manager) run(ctx context.Context) error {
 
 // Creates a new FlytePropeller Manager instance
 func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *managerConfig.Config, kubeClient kubernetes.Interface, scope promutils.Scope) (*Manager, error) {
-	shardStrategy, err := NewShardStrategy(ctx, cfg.ShardConfig)
+	shardStrategy, err := shardstrategy.NewShardStrategy(ctx, cfg.ShardConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize shard strategy [%v]", err)
 	}

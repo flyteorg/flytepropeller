@@ -7,6 +7,8 @@ import (
 
 	"github.com/flyteorg/flytestdlib/promutils"
 
+	"github.com/flyteorg/flytepropeller/manager/shardstrategy"
+
 	"github.com/stretchr/testify/assert"
 
 	v1 "k8s.io/api/core/v1"
@@ -31,13 +33,59 @@ var (
 			},
 		},
 	}
+
+	hashShardStrategy = &shardstrategy.HashShardStrategy{
+		EnableUncoveredReplica: false,
+		PodCount:               3,
+	}
+
+	hashShardStrategyUncovered = &shardstrategy.HashShardStrategy{
+		EnableUncoveredReplica: true,
+		PodCount:               3,
+	}
+
+	projectShardStrategy = &shardstrategy.EnvironmentShardStrategy{
+		EnableUncoveredReplica: false,
+		EnvType:                shardstrategy.Project,
+		Replicas: [][]string{
+			[]string{"flytesnacks"},
+			[]string{"flytefoo", "flytebar"},
+		},
+	}
+
+	projectShardStrategyUncovered = &shardstrategy.EnvironmentShardStrategy{
+		EnableUncoveredReplica: true,
+		EnvType:                shardstrategy.Project,
+		Replicas: [][]string{
+			[]string{"flytesnacks"},
+			[]string{"flytefoo", "flytebar"},
+		},
+	}
+
+	domainShardStrategy = &shardstrategy.EnvironmentShardStrategy{
+		EnableUncoveredReplica: false,
+		EnvType:                shardstrategy.Domain,
+		Replicas: [][]string{
+			[]string{"production"},
+			[]string{"foo", "bar"},
+		},
+	}
+
+	domainShardStrategyUncovered = &shardstrategy.EnvironmentShardStrategy{
+		EnableUncoveredReplica: true,
+		EnvType:                shardstrategy.Domain,
+		Replicas: [][]string{
+			[]string{"production"},
+			[]string{"foo", "bar"},
+		},
+	}
 )
 
 func TestCreatePods(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name          string
-		shardStrategy ShardStrategy
+		shardStrategy shardstrategy.ShardStrategy
 	}{
 		{"hash", hashShardStrategy},
 		{"hash_uncovered", hashShardStrategyUncovered},
@@ -89,7 +137,7 @@ func TestUpdatePods(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name          string
-		shardStrategy ShardStrategy
+		shardStrategy shardstrategy.ShardStrategy
 	}{
 		{"hash", hashShardStrategy},
 		{"hash_uncovered", hashShardStrategyUncovered},
@@ -156,7 +204,7 @@ func TestGetPodNames(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name          string
-		shardStrategy ShardStrategy
+		shardStrategy shardstrategy.ShardStrategy
 		podCount      int
 	}{
 		{"hash", hashShardStrategy, 3},

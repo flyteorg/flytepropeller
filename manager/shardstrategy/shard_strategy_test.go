@@ -1,4 +1,4 @@
-package manager
+package shardstrategy
 
 import (
 	"testing"
@@ -21,7 +21,7 @@ var (
 
 	projectShardStrategy = &EnvironmentShardStrategy{
 		EnableUncoveredReplica: false,
-		EnvType:                project,
+		EnvType:                Project,
 		Replicas: [][]string{
 			[]string{"flytesnacks"},
 			[]string{"flytefoo", "flytebar"},
@@ -30,7 +30,7 @@ var (
 
 	projectShardStrategyUncovered = &EnvironmentShardStrategy{
 		EnableUncoveredReplica: true,
-		EnvType:                project,
+		EnvType:                Project,
 		Replicas: [][]string{
 			[]string{"flytesnacks"},
 			[]string{"flytefoo", "flytebar"},
@@ -39,7 +39,7 @@ var (
 
 	domainShardStrategy = &EnvironmentShardStrategy{
 		EnableUncoveredReplica: false,
-		EnvType:                domain,
+		EnvType:                Domain,
 		Replicas: [][]string{
 			[]string{"production"},
 			[]string{"foo", "bar"},
@@ -48,31 +48,13 @@ var (
 
 	domainShardStrategyUncovered = &EnvironmentShardStrategy{
 		EnableUncoveredReplica: true,
-		EnvType:                domain,
+		EnvType:                Domain,
 		Replicas: [][]string{
 			[]string{"production"},
 			[]string{"foo", "bar"},
 		},
 	}
 )
-
-func TestComputeKeyRange(t *testing.T) {
-	keyspaceSize := 32
-	for podCount := 1; podCount < keyspaceSize; podCount++ {
-		keysCovered := 0
-		minKeyRangeSize := keyspaceSize / podCount
-		for podIndex := 0; podIndex < podCount; podIndex++ {
-			startIndex, endIndex := ComputeKeyRange(keyspaceSize, podCount, podIndex)
-
-			rangeSize := endIndex - startIndex
-			keysCovered += rangeSize
-			assert.True(t, rangeSize-minKeyRangeSize >= 0)
-			assert.True(t, rangeSize-minKeyRangeSize <= 1)
-		}
-
-		assert.Equal(t, keyspaceSize, keysCovered)
-	}
-}
 
 func TestGetPodCount(t *testing.T) {
 	tests := []struct {
