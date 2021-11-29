@@ -8,8 +8,10 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 
 	"github.com/flyteorg/flytepropeller/manager/shardstrategy"
+	"github.com/flyteorg/flytepropeller/manager/shardstrategy/mocks"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,53 +35,16 @@ var (
 			},
 		},
 	}
-
-	hashShardStrategy = &shardstrategy.HashShardStrategy{
-		EnableUncoveredReplica: false,
-		PodCount:               3,
-	}
-
-	hashShardStrategyUncovered = &shardstrategy.HashShardStrategy{
-		EnableUncoveredReplica: true,
-		PodCount:               3,
-	}
-
-	projectShardStrategy = &shardstrategy.EnvironmentShardStrategy{
-		EnableUncoveredReplica: false,
-		EnvType:                shardstrategy.Project,
-		Replicas: [][]string{
-			[]string{"flytesnacks"},
-			[]string{"flytefoo", "flytebar"},
-		},
-	}
-
-	projectShardStrategyUncovered = &shardstrategy.EnvironmentShardStrategy{
-		EnableUncoveredReplica: true,
-		EnvType:                shardstrategy.Project,
-		Replicas: [][]string{
-			[]string{"flytesnacks"},
-			[]string{"flytefoo", "flytebar"},
-		},
-	}
-
-	domainShardStrategy = &shardstrategy.EnvironmentShardStrategy{
-		EnableUncoveredReplica: false,
-		EnvType:                shardstrategy.Domain,
-		Replicas: [][]string{
-			[]string{"production"},
-			[]string{"foo", "bar"},
-		},
-	}
-
-	domainShardStrategyUncovered = &shardstrategy.EnvironmentShardStrategy{
-		EnableUncoveredReplica: true,
-		EnvType:                shardstrategy.Domain,
-		Replicas: [][]string{
-			[]string{"production"},
-			[]string{"foo", "bar"},
-		},
-	}
 )
+
+func createShardStrategy(podCount int, hashCode uint32, err error) shardstrategy.ShardStrategy {
+	shardStrategy := mocks.ShardStrategy{}
+	shardStrategy.OnGetPodCount().Return(podCount)
+	shardStrategy.OnHashCode().Return(hashCode, nil)
+	shardStrategy.OnUpdatePodSpecMatch(mock.Anything, mock.Anything, mock.Anything).Return(err)
+
+	return &shardStrategy
+}
 
 func TestCreatePods(t *testing.T) {
 	t.Parallel()
@@ -87,12 +52,9 @@ func TestCreatePods(t *testing.T) {
 		name          string
 		shardStrategy shardstrategy.ShardStrategy
 	}{
-		{"hash", hashShardStrategy},
-		{"hash_uncovered", hashShardStrategyUncovered},
-		{"project", projectShardStrategy},
-		{"project_uncovered", projectShardStrategyUncovered},
-		{"domain", domainShardStrategy},
-		{"domain_uncovered", domainShardStrategyUncovered},
+		{"2", createShardStrategy(2, 0, nil)},
+		{"3", createShardStrategy(3, 0, nil)},
+		{"4", createShardStrategy(4, 0, nil)},
 	}
 
 	for _, tt := range tests {
@@ -139,12 +101,9 @@ func TestUpdatePods(t *testing.T) {
 		name          string
 		shardStrategy shardstrategy.ShardStrategy
 	}{
-		{"hash", hashShardStrategy},
-		{"hash_uncovered", hashShardStrategyUncovered},
-		{"project", projectShardStrategy},
-		{"project_uncovered", projectShardStrategyUncovered},
-		{"domain", domainShardStrategy},
-		{"domain_uncovered", domainShardStrategyUncovered},
+		{"2", createShardStrategy(2, 0, nil)},
+		{"3", createShardStrategy(3, 0, nil)},
+		{"4", createShardStrategy(4, 0, nil)},
 	}
 
 	for _, tt := range tests {
@@ -207,12 +166,9 @@ func TestGetPodNames(t *testing.T) {
 		shardStrategy shardstrategy.ShardStrategy
 		podCount      int
 	}{
-		{"hash", hashShardStrategy, 3},
-		{"hash_uncovered", hashShardStrategyUncovered, 4},
-		{"project", projectShardStrategy, 2},
-		{"project_uncovered", projectShardStrategyUncovered, 3},
-		{"domain", domainShardStrategy, 2},
-		{"domain_uncovered", domainShardStrategyUncovered, 3},
+		{"2", createShardStrategy(2, 0, nil), 2},
+		{"3", createShardStrategy(3, 0, nil), 3},
+		{"4", createShardStrategy(4, 0, nil), 4},
 	}
 
 	for _, tt := range tests {

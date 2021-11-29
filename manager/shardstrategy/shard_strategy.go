@@ -13,6 +13,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+//go:generate mockery -name ShardStrategy -case=underscore
+
 // ShardStrategy defines necessary functionality for a sharding strategy
 type ShardStrategy interface {
 	// Returns the total number of pods for the sharding strategy
