@@ -11,7 +11,6 @@ import (
 var (
 	DefaultConfig = &Config{
 		PodApplication:           "flytepropeller",
-		PodNamespace:             "flyte",
 		PodTemplateContainerName: "flytepropeller",
 		PodTemplateName:          "flytepropeller-template",
 		PodTemplateNamespace:     "flyte",
@@ -50,7 +49,6 @@ type ShardConfig struct {
 // Configuration for the FlytePropeller Manager instance
 type Config struct {
 	PodApplication           string          `json:"pod-application" pflag:"\"flytepropeller\",Application name for managed pods"`
-	PodNamespace             string          `json:"pod-namespace" pflag:"\"flyte\",Namespace to use for managing FlytePropeller pods"`
 	PodTemplateContainerName string          `json:"pod-template-container-name" pflag:"\"flytepropeller\",The container name within the K8s PodTemplate name used to set FlyteWorkflow CRD labels selectors"`
 	PodTemplateName          string          `json:"pod-template-name" pflag:"\"flytepropeller-template\",K8s PodTemplate name to use for starting FlytePropeller pods"`
 	PodTemplateNamespace     string          `json:"pod-template-namespace" pflag:"\"flyte\",Namespace where the k8s PodTemplate is located"`

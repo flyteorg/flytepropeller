@@ -7,7 +7,6 @@ FlytePropeller Manager is configured at the root of the FlytePropeller configurt
 
 	manager:
 	  pod-application: "flytepropeller"             # application name for managed pods
-	  pod-namespace: "flyte"                        # namespace to use for managing FlytePropeller pods
 	  pod-template-container-name: "flytepropeller" # the container name within the K8s PodTemplate name used to set FlyteWorkflow CRD labels selectors
 	  pod-template-name: "flytepropeller-template"  # k8s PodTemplate name to use for starting FlytePropeller pods
 	  pod-template-namespace: "flyte"               # namespace where the k8s PodTemplate is located

@@ -51,7 +51,6 @@ func (Config) mustMarshalJSON(v json.Marshaler) string {
 func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags := pflag.NewFlagSet("Config", pflag.ExitOnError)
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-application"), DefaultConfig.PodApplication, "Application name for managed pods")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-namespace"), DefaultConfig.PodNamespace, "Namespace to use for managing FlytePropeller pods")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-template-container-name"), DefaultConfig.PodTemplateContainerName, "The container name within the K8s PodTemplate name used to set FlyteWorkflow CRD labels selectors")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-template-name"), DefaultConfig.PodTemplateName, "K8s PodTemplate name to use for starting FlytePropeller pods")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-template-namespace"), DefaultConfig.PodTemplateNamespace, "Namespace where the k8s PodTemplate is located")

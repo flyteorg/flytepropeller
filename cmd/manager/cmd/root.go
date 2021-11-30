@@ -23,11 +23,15 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
 
 const (
-	appName = "flytepropeller-manager"
+	appName             = "flytepropeller-manager"
+	podDefaultNamespace = "flyte"
+	podNameEnvVar       = "POD_NAME"
+	podNamespaceEnvVar  = "POD_NAMESPACE"
 )
 
 var (
@@ -139,9 +143,40 @@ func executeRootCmd(propellerCfg *propellerConfig.Config, cfg *managerConfig.Con
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler(baseCtx)
 
+	// lookup owner reference
 	kubeClient, _, err := utils.GetKubeConfig(ctx, propellerCfg)
 	if err != nil {
 		logger.Fatalf(ctx, "error building kubernetes clientset [%v]", err)
+	}
+
+	ownerReferences := make([]metav1.OwnerReference, 0)
+	lookupOwnerReferences := true
+	podName, found := os.LookupEnv(podNameEnvVar)
+	if !found {
+		lookupOwnerReferences = false
+	}
+
+	podNamespace, found := os.LookupEnv(podNamespaceEnvVar)
+	if !found {
+		lookupOwnerReferences = false
+		podNamespace = podDefaultNamespace
+	}
+
+	if lookupOwnerReferences {
+		p, err := kubeClient.CoreV1().Pods(podNamespace).Get(ctx, podName, metav1.GetOptions{})
+		if err != nil {
+			logger.Fatalf(ctx, "failed to get pod '%v' in namespace '%v' [%v]", podName, podNamespace, err)
+		}
+
+		for _, ownerReference := range p.OwnerReferences {
+			// must set owner reference controller to false because k8s does not allow setting pod
+			// owner references to a controller that does not acknowledge ownership. in this case
+			// the owner is technically the FlytePropeller Manager pod and not that pods owner.
+			*ownerReference.BlockOwnerDeletion = false
+			*ownerReference.Controller = false
+
+			ownerReferences = append(ownerReferences, ownerReference)
+		}
 	}
 
 	// Add the propeller_manager subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
@@ -154,7 +189,7 @@ func executeRootCmd(propellerCfg *propellerConfig.Config, cfg *managerConfig.Con
 		}
 	}()
 
-	m, err := manager.New(ctx, propellerCfg, cfg, kubeClient, scope)
+	m, err := manager.New(ctx, propellerCfg, cfg, podNamespace, ownerReferences, kubeClient, scope)
 	if err != nil {
 		logger.Fatalf(ctx, "failed to start manager [%v]", err)
 	} else if m == nil {

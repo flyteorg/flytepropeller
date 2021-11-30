@@ -55,6 +55,7 @@ type Manager struct {
 	kubeClient               kubernetes.Interface
 	leaderElector            *leaderelection.LeaderElector
 	metrics                  *metrics
+	ownerReferences          []metav1.OwnerReference
 	podApplication           string
 	podNamespace             string
 	podTemplateContainerName string
@@ -64,23 +65,14 @@ type Manager struct {
 	shardStrategy            shardstrategy.ShardStrategy
 }
 
-func getPodTemplate(ctx context.Context, kubeClient kubernetes.Interface, podTemplateName, podTemplateNamespace string) (*v1.PodTemplate, error) {
-	podTemplate, err := kubeClient.CoreV1().PodTemplates(podTemplateNamespace).Get(ctx, podTemplateName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve pod template '%s' from namespace '%s' [%v]", podTemplateName, podTemplateNamespace, err)
-	}
-
-	return podTemplate, nil
-}
-
 func (m *Manager) createPods(ctx context.Context) error {
 	t := m.metrics.RoundTime.Start()
 	defer t.Stop()
 
 	// retrieve pod metadata
-	podTemplate, err := getPodTemplate(ctx, m.kubeClient, m.podTemplateName, m.podTemplateNamespace)
+	podTemplate, err := m.kubeClient.CoreV1().PodTemplates(m.podTemplateNamespace).Get(ctx, m.podTemplateName, metav1.GetOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to retrieve pod template '%s' from namespace '%s' [%v]", m.podTemplateName, m.podTemplateNamespace, err)
 	}
 
 	shardConfigHash, err := m.shardStrategy.HashCode()
@@ -168,10 +160,11 @@ func (m *Manager) createPods(ctx context.Context) error {
 		if exists := podExists[podName]; !exists {
 			pod := &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Annotations: podAnnotations,
-					Name:        podName,
-					Namespace:   m.podNamespace,
-					Labels:      podLabels,
+					Annotations:     podAnnotations,
+					Name:            podName,
+					Namespace:       m.podNamespace,
+					Labels:          podLabels,
+					OwnerReferences: m.ownerReferences,
 				},
 				Spec: *podTemplate.Template.Spec.DeepCopy(),
 			}
@@ -239,7 +232,7 @@ func (m *Manager) run(ctx context.Context) error {
 }
 
 // New creates a new FlytePropeller Manager instance.
-func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *managerConfig.Config, kubeClient kubernetes.Interface, scope promutils.Scope) (*Manager, error) {
+func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *managerConfig.Config, podNamespace string, ownerReferences []metav1.OwnerReference, kubeClient kubernetes.Interface, scope promutils.Scope) (*Manager, error) {
 	shardStrategy, err := shardstrategy.NewShardStrategy(ctx, cfg.ShardConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize shard strategy [%v]", err)
@@ -248,8 +241,9 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 	manager := &Manager{
 		kubeClient:               kubeClient,
 		metrics:                  newManagerMetrics(scope),
+		ownerReferences:          ownerReferences,
 		podApplication:           cfg.PodApplication,
-		podNamespace:             cfg.PodNamespace,
+		podNamespace:             podNamespace,
 		podTemplateContainerName: cfg.PodTemplateContainerName,
 		podTemplateName:          cfg.PodTemplateName,
 		podTemplateNamespace:     cfg.PodTemplateNamespace,
@@ -280,7 +274,7 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 				}
 			},
 			func() {
-				// Need to check if this elector obtained leadership until k8s client-go api is fixed. Currently the
+				// need to check if this elector obtained leadership until k8s client-go api is fixed. currently the
 				// OnStoppingLeader func is called as a defer on every elector run, regardless of election status.
 				if manager.leaderElector.IsLeader() {
 					logger.Info(ctx, "stopped leading")
