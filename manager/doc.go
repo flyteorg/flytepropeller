@@ -47,7 +47,7 @@ A shard configured as a single wildcard ID (i.e. "*") is responsible for all IDs
 	        - flyteexamples
 	        - flytelabs
 	      - ids:            # the list of ids to be managed by the third shard
-	        - *             # use the wildcard to manage all ids not managed by other shards
+	        - "*"           # use the wildcard to manage all ids not managed by other shards
 
 	# a configuration example using the "domain" shard type
 	manager:
@@ -58,6 +58,6 @@ A shard configured as a single wildcard ID (i.e. "*") is responsible for all IDs
 	      - ids:            # the list of ids to be managed by the first shard
 	        - production
 	      - ids:            # the list of ids to be managed by the second shard
-	        - *             # use the wildcard to manage all ids not managed by other shards
+	        - "*"           # use the wildcard to manage all ids not managed by other shards
 */
 package manager
