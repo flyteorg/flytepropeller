@@ -8,7 +8,7 @@ require (
 	github.com/fatih/color v1.10.0
 	github.com/flyteorg/flyteidl v0.21.4
 	github.com/flyteorg/flyteplugins v0.8.0
-	github.com/flyteorg/flytestdlib v0.4.4
+	github.com/flyteorg/flytestdlib v0.4.7
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/go-test/deep v1.0.7
@@ -33,3 +33,5 @@ require (
 )
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
+
+replace github.com/flyteorg/flyteplugins => github.com/flyteorg/flyteplugins v0.8.1-0.20211130003923-5a2e172fdbb7
