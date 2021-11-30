@@ -15,17 +15,17 @@ import (
 
 //go:generate mockery -name ShardStrategy -case=underscore
 
-// ShardStrategy defines necessary functionality for a sharding strategy
+// ShardStrategy defines necessary functionality for a sharding strategy.
 type ShardStrategy interface {
-	// Returns the total number of pods for the sharding strategy
+	// GetPodCount returns the total number of pods for the sharding strategy.
 	GetPodCount() int
-	// Generates a unique hash code to identify shard strategy updates
+	// HashCode generates a unique hash code to identify shard strategy updates.
 	HashCode() (uint32, error)
-	// Updates the PodSpec for the specified index to include label selectors
+	// UpdatePodSpec amends the PodSpec for the specified index to include label selectors.
 	UpdatePodSpec(pod *v1.PodSpec, containerName string, podIndex int) error
 }
 
-// NewShardStrategy creates and validates a new ShardStrategy defined by the configuration
+// NewShardStrategy creates and validates a new ShardStrategy defined by the configuration.
 func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (ShardStrategy, error) {
 	switch shardConfig.Type {
 	case config.HashShardType:

@@ -49,8 +49,8 @@ func newManagerMetrics(scope promutils.Scope) *metrics {
 	}
 }
 
-// The Manager periodically scans k8s to ensure liveness of multiple FlytePropeller controller
-// instances and rectifies state based on the configured sharding strategy.
+// Manager periodically scans k8s to ensure liveness of multiple FlytePropeller controller instances
+// and rectifies state based on the configured sharding strategy.
 type Manager struct {
 	kubeClient               kubernetes.Interface
 	leaderElector            *leaderelection.LeaderElector
@@ -206,7 +206,7 @@ func (m *Manager) getPodNames() []string {
 	return podNames
 }
 
-// Runs either as a leader -if configured- or as a standalone process.
+// Run starts the manager instance as either a k8s leader, if configured, or as a standalone process.
 func (m *Manager) Run(ctx context.Context) error {
 	if m.leaderElector != nil {
 		logger.Infof(ctx, "running with leader election")
@@ -238,7 +238,7 @@ func (m *Manager) run(ctx context.Context) error {
 	return nil
 }
 
-// Creates a new FlytePropeller Manager instance
+// New creates a new FlytePropeller Manager instance.
 func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *managerConfig.Config, kubeClient kubernetes.Interface, scope promutils.Scope) (*Manager, error) {
 	shardStrategy, err := shardstrategy.NewShardStrategy(ctx, cfg.ShardConfig)
 	if err != nil {

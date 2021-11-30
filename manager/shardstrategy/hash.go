@@ -44,7 +44,7 @@ func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, containerName string,
 }
 
 // ComputeKeyRange computes a [startKey, endKey) pair denoting the key responsibilities for the
-// provided pod index given the keyspaceSize and podCount parameters
+// provided pod index given the keyspaceSize and podCount parameters.
 func ComputeKeyRange(keyspaceSize, podCount, podIndex int) (int, int) {
 	keysPerPod := keyspaceSize / podCount
 	keyRemainder := keyspaceSize - (podCount * keysPerPod)
