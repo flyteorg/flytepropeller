@@ -15,7 +15,7 @@ FlytePropeller Manager is configured at the root of the FlytePropeller configurt
 	  shard:                                        # configure sharding strategy
 	    # shard configuration redacted
 
-FlytePropeller Manager handles dynamic updates to both the k8s PodTemplate and shard configuration. The k8s PodTemplate resource has an associated resource version which uniquely identifies changes. Additionally, shard configuration modifications may be tracked using a simple hash. Flyte stores these values as annotations on managed FlytePropeller instances. Therefore, if either of there values change the FlytePropeller Manager instance will detect it and perform the necessary deployment updates. 
+FlytePropeller Manager handles dynamic updates to both the k8s PodTemplate and shard configuration. The k8s PodTemplate resource has an associated resource version which uniquely identifies changes. Additionally, shard configuration modifications may be tracked using a simple hash. Flyte stores these values as annotations on managed FlytePropeller instances. Therefore, if either of there values change the FlytePropeller Manager instance will detect it and perform the necessary deployment updates.
 
 Shard Strategies
 
@@ -23,7 +23,7 @@ Flyte defines a variety of Shard Strategies for configuring how FlyteWorkflows a
 
 Internally, FlyteWorkflow CRDs are initialized with k8s labels for project, domain, and a shard-key. The project and domain label values are associated with the environment of the registered workflow. The shard-key value is a range-bounded hash over various components of the FlyteWorkflow metadata, currently the keyspace range is defined as [0,32). A sharded Flyte deployment ensures deterministic FlyteWorkflow evalutions by setting disjoint k8s label selectors, based on the aforementioned labels, on each managed FlytePropeller instance. This ensures that only a single FlytePropeller instance is responsible for processing each FlyteWorkflow.
 
-The Hash Shard Strategy, denoted by "type: hash" in the configuration below, uses consistent hashing to evenly distribute FlyteWorkflows over managed FlytePropeller instances. This is achieved by partitioning the keyspace (i.e. [0,32)) into a collection of disjoint ranges and using label selectors to assign those ranges to managed FlytePropeller instances. For example, with "shard-count: 4" the first instance is responsible for FlyteWorkflows with "shard-keys" in the range [0,8), the second [8,16), the third [16,24), and the fourth [24,32). It may be useful to note that the default shard type is "hash", so it will be implicitely defined if otherwise left out of the configuration. An example configuration for the Hash Shard Strategy is provided below:
+The Hash Shard Strategy, denoted by "type: hash" in the configuration below, uses consistent hashing to evenly distribute FlyteWorkflows over managed FlytePropeller instances. This is achieved by partitioning the keyspace (i.e. [0,32)) into a collection of disjoint ranges and using label selectors to assign those ranges to managed FlytePropeller instances. For example, with "shard-count: 4" the first instance is responsible for FlyteWorkflows with "shard-keys" in the range [0,8), the second [8,16), the third [16,24), and the fourth [24,32). It may be useful to note that the default shard type is "hash", so it will be implicitly defined if otherwise left out of the configuration. An example configuration for the Hash Shard Strategy is provided below:
 
 	# a configuration example using the "hash" shard type
 	manager:
