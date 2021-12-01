@@ -72,6 +72,9 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReade
 	return catalog.NewCatalogEntry(nil, cacheDisabled), nil
 }
 
+// GetOrExtendCatalogReservation attempts to acquire an artifact reservation if the task is
+// cachable and cache serializable. If the reservation already exists for this owner, the
+// reservation is extended.
 func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID string, heartbeatInterval time.Duration, tr pluginCore.TaskReader, inputReader io.InputReader) (catalog.ReservationEntry, error) {
 	tk, err := tr.Read(ctx)
 	if err != nil {
@@ -230,6 +233,9 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 	return s, nil, nil
 }
 
+// ReleaseCatalogReservation attempts to release an artifact reservation if the task is cachable
+// and cache serializable. If the reservation does not exist for this owner (e.x. it never existed
+// or has been acquired by another owner) this call is still successful.
 func (t *Handler) ReleaseCatalogReservation(ctx context.Context, ownerID string, tr pluginCore.TaskReader, inputReader io.InputReader) (catalog.ReservationEntry, error) {
 	tk, err := tr.Read(ctx)
 	if err != nil {

@@ -264,8 +264,9 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 	return catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, EventCatalogMetadata(datasetID, tag, nil)), nil
 }
 
-// Attempts to get a reservation for the cachable task. If you have previously acquired a reservation
-// it will be extended. If another entity holds the reservation that is returned.
+// GetOrExtendReservation attempts to get a reservation for the cachable task. If you have
+// previously acquired a reservation it will be extended. If another entity holds the reservation
+// that is returned.
 func (m *CatalogClient) GetOrExtendReservation(ctx context.Context, key catalog.Key, ownerID string, heartbeatInterval time.Duration) (*datacatalog.Reservation, error) {
 	datasetID, err := GenerateDatasetIDForTask(ctx, key)
 	if err != nil {
@@ -303,6 +304,9 @@ func (m *CatalogClient) GetOrExtendReservation(ctx context.Context, key catalog.
 	return response.Reservation, nil
 }
 
+// ReleaseReservation attempts to release a reservation for a cachable task. If the reservation
+// does not exist (e.x. it never existed or has been acquired by another owner) then this call
+// still succeeds.
 func (m *CatalogClient) ReleaseReservation(ctx context.Context, key catalog.Key, ownerID string) error {
 	datasetID, err := GenerateDatasetIDForTask(ctx, key)
 	if err != nil {

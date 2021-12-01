@@ -94,6 +94,8 @@ func (p *pluginRequestedTransition) PopulateCacheInfo(entry catalog.Entry) {
 	}
 }
 
+// PopulateReservationInfo sets the ReservationStatus of a requested plugin transition based on the
+// provided ReservationEntry.
 func (p *pluginRequestedTransition) PopulateReservationInfo(entry catalog.ReservationEntry) {
 	if p.execInfo.TaskNodeInfo == nil {
 		p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
