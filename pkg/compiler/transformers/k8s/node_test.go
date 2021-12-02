@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"google.golang.org/protobuf/types/known/structpb"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -208,4 +209,60 @@ func TestBuildNodeSpec(t *testing.T) {
 		mustBuild(t, n, 2, errs.NewScope())
 	})
 
+}
+
+func TestBuildTasks(t *testing.T) {
+
+	withoutAnnotations := make(map[string]*core.Variable)
+	withoutAnnotations["a"] = &core.Variable{
+		Type: &core.LiteralType{
+			Annotation: &core.TypeAnnotation{},
+		},
+	}
+
+	randomData, _ := structpb.NewStruct(map[string]interface{}{
+		"foo": "bar",
+	})
+
+	withAnnotations := make(map[string]*core.Variable)
+	withAnnotations["a"] = &core.Variable{
+		Type: &core.LiteralType{
+			Annotation: &core.TypeAnnotation{Annotations: randomData},
+		},
+	}
+
+	tasks := []*core.CompiledTask{
+		{
+			Template: &core.TaskTemplate{
+				Id: &core.Identifier{Name: "annotated"},
+				Interface: &core.TypedInterface{
+					Inputs: &core.VariableMap{
+						Variables: withAnnotations,
+					},
+				},
+			},
+		},
+		{
+			Template: &core.TaskTemplate{
+				Id: &core.Identifier{Name: "unannotated"},
+				Interface: &core.TypedInterface{
+					Inputs: &core.VariableMap{
+						Variables: withoutAnnotations,
+					},
+				},
+			},
+		},
+	}
+
+	errs := errors.NewCompileErrors()
+
+	t.Run("Tasks with annotations", func(t *testing.T) {
+		taskMap := buildTasks(tasks, errs)
+
+		annTask := taskMap[(&core.Identifier{Name: "annotated"}).String()]
+		assert.Nil(t, annTask.Interface.Inputs.Variables["a"].Type.Annotation)
+
+		unAnnTask := taskMap[(&core.Identifier{Name: "annotated"}).String()]
+		assert.Nil(t, unAnnTask.Interface.Inputs.Variables["a"].Type.Annotation)
+	})
 }
