@@ -15,6 +15,27 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 	expectedType *flyte.LiteralType, errs errors.CompileErrors) (
 	resolvedType *flyte.LiteralType, upstreamNodes []c.NodeID, ok bool) {
 
+	// Non-scalar bindings will fail to introspect the type through a union type so we resolve them beforehand
+	switch binding.GetValue().(type) {
+	case *flyte.BindingData_Scalar:
+		// Goes through union-aware AreTypesCastable
+		break
+	case *flyte.BindingData_Promise:
+		// Goes through union-aware AreTypesCastable
+		break
+	default:
+		if expectedType.GetUnion() != nil {
+			for _, t := range expectedType.GetUnion().GetVariants() {
+				if resolvedType, nodeIds, ok := validateBinding(w, nodeID, nodeParam, binding, t, errors.NewCompileErrors()); ok {
+					// there can be no errors otherwise ok = false
+					return resolvedType, nodeIds, ok
+				}
+			}
+			errs.Collect(errors.NewMismatchingBindingsErr(nodeID, nodeParam, expectedType.String(), binding.GetCollection().String()))
+			return nil, nil, !errs.HasErrors()
+		}
+	}
+
 	switch binding.GetValue().(type) {
 	case *flyte.BindingData_Collection:
 		if expectedType.GetCollectionType() != nil {

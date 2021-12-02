@@ -27,13 +27,12 @@ type schemaTypeChecker struct {
 	literalType *flyte.LiteralType
 }
 
+type unionTypeChecker struct {
+	literalType *flyte.LiteralType
+}
+
 // The trivial type checker merely checks if types match exactly.
 func (t trivialChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
-	// Everything is nullable currently
-	if isVoid(upstreamType) {
-		return true
-	}
-
 	// If upstream is an enum, it can be consumed as a string downstream
 	if upstreamType.GetEnumType() != nil {
 		if t.literalType.GetSimple() == flyte.SimpleType_STRING {
@@ -55,18 +54,13 @@ func (t trivialChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	return upstreamTypeCopy.String() == downstreamTypeCopy.String()
 }
 
-// The void type matches everything
+// The void type matches cannot be constructed from anything
 func (t voidChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
-	return true
+	return false
 }
 
 // For a map type checker, we need to ensure both the key types and value types match.
 func (t mapTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
-	// Maps are nullable
-	if isVoid(upstreamType) {
-		return true
-	}
-
 	mapLiteralType := upstreamType.GetMapValueType()
 	if mapLiteralType != nil {
 		return getTypeChecker(t.literalType.GetMapValueType()).CastsFrom(mapLiteralType)
@@ -76,11 +70,6 @@ func (t mapTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 
 // For a collection type, we need to ensure that the nesting is correct and the final sub-types match.
 func (t collectionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
-	// Collections are nullable
-	if isVoid(upstreamType) {
-		return true
-	}
-
 	collectionType := upstreamType.GetCollectionType()
 	if collectionType != nil {
 		return getTypeChecker(t.literalType.GetCollectionType()).CastsFrom(collectionType)
@@ -97,11 +86,6 @@ func (t collectionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 //    2. The downstream schema has a subset of the upstream columns and they match perfectly.
 //
 func (t schemaTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
-	// Schemas are nullable
-	if isVoid(upstreamType) {
-		return true
-	}
-
 	schemaType := upstreamType.GetSchema()
 	if schemaType == nil {
 		return false
@@ -130,6 +114,17 @@ func (t schemaTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	return true
 }
 
+// A union accepts any of its variants
+func (t unionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
+	for _, x := range t.literalType.GetUnionType().GetVariants() {
+		if getTypeChecker(x).CastsFrom(upstreamType) {
+			return true
+		}
+	}
+
+	return true
+}
+
 func isVoid(t *flyte.LiteralType) bool {
 	switch t.GetType().(type) {
 	case *flyte.LiteralType_Simple:
@@ -153,6 +148,10 @@ func getTypeChecker(t *flyte.LiteralType) typeChecker {
 		return schemaTypeChecker{
 			literalType: t,
 		}
+	case *flyte.LiteralType_UnionType:
+		return unionTypeChecker{
+			literalType: t,
+		}
 	default:
 		if isVoid(t) {
 			return voidChecker{}
@@ -164,5 +163,16 @@ func getTypeChecker(t *flyte.LiteralType) typeChecker {
 }
 
 func AreTypesCastable(upstreamType, downstreamType *flyte.LiteralType) bool {
+	unionType := upstreamType.GetUnionType()
+	if unionType != nil {
+		// Each possible variant of the union must be acceptable
+		for _, x := range unionType.GetVariants() {
+			if !AreTypesCastable(x, downstreamType) {
+				return false
+			}
+		}
+		return true
+	}
+
 	return getTypeChecker(downstreamType).CastsFrom(upstreamType)
 }
