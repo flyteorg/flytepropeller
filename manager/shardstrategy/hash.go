@@ -3,7 +3,6 @@ package shardstrategy
 import (
 	"fmt"
 
-	"github.com/flyteorg/flytepropeller/manager/config"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/utils"
 
@@ -22,7 +21,7 @@ func (h *HashShardStrategy) GetPodCount() int {
 }
 
 func (h *HashShardStrategy) HashCode() (uint32, error) {
-	return computeHashCode(config.HashShardType, h)
+	return computeHashCode(h)
 }
 
 func (h *HashShardStrategy) UpdatePodSpec(pod *v1.PodSpec, containerName string, podIndex int) error {

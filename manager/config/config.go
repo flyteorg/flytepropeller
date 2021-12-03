@@ -7,6 +7,7 @@ import (
 )
 
 //go:generate pflags Config --default-var=DefaultConfig
+//go:generate enumer --type=ShardType --trimprefix=ShardType -json -yaml
 
 var (
 	DefaultConfig = &Config{
@@ -18,7 +19,7 @@ var (
 			Duration: 10 * time.Second,
 		},
 		ShardConfig: ShardConfig{
-			Type:       HashShardType,
+			Type:       ShardTypeHash,
 			ShardCount: 3,
 		},
 	}
@@ -26,12 +27,12 @@ var (
 	configSection = config.MustRegisterSection("manager", DefaultConfig)
 )
 
-type ShardType = string
+type ShardType int
 
 const (
-	DomainShardType  ShardType = "domain"
-	ProjectShardType ShardType = "project"
-	HashShardType    ShardType = "hash"
+	ShardTypeDomain ShardType = iota
+	ShardTypeProject
+	ShardTypeHash
 )
 
 // Configuration for defining shard replicas when using project or domain shard types
@@ -41,7 +42,7 @@ type PerShardMappingsConfig struct {
 
 // Configuration for the FlytePropeller sharding strategy
 type ShardConfig struct {
-	Type             ShardType                `json:"type" pflag:",Shard implementation to use"`
+	Type             ShardType                `json:"type" pflag:"-,Shard implementation to use"`
 	PerShardMappings []PerShardMappingsConfig `json:"per-shard-mapping" pflag:"-"`
 	ShardCount       int                      `json:"shard-count" pflag:",The number of shards to manage for a 'hash' shard type"`
 }

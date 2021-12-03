@@ -55,7 +55,6 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-template-name"), DefaultConfig.PodTemplateName, "K8s PodTemplate name to use for starting FlytePropeller pods")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "pod-template-namespace"), DefaultConfig.PodTemplateNamespace, "Namespace where the k8s PodTemplate is located")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "scan-interval"), DefaultConfig.ScanInterval.String(), "Frequency to scan FlytePropeller pods and start / restart if necessary")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "shard.type"), DefaultConfig.ShardConfig.Type, "Shard implementation to use")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "shard.shard-count"), DefaultConfig.ShardConfig.ShardCount, "The number of shards to manage for a 'hash' shard type")
 	return cmdFlags
 }

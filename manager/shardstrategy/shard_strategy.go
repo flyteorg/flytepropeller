@@ -28,7 +28,7 @@ type ShardStrategy interface {
 // NewShardStrategy creates and validates a new ShardStrategy defined by the configuration.
 func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (ShardStrategy, error) {
 	switch shardConfig.Type {
-	case config.HashShardType:
+	case config.ShardTypeHash:
 		if shardConfig.ShardCount <= 0 {
 			return nil, fmt.Errorf("configured ShardCount (%d) must be greater than zero", shardConfig.ShardCount)
 		} else if shardConfig.ShardCount > v1alpha1.ShardKeyspaceSize {
@@ -38,7 +38,7 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 		return &HashShardStrategy{
 			ShardCount: shardConfig.ShardCount,
 		}, nil
-	case config.ProjectShardType, config.DomainShardType:
+	case config.ShardTypeProject, config.ShardTypeDomain:
 		perShardIDs := make([][]string, 0)
 		wildcardIDFound := false
 		for _, perShardMapping := range shardConfig.PerShardMappings {
@@ -66,9 +66,9 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 
 		var envType environmentType
 		switch shardConfig.Type {
-		case config.ProjectShardType:
+		case config.ShardTypeProject:
 			envType = Project
-		case config.DomainShardType:
+		case config.ShardTypeDomain:
 			envType = Domain
 		}
 
@@ -81,11 +81,8 @@ func NewShardStrategy(ctx context.Context, shardConfig config.ShardConfig) (Shar
 	return nil, fmt.Errorf("shard strategy '%s' does not exist", shardConfig.Type)
 }
 
-func computeHashCode(name string, data interface{}) (uint32, error) {
+func computeHashCode(data interface{}) (uint32, error) {
 	hash := fnv.New32a()
-	if _, err := hash.Write([]byte(name)); err != nil {
-		return 0, err
-	}
 
 	buffer := new(bytes.Buffer)
 	encoder := gob.NewEncoder(buffer)
