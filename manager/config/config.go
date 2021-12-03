@@ -18,7 +18,7 @@ var (
 			Duration: 10 * time.Second,
 		},
 		ShardConfig: ShardConfig{
-			Type:       "hash",
+			Type:       HashShardType,
 			ShardCount: 3,
 		},
 	}
@@ -41,9 +41,9 @@ type PerShardMappingsConfig struct {
 
 // Configuration for the FlytePropeller sharding strategy
 type ShardConfig struct {
-	Type             ShardType                `json:"type" pflag:"\"hash\",Shard implementation to use"`
+	Type             ShardType                `json:"type" pflag:",Shard implementation to use"`
 	PerShardMappings []PerShardMappingsConfig `json:"per-shard-mapping" pflag:"-"`
-	ShardCount       int                      `json:"shard-count" pflag:"\"3\",The number of shards to manage for a 'hash' shard type"`
+	ShardCount       int                      `json:"shard-count" pflag:",The number of shards to manage for a 'hash' shard type"`
 }
 
 // Configuration for the FlytePropeller Manager instance

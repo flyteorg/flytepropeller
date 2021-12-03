@@ -122,16 +122,21 @@ func (m *Manager) createPods(ctx context.Context) error {
 		podName := pod.ObjectMeta.Name
 
 		// validate existing pod annotations
-		validAnnotations := true
+		deletePod := false
 		for key, value := range podAnnotations {
 			if pod.ObjectMeta.Annotations[key] != value {
-				validAnnotations = false
+				logger.Infof(ctx, "detected pod '%s' with stale configuration", podName)
+				deletePod = true
 				break
 			}
 		}
 
-		if !validAnnotations {
-			// delete stale pod
+		if pod.Status.Phase == v1.PodFailed {
+			logger.Warnf(ctx, "detected pod '%s' in 'failed' state", podName)
+			deletePod = true
+		}
+
+		if deletePod {
 			err := m.kubeClient.CoreV1().Pods(m.podNamespace).Delete(ctx, podName, metav1.DeleteOptions{})
 			if err != nil {
 				return err
@@ -148,8 +153,6 @@ func (m *Manager) createPods(ctx context.Context) error {
 
 			if pod.Status.Phase == v1.PodRunning {
 				podsRunning++
-			} else if pod.Status.Phase == v1.PodFailed {
-				logger.Warnf(ctx, "flytepropeller pod '%s' in 'failed' state", podName)
 			}
 		}
 	}
