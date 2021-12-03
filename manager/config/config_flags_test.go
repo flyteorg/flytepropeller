@@ -169,6 +169,20 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_shard.type", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("shard.type", testValue)
+			if vString, err := cmdFlags.GetString("shard.type"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.ShardConfig.Type)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 	t.Run("Test_shard.shard-count", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
