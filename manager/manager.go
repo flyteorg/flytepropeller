@@ -11,6 +11,7 @@ import (
 	leader "github.com/flyteorg/flytepropeller/pkg/leaderelection"
 	"github.com/flyteorg/flytepropeller/pkg/utils"
 
+	stderrors "github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 
@@ -156,6 +157,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 	m.metrics.PodsRunning.Set(float64(podsRunning))
 
 	// create non-existent pods
+	errs := stderrors.ErrorCollection{}
 	for i, podName := range podNames {
 		if exists := podExists[podName]; !exists {
 			pod := &v1.Pod{
@@ -171,13 +173,13 @@ func (m *Manager) createPods(ctx context.Context) error {
 
 			err := m.shardStrategy.UpdatePodSpec(&pod.Spec, m.podTemplateContainerName, i)
 			if err != nil {
-				logger.Errorf(ctx, "failed to update pod spec for '%s' [%v]", podName, err)
+				errs.Append(fmt.Errorf("failed to update pod spec for '%s' [%v]", podName, err))
 				continue
 			}
 
 			_, err = m.kubeClient.CoreV1().Pods(m.podNamespace).Create(ctx, pod, metav1.CreateOptions{})
 			if err != nil {
-				logger.Errorf(ctx, "failed to create pod '%s' [%v]", podName, err)
+				errs.Append(fmt.Errorf("failed to create pod '%s' [%v]", podName, err))
 				continue
 			}
 
@@ -186,7 +188,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 		}
 	}
 
-	return nil
+	return errs.ErrorOrDefault()
 }
 
 func (m *Manager) getPodNames() []string {

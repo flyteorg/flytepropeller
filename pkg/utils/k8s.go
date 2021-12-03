@@ -96,20 +96,15 @@ func ToK8sResourceRequirements(resources *core.Resources) (*v1.ResourceRequireme
 	return res, nil
 }
 
+// GetContainer searches the provided pod spec for a container with the specified name
 func GetContainer(pod *v1.PodSpec, containerName string) (*v1.Container, error) {
-	// find flytepropeller container(s)
-	var containers []*v1.Container
 	for i := 0; i < len(pod.Containers); i++ {
 		if pod.Containers[i].Name == containerName {
-			containers = append(containers, &pod.Containers[i])
+			return &pod.Containers[i], nil
 		}
 	}
 
-	if len(containers) != 1 {
-		return nil, fmt.Errorf("expecting 1 '%s' container in podtemplate but found %d, ", containerName, len(containers))
-	}
-
-	return containers[0], nil
+	return nil, fmt.Errorf("container '%s' not found in podtemplate, ", containerName)
 }
 
 func GetKubeConfig(_ context.Context, cfg *config.Config) (*kubernetes.Clientset, *restclient.Config, error) {
