@@ -54,9 +54,9 @@ func (t trivialChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	return upstreamTypeCopy.String() == downstreamTypeCopy.String()
 }
 
-// The void type matches cannot be constructed from anything
+// The void type matches only void
 func (t voidChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
-	return false
+	return isVoid(upstreamType)
 }
 
 // For a map type checker, we need to ensure both the key types and value types match.
@@ -114,15 +114,41 @@ func (t schemaTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	return true
 }
 
-// A union accepts any of its variants
 func (t unionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
-	for _, x := range t.literalType.GetUnionType().GetVariants() {
-		if getTypeChecker(x).CastsFrom(upstreamType) {
-			return true
+	unionType := t.literalType.GetUnionType()
+
+	upstreamUnionType := upstreamType.GetUnionType()
+	if upstreamUnionType != nil {
+		// For each upstream variant we must find a compatible downstream variant
+		downstreamVariants := make(map[string]*flyte.LiteralType)
+		for _, x := range unionType.GetVariants() {
+			downstreamVariants[x.GetTag()] = x.GetType()
+		}
+
+		for _, x := range upstreamUnionType.GetVariants() {
+			if downstreamVariants[x.GetTag()] == nil {
+				return false
+			}
+			if !AreTypesCastable(x.GetType(), downstreamVariants[x.GetTag()]) {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	// Matches iff we can unambiguously select a variant
+	found_one := false
+	for _, x := range unionType.GetVariants() {
+		if AreTypesCastable(upstreamType, x.GetType()) {
+			if found_one {
+				return false
+			}
+			found_one = true
 		}
 	}
 
-	return true
+	return found_one
 }
 
 func isVoid(t *flyte.LiteralType) bool {
@@ -163,16 +189,5 @@ func getTypeChecker(t *flyte.LiteralType) typeChecker {
 }
 
 func AreTypesCastable(upstreamType, downstreamType *flyte.LiteralType) bool {
-	unionType := upstreamType.GetUnionType()
-	if unionType != nil {
-		// Each possible variant of the union must be acceptable
-		for _, x := range unionType.GetVariants() {
-			if !AreTypesCastable(x, downstreamType) {
-				return false
-			}
-		}
-		return true
-	}
-
 	return getTypeChecker(downstreamType).CastsFrom(upstreamType)
 }

@@ -24,14 +24,30 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 		// Goes through union-aware AreTypesCastable
 		break
 	default:
-		if expectedType.GetUnion() != nil {
-			for _, t := range expectedType.GetUnion().GetVariants() {
-				if resolvedType, nodeIds, ok := validateBinding(w, nodeID, nodeParam, binding, t, errors.NewCompileErrors()); ok {
-					// there can be no errors otherwise ok = false
-					return resolvedType, nodeIds, ok
+		if expectedType.GetUnionType() != nil {
+			var matchingType *flyte.LiteralType
+			var resolvedType *flyte.LiteralType
+			var nodeIds []c.NodeID
+			var ok bool
+
+			for _, t := range expectedType.GetUnionType().GetVariants() {
+				resolvedType1, nodeIds1, ok1 := validateBinding(w, nodeID, nodeParam, binding, t.GetType(), errors.NewCompileErrors())
+				if ok1 {
+					if ok {
+						errs.Collect(errors.NewAmbiguousBindingUnionValue(nodeID, nodeParam, expectedType.String(), binding.String(), matchingType.String(), t.GetType().String()))
+						return nil, nil, !errs.HasErrors()
+					}
+
+					matchingType = t.GetType()
+					resolvedType, nodeIds, ok = resolvedType1, nodeIds1, ok1
 				}
 			}
-			errs.Collect(errors.NewMismatchingBindingsErr(nodeID, nodeParam, expectedType.String(), binding.GetCollection().String()))
+
+			if ok {
+				return resolvedType, nodeIds, ok
+			}
+
+			errs.Collect(errors.NewIncompatibleBindingUnionValue(nodeID, nodeParam, expectedType.String(), binding.String()))
 			return nil, nil, !errs.HasErrors()
 		}
 	}
