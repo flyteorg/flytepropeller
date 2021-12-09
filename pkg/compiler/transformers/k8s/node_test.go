@@ -234,7 +234,7 @@ func TestBuildTasks(t *testing.T) {
 	tasks := []*core.CompiledTask{
 		{
 			Template: &core.TaskTemplate{
-				Id: &core.Identifier{Name: "annotated"},
+				Id: &core.Identifier{Name: "annotatedInput"},
 				Interface: &core.TypedInterface{
 					Inputs: &core.VariableMap{
 						Variables: withAnnotations,
@@ -244,9 +244,29 @@ func TestBuildTasks(t *testing.T) {
 		},
 		{
 			Template: &core.TaskTemplate{
-				Id: &core.Identifier{Name: "unannotated"},
+				Id: &core.Identifier{Name: "unannotatedInput"},
 				Interface: &core.TypedInterface{
 					Inputs: &core.VariableMap{
+						Variables: withoutAnnotations,
+					},
+				},
+			},
+		},
+		{
+			Template: &core.TaskTemplate{
+				Id: &core.Identifier{Name: "annotatedOutput"},
+				Interface: &core.TypedInterface{
+					Outputs: &core.VariableMap{
+						Variables: withAnnotations,
+					},
+				},
+			},
+		},
+		{
+			Template: &core.TaskTemplate{
+				Id: &core.Identifier{Name: "unannotatedOutput"},
+				Interface: &core.TypedInterface{
+					Outputs: &core.VariableMap{
 						Variables: withoutAnnotations,
 					},
 				},
@@ -259,10 +279,16 @@ func TestBuildTasks(t *testing.T) {
 	t.Run("Tasks with annotations", func(t *testing.T) {
 		taskMap := buildTasks(tasks, errs)
 
-		annTask := taskMap[(&core.Identifier{Name: "annotated"}).String()]
-		assert.Nil(t, annTask.Interface.Inputs.Variables["a"].Type.Annotation)
+		annInputTask := taskMap[(&core.Identifier{Name: "annotatedInput"}).String()]
+		assert.Nil(t, annInputTask.Interface.Inputs.Variables["a"].Type.Annotation)
 
-		unAnnTask := taskMap[(&core.Identifier{Name: "annotated"}).String()]
-		assert.Nil(t, unAnnTask.Interface.Inputs.Variables["a"].Type.Annotation)
+		unAnnInputTask := taskMap[(&core.Identifier{Name: "unannotatedInput"}).String()]
+		assert.Nil(t, unAnnInputTask.Interface.Inputs.Variables["a"].Type.Annotation)
+
+		annOutputTask := taskMap[(&core.Identifier{Name: "annotatedOutput"}).String()]
+		assert.Nil(t, annOutputTask.Interface.Outputs.Variables["a"].Type.Annotation)
+
+		unAnnOutputTask := taskMap[(&core.Identifier{Name: "unannotatedOutput"}).String()]
+		assert.Nil(t, unAnnOutputTask.Interface.Outputs.Variables["a"].Type.Annotation)
 	})
 }
