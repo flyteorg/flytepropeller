@@ -772,4 +772,268 @@ func TestValidateBindings(t *testing.T) {
 		assert.False(t, ok)
 		assert.Equal(t, "AmbiguousBindingUnionValue", string(compileErrors.Errors().List()[0].Code()))
 	})
+
+	t.Run("Union Promise Unambiguous", func(t *testing.T) {
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+		n.OnGetInterface().Return(&core.TypedInterface{
+			Inputs: &core.VariableMap{
+				Variables: map[string]*core.Variable{},
+			},
+			Outputs: &core.VariableMap{
+				Variables: map[string]*core.Variable{},
+			},
+		})
+
+		n2 := &mocks.NodeBuilder{}
+		n2.OnGetId().Return("node2")
+		n2.OnGetOutputAliases().Return(nil)
+		n2.OnGetInterface().Return(&core.TypedInterface{
+			Inputs: &core.VariableMap{
+				Variables: map[string]*core.Variable{},
+			},
+			Outputs: &core.VariableMap{
+				Variables: map[string]*core.Variable{
+					"n2_out": {
+						Type: LiteralTypeForLiteral(coreutils.MustMakeLiteral(2)),
+					},
+				},
+			},
+		})
+
+		wf := &mocks.WorkflowBuilder{}
+		wf.OnGetNode("n2").Return(n2, true)
+		wf.On("AddExecutionEdge", mock.Anything, mock.Anything).Return(nil)
+
+		bindings := []*core.Binding{
+			{
+				Var: "x",
+				Binding: &core.BindingData{
+					Value: &core.BindingData_Promise{
+						Promise: &core.OutputReference{
+							Var:    "n2_out",
+							NodeId: "n2",
+						},
+					},
+				},
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_UnionType{
+							UnionType: &core.UnionType{
+								Variants: []*core.UnionVariant{
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										},
+										Tag: "str",
+									},
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										},
+										Tag: "int",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.True(t, ok)
+		if compileErrors.HasErrors() {
+			assert.NoError(t, compileErrors)
+		}
+	})
+
+	t.Run("Union Promise Ambiguous", func(t *testing.T) {
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+		n.OnGetInterface().Return(&core.TypedInterface{
+			Inputs: &core.VariableMap{
+				Variables: map[string]*core.Variable{},
+			},
+			Outputs: &core.VariableMap{
+				Variables: map[string]*core.Variable{},
+			},
+		})
+
+		n2 := &mocks.NodeBuilder{}
+		n2.OnGetId().Return("node2")
+		n2.OnGetOutputAliases().Return(nil)
+		n2.OnGetInterface().Return(&core.TypedInterface{
+			Inputs: &core.VariableMap{
+				Variables: map[string]*core.Variable{},
+			},
+			Outputs: &core.VariableMap{
+				Variables: map[string]*core.Variable{
+					"n2_out": {
+						Type: LiteralTypeForLiteral(coreutils.MustMakeLiteral(2)),
+					},
+				},
+			},
+		})
+
+		wf := &mocks.WorkflowBuilder{}
+		wf.OnGetNode("n2").Return(n2, true)
+		wf.On("AddExecutionEdge", mock.Anything, mock.Anything).Return(nil)
+
+		bindings := []*core.Binding{
+			{
+				Var: "x",
+				Binding: &core.BindingData{
+					Value: &core.BindingData_Promise{
+						Promise: &core.OutputReference{
+							Var:    "n2_out",
+							NodeId: "n2",
+						},
+					},
+				},
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_UnionType{
+							UnionType: &core.UnionType{
+								Variants: []*core.UnionVariant{
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										},
+										Tag: "str",
+									},
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										},
+										Tag: "int1",
+									},
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										},
+										Tag: "int2",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.False(t, ok)
+		assert.Equal(t, "MismatchingTypes", string(compileErrors.Errors().List()[0].Code()))
+	})
+
+	t.Run("Union Promise Union Literal", func(t *testing.T) {
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+		n.OnGetInterface().Return(&core.TypedInterface{
+			Inputs: &core.VariableMap{
+				Variables: map[string]*core.Variable{},
+			},
+			Outputs: &core.VariableMap{
+				Variables: map[string]*core.Variable{},
+			},
+		})
+
+		n2 := &mocks.NodeBuilder{}
+		n2.OnGetId().Return("node2")
+		n2.OnGetOutputAliases().Return(nil)
+		n2.OnGetInterface().Return(&core.TypedInterface{
+			Inputs: &core.VariableMap{
+				Variables: map[string]*core.Variable{},
+			},
+			Outputs: &core.VariableMap{
+				Variables: map[string]*core.Variable{
+					"n2_out": {
+						Type: LiteralTypeForLiteral(&core.Literal{
+							Value: &core.Literal_Scalar{
+								Scalar: &core.Scalar{
+									Value: &core.Scalar_Union{
+										Union: &core.Union{
+											Value: coreutils.MustMakeLiteral(5),
+											Tag:   "int1",
+										},
+									},
+								},
+							},
+						}),
+					},
+				},
+			},
+		})
+
+		wf := &mocks.WorkflowBuilder{}
+		wf.OnGetNode("n2").Return(n2, true)
+		wf.On("AddExecutionEdge", mock.Anything, mock.Anything).Return(nil)
+
+		bindings := []*core.Binding{
+			{
+				Var: "x",
+				Binding: &core.BindingData{
+					Value: &core.BindingData_Promise{
+						Promise: &core.OutputReference{
+							Var:    "n2_out",
+							NodeId: "n2",
+						},
+					},
+				},
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_UnionType{
+							UnionType: &core.UnionType{
+								Variants: []*core.UnionVariant{
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										},
+										Tag: "str",
+									},
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										},
+										Tag: "int1",
+									},
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										},
+										Tag: "int2",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.True(t, ok)
+		if compileErrors.HasErrors() {
+			assert.NoError(t, compileErrors)
+		}
+	})
 }
