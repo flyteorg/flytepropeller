@@ -124,7 +124,7 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 		literalType := literalTypeForScalar(binding.GetScalar())
 		if literalType == nil {
 			errs.Collect(errors.NewUnrecognizedValueErr(nodeID, reflect.TypeOf(binding.GetScalar().GetValue()).String()))
-		} else if !AreTypesCastable(literalType, expectedType) {
+		} else if validateParamTypes && !AreTypesCastable(literalType, expectedType) {
 			errs.Collect(errors.NewMismatchingTypesErr(nodeID, nodeParam, literalType.String(), expectedType.String()))
 		}
 
