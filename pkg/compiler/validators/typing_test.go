@@ -134,7 +134,9 @@ func TestSimpleLiteralCasting(t *testing.T) {
 		)
 		assert.True(t, castable, "Strings should be castable to enums - may result in runtime failure")
 	})
+}
 
+func TestUnionCasting(t *testing.T) {
 	t.Run("StringToUnionUnambiguously", func(t *testing.T) {
 		castable := AreTypesCastable(
 			&core.LiteralType{
@@ -146,7 +148,7 @@ func TestSimpleLiteralCasting(t *testing.T) {
 						Variants: []*core.UnionVariant{
 							{
 								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
 								},
 								Tag: "int",
 							},
@@ -190,7 +192,7 @@ func TestSimpleLiteralCasting(t *testing.T) {
 				},
 			},
 		)
-		assert.True(t, castable, "Raw string literals should be castable to (str | str) as ambiguity checking requires knowing the available type transformers")
+		assert.False(t, castable, "Raw string literals should not be ambiguously castable to (str | str)")
 	})
 
 	t.Run("UnionToUnionSuperset", func(t *testing.T) {

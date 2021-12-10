@@ -298,7 +298,7 @@ func NewNoNodesFoundErr(graphID string) *CompileError {
 
 func NewAmbiguousBindingUnionValue(nodeID, sinkParam, expectedType, binding, match1, match2 string) *CompileError {
 	return newError(
-		MismatchingBindings,
+		AmbiguousBindingUnionValue,
 		fmt.Sprintf(
 			"Input [%v] on node [%v] expects bindings of union type [%v].  Received [%v] which is ambiguous as both variants [%v] and [%v] match.",
 			sinkParam, nodeID, expectedType, binding, match1, match2),
@@ -308,7 +308,7 @@ func NewAmbiguousBindingUnionValue(nodeID, sinkParam, expectedType, binding, mat
 
 func NewIncompatibleBindingUnionValue(nodeID, sinkParam, expectedType, binding string) *CompileError {
 	return newError(
-		MismatchingBindings,
+		IncompatibleBindingUnionValue,
 		fmt.Sprintf(
 			"Input [%v] on node [%v] expects bindings of union type [%v].  Received [%v] which does not match any of the variants.",
 			sinkParam, nodeID, expectedType, binding),

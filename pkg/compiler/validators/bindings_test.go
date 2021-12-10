@@ -264,4 +264,512 @@ func TestValidateBindings(t *testing.T) {
 			assert.NoError(t, compileErrors)
 		}
 	})
+
+	t.Run("Int to Unambiguous Union Binding", func(t *testing.T) {
+		wf := &mocks.WorkflowBuilder{}
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+
+		bindings := []*core.Binding{
+			{
+				Var:     "x",
+				Binding: LiteralToBinding(coreutils.MustMakeLiteral(5)),
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_UnionType{
+							UnionType: &core.UnionType{
+								Variants: []*core.UnionVariant{
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										},
+										Tag: "str",
+									},
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										},
+										Tag: "int",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.True(t, ok)
+		if compileErrors.HasErrors() {
+			assert.NoError(t, compileErrors)
+		}
+	})
+
+	t.Run("Int to Ambiguous Union Binding", func(t *testing.T) {
+		wf := &mocks.WorkflowBuilder{}
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+
+		bindings := []*core.Binding{
+			{
+				Var:     "x",
+				Binding: LiteralToBinding(coreutils.MustMakeLiteral(5)),
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_UnionType{
+							UnionType: &core.UnionType{
+								Variants: []*core.UnionVariant{
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										},
+										Tag: "int1",
+									},
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										},
+										Tag: "int2",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.False(t, ok)
+	})
+
+	t.Run("Int to Incompatible Union Binding", func(t *testing.T) {
+		// Should still succeed because ambiguity checking is deferred to the SDK which knows about type transformers
+		wf := &mocks.WorkflowBuilder{}
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+
+		bindings := []*core.Binding{
+			{
+				Var:     "x",
+				Binding: LiteralToBinding(coreutils.MustMakeLiteral(5)),
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_UnionType{
+							UnionType: &core.UnionType{
+								Variants: []*core.UnionVariant{
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										},
+										Tag: "str",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.False(t, ok)
+		assert.Equal(t, "MismatchingTypes", string(compileErrors.Errors().List()[0].Code()))
+	})
+
+	t.Run("Union Literal to Union Binding", func(t *testing.T) {
+		// Should still succeed because ambiguity checking is deferred to the SDK which knows about type transformers
+		wf := &mocks.WorkflowBuilder{}
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+
+		bindings := []*core.Binding{
+			{
+				Var: "x",
+				Binding: LiteralToBinding(&core.Literal{
+					Value: &core.Literal_Scalar{
+						Scalar: &core.Scalar{
+							Value: &core.Scalar_Union{
+								Union: &core.Union{
+									Value: coreutils.MustMakeLiteral(5),
+									Tag:   "int",
+								},
+							},
+						},
+					},
+				}),
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_UnionType{
+							UnionType: &core.UnionType{
+								Variants: []*core.UnionVariant{
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										},
+										Tag: "int1",
+									},
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										},
+										Tag: "str",
+									},
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										},
+										Tag: "int",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.True(t, ok)
+		if compileErrors.HasErrors() {
+			assert.NoError(t, compileErrors)
+		}
+	})
+
+	t.Run("Union Literal to Incompatible Union Binding", func(t *testing.T) {
+		// Should still succeed because ambiguity checking is deferred to the SDK which knows about type transformers
+		wf := &mocks.WorkflowBuilder{}
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+
+		bindings := []*core.Binding{
+			{
+				Var: "x",
+				Binding: LiteralToBinding(&core.Literal{
+					Value: &core.Literal_Scalar{
+						Scalar: &core.Scalar{
+							Value: &core.Scalar_Union{
+								Union: &core.Union{
+									Value: coreutils.MustMakeLiteral(5),
+									Tag:   "int",
+								},
+							},
+						},
+					},
+				}),
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_UnionType{
+							UnionType: &core.UnionType{
+								Variants: []*core.UnionVariant{
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										},
+										Tag: "int_other",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.False(t, ok)
+		assert.Equal(t, "MismatchingTypes", string(compileErrors.Errors().List()[0].Code()))
+	})
+
+	t.Run("List of Int to List of Unions Binding", func(t *testing.T) {
+		wf := &mocks.WorkflowBuilder{}
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+
+		bindings := []*core.Binding{
+			{
+				Var:     "x",
+				Binding: LiteralToBinding(coreutils.MustMakeLiteral([]interface{}{5})),
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_CollectionType{
+							CollectionType: &core.LiteralType{
+								Type: &core.LiteralType_UnionType{
+									UnionType: &core.UnionType{
+										Variants: []*core.UnionVariant{
+											{
+												Type: &core.LiteralType{
+													Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+												},
+												Tag: "str",
+											},
+											{
+												Type: &core.LiteralType{
+													Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+												},
+												Tag: "int",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.True(t, ok)
+		if compileErrors.HasErrors() {
+			assert.NoError(t, compileErrors)
+		}
+	})
+
+	t.Run("List of Int to List of Incompatible Unions Binding", func(t *testing.T) {
+		wf := &mocks.WorkflowBuilder{}
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+
+		bindings := []*core.Binding{
+			{
+				Var:     "x",
+				Binding: LiteralToBinding(coreutils.MustMakeLiteral([]interface{}{5})),
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_CollectionType{
+							CollectionType: &core.LiteralType{
+								Type: &core.LiteralType_UnionType{
+									UnionType: &core.UnionType{
+										Variants: []*core.UnionVariant{
+											{
+												Type: &core.LiteralType{
+													Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+												},
+												Tag: "str",
+											},
+											{
+												Type: &core.LiteralType{
+													Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+												},
+												Tag: "str1",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.False(t, ok)
+		assert.Equal(t, "MismatchingTypes", string(compileErrors.Errors().List()[0].Code()))
+	})
+
+	t.Run("List of Int to Union of Lists Binding", func(t *testing.T) {
+		wf := &mocks.WorkflowBuilder{}
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+
+		bindings := []*core.Binding{
+			{
+				Var:     "x",
+				Binding: LiteralToBinding(coreutils.MustMakeLiteral([]interface{}{5})),
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_UnionType{
+							UnionType: &core.UnionType{
+								Variants: []*core.UnionVariant{
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_CollectionType{
+												CollectionType: &core.LiteralType{
+													Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+												},
+											},
+										},
+										Tag: "list",
+									},
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_CollectionType{
+												CollectionType: &core.LiteralType{
+													Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+												},
+											},
+										},
+										Tag: "list",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.True(t, ok)
+		if compileErrors.HasErrors() {
+			assert.NoError(t, compileErrors)
+		}
+	})
+
+	t.Run("List of Int to Incompatible Union of Lists Binding", func(t *testing.T) {
+		wf := &mocks.WorkflowBuilder{}
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+
+		bindings := []*core.Binding{
+			{
+				Var:     "x",
+				Binding: LiteralToBinding(coreutils.MustMakeLiteral([]interface{}{5})),
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_UnionType{
+							UnionType: &core.UnionType{
+								Variants: []*core.UnionVariant{
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_CollectionType{
+												CollectionType: &core.LiteralType{
+													Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+												},
+											},
+										},
+										Tag: "list",
+									},
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_CollectionType{
+												CollectionType: &core.LiteralType{
+													Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+												},
+											},
+										},
+										Tag: "list",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.False(t, ok)
+		assert.Equal(t, "IncompatibleBindingUnionValue", string(compileErrors.Errors().List()[0].Code()))
+	})
+
+	t.Run("List of Int to Ambiguous Union of Lists Binding", func(t *testing.T) {
+		wf := &mocks.WorkflowBuilder{}
+		n := &mocks.NodeBuilder{}
+		n.OnGetId().Return("node1")
+
+		bindings := []*core.Binding{
+			{
+				Var:     "x",
+				Binding: LiteralToBinding(coreutils.MustMakeLiteral([]interface{}{5})),
+			},
+		}
+
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_UnionType{
+							UnionType: &core.UnionType{
+								Variants: []*core.UnionVariant{
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_CollectionType{
+												CollectionType: &core.LiteralType{
+													Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+												},
+											},
+										},
+										Tag: "list1",
+									},
+									{
+										Type: &core.LiteralType{
+											Type: &core.LiteralType_CollectionType{
+												CollectionType: &core.LiteralType{
+													Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+												},
+											},
+										},
+										Tag: "list2",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		compileErrors := compilerErrors.NewCompileErrors()
+		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
+		assert.False(t, ok)
+		assert.Equal(t, "AmbiguousBindingUnionValue", string(compileErrors.Errors().List()[0].Code()))
+	})
 }

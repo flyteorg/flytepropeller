@@ -54,6 +54,19 @@ func literalTypeForScalar(scalar *core.Scalar) *core.LiteralType {
 		literalType = &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_ERROR}}
 	case *core.Scalar_Generic:
 		literalType = &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRUCT}}
+	case *core.Scalar_Union:
+		literalType = &core.LiteralType{
+			Type: &core.LiteralType_UnionType{
+				UnionType: &core.UnionType{
+					Variants: []*core.UnionVariant{
+						{
+							Type: LiteralTypeForLiteral(scalar.GetUnion().GetValue()),
+							Tag:  scalar.GetUnion().GetTag(),
+						},
+					},
+				},
+			},
+		}
 	default:
 		return nil
 	}
