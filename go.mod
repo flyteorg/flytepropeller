@@ -25,6 +25,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
 	google.golang.org/grpc v1.36.0
+	google.golang.org/protobuf v1.25.0
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
 	k8s.io/client-go v0.20.2
@@ -33,4 +34,5 @@ require (
 )
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
-replace github.com/flyteorg/flyteidl => github.com/kennyworkman/flyteidl 17fc33f66a9d32c22f93adbb30166857fbb6bc11
+
+replace github.com/flyteorg/flyteidl => github.com/kennyworkman/flyteidl v0.21.12-0.20211210005601-8c4bb8cda5fb
