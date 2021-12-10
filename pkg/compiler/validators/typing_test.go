@@ -54,7 +54,7 @@ func TestSimpleLiteralCasting(t *testing.T) {
 				Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
 			},
 		)
-		assert.True(t, castable, "Floats are nullable")
+		assert.False(t, castable, "Non-optional types are non-nullable")
 	})
 
 	t.Run("IgnoreMetadata", func(t *testing.T) {
@@ -133,6 +133,196 @@ func TestSimpleLiteralCasting(t *testing.T) {
 			},
 		)
 		assert.True(t, castable, "Strings should be castable to enums - may result in runtime failure")
+	})
+
+	t.Run("StringToUnionUnambiguously", func(t *testing.T) {
+		castable := AreTypesCastable(
+			&core.LiteralType{
+				Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+			},
+			&core.LiteralType{
+				Type: &core.LiteralType_UnionType{
+					UnionType: &core.UnionType{
+						Variants: []*core.UnionVariant{
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								},
+								Tag: "int",
+							},
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								},
+								Tag: "str",
+							},
+						},
+					},
+				},
+			},
+		)
+		assert.True(t, castable, "Strings should be castable to (str | int)")
+	})
+
+	t.Run("StringToUnionAmbiguously", func(t *testing.T) {
+		castable := AreTypesCastable(
+			&core.LiteralType{
+				Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+			},
+			&core.LiteralType{
+				Type: &core.LiteralType_UnionType{
+					UnionType: &core.UnionType{
+						Variants: []*core.UnionVariant{
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								},
+								Tag: "str1",
+							},
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								},
+								Tag: "str2",
+							},
+						},
+					},
+				},
+			},
+		)
+		assert.True(t, castable, "Raw string literals should be castable to (str | str) as ambiguity checking requires knowing the available type transformers")
+	})
+
+	t.Run("UnionToUnionSuperset", func(t *testing.T) {
+		castable := AreTypesCastable(
+			&core.LiteralType{
+				Type: &core.LiteralType_UnionType{
+					UnionType: &core.UnionType{
+						Variants: []*core.UnionVariant{
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								},
+								Tag: "str1",
+							},
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								},
+								Tag: "str2",
+							},
+						},
+					},
+				},
+			},
+			&core.LiteralType{
+				Type: &core.LiteralType_UnionType{
+					UnionType: &core.UnionType{
+						Variants: []*core.UnionVariant{
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								},
+								Tag: "str1",
+							},
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+								},
+								Tag: "int1",
+							},
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								},
+								Tag: "str2",
+							},
+						},
+					},
+				},
+			},
+		)
+		assert.True(t, castable, "Union types can be cast to a union that contains a superset of variants")
+	})
+
+	t.Run("UnionToUnionTagMismatch", func(t *testing.T) {
+		castable := AreTypesCastable(
+			&core.LiteralType{
+				Type: &core.LiteralType_UnionType{
+					UnionType: &core.UnionType{
+						Variants: []*core.UnionVariant{
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								},
+								Tag: "str1",
+							},
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								},
+								Tag: "str2",
+							},
+						},
+					},
+				},
+			},
+			&core.LiteralType{
+				Type: &core.LiteralType_UnionType{
+					UnionType: &core.UnionType{
+						Variants: []*core.UnionVariant{
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+								},
+								Tag: "str2",
+							},
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								},
+								Tag: "str3",
+							},
+						},
+					},
+				},
+			},
+		)
+		assert.False(t, castable, "Union types can only be cast to a union that contains a superset of variants")
+	})
+
+	t.Run("UnionToUnionTypeMismatch", func(t *testing.T) {
+		castable := AreTypesCastable(
+			&core.LiteralType{
+				Type: &core.LiteralType_UnionType{
+					UnionType: &core.UnionType{
+						Variants: []*core.UnionVariant{
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								},
+								Tag: "test",
+							},
+						},
+					},
+				},
+			},
+			&core.LiteralType{
+				Type: &core.LiteralType_UnionType{
+					UnionType: &core.UnionType{
+						Variants: []*core.UnionVariant{
+							{
+								Type: &core.LiteralType{
+									Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+								},
+								Tag: "test",
+							},
+						},
+					},
+				},
+			},
+		)
+		assert.False(t, castable, "Union types can only be cast to a union that contains a superset of variants")
 	})
 }
 
@@ -236,7 +426,7 @@ func TestCollectionCasting(t *testing.T) {
 				},
 			},
 		)
-		assert.True(t, castable, "Collections are nullable")
+		assert.False(t, castable, "Non-optional collections are not nullable")
 	})
 }
 
@@ -430,6 +620,6 @@ func TestSchemaCasting(t *testing.T) {
 				},
 			},
 			subsetIntegerSchema)
-		assert.True(t, castable, "Schemas are nullable")
+		assert.False(t, castable, "Non-optional schemas are not nullable")
 	})
 }

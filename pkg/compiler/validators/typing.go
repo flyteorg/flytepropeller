@@ -137,18 +137,14 @@ func (t unionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 		return true
 	}
 
-	// Matches iff we can unambiguously select a variant
-	found_one := false
+	// Ambiguity checking is delegated to SDKs since it depends on the available type transformers
 	for _, x := range unionType.GetVariants() {
 		if AreTypesCastable(upstreamType, x.GetType()) {
-			if found_one {
-				return false
-			}
-			found_one = true
+			return true
 		}
 	}
 
-	return found_one
+	return false
 }
 
 func isVoid(t *flyte.LiteralType) bool {
