@@ -576,8 +576,18 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 
 		err = c.IdempotentRecordEvent(ctx, nev)
 		if err != nil {
-			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
-			return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
+			if eventsErr.IsTooLarge(err) {
+				// TODO - document
+				np = v1alpha1.NodePhaseFailing
+				p = handler.PhaseInfoFailure(core.ExecutionError_USER, "TODO", err.Error(), p.GetInfo())
+
+				//func PhaseInfoFailure(kind core.ExecutionError_ErrorKind, code, reason string, info *ExecutionInfo) PhaseInfo {
+				//finalStatus = executors.NodeStatusFailed(err)
+				//UpdateNodeStatus(v1alpha1.NodePhaseFailing, handler.PhaseInfoFailure(), nCtx.nsm, nodeStatus)
+			} else {
+				logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
+				return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
+			}
 		}
 
 		// We reach here only when transitioning from Queued to Running. In this case, the startedAt is not set.
