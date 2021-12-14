@@ -577,13 +577,27 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 		err = c.IdempotentRecordEvent(ctx, nev)
 		if err != nil {
 			if eventsErr.IsTooLarge(err) {
-				// TODO - document
+				// With large enough dynamic task fanouts the reported node event, which contains the compiled
+				// workflow closure, can exceed the gRPC message size limit. In this case we immediately 
+				// transition the node to failing to abort the workflow.
 				np = v1alpha1.NodePhaseFailing
-				p = handler.PhaseInfoFailure(core.ExecutionError_USER, "TODO", err.Error(), p.GetInfo())
+				p = handler.PhaseInfoFailure(core.ExecutionError_USER, "NodeFailed", err.Error(), p.GetInfo())
 
-				//func PhaseInfoFailure(kind core.ExecutionError_ErrorKind, code, reason string, info *ExecutionInfo) PhaseInfo {
-				//finalStatus = executors.NodeStatusFailed(err)
-				//UpdateNodeStatus(v1alpha1.NodePhaseFailing, handler.PhaseInfoFailure(), nCtx.nsm, nodeStatus)
+				err = c.IdempotentRecordEvent(ctx, &event.NodeExecutionEvent{
+					Id:         nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
+					Phase:      core.NodeExecution_FAILED,
+					OccurredAt: ptypes.TimestampNow(),
+					OutputResult: &event.NodeExecutionEvent_Error{
+						Error: &core.ExecutionError{
+							Code:    "NodeFailed",
+							Message: err.Error(),
+						},
+					},
+				})
+
+				if err != nil {
+					return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
+				}
 			} else {
 				logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
 				return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
@@ -647,6 +661,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 			return executors.NodeStatusUndefined, err
 		}
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), nodeStatus.GetMessage(), nodeStatus.GetExecutionError())
+		// TODO - idempotent report event to transition node to failed state with flyteadmin?
 		c.metrics.FailureDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		if nCtx.md.IsInterruptible() {
 			c.metrics.InterruptibleNodesTerminated.Inc(ctx)

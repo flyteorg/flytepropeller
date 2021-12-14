@@ -81,7 +81,7 @@ func WrapError(err error) error {
 		return wrapf(ExecutionNotFound, err, "The execution that the event belongs to does not exist")
 	case codes.ResourceExhausted:
 		if strings.Contains(statusErr.Message(), "message larger than max") {
-			return wrapf(TooLarge, err, "Message exceeds maximum size limit")
+			return wrapf(TooLarge, err, "Event message exceeds maximum gRPC size limit")
 		}
 
 		return wrapf(ResourceExhausted, err, "Events are sent too often, exceeded the rate limit")
