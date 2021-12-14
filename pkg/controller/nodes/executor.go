@@ -661,7 +661,6 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 			return executors.NodeStatusUndefined, err
 		}
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), nodeStatus.GetMessage(), nodeStatus.GetExecutionError())
-		// TODO - idempotent report event to transition node to failed state with flyteadmin?
 		c.metrics.FailureDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		if nCtx.md.IsInterruptible() {
 			c.metrics.InterruptibleNodesTerminated.Inc(ctx)
