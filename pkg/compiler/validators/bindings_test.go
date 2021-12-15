@@ -316,7 +316,7 @@ func TestValidateBindings(t *testing.T) {
 
 		compileErrors := compilerErrors.NewCompileErrors()
 		_, ok := ValidateBindings(wf, n, bindings, vars, true, c.EdgeDirectionBidirectional, compileErrors)
-		assert.True(t, ok)
+		assert.False(t, ok)
 		assert.True(t, compileErrors.HasErrors())
 		assert.Equal(t, 1, len(compileErrors.Errors().List()))
 		t.Log(compileErrors.Error())
