@@ -17,6 +17,11 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 
 	switch val := binding.GetValue().(type) {
 	case *flyte.BindingData_Collection:
+		if val.Collection == nil {
+			errs.Collect(errors.NewParameterNotBoundErr(nodeID, nodeParam))
+			return nil, nil, !errs.HasErrors()
+		}
+
 		if expectedType.GetCollectionType() != nil {
 			allNodeIds := make([]c.NodeID, 0, len(val.Collection.GetBindings()))
 			var subType *flyte.LiteralType
@@ -36,6 +41,11 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 
 		errs.Collect(errors.NewMismatchingBindingsErr(nodeID, nodeParam, expectedType.String(), val.Collection.String()))
 	case *flyte.BindingData_Map:
+		if val.Map == nil {
+			errs.Collect(errors.NewParameterNotBoundErr(nodeID, nodeParam))
+			return nil, nil, !errs.HasErrors()
+		}
+
 		if expectedType.GetMapValueType() != nil {
 			allNodeIds := make([]c.NodeID, 0, len(val.Map.GetBindings()))
 			var subType *flyte.LiteralType
@@ -55,6 +65,11 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 
 		errs.Collect(errors.NewMismatchingBindingsErr(nodeID, nodeParam, expectedType.String(), val.Map.String()))
 	case *flyte.BindingData_Promise:
+		if val.Promise == nil {
+			errs.Collect(errors.NewParameterNotBoundErr(nodeID, nodeParam))
+			return nil, nil, !errs.HasErrors()
+		}
+
 		if upNode, found := validateNodeID(w, val.Promise.NodeId, errs.NewScope()); found {
 			v, err := typing.ParseVarName(val.Promise.GetVar())
 			if err != nil {
@@ -84,6 +99,11 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 
 		errs.Collect(errors.NewParameterNotBoundErr(nodeID, nodeParam))
 	case *flyte.BindingData_Scalar:
+		if val.Scalar == nil {
+			errs.Collect(errors.NewParameterNotBoundErr(nodeID, nodeParam))
+			return nil, nil, !errs.HasErrors()
+		}
+
 		literalType := literalTypeForScalar(val.Scalar)
 		if literalType == nil {
 			errs.Collect(errors.NewUnrecognizedValueErr(nodeID, reflect.TypeOf(val.Scalar.GetValue()).String()))
