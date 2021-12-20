@@ -67,6 +67,7 @@ type workflowExecutor struct {
 	nodeExecutor    executors.Node
 	metrics         *workflowMetrics
 	eventConfig     *config.EventConfig
+	clusterID string
 }
 
 func (c *workflowExecutor) constructWorkflowMetadataPrefix(ctx context.Context, w *v1alpha1.FlyteWorkflow) (storage.DataReference, error) {
@@ -270,6 +271,7 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 
 		wfEvent := &event.WorkflowExecutionEvent{
 			ExecutionId: execID,
+			ProducerId: c.clusterID,
 		}
 		previousError := wStatus.GetExecutionError()
 		switch toStatus.TransitionToPhase {
@@ -337,6 +339,10 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 				msg := fmt.Sprintf("workflow state mismatch between propeller and control plane; Propeller State: %s, ExecutionId %s", wfEvent.Phase.String(), wfEvent.ExecutionId)
 				logger.Warningf(ctx, msg)
 				wStatus.UpdatePhase(v1alpha1.WorkflowPhaseFailed, msg, nil)
+				return nil
+			} else if eventsErr.IsEventIncompatiblecCusterError(recordingErr) {
+				// TODO: delete underlying execution
+				logger.Infof(ctx, "Node event on cluster: %s does not match cluster on record: %s", wfEvent.ProducerId, recordingErr.Error())
 				return nil
 			}
 			logger.Warningf(ctx, "Event recording failed. Error [%s]", recordingErr.Error())
@@ -489,7 +495,7 @@ func (c *workflowExecutor) cleanupRunningNodes(ctx context.Context, w v1alpha1.E
 
 func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink,
 	k8sEventRecorder record.EventRecorder, metadataPrefix string, nodeExecutor executors.Node, eventConfig *config.EventConfig,
-	scope promutils.Scope) (executors.Workflow, error) {
+	clusterID string, scope promutils.Scope) (executors.Workflow, error) {
 	basePrefix := store.GetBaseContainerFQN(ctx)
 	if metadataPrefix != "" {
 		var err error
@@ -511,6 +517,7 @@ func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1al
 		metadataPrefix:  basePrefix,
 		metrics:         newMetrics(workflowScope),
 		eventConfig:     eventConfig,
+		clusterID: clusterID,
 	}, nil
 }
 

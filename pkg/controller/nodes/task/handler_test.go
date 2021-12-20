@@ -55,6 +55,8 @@ var eventConfig = &controllerConfig.EventConfig{
 	RawOutputPolicy: controllerConfig.RawOutputPolicyReference,
 }
 
+const testClusterID = "C1"
+
 func Test_task_setDefault(t *testing.T) {
 	type fields struct {
 		defaultPlugin pluginCore.Plugin
@@ -244,7 +246,7 @@ func Test_task_Setup(t *testing.T) {
 			sCtx.On("EnqueueOwner").Return(pluginCore.EnqueueOwner(func(name types.NamespacedName) error { return nil }))
 			sCtx.On("MetricsScope").Return(promutils.NewTestScope())
 
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, eventConfig, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, eventConfig, testClusterID, promutils.NewTestScope())
 			tk.cfg.TaskPlugins.EnabledPlugins = tt.enabledPlugins
 			tk.cfg.TaskPlugins.DefaultForTaskTypes = tt.defaultForTaskTypes
 			assert.NoError(t, err)
@@ -903,7 +905,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			} else {
 				c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
 			}
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, testClusterID, promutils.NewTestScope())
 			assert.NoError(t, err)
 			tk.defaultPlugins = map[pluginCore.TaskType]pluginCore.Plugin{
 				"test": fakeplugins.NewPhaseBasedPlugin(),
@@ -1124,7 +1126,7 @@ func Test_task_Handle_Reservation(t *testing.T) {
 			}
 			c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
 			c.OnGetOrExtendReservationMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&datacatalog.Reservation{OwnerId: tt.args.ownerID}, nil)
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, testClusterID, promutils.NewTestScope())
 			assert.NoError(t, err)
 			tk.defaultPlugins = map[pluginCore.TaskType]pluginCore.Plugin{
 				"test": fakeplugins.NewPhaseBasedPlugin(),
@@ -1403,7 +1405,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 			nCtx := createNodeContext(ev, "test", state, tt.args.prevTick)
 			c := &pluginCatalogMocks.Client{}
 
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, testClusterID, promutils.NewTestScope())
 			assert.NoError(t, err)
 			tk.resourceManager = noopRm
 
@@ -1908,7 +1910,7 @@ func Test_task_Finalize(t *testing.T) {
 			}
 
 			m := tt.fields.defaultPluginCallback()
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), catalog, eventConfig, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), catalog, eventConfig, testClusterID, promutils.NewTestScope())
 			assert.NoError(t, err)
 			tk.defaultPlugin = m
 			tk.resourceManager = noopRm
@@ -1927,7 +1929,7 @@ func Test_task_Finalize(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	got, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, eventConfig, promutils.NewTestScope())
+	got, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, eventConfig, testClusterID, promutils.NewTestScope())
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.NotNil(t, got.defaultPlugins)

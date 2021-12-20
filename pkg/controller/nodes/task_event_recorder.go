@@ -29,6 +29,10 @@ func (t taskEventRecorder) RecordTaskEvent(ctx context.Context, ev *event.TaskEx
 			}
 			logger.Warningf(ctx, "Failed to record taskEvent in state: %s, error: %s", ev.Phase, err)
 			return errors.Wrapf(err, "failed to record task event, as it already exists in terminal state. Event state: %s", ev.Phase)
+		} else if eventsErr.IsEventIncompatiblecCusterError(err) {
+			// TODO: delete underlying execution
+			logger.Infof(ctx, "Node event on cluster: %s does not match cluster on record: %s", ev.ProducerId, err.Error())
+			return nil
 		}
 		return err
 	}
