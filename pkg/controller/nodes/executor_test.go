@@ -1951,8 +1951,8 @@ func Test_nodeExecutor_IdempotentRecordEvent(t *testing.T) {
 				},
 			}
 			ev := &event.NodeExecutionEvent{
-				Id:    &core.NodeExecutionIdentifier{},
-				Phase: tt.p,
+				Id:         &core.NodeExecutionIdentifier{},
+				Phase:      tt.p,
 				ProducerId: "propeller",
 			}
 			if err := c.IdempotentRecordEvent(context.TODO(), ev); (err != nil) != tt.wantErr {

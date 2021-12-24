@@ -190,7 +190,7 @@ type Handler struct {
 	cfg             *config.Config
 	pluginScope     promutils.Scope
 	eventConfig     *controllerConfig.EventConfig
-	clusterID string
+	clusterID       string
 }
 
 func (t *Handler) FinalizeRequired() bool {
@@ -641,7 +641,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			TaskType:              ttype,
 			PluginID:              p.GetID(),
 			ResourcePoolInfo:      tCtx.rm.GetResourcePoolInfo(),
-			ClusterID: t.clusterID,
+			ClusterID:             t.clusterID,
 		})
 		if err != nil {
 			return handler.UnknownTransition, err
@@ -665,7 +665,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		TaskType:              ttype,
 		PluginID:              p.GetID(),
 		ResourcePoolInfo:      tCtx.rm.GetResourcePoolInfo(),
-		ClusterID: t.clusterID,
+		ClusterID:             t.clusterID,
 	})
 	if err != nil {
 		logger.Errorf(ctx, "failed to convert plugin transition to TaskExecutionEvent. Error: %s", err.Error())
@@ -844,6 +844,6 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		barrierCache:    newLRUBarrier(ctx, cfg.BarrierConfig),
 		cfg:             cfg,
 		eventConfig:     eventConfig,
-		clusterID: clusterID,
+		clusterID:       clusterID,
 	}, nil
 }

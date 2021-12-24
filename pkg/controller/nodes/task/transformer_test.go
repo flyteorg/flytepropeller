@@ -114,7 +114,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
 		ResourcePoolInfo:      resourcePoolInfo,
-		ClusterID: testClusterID,
+		ClusterID:             testClusterID,
 	})
 	assert.NoError(t, err)
 	assert.Nil(t, tev.Logs)
@@ -151,7 +151,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
 		ResourcePoolInfo:      resourcePoolInfo,
-		ClusterID: testClusterID,
+		ClusterID:             testClusterID,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_RUNNING, tev.Phase)
@@ -186,7 +186,7 @@ func TestToTaskExecutionEvent(t *testing.T) {
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
 		ResourcePoolInfo:      resourcePoolInfo,
-		ClusterID: testClusterID,
+		ClusterID:             testClusterID,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_SUCCEEDED, tev.Phase)
@@ -273,7 +273,7 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
 		ResourcePoolInfo:      resourcePoolInfo,
-		ClusterID: testClusterID,
+		ClusterID:             testClusterID,
 	})
 	assert.NoError(t, err)
 	expectedNodeID := &core.NodeExecutionIdentifier{
@@ -313,7 +313,7 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
 		ResourcePoolInfo:      resourcePoolInfo,
-		ClusterID: testClusterID,
+		ClusterID:             testClusterID,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_RUNNING, tev.Phase)

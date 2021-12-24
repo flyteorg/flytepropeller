@@ -101,7 +101,7 @@ type nodeExecutor struct {
 	shardSelector                   ioutils.ShardSelector
 	recoveryClient                  recovery.Client
 	eventConfig                     *config.EventConfig
-	clusterID string
+	clusterID                       string
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, dag executors.DAGStructure, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -149,10 +149,6 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 			}
 			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
 			return errors.Wrapf(errors.IllegalStateError, nodeEvent.Id.NodeId, err, "phase mis-match mismatch between propeller and control plane; Trying to record Node p: %s", nodeEvent.Phase)
-		} else if eventsErr.IsEventIncompatiblecCusterError(err) {
-			// TODO: delete underlying execution
-			logger.Infof(ctx, "Node event on cluster: %s does not match cluster on record: %s", nodeEvent.ProducerId, err.Error())
-			return nil
 		}
 	}
 	return err
@@ -1133,7 +1129,7 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		shardSelector:                   shardSelector,
 		recoveryClient:                  recoveryClient,
 		eventConfig:                     eventConfig,
-		clusterID: clusterID,
+		clusterID:                       clusterID,
 	}
 	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, recoveryClient, eventConfig, clusterID, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory

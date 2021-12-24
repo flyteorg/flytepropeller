@@ -79,7 +79,7 @@ type ToTaskExecutionEventInputs struct {
 	TaskType              string
 	PluginID              string
 	ResourcePoolInfo      []*event.ResourcePoolInfo
-	ClusterID string
+	ClusterID             string
 }
 
 func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutionEvent, error) {

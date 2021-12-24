@@ -250,6 +250,27 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			return nil
 		}
 
+		// Incompatible cluster means that another cluster has been designated to handle this workflow execution.
+		// We should early abort in this case, since any events originating from this cluster for this execution will
+		// be rejected.
+		if err != nil && eventsErr.IsEventIncompatibleClusterError(err) {
+			t.Stop()
+			logger.Errorf(ctx, "No longer designated to process workflow, failing: %s", err)
+
+			// We set the workflow status to failing to abort any active tasks in the next round.
+			mutableW := w.DeepCopy()
+			mutableW.Status.UpdatePhase(v1alpha1.WorkflowPhaseFailing, "Workflow execution cluster reassigned, aborting", &core.ExecutionError{
+				Kind:    core.ExecutionError_SYSTEM,
+				Code:    string(eventsErr.EventIncompatibleCusterError),
+				Message: "Workflow execution cluster reassigned.",
+			})
+			if _, e := p.wfStore.Update(ctx, mutableW, workflowstore.PriorityClassCritical); e != nil {
+				logger.Errorf(ctx, "Failed to record an EventIncompatibleClusterError workflow as failed, reason: %s. Retrying...", e)
+				return e
+			}
+			return nil
+		}
+
 		// TODO we will need to call updatestatus when it is supported. But to preserve metadata like (label/finalizer) we will need to use update
 
 		// update the GetExecutionStatus block of the FlyteWorkflow resource. UpdateStatus will not
