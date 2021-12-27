@@ -145,18 +145,18 @@ func TestUnionCasting(t *testing.T) {
 			&core.LiteralType{
 				Type: &core.LiteralType_UnionType{
 					UnionType: &core.UnionType{
-						Variants: []*core.UnionVariant{
+						Variants: []*core.LiteralType{
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+								Structure: &core.TypeStructure{
+									Tag: "int",
 								},
-								Tag: "int",
 							},
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Structure: &core.TypeStructure{
+									Tag: "str",
 								},
-								Tag: "str",
 							},
 						},
 					},
@@ -174,18 +174,18 @@ func TestUnionCasting(t *testing.T) {
 			&core.LiteralType{
 				Type: &core.LiteralType_UnionType{
 					UnionType: &core.UnionType{
-						Variants: []*core.UnionVariant{
+						Variants: []*core.LiteralType{
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Structure: &core.TypeStructure{
+									Tag: "str1",
 								},
-								Tag: "str1",
 							},
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Structure: &core.TypeStructure{
+									Tag: "str2",
 								},
-								Tag: "str2",
 							},
 						},
 					},
@@ -200,18 +200,18 @@ func TestUnionCasting(t *testing.T) {
 			&core.LiteralType{
 				Type: &core.LiteralType_UnionType{
 					UnionType: &core.UnionType{
-						Variants: []*core.UnionVariant{
+						Variants: []*core.LiteralType{
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Structure: &core.TypeStructure{
+									Tag: "str1",
 								},
-								Tag: "str1",
 							},
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Structure: &core.TypeStructure{
+									Tag: "str2",
 								},
-								Tag: "str2",
 							},
 						},
 					},
@@ -220,24 +220,24 @@ func TestUnionCasting(t *testing.T) {
 			&core.LiteralType{
 				Type: &core.LiteralType_UnionType{
 					UnionType: &core.UnionType{
-						Variants: []*core.UnionVariant{
+						Variants: []*core.LiteralType{
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Structure: &core.TypeStructure{
+									Tag: "str1",
 								},
-								Tag: "str1",
 							},
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+								Structure: &core.TypeStructure{
+									Tag: "int1",
 								},
-								Tag: "int1",
 							},
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Structure: &core.TypeStructure{
+									Tag: "str2",
 								},
-								Tag: "str2",
 							},
 						},
 					},
@@ -252,18 +252,18 @@ func TestUnionCasting(t *testing.T) {
 			&core.LiteralType{
 				Type: &core.LiteralType_UnionType{
 					UnionType: &core.UnionType{
-						Variants: []*core.UnionVariant{
+						Variants: []*core.LiteralType{
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Structure: &core.TypeStructure{
+									Tag: "str1",
 								},
-								Tag: "str1",
 							},
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Structure: &core.TypeStructure{
+									Tag: "str2",
 								},
-								Tag: "str2",
 							},
 						},
 					},
@@ -272,18 +272,18 @@ func TestUnionCasting(t *testing.T) {
 			&core.LiteralType{
 				Type: &core.LiteralType_UnionType{
 					UnionType: &core.UnionType{
-						Variants: []*core.UnionVariant{
+						Variants: []*core.LiteralType{
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+								Structure: &core.TypeStructure{
+									Tag: "str2",
 								},
-								Tag: "str2",
 							},
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Structure: &core.TypeStructure{
+									Tag: "str3",
 								},
-								Tag: "str3",
 							},
 						},
 					},
@@ -298,12 +298,12 @@ func TestUnionCasting(t *testing.T) {
 			&core.LiteralType{
 				Type: &core.LiteralType_UnionType{
 					UnionType: &core.UnionType{
-						Variants: []*core.UnionVariant{
+						Variants: []*core.LiteralType{
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+								Structure: &core.TypeStructure{
+									Tag: "test",
 								},
-								Tag: "test",
 							},
 						},
 					},
@@ -312,12 +312,12 @@ func TestUnionCasting(t *testing.T) {
 			&core.LiteralType{
 				Type: &core.LiteralType_UnionType{
 					UnionType: &core.UnionType{
-						Variants: []*core.UnionVariant{
+						Variants: []*core.LiteralType{
 							{
-								Type: &core.LiteralType{
-									Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+								Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+								Structure: &core.TypeStructure{
+									Tag: "test",
 								},
-								Tag: "test",
 							},
 						},
 					},

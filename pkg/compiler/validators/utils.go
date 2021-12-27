@@ -58,11 +58,8 @@ func literalTypeForScalar(scalar *core.Scalar) *core.LiteralType {
 		literalType = &core.LiteralType{
 			Type: &core.LiteralType_UnionType{
 				UnionType: &core.UnionType{
-					Variants: []*core.UnionVariant{
-						{
-							Type: LiteralTypeForLiteral(scalar.GetUnion().GetValue()),
-							Tag:  scalar.GetUnion().GetTag(),
-						},
+					Variants: []*core.LiteralType{
+						scalar.GetUnion().GetType(),
 					},
 				},
 			},

@@ -31,14 +31,14 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 			var ok bool
 
 			for _, t := range expectedType.GetUnionType().GetVariants() {
-				resolvedType1, nodeIds1, ok1 := validateBinding(w, nodeID, nodeParam, binding, t.GetType(), errors.NewCompileErrors(), validateParamTypes)
+				resolvedType1, nodeIds1, ok1 := validateBinding(w, nodeID, nodeParam, binding, t, errors.NewCompileErrors(), validateParamTypes)
 				if ok1 {
 					if ok {
-						errs.Collect(errors.NewAmbiguousBindingUnionValue(nodeID, nodeParam, expectedType.String(), binding.String(), matchingType.String(), t.GetType().String()))
+						errs.Collect(errors.NewAmbiguousBindingUnionValue(nodeID, nodeParam, expectedType.String(), binding.String(), matchingType.String(), t.String()))
 						return nil, nil, !errs.HasErrors()
 					}
 
-					matchingType = t.GetType()
+					matchingType = t
 					resolvedType, nodeIds, ok = resolvedType1, nodeIds1, ok1
 				}
 			}

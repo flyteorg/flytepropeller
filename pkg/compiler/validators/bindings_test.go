@@ -283,18 +283,18 @@ func TestValidateBindings(t *testing.T) {
 					Type: &core.LiteralType{
 						Type: &core.LiteralType_UnionType{
 							UnionType: &core.UnionType{
-								Variants: []*core.UnionVariant{
+								Variants: []*core.LiteralType{
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										Structure: &core.TypeStructure{
+											Tag: "str",
 										},
-										Tag: "str",
 									},
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Structure: &core.TypeStructure{
+											Tag: "int",
 										},
-										Tag: "int",
 									},
 								},
 							},
@@ -330,18 +330,18 @@ func TestValidateBindings(t *testing.T) {
 					Type: &core.LiteralType{
 						Type: &core.LiteralType_UnionType{
 							UnionType: &core.UnionType{
-								Variants: []*core.UnionVariant{
+								Variants: []*core.LiteralType{
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Structure: &core.TypeStructure{
+											Tag: "int1",
 										},
-										Tag: "int1",
 									},
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Structure: &core.TypeStructure{
+											Tag: "int2",
 										},
-										Tag: "int2",
 									},
 								},
 							},
@@ -375,12 +375,12 @@ func TestValidateBindings(t *testing.T) {
 					Type: &core.LiteralType{
 						Type: &core.LiteralType_UnionType{
 							UnionType: &core.UnionType{
-								Variants: []*core.UnionVariant{
+								Variants: []*core.LiteralType{
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										Structure: &core.TypeStructure{
+											Tag: "str",
 										},
-										Tag: "str",
 									},
 								},
 							},
@@ -411,7 +411,14 @@ func TestValidateBindings(t *testing.T) {
 							Value: &core.Scalar_Union{
 								Union: &core.Union{
 									Value: coreutils.MustMakeLiteral(5),
-									Tag:   "int",
+									Type: &core.LiteralType{
+										Type: &core.LiteralType_Simple{
+											Simple: core.SimpleType_INTEGER,
+										},
+										Structure: &core.TypeStructure{
+											Tag: "int",
+										},
+									},
 								},
 							},
 						},
@@ -426,24 +433,24 @@ func TestValidateBindings(t *testing.T) {
 					Type: &core.LiteralType{
 						Type: &core.LiteralType_UnionType{
 							UnionType: &core.UnionType{
-								Variants: []*core.UnionVariant{
+								Variants: []*core.LiteralType{
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Structure: &core.TypeStructure{
+											Tag: "int1",
 										},
-										Tag: "int1",
 									},
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										Structure: &core.TypeStructure{
+											Tag: "str",
 										},
-										Tag: "str",
 									},
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Structure: &core.TypeStructure{
+											Tag: "int",
 										},
-										Tag: "int",
 									},
 								},
 							},
@@ -476,7 +483,14 @@ func TestValidateBindings(t *testing.T) {
 							Value: &core.Scalar_Union{
 								Union: &core.Union{
 									Value: coreutils.MustMakeLiteral(5),
-									Tag:   "int",
+									Type: &core.LiteralType{
+										Type: &core.LiteralType_Simple{
+											Simple: core.SimpleType_INTEGER,
+										},
+										Structure: &core.TypeStructure{
+											Tag: "int",
+										},
+									},
 								},
 							},
 						},
@@ -491,12 +505,12 @@ func TestValidateBindings(t *testing.T) {
 					Type: &core.LiteralType{
 						Type: &core.LiteralType_UnionType{
 							UnionType: &core.UnionType{
-								Variants: []*core.UnionVariant{
+								Variants: []*core.LiteralType{
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Structure: &core.TypeStructure{
+											Tag: "int_other",
 										},
-										Tag: "int_other",
 									},
 								},
 							},
@@ -532,18 +546,18 @@ func TestValidateBindings(t *testing.T) {
 							CollectionType: &core.LiteralType{
 								Type: &core.LiteralType_UnionType{
 									UnionType: &core.UnionType{
-										Variants: []*core.UnionVariant{
+										Variants: []*core.LiteralType{
 											{
-												Type: &core.LiteralType{
-													Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+												Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+												Structure: &core.TypeStructure{
+													Tag: "str",
 												},
-												Tag: "str",
 											},
 											{
-												Type: &core.LiteralType{
-													Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+												Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+												Structure: &core.TypeStructure{
+													Tag: "int",
 												},
-												Tag: "int",
 											},
 										},
 									},
@@ -583,18 +597,18 @@ func TestValidateBindings(t *testing.T) {
 							CollectionType: &core.LiteralType{
 								Type: &core.LiteralType_UnionType{
 									UnionType: &core.UnionType{
-										Variants: []*core.UnionVariant{
+										Variants: []*core.LiteralType{
 											{
-												Type: &core.LiteralType{
-													Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+												Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+												Structure: &core.TypeStructure{
+													Tag: "str",
 												},
-												Tag: "str",
 											},
 											{
-												Type: &core.LiteralType{
-													Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+												Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+												Structure: &core.TypeStructure{
+													Tag: "str1",
 												},
-												Tag: "str1",
 											},
 										},
 									},
@@ -630,26 +644,26 @@ func TestValidateBindings(t *testing.T) {
 					Type: &core.LiteralType{
 						Type: &core.LiteralType_UnionType{
 							UnionType: &core.UnionType{
-								Variants: []*core.UnionVariant{
+								Variants: []*core.LiteralType{
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_CollectionType{
-												CollectionType: &core.LiteralType{
-													Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
-												},
+										Type: &core.LiteralType_CollectionType{
+											CollectionType: &core.LiteralType{
+												Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
 											},
 										},
-										Tag: "list",
+										Structure: &core.TypeStructure{
+											Tag: "list",
+										},
 									},
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_CollectionType{
-												CollectionType: &core.LiteralType{
-													Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
-												},
+										Type: &core.LiteralType_CollectionType{
+											CollectionType: &core.LiteralType{
+												Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
 											},
 										},
-										Tag: "list",
+										Structure: &core.TypeStructure{
+											Tag: "list",
+										},
 									},
 								},
 							},
@@ -685,26 +699,26 @@ func TestValidateBindings(t *testing.T) {
 					Type: &core.LiteralType{
 						Type: &core.LiteralType_UnionType{
 							UnionType: &core.UnionType{
-								Variants: []*core.UnionVariant{
+								Variants: []*core.LiteralType{
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_CollectionType{
-												CollectionType: &core.LiteralType{
-													Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
-												},
+										Type: &core.LiteralType_CollectionType{
+											CollectionType: &core.LiteralType{
+												Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
 											},
 										},
-										Tag: "list",
+										Structure: &core.TypeStructure{
+											Tag: "list",
+										},
 									},
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_CollectionType{
-												CollectionType: &core.LiteralType{
-													Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
-												},
+										Type: &core.LiteralType_CollectionType{
+											CollectionType: &core.LiteralType{
+												Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
 											},
 										},
-										Tag: "list",
+										Structure: &core.TypeStructure{
+											Tag: "list",
+										},
 									},
 								},
 							},
@@ -738,26 +752,26 @@ func TestValidateBindings(t *testing.T) {
 					Type: &core.LiteralType{
 						Type: &core.LiteralType_UnionType{
 							UnionType: &core.UnionType{
-								Variants: []*core.UnionVariant{
+								Variants: []*core.LiteralType{
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_CollectionType{
-												CollectionType: &core.LiteralType{
-													Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
-												},
+										Type: &core.LiteralType_CollectionType{
+											CollectionType: &core.LiteralType{
+												Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
 											},
 										},
-										Tag: "list1",
+										Structure: &core.TypeStructure{
+											Tag: "list1",
+										},
 									},
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_CollectionType{
-												CollectionType: &core.LiteralType{
-													Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
-												},
+										Type: &core.LiteralType_CollectionType{
+											CollectionType: &core.LiteralType{
+												Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
 											},
 										},
-										Tag: "list2",
+										Structure: &core.TypeStructure{
+											Tag: "list2",
+										},
 									},
 								},
 							},
@@ -825,18 +839,18 @@ func TestValidateBindings(t *testing.T) {
 					Type: &core.LiteralType{
 						Type: &core.LiteralType_UnionType{
 							UnionType: &core.UnionType{
-								Variants: []*core.UnionVariant{
+								Variants: []*core.LiteralType{
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										Structure: &core.TypeStructure{
+											Tag: "str",
 										},
-										Tag: "str",
 									},
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Structure: &core.TypeStructure{
+											Tag: "int",
 										},
-										Tag: "int",
 									},
 								},
 							},
@@ -906,24 +920,24 @@ func TestValidateBindings(t *testing.T) {
 					Type: &core.LiteralType{
 						Type: &core.LiteralType_UnionType{
 							UnionType: &core.UnionType{
-								Variants: []*core.UnionVariant{
+								Variants: []*core.LiteralType{
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										Structure: &core.TypeStructure{
+											Tag: "str",
 										},
-										Tag: "str",
 									},
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Structure: &core.TypeStructure{
+											Tag: "int1",
 										},
-										Tag: "int1",
 									},
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Structure: &core.TypeStructure{
+											Tag: "int2",
 										},
-										Tag: "int2",
 									},
 								},
 							},
@@ -967,7 +981,14 @@ func TestValidateBindings(t *testing.T) {
 									Value: &core.Scalar_Union{
 										Union: &core.Union{
 											Value: coreutils.MustMakeLiteral(5),
-											Tag:   "int1",
+											Type: &core.LiteralType{
+												Type: &core.LiteralType_Simple{
+													Simple: core.SimpleType_INTEGER,
+												},
+												Structure: &core.TypeStructure{
+													Tag: "int1",
+												},
+											},
 										},
 									},
 								},
@@ -1002,24 +1023,24 @@ func TestValidateBindings(t *testing.T) {
 					Type: &core.LiteralType{
 						Type: &core.LiteralType_UnionType{
 							UnionType: &core.UnionType{
-								Variants: []*core.UnionVariant{
+								Variants: []*core.LiteralType{
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_STRING},
+										Structure: &core.TypeStructure{
+											Tag: "str",
 										},
-										Tag: "str",
 									},
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Structure: &core.TypeStructure{
+											Tag: "int1",
 										},
-										Tag: "int1",
 									},
 									{
-										Type: &core.LiteralType{
-											Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+										Structure: &core.TypeStructure{
+											Tag: "int2",
 										},
-										Tag: "int2",
 									},
 								},
 							},

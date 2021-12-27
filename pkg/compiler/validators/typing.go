@@ -46,9 +46,15 @@ func (t trivialChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 		}
 	}
 
+	if GetTagForType(upstreamType) != "" && GetTagForType(t.literalType) != GetTagForType(upstreamType) {
+		return false
+	}
+
 	// Ignore metadata when comparing types.
 	upstreamTypeCopy := *upstreamType
 	downstreamTypeCopy := *t.literalType
+	upstreamTypeCopy.Structure = &flyte.TypeStructure{}
+	downstreamTypeCopy.Structure = &flyte.TypeStructure{}
 	upstreamTypeCopy.Metadata = &structpb.Struct{}
 	downstreamTypeCopy.Metadata = &structpb.Struct{}
 	return upstreamTypeCopy.String() == downstreamTypeCopy.String()
@@ -114,22 +120,28 @@ func (t schemaTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	return true
 }
 
+func GetTagForType(x *flyte.LiteralType) string {
+	if x.GetStructure() == nil {
+		return ""
+	}
+	return x.GetStructure().GetTag()
+}
+
 func (t unionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	unionType := t.literalType.GetUnionType()
 
 	upstreamUnionType := upstreamType.GetUnionType()
 	if upstreamUnionType != nil {
 		// For each upstream variant we must find a compatible downstream variant
-		downstreamVariants := make(map[string]*flyte.LiteralType)
-		for _, x := range unionType.GetVariants() {
-			downstreamVariants[x.GetTag()] = x.GetType()
-		}
-
-		for _, x := range upstreamUnionType.GetVariants() {
-			if downstreamVariants[x.GetTag()] == nil {
-				return false
+		for _, u := range upstreamUnionType.GetVariants() {
+			found := false
+			for _, d := range unionType.GetVariants() {
+				if AreTypesCastable(u, d) {
+					found = true
+					break
+				}
 			}
-			if !AreTypesCastable(x.GetType(), downstreamVariants[x.GetTag()]) {
+			if !found {
 				return false
 			}
 		}
@@ -140,7 +152,7 @@ func (t unionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	// Matches iff we can unambiguously select a variant
 	found_one := false
 	for _, x := range unionType.GetVariants() {
-		if AreTypesCastable(upstreamType, x.GetType()) {
+		if AreTypesCastable(upstreamType, x) {
 			if found_one {
 				return false
 			}
