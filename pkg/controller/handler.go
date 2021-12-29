@@ -262,7 +262,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			mutableW.Status.UpdatePhase(v1alpha1.WorkflowPhaseFailing, "Workflow execution cluster reassigned, aborting", &core.ExecutionError{
 				Kind:    core.ExecutionError_SYSTEM,
 				Code:    string(eventsErr.EventIncompatibleCusterError),
-				Message: "Workflow execution cluster reassigned.",
+				Message: fmt.Sprintf("Workflow execution cluster reassigned: %v", err.(*eventsErr.EventError).Error()),
 			})
 			if _, e := p.wfStore.Update(ctx, mutableW, workflowstore.PriorityClassCritical); e != nil {
 				logger.Errorf(ctx, "Failed to record an EventIncompatibleClusterError workflow as failed, reason: %s. Retrying...", e)
