@@ -341,7 +341,8 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 				wStatus.UpdatePhase(v1alpha1.WorkflowPhaseFailed, msg, nil)
 				return nil
 			}
-			if wfEvent.Phase == core.WorkflowExecution_FAILING && eventsErr.IsEventIncompatibleClusterError(recordingErr) {
+			if (wfEvent.Phase == core.WorkflowExecution_FAILING || wfEvent.Phase == core.WorkflowExecution_FAILED) &&
+				eventsErr.IsEventIncompatibleClusterError(recordingErr) {
 				// Don't stall the workflow transition to failed (so that resources can be cleaned up) since the events
 				// are being discarded by the back-end anyways.
 				logger.Infof(ctx, "Failed to record failing workflowEvent, error [%s]. Ignoring this error!", recordingErr.Error())
