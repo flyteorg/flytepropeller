@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	"runtime/debug"
 	"time"
 
@@ -759,7 +760,9 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 				Code:    "Task Aborted",
 				Message: reason,
 			}},
-	}, t.eventConfig); err != nil {
+	}, t.eventConfig); err != nil && !eventsErr.IsEventIncompatibleClusterError(err){
+		// If a prior workflow/node/task execution event has failed because of an invalid cluster error, don't stall the abort
+		// at this point in the clean-up.
 		logger.Errorf(ctx, "failed to send event to Admin. error: %s", err.Error())
 		return err
 	}
