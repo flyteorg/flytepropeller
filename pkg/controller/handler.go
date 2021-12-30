@@ -131,7 +131,7 @@ func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.F
 		}()
 
 		if err != nil {
-			logger.Errorf(ctx, "Error when trying to reconcile workflow. Error [%v]. Error Type[%v]. Is nill [%v]",
+			logger.Errorf(ctx, "Error when trying to reconcile workflow. Error [%v]. Error Type[%v]",
 				err, reflect.TypeOf(err))
 			p.metrics.SystemError.Inc(ctx)
 			return nil, err
