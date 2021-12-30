@@ -27,6 +27,10 @@ type schemaTypeChecker struct {
 	literalType *flyte.LiteralType
 }
 
+type structuredDatasetChecker struct {
+	literalType *flyte.LiteralType
+}
+
 // The trivial type checker merely checks if types match exactly.
 func (t trivialChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	// Everything is nullable currently
@@ -130,6 +134,46 @@ func (t schemaTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	return true
 }
 
+// Structured dataset are more complex types in the Flyte ecosystem. A structured dataset is considered castable in the following
+// cases.
+//
+//    1. The downstream structured dataset has no column types specified.  In such a case, it accepts all structured dataset input since it is
+//       generic.
+//
+//    2. The downstream structured dataset has a subset of the upstream columns and they match perfectly.
+//
+func (t structuredDatasetChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
+	// structured dataset are nullable
+	if isVoid(upstreamType) {
+		return true
+	}
+	structuredDatasetType := upstreamType.GetStructuredDatasetType()
+	if structuredDatasetType == nil {
+		return false
+	}
+
+	if len(t.literalType.GetStructuredDatasetType().Columns) == 0 {
+		return true
+	}
+
+	nameToTypeMap := make(map[string]*flyte.LiteralType)
+	for _, column := range structuredDatasetType.Columns {
+		nameToTypeMap[column.Name] = column.LiteralType
+	}
+
+	// Check that the downstream structured dataset is a strict sub-set of the upstream structured dataset.
+	for _, column := range t.literalType.GetStructuredDatasetType().Columns {
+		upstreamType, ok := nameToTypeMap[column.Name]
+		if !ok {
+			return false
+		}
+		if !getTypeChecker(upstreamType).CastsFrom(column.LiteralType) {
+			return false
+		}
+	}
+	return true
+}
+
 func isVoid(t *flyte.LiteralType) bool {
 	switch t.GetType().(type) {
 	case *flyte.LiteralType_Simple:
@@ -151,6 +195,10 @@ func getTypeChecker(t *flyte.LiteralType) typeChecker {
 		}
 	case *flyte.LiteralType_Schema:
 		return schemaTypeChecker{
+			literalType: t,
+		}
+	case *flyte.LiteralType_StructuredDatasetType:
+		return structuredDatasetChecker{
 			literalType: t,
 		}
 	default:

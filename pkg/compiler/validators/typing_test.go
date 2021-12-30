@@ -433,3 +433,107 @@ func TestSchemaCasting(t *testing.T) {
 		assert.True(t, castable, "Schemas are nullable")
 	})
 }
+
+func TestStructuredDatasetCasting(t *testing.T) {
+	genericStructuredDataset := &core.LiteralType{
+		Type: &core.LiteralType_StructuredDatasetType{
+			StructuredDatasetType: &core.StructuredDatasetType{
+				Columns: []*core.StructuredDatasetType_DatasetColumn{},
+			},
+		},
+	}
+	subsetStructuredDataset := &core.LiteralType{
+		Type: &core.LiteralType_StructuredDatasetType{
+			StructuredDatasetType: &core.StructuredDatasetType{
+				Columns: []*core.StructuredDatasetType_DatasetColumn{
+					{
+						Name:        "a",
+						LiteralType: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
+					},
+					{
+						Name:        "b",
+						LiteralType: &core.LiteralType{Type: &core.LiteralType_CollectionType{CollectionType: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}}},
+					},
+				},
+			},
+		},
+	}
+	supersetStructuredDataset := &core.LiteralType{
+		Type: &core.LiteralType_StructuredDatasetType{
+			StructuredDatasetType: &core.StructuredDatasetType{
+				Columns: []*core.StructuredDatasetType_DatasetColumn{
+					{
+						Name:        "a",
+						LiteralType: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
+					},
+					{
+						Name:        "b",
+						LiteralType: &core.LiteralType{Type: &core.LiteralType_CollectionType{CollectionType: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}}},
+					},
+					{
+						Name:        "c",
+						LiteralType: &core.LiteralType{Type: &core.LiteralType_MapValueType{MapValueType: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}}},
+					},
+				},
+			},
+		},
+	}
+	mismatchedSubsetStructuredDataset := &core.LiteralType{
+		Type: &core.LiteralType_StructuredDatasetType{
+			StructuredDatasetType: &core.StructuredDatasetType{
+				Columns: []*core.StructuredDatasetType_DatasetColumn{
+					{
+						Name:        "a",
+						LiteralType: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_FLOAT}},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("BaseCase_GenericStructuredDataset", func(t *testing.T) {
+		castable := AreTypesCastable(genericStructuredDataset, genericStructuredDataset)
+		assert.True(t, castable, "StructuredDataset() should be castable to StructuredDataset()")
+	})
+
+	t.Run("GenericStructuredDatasetToNonGeneric", func(t *testing.T) {
+		castable := AreTypesCastable(genericStructuredDataset, subsetStructuredDataset)
+		assert.False(t, castable, "StructuredDataset() should not be castable to StructuredDataset(a=Integer)")
+	})
+
+	t.Run("NonGenericStructuredDatasetToGeneric", func(t *testing.T) {
+		castable := AreTypesCastable(subsetStructuredDataset, genericStructuredDataset)
+		assert.True(t, castable, "StructuredDataset(a=Integer) should be castable to StructuredDataset()")
+	})
+
+	t.Run("SupersetToSubsetTypedStructuredDataset", func(t *testing.T) {
+		castable := AreTypesCastable(supersetStructuredDataset, subsetStructuredDataset)
+		assert.True(t, castable, "StructuredDataset(a=Integer, b=Float) should be castable to StructuredDataset(a=Integer)")
+	})
+
+	t.Run("SubsetToSupersetStructuredDataset", func(t *testing.T) {
+		castable := AreTypesCastable(subsetStructuredDataset, supersetStructuredDataset)
+		assert.False(t, castable, "StructuredDataset(a=Integer) should not be castable to StructuredDataset(a=Integer, b=Float)")
+	})
+
+	t.Run("MismatchedColumns", func(t *testing.T) {
+		castable := AreTypesCastable(subsetStructuredDataset, mismatchedSubsetStructuredDataset)
+		assert.False(t, castable, "StructuredDataset(a=Integer) should not be castable to StructuredDataset(a=Float)")
+	})
+
+	t.Run("MismatchedColumnsFlipped", func(t *testing.T) {
+		castable := AreTypesCastable(mismatchedSubsetStructuredDataset, subsetStructuredDataset)
+		assert.False(t, castable, "StructuredDataset(a=Float) should not be castable to StructuredDataset(a=Integer)")
+	})
+
+	t.Run("StructuredDatasetsAreNullable", func(t *testing.T) {
+		castable := AreTypesCastable(
+			&core.LiteralType{
+				Type: &core.LiteralType_Simple{
+					Simple: core.SimpleType_NONE,
+				},
+			},
+			subsetStructuredDataset)
+		assert.True(t, castable, "StructuredDataset are nullable")
+	})
+}
