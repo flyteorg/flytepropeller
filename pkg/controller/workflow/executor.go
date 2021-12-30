@@ -413,7 +413,7 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 			return err
 		}
 		failingErr := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, wStatus, newStatus)
-		// Ignore ExecutionNotFound error to allow graceful failure
+		// Ignore ExecutionNotFound and IncompatibleCluster errors to allow graceful failure
 		if failingErr != nil && !(eventsErr.IsNotFound(failingErr) || eventsErr.IsEventIncompatibleClusterError(failingErr)) {
 			return failingErr
 		}
@@ -425,7 +425,7 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 			return err
 		}
 		failureErr := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, wStatus, newStatus)
-		// Ignore ExecutionNotFound error to allow graceful failure
+		// Ignore ExecutionNotFound and IncompatibleCluster errors to allow graceful failure
 		if failureErr != nil && !(eventsErr.IsNotFound(failureErr) || eventsErr.IsEventIncompatibleClusterError(failureErr)) {
 			return failureErr
 		}
@@ -438,7 +438,6 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 
 func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow, maxRetries uint32) error {
 	w.DataReferenceConstructor = c.store
-	logger.Warnf(ctx, "Handling aborted workflow")
 	if !w.Status.IsTerminated() {
 		reason := fmt.Sprintf("max number of system retry attempts [%d/%d] exhausted - system failure.", w.Status.FailedAttempts, maxRetries)
 		c.metrics.IncompleteWorkflowAborted.Inc(ctx)
@@ -474,9 +473,10 @@ func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha
 				TransitionToPhase: v1alpha1.WorkflowPhaseAborted,
 			}
 		}
+		if err := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, w.GetExecutionStatus(), status); err != nil {
 		// If a prior workflow/node/task execution event has failed because of an invalid cluster error, don't stall the abort
 		// at this point in the clean-up.
-		if err := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, w.GetExecutionStatus(), status); err != nil && !eventsErr.IsEventIncompatibleClusterError(err) {
+		//if err := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, w.GetExecutionStatus(), status); err != nil && !eventsErr.IsEventIncompatibleClusterError(err) {
 			return err
 		}
 	}
