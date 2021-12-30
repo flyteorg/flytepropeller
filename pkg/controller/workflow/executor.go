@@ -343,9 +343,9 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 			}
 			if (wfEvent.Phase == core.WorkflowExecution_FAILING || wfEvent.Phase == core.WorkflowExecution_FAILED) &&
 				eventsErr.IsEventIncompatibleClusterError(recordingErr) {
-				// Don't stall the workflow transition to failed (so that resources can be cleaned up) since the events
+				// Don't stall the workflow transition to terminated (so that resources can be cleaned up) since these events
 				// are being discarded by the back-end anyways.
-				logger.Infof(ctx, "Failed to record failing workflowEvent, error [%s]. Ignoring this error!", recordingErr.Error())
+				logger.Infof(ctx, "Failed to record %s workflowEvent, error [%s]. Ignoring this error!", wfEvent.Phase.String(), recordingErr.Error())
 				return nil
 			}
 			logger.Warningf(ctx, "Event recording failed. Error [%s]", recordingErr.Error())
@@ -368,7 +368,6 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 
 	wStatus := w.GetExecutionStatus()
 	// Initialize the Status if not already initialized
-	logger.Infof(ctx, "*** workflow [%+v] status [%v]", w.GetExecutionID(), wStatus.GetPhase())
 	switch wStatus.GetPhase() {
 	case v1alpha1.WorkflowPhaseReady:
 		newStatus, err := c.handleReadyWorkflow(ctx, w)
@@ -415,7 +414,7 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 		}
 		failingErr := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, wStatus, newStatus)
 		// Ignore ExecutionNotFound error to allow graceful failure
-		if failingErr != nil && !(eventsErr.IsNotFound(failingErr) || eventsErr.IsEventIncompatibleClusterError(failingErr)){
+		if failingErr != nil && !(eventsErr.IsNotFound(failingErr) || eventsErr.IsEventIncompatibleClusterError(failingErr)) {
 			return failingErr
 		}
 		c.k8sRecorder.Event(w, corev1.EventTypeWarning, v1alpha1.WorkflowPhaseFailed.String(), "Workflow failed.")
@@ -427,7 +426,7 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 		}
 		failureErr := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, wStatus, newStatus)
 		// Ignore ExecutionNotFound error to allow graceful failure
-		if failureErr != nil && !(eventsErr.IsNotFound(failureErr) || eventsErr.IsEventIncompatibleClusterError(failureErr)){
+		if failureErr != nil && !(eventsErr.IsNotFound(failureErr) || eventsErr.IsEventIncompatibleClusterError(failureErr)) {
 			return failureErr
 		}
 		c.k8sRecorder.Event(w, corev1.EventTypeWarning, v1alpha1.WorkflowPhaseFailed.String(), "Workflow failed.")
@@ -477,7 +476,7 @@ func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha
 		}
 		// If a prior workflow/node/task execution event has failed because of an invalid cluster error, don't stall the abort
 		// at this point in the clean-up.
-		if err := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, w.GetExecutionStatus(), status); err != nil && !eventsErr.IsEventIncompatibleClusterError(err){
+		if err := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, w.GetExecutionStatus(), status); err != nil && !eventsErr.IsEventIncompatibleClusterError(err) {
 			return err
 		}
 	}
