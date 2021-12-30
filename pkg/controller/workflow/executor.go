@@ -340,6 +340,9 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 				logger.Warningf(ctx, msg)
 				wStatus.UpdatePhase(v1alpha1.WorkflowPhaseFailed, msg, nil)
 				return nil
+			} else if eventsErr.IsEventIncompatibleClusterError(recordingErr) {
+				logger.Infof(ctx, "Event recording failed due to [%+v]", recordingErr)
+				return recordingErr
 			}
 			logger.Warningf(ctx, "Event recording failed. Error [%s]", recordingErr.Error())
 			return errors.Wrapf(errors.EventRecordingError, "", recordingErr, "failed to publish event")
