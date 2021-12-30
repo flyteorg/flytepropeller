@@ -474,9 +474,6 @@ func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha
 			}
 		}
 		if err := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, w.GetExecutionStatus(), status); err != nil {
-		// If a prior workflow/node/task execution event has failed because of an invalid cluster error, don't stall the abort
-		// at this point in the clean-up.
-		//if err := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, w.GetExecutionStatus(), status); err != nil && !eventsErr.IsEventIncompatibleClusterError(err) {
 			return err
 		}
 	}
