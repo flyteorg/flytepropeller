@@ -129,9 +129,7 @@ func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.F
 			}()
 			err = p.workflowExecutor.HandleFlyteWorkflow(ctx, mutableW)
 		}()
-		// If a prior workflow/node/task execution event has failed because of an invalid cluster error, don't stall the abort
-		// at this point in the clean-up.
-		if err != nil && !eventsErr.IsEventIncompatibleClusterError(err) {
+		if err != nil {
 			logger.Errorf(ctx, "Error when trying to reconcile workflow. Error [%v]. Error Type[%v]",
 				err, reflect.TypeOf(err))
 			p.metrics.SystemError.Inc(ctx)
