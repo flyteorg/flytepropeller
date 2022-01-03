@@ -167,7 +167,7 @@ func (t structuredDatasetChecker) CastsFrom(upstreamType *flyte.LiteralType) boo
 		if !ok {
 			return false
 		}
-		if !getTypeChecker(upstreamType).CastsFrom(column.LiteralType) {
+		if !getTypeChecker(column.LiteralType).CastsFrom(upstreamType) {
 			return false
 		}
 	}

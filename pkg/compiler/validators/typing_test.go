@@ -498,32 +498,32 @@ func TestStructuredDatasetCasting(t *testing.T) {
 
 	t.Run("GenericStructuredDatasetToNonGeneric", func(t *testing.T) {
 		castable := AreTypesCastable(genericStructuredDataset, subsetStructuredDataset)
-		assert.False(t, castable, "StructuredDataset() should not be castable to StructuredDataset(a=Integer)")
+		assert.False(t, castable, "StructuredDataset() should not be castable to StructuredDataset(a=Integer, b=Collection)")
 	})
 
 	t.Run("NonGenericStructuredDatasetToGeneric", func(t *testing.T) {
 		castable := AreTypesCastable(subsetStructuredDataset, genericStructuredDataset)
-		assert.True(t, castable, "StructuredDataset(a=Integer) should be castable to StructuredDataset()")
+		assert.True(t, castable, "StructuredDataset(a=Integer, b=Collection) should be castable to StructuredDataset()")
 	})
 
 	t.Run("SupersetToSubsetTypedStructuredDataset", func(t *testing.T) {
 		castable := AreTypesCastable(supersetStructuredDataset, subsetStructuredDataset)
-		assert.True(t, castable, "StructuredDataset(a=Integer, b=Float) should be castable to StructuredDataset(a=Integer)")
+		assert.True(t, castable, "StructuredDataset(a=Integer, b=Collection, c=Map) should be castable to StructuredDataset(a=Integer, b=Collection)")
 	})
 
 	t.Run("SubsetToSupersetStructuredDataset", func(t *testing.T) {
 		castable := AreTypesCastable(subsetStructuredDataset, supersetStructuredDataset)
-		assert.False(t, castable, "StructuredDataset(a=Integer) should not be castable to StructuredDataset(a=Integer, b=Float)")
+		assert.False(t, castable, "StructuredDataset(a=Integer, b=Collection) should not be castable to StructuredDataset(a=Integer, b=Collection, c=Map)")
 	})
 
 	t.Run("MismatchedColumns", func(t *testing.T) {
 		castable := AreTypesCastable(subsetStructuredDataset, mismatchedSubsetStructuredDataset)
-		assert.False(t, castable, "StructuredDataset(a=Integer) should not be castable to StructuredDataset(a=Float)")
+		assert.False(t, castable, "StructuredDataset(a=Integer, b=Collection) should not be castable to StructuredDataset(a=Float)")
 	})
 
 	t.Run("MismatchedColumnsFlipped", func(t *testing.T) {
 		castable := AreTypesCastable(mismatchedSubsetStructuredDataset, subsetStructuredDataset)
-		assert.False(t, castable, "StructuredDataset(a=Float) should not be castable to StructuredDataset(a=Integer)")
+		assert.False(t, castable, "StructuredDataset(a=Float) should not be castable to StructuredDataset(a=Integer, b=Collection)")
 	})
 
 	t.Run("StructuredDatasetsAreNullable", func(t *testing.T) {
