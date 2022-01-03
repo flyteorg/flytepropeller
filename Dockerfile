@@ -18,7 +18,7 @@ COPY . /go/src/github.com/flyteorg/flytepropeller/
 
 # This 'linux_compile' target should compile binaries to the /artifacts directory
 # The main entrypoint should be compiled to /artifacts/flytepropeller
-RUN make linux_compile
+RUN go mod vendor && make linux_compile
 
 # update the PATH to include the /artifacts directory
 ENV PATH="/artifacts:${PATH}"
