@@ -123,7 +123,7 @@ func IsEventAlreadyInTerminalStateError(err error) bool {
 	return errors.Is(err, &EventError{Code: EventAlreadyInTerminalStateError})
 }
 
-// Checks if the error is of type EventError and the ErrorCode is of type EventIncompatibleCusterError
+// IsEventIncompatibleClusterError checks if the error is of type EventError and the ErrorCode is of type EventIncompatibleCusterError
 func IsEventIncompatibleClusterError(err error) bool {
 	return errors.Is(err, &EventError{Code: EventIncompatibleCusterError})
 }

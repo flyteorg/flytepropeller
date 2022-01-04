@@ -1623,6 +1623,47 @@ func TestNodeExecutor_AbortHandler(t *testing.T) {
 		nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
 		assert.NoError(t, exec.AbortHandler(ctx, nil, nil, nl, n, "aborting"))
 	})
+	t.Run("incompatible-cluster-err", func(t *testing.T) {
+		id := "id"
+		n := &mocks.ExecutableNode{}
+		n.OnGetID().Return(id)
+		n.OnGetKind().Return(v1alpha1.NodeKindStart)
+		n.OnGetTaskID().Return(&id)
+		interruptible := false
+		n.OnIsInterruptible().Return(&interruptible)
+		nl := &mocks4.NodeLookup{}
+		ns := &mocks.ExecutableNodeStatus{}
+		ns.OnGetPhase().Return(v1alpha1.NodePhaseRunning)
+		ns.OnGetDataDir().Return(storage.DataReference("s3:/foo"))
+		nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
+		nl.OnGetNode(id).Return(n, true)
+		incompatibleClusterErr := fakeNodeEventRecorder{&eventsErr.EventError{Code: eventsErr.AlreadyExists, Cause: fmt.Errorf("err")}}
+
+		hf := &mocks2.HandlerFactory{}
+		exec.nodeHandlerFactory = hf
+		h := &nodeHandlerMocks.Node{}
+		h.OnAbortMatch(mock.Anything, mock.Anything, "aborting").Return(nil)
+		h.OnFinalizeMatch(mock.Anything, mock.Anything).Return(nil)
+		hf.OnGetHandlerMatch(v1alpha1.NodeKindStart).Return(h, nil)
+
+		nExec := nodeExecutor{
+			nodeRecorder:       incompatibleClusterErr,
+			nodeHandlerFactory: hf,
+		}
+
+		dag := mocks4.DAGStructure{}
+		dag.OnFromNode(id).Return(make([]string, 0), nil)
+
+		execContext := mocks4.ExecutionContext{}
+		execContext.OnIsInterruptible().Return(false)
+		r := v1alpha1.RawOutputDataConfig{}
+		execContext.OnGetRawOutputDataConfig().Return(r)
+		execContext.OnGetExecutionID().Return(v1alpha1.WorkflowExecutionIdentifier{})
+		execContext.OnGetLabels().Return(nil)
+		execContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
+
+		assert.NoError(t, nExec.AbortHandler(ctx, &execContext, &dag, nl, n, "aborting"))
+	})
 }
 
 func TestNodeExecutor_FinalizeHandler(t *testing.T) {

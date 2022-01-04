@@ -706,6 +706,26 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_EventFailure(t *testing.T) {
 		assert.Error(t, err)
 		assert.True(t, wfErrors.Matches(err, wfErrors.EventRecordingError))
 	})
+
+	t.Run("EventSinkIncompatibleClusterError", func(t *testing.T) {
+		eventSink := eventMocks.NewMockEventSink()
+		eventSink.SinkCb = func(ctx context.Context, message proto.Message) error {
+			return &eventsErr.EventError{Code: eventsErr.EventIncompatibleCusterError,
+				Cause: errors.New("incompatible cluster"),
+			}
+		}
+		executor, err := NewExecutor(ctx, store, enqueueWorkflow, eventSink, recorder, "metadata", nodeExec, eventConfig, testClusterID, promutils.NewTestScope())
+		assert.NoError(t, err)
+		w := &v1alpha1.FlyteWorkflow{}
+		assert.NoError(t, json.Unmarshal(wJSON, w))
+
+		err = executor.HandleFlyteWorkflow(ctx, w)
+		assert.Error(t, err)
+
+		w.Status = v1alpha1.WorkflowStatus{Phase: v1alpha1.WorkflowPhaseFailing}
+		err = executor.HandleFlyteWorkflow(ctx, w)
+		assert.NoError(t, err)
+	})
 }
 
 func TestWorkflowExecutor_HandleAbortedWorkflow(t *testing.T) {
