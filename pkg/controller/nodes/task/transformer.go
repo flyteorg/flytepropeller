@@ -98,13 +98,27 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 	if err != nil {
 		return nil, err
 	}
-	metadata := input.Info.Info().Metadata
-	if metadata == nil {
-		metadata = &event.TaskExecutionMetadata{}
+
+	metadata := &event.TaskExecutionMetadata{
+		GeneratedName:     input.TaskExecContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
+		PluginIdentifier:  input.PluginID,
+		ResourcePoolInfo:  input.ResourcePoolInfo,
 	}
-	metadata.PluginIdentifier = input.PluginID
-	metadata.GeneratedName = input.TaskExecContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	metadata.ResourcePoolInfo = input.ResourcePoolInfo
+
+	externalResources := input.Info.Info().ExternalResources
+	if externalResources != nil {
+		metadata.ExternalResources = make([]*event.ExternalResourceInfo, len(externalResources))
+		for idx, e := range input.Info.Info().ExternalResources {
+			metadata.ExternalResources[idx] = &event.ExternalResourceInfo {
+				ExternalId:   e.ExternalID,
+				RetryAttempt: uint32(e.RetryAttempt),
+				Phase:        ToTaskEventPhase(e.Phase),
+			}
+		}
+	}
+
+	// TODO hamersaw - populate metadata.InstanceClass?
+
 	tev := &event.TaskExecutionEvent{
 		TaskId:                taskExecID.TaskId,
 		ParentNodeExecutionId: nodeExecutionID,
