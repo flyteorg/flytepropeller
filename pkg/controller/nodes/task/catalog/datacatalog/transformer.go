@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -217,6 +218,14 @@ func GetSourceFromMetadata(datasetMd, artifactMd *datacatalog.Metadata, currentI
 		return nil, fmt.Errorf("failed to parse [%v] to integer. Error: %w", val, err)
 	}
 
+	attempt32 := uint32(0)
+	// GOOD: check for lower and upper bounds
+	if attempt > 0 && attempt <= math.MaxUint32 {
+		attempt32 = uint32(attempt)
+	} else {
+		return nil, fmt.Errorf("invalid attempts value [%v]", attempt)
+	}
+
 	return &core.TaskExecutionIdentifier{
 		TaskId: &core.Identifier{
 			ResourceType: currentID.ResourceType,
@@ -225,7 +234,7 @@ func GetSourceFromMetadata(datasetMd, artifactMd *datacatalog.Metadata, currentI
 			Name:         currentID.Name,
 			Version:      GetOrDefault(datasetMd.KeyMap, taskVersionKey, "unknown"),
 		},
-		RetryAttempt: uint32(attempt),
+		RetryAttempt: attempt32,
 		NodeExecutionId: &core.NodeExecutionIdentifier{
 			NodeId: GetOrDefault(artifactMd.KeyMap, execNodeIDKey, "unknown"),
 			ExecutionId: &core.WorkflowExecutionIdentifier{
