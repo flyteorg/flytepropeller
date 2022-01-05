@@ -220,7 +220,7 @@ func GetSourceFromMetadata(datasetMd, artifactMd *datacatalog.Metadata, currentI
 
 	attempt32 := uint32(0)
 	// GOOD: check for lower and upper bounds
-	if attempt > 0 && attempt <= math.MaxUint32 {
+	if attempt >= 0 && attempt <= math.MaxUint32 {
 		attempt32 = uint32(attempt)
 	} else {
 		return nil, fmt.Errorf("invalid attempts value [%v]", attempt)
