@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -213,17 +212,9 @@ func GetSourceFromMetadata(datasetMd, artifactMd *datacatalog.Metadata, currentI
 
 	// Jul-06-2020 DataCatalog stores only wfExecutionKey & taskVersionKey So we will default the project / domain to the current dataset's project domain
 	val := GetOrDefault(artifactMd.KeyMap, execTaskAttemptKey, "0")
-	attempt, err := strconv.Atoi(val)
+	attempt, err := strconv.ParseUint(val, 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse [%v] to integer. Error: %w", val, err)
-	}
-
-	attempt32 := uint32(0)
-	// GOOD: check for lower and upper bounds
-	if attempt >= 0 && attempt <= math.MaxUint32 {
-		attempt32 = uint32(attempt)
-	} else {
-		return nil, fmt.Errorf("invalid attempts value [%v]", attempt)
 	}
 
 	return &core.TaskExecutionIdentifier{
@@ -234,7 +225,7 @@ func GetSourceFromMetadata(datasetMd, artifactMd *datacatalog.Metadata, currentI
 			Name:         currentID.Name,
 			Version:      GetOrDefault(datasetMd.KeyMap, taskVersionKey, "unknown"),
 		},
-		RetryAttempt: attempt32,
+		RetryAttempt: uint32(attempt),
 		NodeExecutionId: &core.NodeExecutionIdentifier{
 			NodeId: GetOrDefault(artifactMd.KeyMap, execNodeIDKey, "unknown"),
 			ExecutionId: &core.WorkflowExecutionIdentifier{
