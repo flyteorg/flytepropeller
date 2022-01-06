@@ -1,6 +1,8 @@
 package validators
 
 import (
+	"strings"
+
 	flyte "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 )
@@ -100,6 +102,8 @@ func (t collectionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 //
 //    2. The downstream schema has a subset of the upstream columns and they match perfectly.
 //
+//    3. The upstream type can be Schema type or structured dataset type
+//
 func (t schemaTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	// Schemas are nullable
 	if isVoid(upstreamType) {
@@ -107,31 +111,21 @@ func (t schemaTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	}
 
 	schemaType := upstreamType.GetSchema()
-	if schemaType == nil {
+	structuredDatasetType := upstreamType.GetStructuredDatasetType()
+	if structuredDatasetType == nil && schemaType == nil {
 		return false
 	}
 
-	// If no columns are specified, this is a generic schema and it can accept any schema type.
-	if len(t.literalType.GetSchema().Columns) == 0 {
-		return true
+	if schemaType != nil {
+		return schemaCastFromSchema(schemaType, t.literalType.GetSchema())
 	}
 
-	nameToTypeMap := make(map[string]flyte.SchemaType_SchemaColumn_SchemaColumnType)
-	for _, column := range schemaType.Columns {
-		nameToTypeMap[column.Name] = column.Type
+	// Flyte Schema can only be serialized to parquet
+	if !strings.EqualFold(structuredDatasetType.Format, "parquet") {
+		return false
 	}
 
-	// Check that the downstream schema is a strict sub-set of the upstream schema.
-	for _, column := range t.literalType.GetSchema().Columns {
-		upstreamType, ok := nameToTypeMap[column.Name]
-		if !ok {
-			return false
-		}
-		if upstreamType != column.Type {
-			return false
-		}
-	}
-	return true
+	return schemaCastFromStructuredDataset(structuredDatasetType, t.literalType.GetSchema())
 }
 
 // Structured dataset are more complex types in the Flyte ecosystem. A structured dataset is considered castable in the following
@@ -155,9 +149,40 @@ func (t structuredDatasetChecker) CastsFrom(upstreamType *flyte.LiteralType) boo
 		return false
 	}
 	if schemaType != nil {
+		// Flyte Schema can only be serialized to parquet
+		if !strings.EqualFold(t.literalType.GetStructuredDatasetType().Format, "parquet") {
+			return false
+		}
 		return structuredDatasetCastFromSchema(schemaType, t.literalType.GetStructuredDatasetType())
 	}
+	if !strings.EqualFold(structuredDatasetType.Format, t.literalType.GetStructuredDatasetType().Format) {
+		return false
+	}
 	return structuredDatasetCastFromStructuredDataset(structuredDatasetType, t.literalType.GetStructuredDatasetType())
+}
+
+// Upstream (schema) -> downstream (schema)
+func schemaCastFromSchema(upstream *flyte.SchemaType, downstream *flyte.SchemaType) bool {
+	if len(downstream.Columns) == 0 {
+		return true
+	}
+
+	nameToTypeMap := make(map[string]flyte.SchemaType_SchemaColumn_SchemaColumnType)
+	for _, column := range upstream.Columns {
+		nameToTypeMap[column.Name] = column.Type
+	}
+
+	// Check that the downstream schema is a strict sub-set of the upstream schema.
+	for _, column := range downstream.Columns {
+		upstreamType, ok := nameToTypeMap[column.Name]
+		if !ok {
+			return false
+		}
+		if upstreamType != column.Type {
+			return false
+		}
+	}
+	return true
 }
 
 // Upstream (structuredDatasetType) -> downstream (structuredDatasetType)
@@ -200,20 +225,49 @@ func structuredDatasetCastFromSchema(upstream *flyte.SchemaType, downstream *fly
 		if !ok {
 			return false
 		}
-		downstreamType := column.LiteralType.GetSimple()
-		if upstreamType == flyte.SchemaType_SchemaColumn_INTEGER && downstreamType != flyte.SimpleType_INTEGER {
-			return false
-		} else if upstreamType == flyte.SchemaType_SchemaColumn_FLOAT && downstreamType != flyte.SimpleType_FLOAT {
-			return false
-		} else if upstreamType == flyte.SchemaType_SchemaColumn_STRING && downstreamType != flyte.SimpleType_STRING {
-			return false
-		} else if upstreamType == flyte.SchemaType_SchemaColumn_BOOLEAN && downstreamType != flyte.SimpleType_BOOLEAN {
-			return false
-		} else if upstreamType == flyte.SchemaType_SchemaColumn_DATETIME && downstreamType != flyte.SimpleType_DATETIME {
-			return false
-		} else if upstreamType == flyte.SchemaType_SchemaColumn_DURATION && downstreamType != flyte.SimpleType_DURATION {
+		if !schemaTypeIsMatchStructuredDatasetType(upstreamType, column.LiteralType.GetSimple()) {
 			return false
 		}
+	}
+	return true
+}
+
+// Upstream (structuredDatasetType) -> downstream (schemaType)
+func schemaCastFromStructuredDataset(upstream *flyte.StructuredDatasetType, downstream *flyte.SchemaType) bool {
+	if len(downstream.Columns) == 0 {
+		return true
+	}
+	nameToTypeMap := make(map[string]flyte.SimpleType)
+	for _, column := range upstream.Columns {
+		nameToTypeMap[column.Name] = column.LiteralType.GetSimple()
+	}
+
+	// Check that the downstream schema is a strict sub-set of the upstream structuredDataset.
+	for _, column := range downstream.Columns {
+		upstreamType, ok := nameToTypeMap[column.Name]
+		if !ok {
+			return false
+		}
+		if !schemaTypeIsMatchStructuredDatasetType(column.GetType(), upstreamType) {
+			return false
+		}
+	}
+	return true
+}
+
+func schemaTypeIsMatchStructuredDatasetType(schemaType flyte.SchemaType_SchemaColumn_SchemaColumnType, structuredDatasetType flyte.SimpleType) bool {
+	if schemaType == flyte.SchemaType_SchemaColumn_INTEGER && structuredDatasetType != flyte.SimpleType_INTEGER {
+		return false
+	} else if schemaType == flyte.SchemaType_SchemaColumn_FLOAT && structuredDatasetType != flyte.SimpleType_FLOAT {
+		return false
+	} else if schemaType == flyte.SchemaType_SchemaColumn_STRING && structuredDatasetType != flyte.SimpleType_STRING {
+		return false
+	} else if schemaType == flyte.SchemaType_SchemaColumn_BOOLEAN && structuredDatasetType != flyte.SimpleType_BOOLEAN {
+		return false
+	} else if schemaType == flyte.SchemaType_SchemaColumn_DATETIME && structuredDatasetType != flyte.SimpleType_DATETIME {
+		return false
+	} else if schemaType == flyte.SchemaType_SchemaColumn_DURATION && structuredDatasetType != flyte.SimpleType_DURATION {
+		return false
 	}
 	return true
 }
