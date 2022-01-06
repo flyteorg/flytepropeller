@@ -101,7 +101,6 @@ type nodeExecutor struct {
 	shardSelector                   ioutils.ShardSelector
 	recoveryClient                  recovery.Client
 	eventConfig                     *config.EventConfig
-	clusterID                       string
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, dag executors.DAGStructure, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -456,7 +455,7 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s]", nodeStatus.GetPhase().String(), np.String())
 		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
 			p, nCtx.InputReader().GetInputPath().String(), nodeStatus, nCtx.ExecutionContext().GetEventVersion(),
-			nCtx.ExecutionContext().GetParentInfo(), nCtx.node, c.clusterID)
+			nCtx.ExecutionContext().GetParentInfo(), nCtx.node)
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "could not convert phase info to event")
 		}
@@ -570,39 +569,15 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s], (handler phase [%s])", nodeStatus.GetPhase().String(), np.String(), p.GetPhase().String())
 		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
 			p, nCtx.InputReader().GetInputPath().String(), nCtx.NodeStatus(), nCtx.ExecutionContext().GetEventVersion(),
-			nCtx.ExecutionContext().GetParentInfo(), nCtx.node, c.clusterID)
+			nCtx.ExecutionContext().GetParentInfo(), nCtx.node)
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "could not convert phase info to event")
 		}
 
 		err = c.IdempotentRecordEvent(ctx, nev)
 		if err != nil {
-			if eventsErr.IsTooLarge(err) {
-				// With large enough dynamic task fanouts the reported node event, which contains the compiled
-				// workflow closure, can exceed the gRPC message size limit. In this case we immediately
-				// transition the node to failing to abort the workflow.
-				np = v1alpha1.NodePhaseFailing
-				p = handler.PhaseInfoFailure(core.ExecutionError_USER, "NodeFailed", err.Error(), p.GetInfo())
-
-				err = c.IdempotentRecordEvent(ctx, &event.NodeExecutionEvent{
-					Id:         nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
-					Phase:      core.NodeExecution_FAILED,
-					OccurredAt: ptypes.TimestampNow(),
-					OutputResult: &event.NodeExecutionEvent_Error{
-						Error: &core.ExecutionError{
-							Code:    "NodeFailed",
-							Message: err.Error(),
-						},
-					},
-				})
-
-				if err != nil {
-					return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
-				}
-			} else {
-				logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
-				return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
-			}
+			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
+			return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
 		}
 
 		// We reach here only when transitioning from Queued to Running. In this case, the startedAt is not set.
@@ -1054,9 +1029,8 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, execContext executors.E
 					Message: reason,
 				},
 			},
-			ProducerId: c.clusterID,
 		})
-		if err != nil && !eventsErr.IsEventIncompatibleClusterError(err) {
+		if err != nil {
 			if errors2.IsCausedBy(err, errors.IllegalStateError) {
 				logger.Debugf(ctx, "Failed to record abort event due to illegal state transition. Ignoring the error. Error: %v", err)
 			} else {
@@ -1107,7 +1081,7 @@ func (c *nodeExecutor) Initialize(ctx context.Context) error {
 func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink,
 	workflowLauncher launchplan.Executor, launchPlanReader launchplan.Reader, maxDatasetSize int64,
 	defaultRawOutputPrefix storage.DataReference, kubeClient executors.Client,
-	catalogClient catalog.Client, recoveryClient recovery.Client, eventConfig *config.EventConfig, clusterID string, scope promutils.Scope) (executors.Node, error) {
+	catalogClient catalog.Client, recoveryClient recovery.Client, eventConfig *config.EventConfig, scope promutils.Scope) (executors.Node, error) {
 
 	// TODO we may want to make this configurable.
 	shardSelector, err := ioutils.NewBase36PrefixShardSelector(ctx)
@@ -1153,9 +1127,8 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		shardSelector:                   shardSelector,
 		recoveryClient:                  recoveryClient,
 		eventConfig:                     eventConfig,
-		clusterID:                       clusterID,
 	}
-	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, recoveryClient, eventConfig, clusterID, nodeScope)
+	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, recoveryClient, eventConfig, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory
 	return exec, err
 }

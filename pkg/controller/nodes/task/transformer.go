@@ -79,7 +79,6 @@ type ToTaskExecutionEventInputs struct {
 	TaskType              string
 	PluginID              string
 	ResourcePoolInfo      []*event.ResourcePoolInfo
-	ClusterID             string
 }
 
 func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutionEvent, error) {
@@ -112,7 +111,7 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		RetryAttempt:          taskExecID.RetryAttempt,
 		Phase:                 ToTaskEventPhase(input.Info.Phase()),
 		PhaseVersion:          input.Info.Version(),
-		ProducerId:            input.ClusterID,
+		ProducerId:            "propeller",
 		OccurredAt:            tm,
 		InputUri:              input.InputReader.GetInputPath().String(),
 		TaskType:              input.TaskType,

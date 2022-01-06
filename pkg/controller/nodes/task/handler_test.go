@@ -7,9 +7,6 @@ import (
 	"testing"
 	"time"
 
-	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
-	mocks2 "github.com/flyteorg/flytepropeller/events/mocks"
-
 	"github.com/flyteorg/flytepropeller/events"
 
 	pluginK8sMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s/mocks"
@@ -57,8 +54,6 @@ import (
 var eventConfig = &controllerConfig.EventConfig{
 	RawOutputPolicy: controllerConfig.RawOutputPolicyReference,
 }
-
-const testClusterID = "C1"
 
 func Test_task_setDefault(t *testing.T) {
 	type fields struct {
@@ -249,7 +244,7 @@ func Test_task_Setup(t *testing.T) {
 			sCtx.On("EnqueueOwner").Return(pluginCore.EnqueueOwner(func(name types.NamespacedName) error { return nil }))
 			sCtx.On("MetricsScope").Return(promutils.NewTestScope())
 
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, eventConfig, testClusterID, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, eventConfig, promutils.NewTestScope())
 			tk.cfg.TaskPlugins.EnabledPlugins = tt.enabledPlugins
 			tk.cfg.TaskPlugins.DefaultForTaskTypes = tt.defaultForTaskTypes
 			assert.NoError(t, err)
@@ -908,7 +903,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			} else {
 				c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
 			}
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, testClusterID, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, promutils.NewTestScope())
 			assert.NoError(t, err)
 			tk.defaultPlugins = map[pluginCore.TaskType]pluginCore.Plugin{
 				"test": fakeplugins.NewPhaseBasedPlugin(),
@@ -1129,7 +1124,7 @@ func Test_task_Handle_Reservation(t *testing.T) {
 			}
 			c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
 			c.OnGetOrExtendReservationMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&datacatalog.Reservation{OwnerId: tt.args.ownerID}, nil)
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, testClusterID, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, promutils.NewTestScope())
 			assert.NoError(t, err)
 			tk.defaultPlugins = map[pluginCore.TaskType]pluginCore.Plugin{
 				"test": fakeplugins.NewPhaseBasedPlugin(),
@@ -1408,7 +1403,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 			nCtx := createNodeContext(ev, "test", state, tt.args.prevTick)
 			c := &pluginCatalogMocks.Client{}
 
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, testClusterID, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, promutils.NewTestScope())
 			assert.NoError(t, err)
 			tk.resourceManager = noopRm
 
@@ -1458,7 +1453,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 }
 
 func Test_task_Abort(t *testing.T) {
-	createNodeCtx := func(ev events.TaskEventRecorder) *nodeMocks.NodeExecutionContext {
+	createNodeCtx := func(ev *fakeBufferedTaskEventRecorder) *nodeMocks.NodeExecutionContext {
 		wfExecID := &core.WorkflowExecutionIdentifier{
 			Project: "project",
 			Domain:  "domain",
@@ -1544,17 +1539,11 @@ func Test_task_Abort(t *testing.T) {
 
 	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())
 
-	incompatibleClusterEventsRecorder := mocks2.TaskEventRecorder{}
-	incompatibleClusterEventsRecorder.OnRecordTaskEventMatch(mock.Anything, mock.Anything, mock.Anything).Return(
-		&eventsErr.EventError{
-			Code: eventsErr.EventIncompatibleCusterError,
-		})
-
 	type fields struct {
 		defaultPluginCallback func() pluginCore.Plugin
 	}
 	type args struct {
-		ev events.TaskEventRecorder
+		ev *fakeBufferedTaskEventRecorder
 	}
 	tests := []struct {
 		name        string
@@ -1581,13 +1570,6 @@ func Test_task_Abort(t *testing.T) {
 			p.On("Abort", mock.Anything, mock.Anything).Return(nil)
 			return p
 		}}, args{ev: &fakeBufferedTaskEventRecorder{}}, false, true},
-		{"abort-swallows-incompatible-cluster-err", fields{defaultPluginCallback: func() pluginCore.Plugin {
-			p := &pluginCoreMocks.Plugin{}
-			p.On("GetID").Return("id")
-			p.OnGetProperties().Return(pluginCore.PluginProperties{})
-			p.On("Abort", mock.Anything, mock.Anything).Return(nil)
-			return p
-		}}, args{ev: &incompatibleClusterEventsRecorder}, false, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1604,12 +1586,7 @@ func Test_task_Abort(t *testing.T) {
 			if tt.abortCalled {
 				c = 1
 				if !tt.wantErr {
-					switch tt.args.ev.(type) {
-					case *fakeBufferedTaskEventRecorder:
-						assert.Len(t, tt.args.ev.(*fakeBufferedTaskEventRecorder).evs, 1)
-					case *mocks2.TaskEventRecorder:
-						assert.Len(t, tt.args.ev.(*mocks2.TaskEventRecorder).Calls, 1)
-					}
+					assert.Len(t, tt.args.ev.evs, 1)
 				}
 			}
 			if m != nil {
@@ -1620,7 +1597,7 @@ func Test_task_Abort(t *testing.T) {
 }
 
 func Test_task_Abort_v1(t *testing.T) {
-	createNodeCtx := func(ev events.TaskEventRecorder) *nodeMocks.NodeExecutionContext {
+	createNodeCtx := func(ev *fakeBufferedTaskEventRecorder) *nodeMocks.NodeExecutionContext {
 		wfExecID := &core.WorkflowExecutionIdentifier{
 			Project: "project",
 			Domain:  "domain",
@@ -1706,17 +1683,11 @@ func Test_task_Abort_v1(t *testing.T) {
 
 	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())
 
-	incompatibleClusterEventsRecorder := mocks2.TaskEventRecorder{}
-	incompatibleClusterEventsRecorder.OnRecordTaskEventMatch(mock.Anything, mock.Anything, mock.Anything).Return(
-		&eventsErr.EventError{
-			Code: eventsErr.EventIncompatibleCusterError,
-		})
-
 	type fields struct {
 		defaultPluginCallback func() pluginCore.Plugin
 	}
 	type args struct {
-		ev events.TaskEventRecorder
+		ev *fakeBufferedTaskEventRecorder
 	}
 	tests := []struct {
 		name        string
@@ -1743,13 +1714,6 @@ func Test_task_Abort_v1(t *testing.T) {
 			p.On("Abort", mock.Anything, mock.Anything).Return(nil)
 			return p
 		}}, args{ev: &fakeBufferedTaskEventRecorder{}}, false, true},
-		{"abort-swallows-incompatible-cluster-err", fields{defaultPluginCallback: func() pluginCore.Plugin {
-			p := &pluginCoreMocks.Plugin{}
-			p.On("GetID").Return("id")
-			p.OnGetProperties().Return(pluginCore.PluginProperties{})
-			p.On("Abort", mock.Anything, mock.Anything).Return(nil)
-			return p
-		}}, args{ev: &incompatibleClusterEventsRecorder}, false, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1766,12 +1730,7 @@ func Test_task_Abort_v1(t *testing.T) {
 			if tt.abortCalled {
 				c = 1
 				if !tt.wantErr {
-					switch tt.args.ev.(type) {
-					case *fakeBufferedTaskEventRecorder:
-						assert.Len(t, tt.args.ev.(*fakeBufferedTaskEventRecorder).evs, 1)
-					case *mocks2.TaskEventRecorder:
-						assert.Len(t, tt.args.ev.(*mocks2.TaskEventRecorder).Calls, 1)
-					}
+					assert.Len(t, tt.args.ev.evs, 1)
 				}
 			}
 			if m != nil {
@@ -1949,7 +1908,7 @@ func Test_task_Finalize(t *testing.T) {
 			}
 
 			m := tt.fields.defaultPluginCallback()
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), catalog, eventConfig, testClusterID, promutils.NewTestScope())
+			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), catalog, eventConfig, promutils.NewTestScope())
 			assert.NoError(t, err)
 			tk.defaultPlugin = m
 			tk.resourceManager = noopRm
@@ -1968,7 +1927,7 @@ func Test_task_Finalize(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	got, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, eventConfig, testClusterID, promutils.NewTestScope())
+	got, err := New(context.TODO(), mocks.NewFakeKubeClient(), &pluginCatalogMocks.Client{}, eventConfig, promutils.NewTestScope())
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.NotNil(t, got.defaultPlugins)

@@ -114,7 +114,6 @@ func TestToTaskExecutionEvent(t *testing.T) {
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
 		ResourcePoolInfo:      resourcePoolInfo,
-		ClusterID:             testClusterID,
 	})
 	assert.NoError(t, err)
 	assert.Nil(t, tev.Logs)
@@ -131,7 +130,6 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
 	assert.Equal(t, generatedName, tev.Metadata.GeneratedName)
 	assert.EqualValues(t, resourcePoolInfo, tev.Metadata.ResourcePoolInfo)
-	assert.Equal(t, testClusterID, tev.ProducerId)
 
 	l := []*core.TaskLog{
 		{Uri: "x", Name: "y", MessageFormat: core.TaskLog_JSON},
@@ -151,7 +149,6 @@ func TestToTaskExecutionEvent(t *testing.T) {
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
 		ResourcePoolInfo:      resourcePoolInfo,
-		ClusterID:             testClusterID,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_RUNNING, tev.Phase)
@@ -168,7 +165,6 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
 	assert.Equal(t, generatedName, tev.Metadata.GeneratedName)
 	assert.EqualValues(t, resourcePoolInfo, tev.Metadata.ResourcePoolInfo)
-	assert.Equal(t, testClusterID, tev.ProducerId)
 
 	defaultNodeExecutionMetadata := handlerMocks.NodeExecutionMetadata{}
 	defaultNodeExecutionMetadata.OnIsInterruptible().Return(false)
@@ -186,7 +182,6 @@ func TestToTaskExecutionEvent(t *testing.T) {
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
 		ResourcePoolInfo:      resourcePoolInfo,
-		ClusterID:             testClusterID,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_SUCCEEDED, tev.Phase)
@@ -205,7 +200,6 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
 	assert.Equal(t, generatedName, tev.Metadata.GeneratedName)
 	assert.EqualValues(t, resourcePoolInfo, tev.Metadata.ResourcePoolInfo)
-	assert.Equal(t, testClusterID, tev.ProducerId)
 }
 
 func TestToTransitionType(t *testing.T) {
@@ -273,7 +267,6 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
 		ResourcePoolInfo:      resourcePoolInfo,
-		ClusterID:             testClusterID,
 	})
 	assert.NoError(t, err)
 	expectedNodeID := &core.NodeExecutionIdentifier{
@@ -293,7 +286,6 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
 	assert.Equal(t, generatedName, tev.Metadata.GeneratedName)
 	assert.EqualValues(t, resourcePoolInfo, tev.Metadata.ResourcePoolInfo)
-	assert.Equal(t, testClusterID, tev.ProducerId)
 
 	l := []*core.TaskLog{
 		{Uri: "x", Name: "y", MessageFormat: core.TaskLog_JSON},
@@ -313,7 +305,6 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 		TaskType:              containerTaskType,
 		PluginID:              containerPluginIdentifier,
 		ResourcePoolInfo:      resourcePoolInfo,
-		ClusterID:             testClusterID,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, core.TaskExecution_RUNNING, tev.Phase)
@@ -330,5 +321,4 @@ func TestToTaskExecutionEventWithParent(t *testing.T) {
 	assert.Equal(t, containerPluginIdentifier, tev.Metadata.PluginIdentifier)
 	assert.Equal(t, generatedName, tev.Metadata.GeneratedName)
 	assert.EqualValues(t, resourcePoolInfo, tev.Metadata.ResourcePoolInfo)
-	assert.Equal(t, testClusterID, tev.ProducerId)
 }

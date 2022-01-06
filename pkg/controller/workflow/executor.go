@@ -67,7 +67,6 @@ type workflowExecutor struct {
 	nodeExecutor    executors.Node
 	metrics         *workflowMetrics
 	eventConfig     *config.EventConfig
-	clusterID       string
 }
 
 func (c *workflowExecutor) constructWorkflowMetadataPrefix(ctx context.Context, w *v1alpha1.FlyteWorkflow) (storage.DataReference, error) {
@@ -271,7 +270,6 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 
 		wfEvent := &event.WorkflowExecutionEvent{
 			ExecutionId: execID,
-			ProducerId:  c.clusterID,
 		}
 		previousError := wStatus.GetExecutionError()
 		switch toStatus.TransitionToPhase {
@@ -341,13 +339,6 @@ func (c *workflowExecutor) TransitionToPhase(ctx context.Context, execID *core.W
 				wStatus.UpdatePhase(v1alpha1.WorkflowPhaseFailed, msg, nil)
 				return nil
 			}
-			if (wfEvent.Phase == core.WorkflowExecution_FAILING || wfEvent.Phase == core.WorkflowExecution_FAILED) &&
-				eventsErr.IsEventIncompatibleClusterError(recordingErr) {
-				// Don't stall the workflow transition to terminated (so that resources can be cleaned up) since these events
-				// are being discarded by the back-end anyways.
-				logger.Infof(ctx, "Failed to record %s workflowEvent, error [%s]. Ignoring this error!", wfEvent.Phase.String(), recordingErr.Error())
-				return nil
-			}
 			logger.Warningf(ctx, "Event recording failed. Error [%s]", recordingErr.Error())
 			return errors.Wrapf(errors.EventRecordingError, "", recordingErr, "failed to publish event")
 		}
@@ -413,8 +404,8 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 			return err
 		}
 		failingErr := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, wStatus, newStatus)
-		// Ignore ExecutionNotFound and IncompatibleCluster errors to allow graceful failure
-		if failingErr != nil && !(eventsErr.IsNotFound(failingErr) || eventsErr.IsEventIncompatibleClusterError(failingErr)) {
+		// Ignore ExecutionNotFound error to allow graceful failure
+		if failingErr != nil && !eventsErr.IsNotFound(failingErr) {
 			return failingErr
 		}
 		c.k8sRecorder.Event(w, corev1.EventTypeWarning, v1alpha1.WorkflowPhaseFailed.String(), "Workflow failed.")
@@ -425,8 +416,8 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 			return err
 		}
 		failureErr := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, wStatus, newStatus)
-		// Ignore ExecutionNotFound and IncompatibleCluster errors to allow graceful failure
-		if failureErr != nil && !(eventsErr.IsNotFound(failureErr) || eventsErr.IsEventIncompatibleClusterError(failureErr)) {
+		// Ignore ExecutionNotFound error to allow graceful failure
+		if failureErr != nil && !eventsErr.IsNotFound(failureErr) {
 			return failureErr
 		}
 		c.k8sRecorder.Event(w, corev1.EventTypeWarning, v1alpha1.WorkflowPhaseFailed.String(), "Workflow failed.")
@@ -438,6 +429,7 @@ func (c *workflowExecutor) HandleFlyteWorkflow(ctx context.Context, w *v1alpha1.
 
 func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha1.FlyteWorkflow, maxRetries uint32) error {
 	w.DataReferenceConstructor = c.store
+
 	if !w.Status.IsTerminated() {
 		reason := fmt.Sprintf("max number of system retry attempts [%d/%d] exhausted - system failure.", w.Status.FailedAttempts, maxRetries)
 		c.metrics.IncompleteWorkflowAborted.Inc(ctx)
@@ -473,6 +465,7 @@ func (c *workflowExecutor) HandleAbortedWorkflow(ctx context.Context, w *v1alpha
 				TransitionToPhase: v1alpha1.WorkflowPhaseAborted,
 			}
 		}
+
 		if err := c.TransitionToPhase(ctx, w.ExecutionID.WorkflowExecutionIdentifier, w.GetExecutionStatus(), status); err != nil {
 			return err
 		}
@@ -496,7 +489,7 @@ func (c *workflowExecutor) cleanupRunningNodes(ctx context.Context, w v1alpha1.E
 
 func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink,
 	k8sEventRecorder record.EventRecorder, metadataPrefix string, nodeExecutor executors.Node, eventConfig *config.EventConfig,
-	clusterID string, scope promutils.Scope) (executors.Workflow, error) {
+	scope promutils.Scope) (executors.Workflow, error) {
 	basePrefix := store.GetBaseContainerFQN(ctx)
 	if metadataPrefix != "" {
 		var err error
@@ -518,7 +511,6 @@ func NewExecutor(ctx context.Context, store *storage.DataStore, enQWorkflow v1al
 		metadataPrefix:  basePrefix,
 		metrics:         newMetrics(workflowScope),
 		eventConfig:     eventConfig,
-		clusterID:       clusterID,
 	}, nil
 }
 
