@@ -461,6 +461,7 @@ func TestStructuredDatasetCasting(t *testing.T) {
 		Type: &core.LiteralType_StructuredDatasetType{
 			StructuredDatasetType: &core.StructuredDatasetType{
 				Columns: []*core.StructuredDatasetType_DatasetColumn{},
+				Format: "parquet",
 			},
 		},
 	}
