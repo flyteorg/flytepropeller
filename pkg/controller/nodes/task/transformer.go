@@ -111,6 +111,7 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		for idx, e := range input.Info.Info().ExternalResources {
 			metadata.ExternalResources[idx] = &event.ExternalResourceInfo{
 				ExternalId:   e.ExternalID,
+				Index:        e.Index,
 				RetryAttempt: e.RetryAttempt,
 				Phase:        ToTaskEventPhase(e.Phase),
 			}
