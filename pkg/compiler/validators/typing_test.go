@@ -477,6 +477,7 @@ func TestStructuredDatasetCasting(t *testing.T) {
 						LiteralType: &core.LiteralType{Type: &core.LiteralType_CollectionType{CollectionType: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}}},
 					},
 				},
+				Format: "parquet",
 			},
 		},
 	}

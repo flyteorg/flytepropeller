@@ -256,20 +256,21 @@ func schemaCastFromStructuredDataset(upstream *flyte.StructuredDatasetType, down
 }
 
 func schemaTypeIsMatchStructuredDatasetType(schemaType flyte.SchemaType_SchemaColumn_SchemaColumnType, structuredDatasetType flyte.SimpleType) bool {
-	if schemaType == flyte.SchemaType_SchemaColumn_INTEGER && structuredDatasetType != flyte.SimpleType_INTEGER {
-		return false
-	} else if schemaType == flyte.SchemaType_SchemaColumn_FLOAT && structuredDatasetType != flyte.SimpleType_FLOAT {
-		return false
-	} else if schemaType == flyte.SchemaType_SchemaColumn_STRING && structuredDatasetType != flyte.SimpleType_STRING {
-		return false
-	} else if schemaType == flyte.SchemaType_SchemaColumn_BOOLEAN && structuredDatasetType != flyte.SimpleType_BOOLEAN {
-		return false
-	} else if schemaType == flyte.SchemaType_SchemaColumn_DATETIME && structuredDatasetType != flyte.SimpleType_DATETIME {
-		return false
-	} else if schemaType == flyte.SchemaType_SchemaColumn_DURATION && structuredDatasetType != flyte.SimpleType_DURATION {
-		return false
+	switch schemaType {
+	case flyte.SchemaType_SchemaColumn_INTEGER:
+		return structuredDatasetType == flyte.SimpleType_INTEGER
+	case flyte.SchemaType_SchemaColumn_FLOAT:
+		return structuredDatasetType == flyte.SimpleType_FLOAT
+	case flyte.SchemaType_SchemaColumn_STRING:
+		return structuredDatasetType == flyte.SimpleType_STRING
+	case flyte.SchemaType_SchemaColumn_BOOLEAN:
+		return structuredDatasetType == flyte.SimpleType_BOOLEAN
+	case flyte.SchemaType_SchemaColumn_DATETIME:
+		return structuredDatasetType == flyte.SimpleType_DATETIME
+	case flyte.SchemaType_SchemaColumn_DURATION:
+		return structuredDatasetType == flyte.SimpleType_DURATION
 	}
-	return true
+	return false
 }
 
 func isVoid(t *flyte.LiteralType) bool {

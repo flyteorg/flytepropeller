@@ -6,7 +6,7 @@ require (
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/fatih/color v1.10.0
-	github.com/flyteorg/flyteidl v0.21.11
+	github.com/flyteorg/flyteidl v0.21.17
 	github.com/flyteorg/flyteplugins v0.9.1
 	github.com/flyteorg/flytestdlib v0.4.7
 	github.com/ghodss/yaml v1.0.0
@@ -34,7 +34,3 @@ require (
 )
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
-
-replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v0.21.13-0.20211206210958-804fa1685264
-
-replace github.com/flyteorg/flyteplugins => github.com/flyteorg/flyteplugins v0.9.2-0.20220103170617-0399d6d27d5e
