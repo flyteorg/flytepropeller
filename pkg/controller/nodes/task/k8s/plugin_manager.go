@@ -23,6 +23,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	stdErrors "github.com/flyteorg/flytestdlib/errors"
+	"github.com/ghodss/yaml"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -49,7 +50,9 @@ import (
 )
 
 const finalizer = "flyte/flytek8s"
-
+const templateProjectVariable = "{{ PROJECT }}"
+const templateDomainVariable = "{{ DOMAIN }}"
+const replaceAllInstancesOfString = -1
 const pluginStateVersion = 1
 
 type PluginPhase uint8
@@ -103,10 +106,34 @@ type PluginManager struct {
 	resourceLevelMonitor *ResourceLevelMonitor
 }
 
+func InjectTemplates(taskCtx pluginsCore.TaskExecutionMetadata, defaults map[string]string) map[string]string {
+	execId := taskCtx.GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId()
+	project := execId.GetProject()
+	domain := execId.GetDomain()
+
+	y, err := yaml.Marshal(defaults)
+	if err != nil {
+		logger.InfofNoCtx("failed to inject template values with error: %s", err.Error())
+		return defaults
+	}
+
+	var toTemplate = string(y)
+	toTemplate = strings.Replace(toTemplate, templateDomainVariable, domain, replaceAllInstancesOfString)
+	toTemplate = strings.Replace(toTemplate, templateProjectVariable, project, replaceAllInstancesOfString)
+
+	var templated = make(map[string]string)
+	err = yaml.Unmarshal([]byte(toTemplate), &templated)
+	if err != nil {
+		logger.InfofNoCtx("failed to inject template values with error: %s", err.Error())
+		return defaults
+	}
+	return templated
+}
+
 func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o client.Object, cfg *config.K8sPluginConfig) {
 	o.SetNamespace(taskCtx.GetNamespace())
-	o.SetAnnotations(utils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
-	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
+	o.SetAnnotations(utils.UnionMaps(InjectTemplates(taskCtx, cfg.DefaultAnnotations), o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
+	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), InjectTemplates(taskCtx, cfg.DefaultLabels)))
 	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
 
 	if !e.plugin.GetProperties().DisableInjectOwnerReferences {

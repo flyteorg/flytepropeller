@@ -231,6 +231,29 @@ func getMockTaskExecutionMetadataCustom(
 	return taskExecutionMetadata
 }
 
+func getMockTaskExecutionMetadataCustomTemplate(project string, domain string) pluginsCore.TaskExecutionMetadata {
+	taskExecutionMetadata := &pluginsCoreMock.TaskExecutionMetadata{}
+	taskExecutionMetadata.On("GetNamespace").Return("ns")
+	taskExecutionMetadata.On("GetAnnotations").Return(nil)
+	taskExecutionMetadata.On("GetLabels").Return(nil)
+	taskExecutionMetadata.On("GetOwnerReference").Return(v12.OwnerReference{Name: "x"})
+
+	wfExecId := &core.WorkflowExecutionIdentifier{
+		Project: project,
+		Domain:  domain,
+	}
+	nodeExecId := &core.NodeExecutionIdentifier{
+		ExecutionId: wfExecId,
+	}
+	id := &pluginsCoreMock.TaskExecutionID{}
+	id.On("GetID").Return(core.TaskExecutionIdentifier{
+		NodeExecutionId: nodeExecId,
+	})
+	id.On("GetGeneratedName").Return("test")
+	taskExecutionMetadata.On("GetTaskExecutionID").Return(id)
+	return taskExecutionMetadata
+}
+
 func dummySetupContext(fakeClient client.Client) pluginsCore.SetupContext {
 	setupContext := &pluginsCoreMock.SetupContext{}
 	var enqueueOwnerFunc = pluginsCore.EnqueueOwner(func(ownerId k8stypes.NamespacedName) error { return nil })
@@ -821,6 +844,30 @@ func TestPluginManager_AddObjectMetadata(t *testing.T) {
 		}, o.GetAnnotations())
 		assert.Equal(t, l, o.GetLabels())
 		assert.Equal(t, 0, len(o.GetFinalizers()))
+	})
+
+	t.Run("Inject templates", func(t *testing.T) {
+		tmt := getMockTaskExecutionMetadataCustomTemplate("kissa", "koira")
+		p := pluginsk8sMock.Plugin{}
+		p.OnGetProperties().Return(k8s.PluginProperties{DisableInjectFinalizer: true})
+		pluginManager := PluginManager{plugin: &p}
+		// Add templated defaults
+		defaults := map[string]string{
+			"foo":               "bar-{{ PROJECT }}",
+			"spam-{{ DOMAIN }}": "ham",
+		}
+		cfg.DefaultAnnotations = defaults
+		cfg.DefaultLabels = defaults
+		o := &v1.Pod{}
+		pluginManager.AddObjectMetadata(tmt, o, cfg)
+
+		expected := map[string]string{
+			"foo":        "bar-kissa",
+			"spam-koira": "ham",
+		}
+
+		assert.Equal(t, expected, o.GetAnnotations())
+		assert.Equal(t, expected, o.GetLabels())
 	})
 
 }
