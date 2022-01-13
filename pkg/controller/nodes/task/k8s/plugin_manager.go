@@ -106,6 +106,9 @@ type PluginManager struct {
 	resourceLevelMonitor *ResourceLevelMonitor
 }
 
+// Handles dynamic templating of DefaultAnnotations and DefaultLabels to replace placeholders {{ PROJECT }} and {{ DOMAIN }}
+// with there actual values at execution time. This is useful if one wants to add custom IAM roles or Vault roles to task pods
+// depending on the project and domain.
 func InjectTemplates(taskCtx pluginsCore.TaskExecutionMetadata, defaults map[string]string) map[string]string {
 	execId := taskCtx.GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId()
 	project := execId.GetProject()
