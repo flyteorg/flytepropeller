@@ -23,7 +23,6 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	stdErrors "github.com/flyteorg/flytestdlib/errors"
-	"github.com/ghodss/yaml"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -110,33 +109,31 @@ type PluginManager struct {
 // with there actual values at execution time. This is useful if one wants to add custom IAM roles or Vault roles to task pods
 // depending on the project and domain.
 func InjectTemplates(taskCtx pluginsCore.TaskExecutionMetadata, defaults map[string]string) map[string]string {
-	execId := taskCtx.GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId()
-	project := execId.GetProject()
-	domain := execId.GetDomain()
-
-	y, err := yaml.Marshal(defaults)
-	if err != nil {
-		logger.InfofNoCtx("failed to inject template values with error: %s", err.Error())
-		return defaults
-	}
-
-	var toTemplate = string(y)
-	toTemplate = strings.Replace(toTemplate, templateDomainVariable, domain, replaceAllInstancesOfString)
-	toTemplate = strings.Replace(toTemplate, templateProjectVariable, project, replaceAllInstancesOfString)
+	execID := taskCtx.GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId()
+	project := execID.GetProject()
+	domain := execID.GetDomain()
 
 	var templated = make(map[string]string)
-	err = yaml.Unmarshal([]byte(toTemplate), &templated)
-	if err != nil {
-		logger.InfofNoCtx("failed to inject template values with error: %s", err.Error())
-		return defaults
+	for k, v := range defaults {
+		var kTemplated = string(k)
+		kTemplated = strings.Replace(kTemplated, templateDomainVariable, domain, replaceAllInstancesOfString)
+		kTemplated = strings.Replace(kTemplated, templateProjectVariable, project, replaceAllInstancesOfString)
+
+		var vTemplated = string(v)
+		vTemplated = strings.Replace(vTemplated, templateDomainVariable, domain, replaceAllInstancesOfString)
+		vTemplated = strings.Replace(vTemplated, templateProjectVariable, project, replaceAllInstancesOfString)
+		templated[kTemplated] = vTemplated
 	}
 	return templated
 }
 
 func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o client.Object, cfg *config.K8sPluginConfig) {
+	templatedAnnotations := InjectTemplates(taskCtx, cfg.DefaultAnnotations)
+	templatedLabels := InjectTemplates(taskCtx, cfg.DefaultLabels)
+
 	o.SetNamespace(taskCtx.GetNamespace())
-	o.SetAnnotations(utils.UnionMaps(InjectTemplates(taskCtx, cfg.DefaultAnnotations), o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
-	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), InjectTemplates(taskCtx, cfg.DefaultLabels)))
+	o.SetAnnotations(utils.UnionMaps(templatedAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
+	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), templatedLabels))
 	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
 
 	if !e.plugin.GetProperties().DisableInjectOwnerReferences {

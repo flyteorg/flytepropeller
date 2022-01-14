@@ -238,12 +238,12 @@ func getMockTaskExecutionMetadataCustomTemplate(project string, domain string) p
 	taskExecutionMetadata.On("GetLabels").Return(nil)
 	taskExecutionMetadata.On("GetOwnerReference").Return(v12.OwnerReference{Name: "x"})
 
-	wfExecId := &core.WorkflowExecutionIdentifier{
+	wfExecID := &core.WorkflowExecutionIdentifier{
 		Project: project,
 		Domain:  domain,
 	}
 	nodeExecId := &core.NodeExecutionIdentifier{
-		ExecutionId: wfExecId,
+		ExecutionId: wfExecID,
 	}
 	id := &pluginsCoreMock.TaskExecutionID{}
 	id.On("GetID").Return(core.TaskExecutionIdentifier{
