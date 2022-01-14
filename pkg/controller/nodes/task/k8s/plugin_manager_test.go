@@ -242,12 +242,12 @@ func getMockTaskExecutionMetadataCustomTemplate(project string, domain string) p
 		Project: project,
 		Domain:  domain,
 	}
-	nodeExecId := &core.NodeExecutionIdentifier{
+	nodeExecID := &core.NodeExecutionIdentifier{
 		ExecutionId: wfExecID,
 	}
 	id := &pluginsCoreMock.TaskExecutionID{}
 	id.On("GetID").Return(core.TaskExecutionIdentifier{
-		NodeExecutionId: nodeExecId,
+		NodeExecutionId: nodeExecID,
 	})
 	id.On("GetGeneratedName").Return("test")
 	taskExecutionMetadata.On("GetTaskExecutionID").Return(id)

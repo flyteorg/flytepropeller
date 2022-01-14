@@ -115,11 +115,11 @@ func InjectTemplates(taskCtx pluginsCore.TaskExecutionMetadata, defaults map[str
 
 	var templated = make(map[string]string)
 	for k, v := range defaults {
-		var kTemplated = string(k)
+		var kTemplated = k
 		kTemplated = strings.Replace(kTemplated, templateDomainVariable, domain, replaceAllInstancesOfString)
 		kTemplated = strings.Replace(kTemplated, templateProjectVariable, project, replaceAllInstancesOfString)
 
-		var vTemplated = string(v)
+		var vTemplated = v
 		vTemplated = strings.Replace(vTemplated, templateDomainVariable, domain, replaceAllInstancesOfString)
 		vTemplated = strings.Replace(vTemplated, templateProjectVariable, project, replaceAllInstancesOfString)
 		templated[kTemplated] = vTemplated
