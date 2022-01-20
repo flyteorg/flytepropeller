@@ -339,3 +339,13 @@ func TestDatasetIDToIdentifier(t *testing.T) {
 	assert.Equal(t, "d", id.Domain)
 	assert.Equal(t, "v", id.Version)
 }
+
+func TestGenerateArtifactTagName_LiteralsWithHashSet(t *testing.T) {
+	literal1, err := coreutils.MakeLiteral(42)
+	assert.NoError(t, err)
+	literal1.Hash = "abcde"
+	literalMap := &core.LiteralMap{Literals: map[string]*core.Literal{"1": literal1}}
+	tag, err := GenerateArtifactTagName(context.TODO(), literalMap)
+	assert.NoError(t, err)
+	assert.Equal(t, "flyte_cached-WEUI5TiC62CGyuBhW3SjhiinraGkuRIDgXghud65tnk", tag)
+}

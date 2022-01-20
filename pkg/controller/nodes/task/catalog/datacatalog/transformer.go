@@ -122,7 +122,25 @@ func GenerateArtifactTagName(ctx context.Context, inputs *core.LiteralMap) (stri
 		inputs = &emptyLiteralMap
 	}
 
-	inputsHash, err := pbhash.ComputeHash(ctx, inputs)
+	literalMapCopy := make(map[string]*core.Literal, len(inputs.Literals))
+
+	// Go over literal map and unset the Value in case hash is set
+	for name, literal := range inputs.Literals {
+		if literal != nil && literal.Hash != "" {
+			literalMapCopy[name] = &core.Literal{
+				Value: nil,
+				Hash:  literal.Hash,
+			}
+		} else {
+			literalMapCopy[name] = literal
+		}
+	}
+
+	inputsCopy := &core.LiteralMap{
+		Literals: literalMapCopy,
+	}
+
+	inputsHash, err := pbhash.ComputeHash(ctx, inputsCopy)
 	if err != nil {
 		return "", err
 	}
