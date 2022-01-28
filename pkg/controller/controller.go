@@ -5,9 +5,10 @@ package controller
 import (
 	"context"
 	"fmt"
-	"google.golang.org/grpc"
 	"runtime/pprof"
 	"time"
+
+	"google.golang.org/grpc"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"

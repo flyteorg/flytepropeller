@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"fmt"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/flyteorg/flytestdlib/config"
 	"google.golang.org/grpc"
