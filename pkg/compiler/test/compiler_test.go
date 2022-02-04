@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -294,10 +295,154 @@ func assertNodeIDsInConnections(t testing.TB, nodeIDsWithDeps, allNodeIDs sets.S
 }
 
 func TestBranches(t *testing.T) {
-	errors.SetConfig(errors.Config{IncludeSource: true})
-	assert.NoError(t, filepath.Walk("testdata/branch", func(path string, info os.FileInfo, err error) error {
+	testCompileOnDir(t, "branch")
+}
+
+func TestStructuredDataset(t *testing.T) {
+	testCompileOnDir2(t, "structured_dataset")
+}
+
+func buildClosures(t *testing.T, srcDir string) []*core.WorkflowClosure {
+	tasks := make(map[string]*admin.TaskSpec, 10)
+	wfs := make([]*admin.WorkflowSpec, 0, 10)
+	err := filepath.Walk(srcDir, func(path string, info fs.FileInfo, err error) error {
 		if info.IsDir() {
-			if filepath.Base(info.Name()) != "branch" {
+			return nil
+		}
+
+		tsk, err := loadAsTaskSpec(path)
+		if err == nil {
+			tasks[tsk.Template.GetId().String()] = tsk
+			return nil
+		}
+
+		wf, err := loadAsWorkflowSpec(path)
+		if err == nil {
+			wfs = append(wfs, wf)
+			return nil
+		}
+
+		fmt.Printf("couldn't load [%v]", path)
+		return nil
+	})
+
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	res := make([]*core.WorkflowClosure, 0, len(wfs))
+	for _, wf := range wfs {
+		wfClosure := &core.WorkflowClosure{
+			Workflow: wf.Template,
+			Tasks:    make([]*core.TaskTemplate, 0, 5),
+		}
+
+		requirements, err := compiler.GetRequirements(wf.Template, wf.SubWorkflows)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+
+		for _, tskId := range requirements.GetRequiredTaskIds() {
+			tsk, found := tasks[tskId.String()]
+			if !found {
+				t.Errorf("failed to find task [%v] for wf [%v]", tskId.String(), wf.Template.Id.String())
+				break
+			}
+
+			wfClosure.Tasks = append(wfClosure.Tasks, tsk.Template)
+		}
+
+		res = append(res, wfClosure)
+	}
+
+	return res
+}
+
+func loadAsTaskSpec(file string) (*admin.TaskSpec, error) {
+	raw, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	tsk := &admin.TaskSpec{}
+	err = proto.Unmarshal(raw, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	return tsk, err
+}
+
+func loadAsWorkflowSpec(file string) (*admin.WorkflowSpec, error) {
+	raw, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	wf := &admin.WorkflowSpec{}
+	err = proto.Unmarshal(raw, wf)
+	if err != nil {
+		return nil, err
+	}
+
+	return wf, err
+}
+
+func marshalClosures(t *testing.T, closures []*core.WorkflowClosure, destDir string) {
+	for _, wf := range closures {
+		m := &jsonpb.Marshaler{
+			Indent: "  ",
+		}
+
+		rawStr, err := m.MarshalToString(wf)
+		if !assert.NoError(t, err) {
+			t.Fail()
+		}
+
+		err = ioutil.WriteFile(filepath.Join(destDir, wf.Workflow.Id.Name+".json"), []byte(rawStr), os.ModePerm)
+		assert.NoError(t, err)
+	}
+}
+
+func testCompileOnDir2(t *testing.T, dir string) {
+	if *update {
+		closures := buildClosures(t, filepath.Join("testdata", dir, "archive"))
+		marshalClosures(t, closures, filepath.Join("testdata", dir, "closure"))
+	}
+
+	err := filepath.Walk(filepath.Join("testdata", dir, "closure"), func(path string, info fs.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+
+		t.Run(path, func(t *testing.T) {
+			wf := &core.WorkflowClosure{}
+			raw, err := ioutil.ReadFile(path)
+			if !assert.NoError(t, err) {
+				return
+			}
+
+			err = jsonpb.UnmarshalString(string(raw), wf)
+			if !assert.NoError(t, err) {
+				return
+			}
+
+			compiledTasks := mustCompileTasks(t, wf.Tasks)
+			_, err = compiler.CompileWorkflow(wf.Workflow, []*core.WorkflowTemplate{}, compiledTasks, []common.InterfaceProvider{})
+			assert.NoError(t, err)
+		})
+
+		return nil
+	})
+
+	assert.NoError(t, err)
+}
+
+func testCompileOnDir(t *testing.T, dir string) {
+	errors.SetConfig(errors.Config{IncludeSource: true})
+	assert.NoError(t, filepath.Walk("testdata/"+dir, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			if filepath.Base(info.Name()) != dir {
 				return filepath.SkipDir
 			}
 
@@ -350,8 +495,8 @@ func TestBranches(t *testing.T) {
 				}
 			}
 
-			t.Log("Compiling Workflow")
 			compiledTasks := mustCompileTasks(t, wf.Tasks)
+			t.Log("Compiling Workflow")
 			compiledWfc, err := compiler.CompileWorkflow(wf.Workflow, []*core.WorkflowTemplate{}, compiledTasks,
 				[]common.InterfaceProvider{})
 			if !assert.NoError(t, err) {
