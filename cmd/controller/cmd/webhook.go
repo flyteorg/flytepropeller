@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/flyteorg/flytepropeller/pkg/controller"
 	"os"
 
 	webhookConfig "github.com/flyteorg/flytepropeller/pkg/webhook/config"
@@ -112,7 +113,7 @@ func runWebhook(origContext context.Context, propellerCfg *config.Config, cfg *w
 	}
 
 	// Add the propeller subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
-	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(safeMetricName(propellerCfg.LimitNamespace))
+	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(controller.SafeMetricName(propellerCfg.LimitNamespace))
 	webhookScope := propellerScope.NewSubScope("webhook")
 
 	go func() {
