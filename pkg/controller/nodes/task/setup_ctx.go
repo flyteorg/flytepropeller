@@ -18,10 +18,6 @@ func (s setupContext) SecretManager() pluginCore.SecretManager {
 	return s.secretManager
 }
 
-func (s setupContext) MetricsScope() promutils.Scope {
-	return s.SetupContext.MetricsScope()
-}
-
 func (s setupContext) KubeClient() pluginCore.KubeClient {
 	return s.kubeClient
 }
@@ -45,15 +41,21 @@ func (t *Handler) newSetupContext(sCtx handler.SetupContext) *setupContext {
 type nameSpacedSetupCtx struct {
 	*setupContext
 	rn pluginCore.ResourceRegistrar
+	pluginID string
 }
 
 func (n nameSpacedSetupCtx) ResourceRegistrar() pluginCore.ResourceRegistrar {
 	return n.rn
 }
 
-func newNameSpacedSetupCtx(sCtx *setupContext, rn pluginCore.ResourceRegistrar) nameSpacedSetupCtx {
+func (n nameSpacedSetupCtx) MetricsScope() promutils.Scope {
+	return n.SetupContext.MetricsScope().NewSubScope(n.pluginID)
+}
+
+func newNameSpacedSetupCtx(sCtx *setupContext, rn pluginCore.ResourceRegistrar, pluginID string) nameSpacedSetupCtx {
 	return nameSpacedSetupCtx{
 		setupContext: sCtx,
 		rn:           rn,
+		pluginID:     pluginID,
 	}
 }
