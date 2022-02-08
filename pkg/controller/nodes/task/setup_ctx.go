@@ -40,7 +40,7 @@ func (t *Handler) newSetupContext(sCtx handler.SetupContext) *setupContext {
 
 type nameSpacedSetupCtx struct {
 	*setupContext
-	rn pluginCore.ResourceRegistrar
+	rn       pluginCore.ResourceRegistrar
 	pluginID string
 }
 
