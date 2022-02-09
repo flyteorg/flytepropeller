@@ -4,6 +4,7 @@ import (
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"k8s.io/apimachinery/pkg/types"
+	"strings"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 )
@@ -49,7 +50,8 @@ func (n nameSpacedSetupCtx) ResourceRegistrar() pluginCore.ResourceRegistrar {
 }
 
 func (n nameSpacedSetupCtx) MetricsScope() promutils.Scope {
-	return n.SetupContext.MetricsScope().NewSubScope(n.pluginID)
+	p := strings.Replace(n.pluginID, "-", "_", -1)
+	return n.SetupContext.MetricsScope().NewSubScope(p)
 }
 
 func newNameSpacedSetupCtx(sCtx *setupContext, rn pluginCore.ResourceRegistrar, pluginID string) nameSpacedSetupCtx {

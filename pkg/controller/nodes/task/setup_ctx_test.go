@@ -25,3 +25,11 @@ func Test_nameSpacedSetupCtx_MetricsScope(t *testing.T) {
 	assert.NotNil(t, scope)
 	assert.Equal(t, "test-scope-1:p1:", scope.CurrentScope())
 }
+
+func Test_nameSpacedSetupCtx_MetricsScope_unsafe(t *testing.T) {
+	r := &mocks.ResourceRegistrar{}
+	ns := newNameSpacedSetupCtx(&setupContext{SetupContext: &dummySetupCtx{testScopeName: "test-scope-1"}}, r, "k8s-array")
+	scope := ns.MetricsScope()
+	assert.NotNil(t, scope)
+	assert.Equal(t, "test-scope-1:k8s_array:", scope.CurrentScope())
+}
