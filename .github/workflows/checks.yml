@@ -1,4 +1,4 @@
-name: Flyteadmin Checks
+name: Flytepropeller Checks
 
 on:
   workflow_dispatch:
@@ -12,35 +12,37 @@ on:
 jobs:
   lint:
     name: Lint
-    uses: flyteorg/flytetools/.github/workflows/lint.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/lint.yml@master
 
   tests:
     name: Unit Tests
-    uses: flyteorg/flytetools/.github/workflows/tests.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/tests.yml@master
+    secrets:
+      FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
   docker-build:
     name: Docker Build Images
-    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@master
 
   endtoend:
     name: End2End Test
     needs: [docker-build]
-    uses: flyteorg/flytetools/.github/workflows/end2end.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/end2end.yml@master
 
   integration:
     name: Integration Test
     needs: [docker-build]
-    uses: flyteorg/flytetools/.github/workflows/integration.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/integration.yml@master
 
   generate:
     name: Check Go Gennerate
-    uses: flyteorg/flytetools/.github/workflows/go_generate.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/go_generate.yml@master
 
   bump_version:
     name: Bump Version
     if: ${{ github.event_name != 'pull_request' }}
-    needs: [ endtoend,  integration, lint, tests ] # Only to ensure it can successfully build
-    uses: flyteorg/flytetools/.github/workflows/bump_version.yml@reuseable
+    needs: [ endtoend,  integration, lint, tests, generate ] # Only to ensure it can successfully build
+    uses: flyteorg/flytetools/.github/workflows/bump_version.yml@master
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
@@ -48,7 +50,7 @@ jobs:
     name: Goreleaser
     if: ${{ github.event_name != 'pull_request' }}
     needs: [ bump_version ] # Only to ensure it can successfully build
-    uses: flyteorg/flytetools/.github/workflows/goreleaser.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/goreleaser.yml@master
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
@@ -56,7 +58,7 @@ jobs:
     name: Build & Push Flyteadmin Image
     if: ${{ github.event_name != 'pull_request' }}
     needs: [ bump_version ]
-    uses: flyteorg/flytetools/.github/workflows/publish.yml@reuseable
+    uses: flyteorg/flytetools/.github/workflows/publish.yml@master
     with:
       version: ${{ needs.bump_version.outputs.version }}
       dockerfile: Dockerfile
