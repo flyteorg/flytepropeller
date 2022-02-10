@@ -9,7 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"runtime/pprof"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"strings"
 	"time"
 
 	"google.golang.org/grpc"
@@ -467,12 +466,6 @@ func SharedInformerOptions(cfg *config.Config, defaultNamespace string) []inform
 	return opts
 }
 
-// SafeMetricName Creates a new metric name, that can be safe to use
-func SafeMetricName(original string) string {
-	// TODO: Replace all non-prom-compatible charset
-	return strings.Replace(original, "-", "_", -1)
-}
-
 // StartController creates a new FlytePropeller Controller and starts it
 func StartController(ctx context.Context, cfg *config.Config, defaultNamespace string) error {
 	// Setup cancel on the context
@@ -493,7 +486,7 @@ func StartController(ctx context.Context, cfg *config.Config, defaultNamespace s
 	flyteworkflowInformerFactory := informers.NewSharedInformerFactoryWithOptions(flyteworkflowClient, cfg.WorkflowReEval.Duration, opts...)
 
 	// Add the propeller subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
-	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(SafeMetricName(cfg.LimitNamespace))
+	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(cfg.LimitNamespace)
 
 	limitNamespace := ""
 	if cfg.LimitNamespace != defaultNamespace {
