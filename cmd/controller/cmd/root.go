@@ -4,10 +4,11 @@ package cmd
 import (
 	"context"
 	"flag"
-	"github.com/flyteorg/flytestdlib/profutils"
-	"k8s.io/klog"
 	"os"
 	"runtime"
+
+	"github.com/flyteorg/flytestdlib/profutils"
+	"k8s.io/klog"
 
 	config2 "github.com/flyteorg/flytepropeller/pkg/controller/config"
 
