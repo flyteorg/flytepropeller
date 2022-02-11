@@ -5,11 +5,12 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"runtime/pprof"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"time"
+
+	"github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"google.golang.org/grpc"
 

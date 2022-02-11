@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/flyteorg/flytepropeller/pkg/controller"
 	"os"
 
 	webhookConfig "github.com/flyteorg/flytepropeller/pkg/webhook/config"
