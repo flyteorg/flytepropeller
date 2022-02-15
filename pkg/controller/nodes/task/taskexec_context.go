@@ -47,7 +47,7 @@ func (te taskExecutionID) GetGeneratedName() string {
 func (te taskExecutionID) GetGeneratedNameWith(minLength, maxLength int) (string, error) {
 	origLength := len(te.execName)
 	if origLength < minLength {
-		return strings.Repeat("0", minLength-origLength), nil
+		return te.execName + strings.Repeat("0", minLength-origLength), nil
 	}
 
 	if origLength > maxLength {
