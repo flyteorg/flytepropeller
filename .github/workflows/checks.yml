@@ -27,7 +27,7 @@ jobs:
   endtoend:
     name: End2End Test
     needs: [docker-build]
-    uses: flyteorg/flytetools/.github/workflows/end2end.yml@e2etest
+    uses: flyteorg/flytetools/.github/workflows/end2end.yml@master
     with:
       priorities: "P0"
 
