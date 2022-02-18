@@ -239,12 +239,10 @@ github.com/fatih/structtag v1.2.0/go.mod h1:mBJUNpUnHmRKrKlQQlmCrh5PuhftFbNv8Ys4
 github.com/flyteorg/flyteidl v0.21.23/go.mod h1:576W2ViEyjTpT+kEVHAGbrTP3HARNUZ/eCwrNPmdx9U=
 github.com/flyteorg/flyteidl v0.22.0 h1:lVAXyacTCIX6Fl0qWoFzyto9Hfx0ADlyPhHPmOMiuIY=
 github.com/flyteorg/flyteidl v0.22.0/go.mod h1:576W2ViEyjTpT+kEVHAGbrTP3HARNUZ/eCwrNPmdx9U=
-github.com/flyteorg/flyteplugins v0.10.9 h1:Hj4kBc2pNAJOTUP14+KSd44RzSE+A6fMEnTMQXhE6r8=
-github.com/flyteorg/flyteplugins v0.10.9/go.mod h1:RXgHGGUGC1akEnAd0yi4cLuYP1BF1rVkxhGjzIrm6VU=
-github.com/flyteorg/flytestdlib v0.3.13/go.mod h1:Tz8JCECAbX6VWGwFT6cmEQ+RJpZ/6L9pswu3fzWs220=
-github.com/flyteorg/flytestdlib v0.4.7/go.mod h1:fv1ar34LJLMTaf0tbfetisLykUlARi7rP+NQTUn6QQs=
-github.com/flyteorg/flytestdlib v0.4.12 h1:e88Tcu+8ug6T2tzzxRltbsuBkcz4coAquF9xqwIrmLw=
-github.com/flyteorg/flytestdlib v0.4.12/go.mod h1:fv1ar34LJLMTaf0tbfetisLykUlARi7rP+NQTUn6QQs=
+github.com/flyteorg/flyteplugins v0.10.10-0.20220218204807-d522b7751e2a h1:D03Rk5R8KFTZLxTCbTEHQjMbPJl+OKhlAZ0zKvn4q68=
+github.com/flyteorg/flyteplugins v0.10.10-0.20220218204807-d522b7751e2a/go.mod h1:M8QJn+8CbjUAF39gnMCOaLf1mXF0h5FBK2oT4+FYDDM=
+github.com/flyteorg/flytestdlib v0.4.13-0.20220218201056-bf4a8c965614 h1:brQsV4ocrPK9PTKzxTxJN0ATCfWHhgO/TjvBooyce2A=
+github.com/flyteorg/flytestdlib v0.4.13-0.20220218201056-bf4a8c965614/go.mod h1:fv1ar34LJLMTaf0tbfetisLykUlARi7rP+NQTUn6QQs=
 github.com/form3tech-oss/jwt-go v3.2.2+incompatible h1:TcekIExNqud5crz4xD2pavyTgWiPvpYe4Xau31I0PRk=
 github.com/form3tech-oss/jwt-go v3.2.2+incompatible/go.mod h1:pbq4aXjuKjdthFRnoDwaVPLA+WlJuPGy+QneDUgJi2k=
 github.com/franela/goblin v0.0.0-20200105215937-c9ffbefa60db/go.mod h1:7dvUGVsVBjqR7JHJk0brhHOZYGmfBYOrK0ZhYMEtBr4=
