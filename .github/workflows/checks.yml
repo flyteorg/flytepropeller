@@ -37,9 +37,9 @@ jobs:
 #    needs: [docker-build]
 #    uses: flyteorg/flytetools/.github/workflows/integration.yml@master
 
-  generate:
-    name: Check Go Gennerate
-    uses: flyteorg/flytetools/.github/workflows/go_generate.yml@master
+#  generate:
+#    name: Check Go Gennerate
+#    uses: flyteorg/flytetools/.github/workflows/go_generate.yml@master
 
 #  bump_version:
 #    name: Bump Version
