@@ -5,6 +5,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"os"
 	"runtime/pprof"
 	"time"
 
@@ -43,6 +44,8 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/record"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	clientset "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned"
 	informers "github.com/flyteorg/flytepropeller/pkg/client/informers/externalversions"
@@ -55,8 +58,12 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/utils"
 )
 
-const resourceLevelMonitorCycleDuration = 5 * time.Second
-const missing = "missing"
+const (
+	resourceLevelMonitorCycleDuration = 5 * time.Second
+	missing                           = "missing"
+    podDefaultNamespace               = "flyte"
+	podNamespaceEnvVar                = "POD_NAMESPACE"
+)
 
 type metrics struct {
 	Scope            promutils.Scope
@@ -376,6 +383,17 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	// obtain references to shared index informers for FlyteWorkflow.
 	flyteworkflowInformer := flyteworkflowInformerFactory.Flyteworkflow().V1alpha1().FlyteWorkflows()
 	controller.flyteworkflowSynced = flyteworkflowInformer.Informer().HasSynced
+
+	// TODO - do we need to close the informer on ctx.Done()
+    podNamespace, found := os.LookupEnv(podNamespaceEnvVar)
+	if !found {
+		podNamespace = podDefaultNamespace
+	}
+
+	err = flytek8s.InitDefaultPodTemplateInformer(ctx, kubeclientset, podNamespace)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to initialize default PodTemplate informer")
+	}
 
 	sCfg := storage.GetConfig()
 	if sCfg == nil {
