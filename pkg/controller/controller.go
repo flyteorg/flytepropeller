@@ -63,7 +63,7 @@ import (
 const (
 	resourceLevelMonitorCycleDuration = 5 * time.Second
 	missing                           = "missing"
-    podDefaultNamespace               = "flyte"
+	podDefaultNamespace               = "flyte"
 	podNamespaceEnvVar                = "POD_NAMESPACE"
 )
 
