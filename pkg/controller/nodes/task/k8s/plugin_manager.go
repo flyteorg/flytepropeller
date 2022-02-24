@@ -19,7 +19,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/backoff"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	stdErrors "github.com/flyteorg/flytestdlib/errors"
@@ -103,7 +103,7 @@ type PluginManager struct {
 	resourceLevelMonitor *ResourceLevelMonitor
 }
 
-func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o client.Object, cfg *flytek8s.K8sPluginConfig) {
+func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o client.Object, cfg *config.K8sPluginConfig) {
 	o.SetNamespace(taskCtx.GetNamespace())
 	o.SetAnnotations(utils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
 	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
@@ -205,7 +205,7 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 		return pluginsCore.UnknownTransition, err
 	}
 
-	e.AddObjectMetadata(k8sTaskCtxMetadata, o, flytek8s.GetK8sPluginConfig())
+	e.AddObjectMetadata(k8sTaskCtxMetadata, o, config.GetK8sPluginConfig())
 	logger.Infof(ctx, "Creating Object: Type:[%v], Object:[%v/%v]", o.GetObjectKind().GroupVersionKind(), o.GetNamespace(), o.GetName())
 
 	key := backoff.ComposeResourceKey(o)
@@ -257,7 +257,7 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 		return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("BadTaskDefinition", fmt.Sprintf("Failed to build resource, caused by: %s", err.Error()), nil)), nil
 	}
 
-	e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, flytek8s.GetK8sPluginConfig())
+	e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
 	nsName := k8stypes.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
 	// Attempt to get resource from informer cache, if not found, retrieve it from API server.
 	if err := e.kubeClient.GetClient().Get(ctx, nsName, o); err != nil {
@@ -344,7 +344,7 @@ func (e PluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecution
 		return nil
 	}
 
-	e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, flytek8s.GetK8sPluginConfig())
+	e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
 
 	deleteResource := true
 	abortOverride, hasAbortOverride := e.plugin.(k8s.PluginAbortOverride)
@@ -406,7 +406,7 @@ func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecu
 	errs := stdErrors.ErrorCollection{}
 	var o client.Object
 	var nsName k8stypes.NamespacedName
-	cfg := flytek8s.GetK8sPluginConfig()
+	cfg := config.GetK8sPluginConfig()
 	if cfg.InjectFinalizer || cfg.DeleteResourceOnFinalize {
 		o, err = e.plugin.BuildIdentityResource(ctx, tCtx.TaskExecutionMetadata())
 		if err != nil {
@@ -415,7 +415,7 @@ func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecu
 			return nil
 		}
 
-		e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, flytek8s.GetK8sPluginConfig())
+		e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
 		nsName = k8stypes.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
 	}
 
