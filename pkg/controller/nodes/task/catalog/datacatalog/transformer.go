@@ -116,6 +116,49 @@ func generateTaskSignatureHash(ctx context.Context, taskInterface core.TypedInte
 	return fmt.Sprintf("%v-%v", inputHashString, outputHashString), nil
 }
 
+// Replace hashes in literal in a recursive manner
+func replaceHashInLiteral(literal *core.Literal) *core.Literal {
+	// Two recursive cases:
+	//   1. A collection of literals or
+	//   2. A map of literals
+	
+	if literal.GetCollection() != nil {
+		literals := literal.GetCollection().Literals
+		literals_hash := make([]*core.Literal, len(literals))
+		for _, lit := range(literals) {
+			literals_hash = append(literals_hash, replaceHashInLiteral(lit))
+		}
+		return &core.Literal{
+			Value: &core.Literal_Collection{
+				Collection: &core.LiteralCollection{
+					Literals: literals_hash,
+				},
+			},
+		}
+	}
+	if literal.GetMap() != nil {
+		literal_map := make(map[string]*core.Literal, 0)
+		for key, lit := range literal.GetMap().Literals {
+			literal_map[key] = replaceHashInLiteral(lit)
+		}
+		return &core.Literal{
+			Value: &core.Literal_Map{
+				Map: &core.LiteralMap{
+					Literals: literal_map,
+				},
+			},
+		}
+	}
+
+	// And a base case that consists of a scalar, where the hash might be set
+	if literal.GetHash() != "" {
+		return &core.Literal{
+			Hash: literal.GetHash(),
+		}
+	}
+	return literal
+}
+
 // Generate a tag by hashing the input values
 func GenerateArtifactTagName(ctx context.Context, inputs *core.LiteralMap) (string, error) {
 	if inputs == nil || len(inputs.Literals) == 0 {
@@ -126,14 +169,7 @@ func GenerateArtifactTagName(ctx context.Context, inputs *core.LiteralMap) (stri
 
 	// Go over literal map and unset the Value in case hash is set
 	for name, literal := range inputs.Literals {
-		if literal != nil && literal.Hash != "" {
-			literalMapCopy[name] = &core.Literal{
-				Value: nil,
-				Hash:  literal.Hash,
-			}
-		} else {
-			literalMapCopy[name] = literal
-		}
+		literalMapCopy[name] = replaceHashInLiteral(literal)
 	}
 
 	inputsCopy := &core.LiteralMap{
