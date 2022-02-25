@@ -62,7 +62,7 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 				LoadPlugin: func(ctx context.Context, iCtx core.SetupContext) (plugin core.Plugin, e error) {
 					return k8s.NewPluginManagerWithBackOff(ctx, iCtx, kpe, backOffController, monitorIndex)
 				},
-				IsDefault:           kpe.IsDefault,
+				IsDefault: kpe.IsDefault,
 			}
 			finalizedPlugins = append(finalizedPlugins, plugin)
 		}
