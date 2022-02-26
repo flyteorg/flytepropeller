@@ -121,30 +121,30 @@ func replaceHashInLiteral(literal *core.Literal) *core.Literal {
 	// Two recursive cases:
 	//   1. A collection of literals or
 	//   2. A map of literals
-	
+
 	if literal.GetCollection() != nil {
 		literals := literal.GetCollection().Literals
-		literals_hash := make([]*core.Literal, len(literals))
-		for _, lit := range(literals) {
-			literals_hash = append(literals_hash, replaceHashInLiteral(lit))
+		literalsHash := make([]*core.Literal, 0)
+		for _, lit := range literals {
+			literalsHash = append(literalsHash, replaceHashInLiteral(lit))
 		}
 		return &core.Literal{
 			Value: &core.Literal_Collection{
 				Collection: &core.LiteralCollection{
-					Literals: literals_hash,
+					Literals: literalsHash,
 				},
 			},
 		}
 	}
 	if literal.GetMap() != nil {
-		literal_map := make(map[string]*core.Literal, 0)
+		literalsMap := make(map[string]*core.Literal)
 		for key, lit := range literal.GetMap().Literals {
-			literal_map[key] = replaceHashInLiteral(lit)
+			literalsMap[key] = replaceHashInLiteral(lit)
 		}
 		return &core.Literal{
 			Value: &core.Literal_Map{
 				Map: &core.LiteralMap{
-					Literals: literal_map,
+					Literals: literalsMap,
 				},
 			},
 		}
