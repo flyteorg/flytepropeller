@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/backoff"
@@ -14,16 +15,16 @@ import (
 )
 
 func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPluginConfig, pr PluginRegistryIface) (enabledPlugins []core.PluginEntry, defaultForTaskTypes map[pluginID][]taskType, err error) {
+	if cfg == nil {
+		return nil, nil, fmt.Errorf("unable to initialize plugin list, cfg is a required argument")
+	}
+
+	pluginsConfigMeta, err := cfg.GetEnabledPlugins()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	allPluginsEnabled := false
-	pluginsConfigMeta := config.PluginsConfigMeta{
-		AllDefaultForTaskTypes: defaultForTaskTypes,
-	}
-	if cfg != nil {
-		pluginsConfigMeta, err = cfg.GetEnabledPlugins()
-		if err != nil {
-			return nil, nil, err
-		}
-	}
 	if pluginsConfigMeta.EnabledPlugins.Len() == 0 {
 		allPluginsEnabled = true
 	}

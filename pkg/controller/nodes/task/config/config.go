@@ -12,7 +12,7 @@ import (
 	"github.com/flyteorg/flytestdlib/config"
 )
 
-//go:generate pflags Config --default-var defaultConfig
+//go:generate pflags Config
 
 const SectionKey = "tasks"
 
