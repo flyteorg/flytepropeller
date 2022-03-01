@@ -886,7 +886,7 @@ func TestGenerateArtifactTagName_LiteralsWithHashSet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expectedLiteral, replaceHashInLiteral(tt.literal))
+			assert.Equal(t, tt.expectedLiteral, hashify(tt.literal))
 
 			// Double-check that generating a tag is successful
 			literalMap := &core.LiteralMap{Literals: map[string]*core.Literal{"o0": tt.literal}}
