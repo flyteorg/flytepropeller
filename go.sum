@@ -243,6 +243,8 @@ github.com/flyteorg/flyteplugins v0.10.9 h1:Hj4kBc2pNAJOTUP14+KSd44RzSE+A6fMEnTM
 github.com/flyteorg/flyteplugins v0.10.9/go.mod h1:RXgHGGUGC1akEnAd0yi4cLuYP1BF1rVkxhGjzIrm6VU=
 github.com/flyteorg/flyteplugins v0.10.10-0.20220225212740-cf5b4b938049 h1:EQmrADz8qFLHyye41k2NHyQqr1XXs+1tdYj7cgmNCNY=
 github.com/flyteorg/flyteplugins v0.10.10-0.20220225212740-cf5b4b938049/go.mod h1:RXgHGGUGC1akEnAd0yi4cLuYP1BF1rVkxhGjzIrm6VU=
+github.com/flyteorg/flyteplugins v0.10.10-0.20220301183250-8961f29f790b h1:kRr4Q5rQG96d7+HSamy1Wu9yNB1wHRSsO2ZWAsjDJfM=
+github.com/flyteorg/flyteplugins v0.10.10-0.20220301183250-8961f29f790b/go.mod h1:RXgHGGUGC1akEnAd0yi4cLuYP1BF1rVkxhGjzIrm6VU=
 github.com/flyteorg/flytestdlib v0.3.13/go.mod h1:Tz8JCECAbX6VWGwFT6cmEQ+RJpZ/6L9pswu3fzWs220=
 github.com/flyteorg/flytestdlib v0.4.7/go.mod h1:fv1ar34LJLMTaf0tbfetisLykUlARi7rP+NQTUn6QQs=
 github.com/flyteorg/flytestdlib v0.4.12 h1:e88Tcu+8ug6T2tzzxRltbsuBkcz4coAquF9xqwIrmLw=
