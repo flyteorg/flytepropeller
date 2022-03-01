@@ -13,12 +13,11 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/k8s"
 )
 
-func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPluginConfig, pr PluginRegistryIface) ([]core.PluginEntry, map[pluginID][]taskType, error) {
+func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPluginConfig, pr PluginRegistryIface) (enabledPlugins []core.PluginEntry, defaultForTaskTypes map[pluginID][]taskType, err error) {
 	allPluginsEnabled := false
 	pluginsConfigMeta := config.PluginsConfigMeta{
-		AllDefaultForTaskTypes: map[pluginID][]taskType{},
+		AllDefaultForTaskTypes: defaultForTaskTypes,
 	}
-	var err error
 	if cfg != nil {
 		pluginsConfigMeta, err = cfg.GetEnabledPlugins()
 		if err != nil {
@@ -29,7 +28,6 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 		allPluginsEnabled = true
 	}
 
-	var finalizedPlugins []core.PluginEntry
 	logger.Infof(ctx, "Enabled plugins: %v", pluginsConfigMeta.EnabledPlugins.List())
 	logger.Infof(ctx, "Loading core Plugins, plugin configuration [all plugins enabled: %v]", allPluginsEnabled)
 	for _, cpe := range pr.GetCorePlugins() {
@@ -38,7 +36,7 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 			logger.Infof(ctx, "Plugin [%s] is DISABLED (not found in enabled plugins list).", id)
 		} else {
 			logger.Infof(ctx, "Plugin [%s] ENABLED", id)
-			finalizedPlugins = append(finalizedPlugins, cpe)
+			enabledPlugins = append(enabledPlugins, cpe)
 		}
 	}
 
@@ -64,8 +62,8 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 				},
 				IsDefault: kpe.IsDefault,
 			}
-			finalizedPlugins = append(finalizedPlugins, plugin)
+			enabledPlugins = append(enabledPlugins, plugin)
 		}
 	}
-	return finalizedPlugins, pluginsConfigMeta.AllDefaultForTaskTypes, nil
+	return enabledPlugins, pluginsConfigMeta.AllDefaultForTaskTypes, nil
 }
