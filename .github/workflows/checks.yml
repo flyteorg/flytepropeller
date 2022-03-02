@@ -22,12 +22,12 @@ jobs:
 
   docker-build:
     name: Docker Build Images
-    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@hotfix/end2end-cache
+    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@master
 
   endtoend:
     name: End2End Test
     needs: [docker-build]
-    uses: flyteorg/flytetools/.github/workflows/end2end.yml@hotfix/end2end-cache
+    uses: flyteorg/flytetools/.github/workflows/end2end.yml@master
     with:
       cache_key: ${{ needs.docker-build.outputs.cache_key }}
       priorities: "P0"
@@ -35,7 +35,7 @@ jobs:
   integration:
     name: Integration Test
     needs: [docker-build]
-    uses: flyteorg/flytetools/.github/workflows/integration.yml@hotfix/end2end-cache
+    uses: flyteorg/flytetools/.github/workflows/integration.yml@master
     with:
       cache_key: ${{ needs.docker-build.outputs.cache_key }}
 
