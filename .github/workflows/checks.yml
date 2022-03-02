@@ -22,20 +22,21 @@ jobs:
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
-  docker-build:
+  docker_build:
     name: Docker Build Images
-    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@master
+    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@releases-end2end
 
   endtoend:
     name: End2End Test
-    needs: [docker-build]
+    needs: [docker_build]
     uses: flyteorg/flytetools/.github/workflows/end2end.yml@releases-end2end
     with:
       priorities: "P0"
+      cache_key: ${{ needs.docker_build.outputs.version }}
 
   integration:
     name: Integration Test
-    needs: [docker-build]
+    needs: [docker_build]
     uses: flyteorg/flytetools/.github/workflows/integration.yml@master
 
   generate:
