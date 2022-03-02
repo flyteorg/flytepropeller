@@ -29,7 +29,7 @@ jobs:
     needs: [docker-build]
     uses: flyteorg/flytetools/.github/workflows/end2end.yml@hotfix/end2end-cache
     with:
-      cache_key: ${{ needs.docker_build.outputs.cache_key }}
+      cache_key: ${{ needs.docker-build.outputs.cache_key }}
       priorities: "P0"
 
   integration:
@@ -37,7 +37,7 @@ jobs:
     needs: [docker-build]
     uses: flyteorg/flytetools/.github/workflows/integration.yml@hotfix/end2end-cache
     with:
-      cache_key: ${{ needs.docker_build.outputs.cache_key }}
+      cache_key: ${{ needs.docker-build.outputs.cache_key }}
 
   generate:
     name: Check Go Gennerate
