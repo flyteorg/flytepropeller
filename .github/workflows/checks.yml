@@ -37,7 +37,9 @@ jobs:
   integration:
     name: Integration Test
     needs: [docker_build]
-    uses: flyteorg/flytetools/.github/workflows/integration.yml@master
+    uses: flyteorg/flytetools/.github/workflows/integration.yml@releases-end2end
+    with:
+      cache_key: ${{ needs.docker_build.outputs.cache_key }}
 
   generate:
     name: Check Go Gennerate
