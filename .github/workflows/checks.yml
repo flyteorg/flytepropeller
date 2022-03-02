@@ -22,19 +22,22 @@ jobs:
 
   docker-build:
     name: Docker Build Images
-    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@master
+    uses: flyteorg/flytetools/.github/workflows/docker_build.yml@releases-end2end
 
   endtoend:
     name: End2End Test
     needs: [docker-build]
-    uses: flyteorg/flytetools/.github/workflows/end2end.yml@master
+    uses: flyteorg/flytetools/.github/workflows/end2end.yml@releases-end2end
     with:
+      cache_key: ${{ needs.docker_build.outputs.cache_key }}
       priorities: "P0"
 
   integration:
     name: Integration Test
     needs: [docker-build]
-    uses: flyteorg/flytetools/.github/workflows/integration.yml@master
+    uses: flyteorg/flytetools/.github/workflows/integration.yml@releases-end2end
+    with:
+      cache_key: ${{ needs.docker_build.outputs.cache_key }}
 
   generate:
     name: Check Go Gennerate
