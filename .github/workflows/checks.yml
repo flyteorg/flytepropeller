@@ -32,7 +32,7 @@ jobs:
     uses: flyteorg/flytetools/.github/workflows/end2end.yml@releases-end2end
     with:
       priorities: "P0"
-      cache_key: ${{ needs.docker_build.outputs.version }}
+      cache_key: ${{ needs.docker_build.outputs.cache_key }}
 
   integration:
     name: Integration Test
