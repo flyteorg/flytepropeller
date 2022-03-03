@@ -89,7 +89,12 @@ func (m *Manager) createPods(ctx context.Context) error {
 	podLabels := map[string]string{
 		"app": m.podApplication,
 	}
-
+	// The "app" label might be overwritten by the pod template
+	if podTemplate.Template.Labels != nil {
+		for k, v := range podTemplate.Template.Labels {
+			podLabels[k] = v
+		}
+	}
 	// disable leader election on all managed pods
 	container, err := utils.GetContainer(&podTemplate.Template.Spec, m.podTemplateContainerName)
 	if err != nil {
