@@ -86,15 +86,14 @@ func (m *Manager) createPods(ctx context.Context) error {
 		"shardConfigHash":            fmt.Sprintf("%d", shardConfigHash),
 	}
 	podNames := m.getPodNames()
-	podLabels := map[string]string{
-		"app": m.podApplication,
-	}
-	// The "app" label might be overwritten by the pod template
+	podLabels := make(map[string]string)
 	if podTemplate.Template.Labels != nil {
 		for k, v := range podTemplate.Template.Labels {
 			podLabels[k] = v
 		}
 	}
+	// The "app" label from podTemplate might be overwritten by this
+	podLabels["app"] = m.podApplication
 	// disable leader election on all managed pods
 	container, err := utils.GetContainer(&podTemplate.Template.Spec, m.podTemplateContainerName)
 	if err != nil {
