@@ -22,16 +22,18 @@ import (
 var (
 	podTemplate = &v1.PodTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				"foo": "bar",
-			},
-			Labels: map[string]string{
-				"app": "foo",
-				"bar": "baz",
-			},
 			ResourceVersion: "0",
 		},
 		Template: v1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"foo": "bar",
+				},
+				Labels: map[string]string{
+					"app": "foo",
+					"bar": "baz",
+				},
+			},
 			Spec: v1.PodSpec{
 				Containers: []v1.Container{
 					v1.Container{

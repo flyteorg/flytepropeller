@@ -165,7 +165,7 @@ func (m *Manager) createPods(ctx context.Context) error {
 	errs := stderrors.ErrorCollection{}
 	for i, podName := range podNames {
 		if exists := podExists[podName]; !exists {
-			baseObjectMeta := podTemplate.ObjectMeta.DeepCopy()
+			baseObjectMeta := podTemplate.Template.ObjectMeta.DeepCopy()
 			objectMeta := metav1.ObjectMeta{
 				Annotations:     podAnnotations,
 				Name:            podName,
