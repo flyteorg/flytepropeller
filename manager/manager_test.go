@@ -22,6 +22,13 @@ import (
 var (
 	podTemplate = &v1.PodTemplate{
 		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string {
+				"foo": "bar",
+			},
+			Labels: map[string]string {
+				"app": "foo",
+				"bar": "baz",
+			},
 			ResourceVersion: "0",
 		},
 		Template: v1.PodTemplateSpec{
@@ -83,6 +90,12 @@ func TestCreatePods(t *testing.T) {
 			pods, err = kubePodsClient.List(ctx, metav1.ListOptions{})
 			assert.NoError(t, err)
 			assert.Equal(t, tt.shardStrategy.GetPodCount(), len(pods.Items))
+
+			for _, pod := range pods.Items {
+				assert.Equal(t, pod.Annotations["foo"], "bar")
+				assert.Equal(t, pod.Labels["app"], "flytepropeller")
+				assert.Equal(t, pod.Labels["bar"], "baz")
+			}
 
 			// execute again to ensure no new pods are created
 			err = manager.createPods(ctx)
