@@ -90,7 +90,8 @@ const (
 
 type NodeDefaults struct {
 	// Default behaviour for Interruptible for nodes unless explicitly set at the node level.
-	Interruptible bool `json:"interruptible,omitempty"`
+	Interruptible bool                        `json:"interruptible,omitempty"`
+	Architecture  core.Container_Architecture `json:"architecture,omitempty"`
 }
 
 var FlyteWorkflowGVK = SchemeGroupVersion.WithKind(FlyteWorkflowKind)
@@ -147,6 +148,10 @@ func (in *FlyteWorkflow) GetServiceAccountName() string {
 
 func (in *FlyteWorkflow) IsInterruptible() bool {
 	return in.NodeDefaults.Interruptible
+}
+
+func (in *FlyteWorkflow) GetArchitecture() core.Container_Architecture {
+	return in.NodeDefaults.Architecture
 }
 
 func (in *FlyteWorkflow) GetRawOutputDataConfig() RawOutputDataConfig {

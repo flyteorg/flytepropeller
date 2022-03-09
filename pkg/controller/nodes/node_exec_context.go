@@ -22,11 +22,13 @@ import (
 const NodeIDLabel = "node-id"
 const TaskNameLabel = "task-name"
 const NodeInterruptibleLabel = "interruptible"
+const NodeArchitectureLabel = "architecture"
 
 type nodeExecMetadata struct {
 	v1alpha1.Meta
 	nodeExecID     *core.NodeExecutionIdentifier
 	interrutptible bool
+	architecture   core.Container_Architecture
 	nodeLabels     map[string]string
 }
 
@@ -44,6 +46,10 @@ func (e nodeExecMetadata) GetOwnerID() types.NamespacedName {
 
 func (e nodeExecMetadata) IsInterruptible() bool {
 	return e.interrutptible
+}
+
+func (e nodeExecMetadata) GetArchitecture() core.Container_Architecture {
+	return e.architecture
 }
 
 func (e nodeExecMetadata) GetLabels() map[string]string {
@@ -136,7 +142,7 @@ func (e nodeExecContext) MaxDatasetSizeBytes() int64 {
 }
 
 func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup,
-	node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool,
+	node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, architecture core.Container_Architecture,
 	maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager,
 	enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
 
@@ -147,6 +153,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 			ExecutionId: execContext.GetExecutionID().WorkflowExecutionIdentifier,
 		},
 		interrutptible: interruptible,
+		architecture:   architecture,
 	}
 
 	// Copy the wf labels before adding node specific labels.
@@ -159,6 +166,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 		nodeLabels[TaskNameLabel] = utils.SanitizeLabelValue(tr.GetTaskID().Name)
 	}
 	nodeLabels[NodeInterruptibleLabel] = strconv.FormatBool(interruptible)
+	nodeLabels[NodeArchitectureLabel] = core.Container_Architecture_name[int32(architecture)]
 	md.nodeLabels = nodeLabels
 
 	return &nodeExecContext{
@@ -208,6 +216,8 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		interruptible = *n.IsInterruptible()
 	}
 
+	architecture := n.GetArchitecture()
+
 	s := nl.GetNodeExecutionStatus(ctx, currentNodeID)
 
 	// a node is not considered interruptible if the system failures have exceeded the configured threshold
@@ -235,6 +245,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 			),
 		),
 		interruptible,
+		architecture,
 		c.maxDatasetSizeBytes,
 		&taskEventRecorder{TaskEventRecorder: c.taskRecorder},
 		tr,

@@ -376,6 +376,7 @@ type ExecutableNode interface {
 	GetExecutionDeadline() *time.Duration
 	GetActiveDeadline() *time.Duration
 	IsInterruptible() *bool
+	GetArchitecture() core.Container_Architecture
 	GetName() string
 }
 
@@ -442,6 +443,7 @@ type Meta interface {
 	GetServiceAccountName() string
 	GetSecurityContext() core.SecurityContext
 	IsInterruptible() bool
+	GetArchitecture() core.Container_Architecture
 	GetEventVersion() EventVersion
 	GetRawOutputDataConfig() RawOutputDataConfig
 }

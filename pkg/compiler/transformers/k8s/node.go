@@ -69,10 +69,12 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 
 	var interruptible *bool
 	var name string
+	var architecture core.Container_Architecture
 	if n.GetMetadata() != nil {
 		if n.GetMetadata().GetInterruptibleValue() != nil {
 			interruptVal := n.GetMetadata().GetInterruptible()
 			interruptible = &interruptVal
+			architecture = task.GetContainer().GetArchitecture()
 		}
 		name = n.GetMetadata().Name
 	}
@@ -87,6 +89,7 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		InputBindings:     toBindingValueArray(n.GetInputs()),
 		ActiveDeadline:    activeDeadline,
 		Interruptibe:      interruptible,
+		Architecture:      architecture,
 	}
 
 	switch v := n.GetTarget().(type) {

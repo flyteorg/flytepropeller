@@ -144,6 +144,9 @@ type NodeSpec struct {
 	// The value set to True means task is OK with getting interrupted
 	// +optional
 	Interruptibe *bool `json:"interruptible,omitempty"`
+	// If specified, the architecture to run on
+	// +optional
+	Architecture core.Container_Architecture `json:"architecture,omitempty"`
 }
 
 func (in *NodeSpec) GetName() string {
@@ -170,6 +173,10 @@ func (in *NodeSpec) GetActiveDeadline() *time.Duration {
 
 func (in *NodeSpec) IsInterruptible() *bool {
 	return in.Interruptibe
+}
+
+func (in *NodeSpec) GetArchitecture() core.Container_Architecture {
+	return in.Architecture
 }
 
 func (in *NodeSpec) GetConfig() *typesv1.ConfigMap {
