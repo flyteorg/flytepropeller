@@ -6,7 +6,7 @@ require (
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/fatih/color v1.10.0
-	github.com/flyteorg/flyteidl v0.22.0
+	github.com/flyteorg/flyteidl v0.23.0
 	github.com/flyteorg/flyteplugins v0.10.10
 	github.com/flyteorg/flytestdlib v0.4.12
 	github.com/ghodss/yaml v1.0.0
@@ -15,6 +15,7 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/google/uuid v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
+	github.com/imdario/mergo v0.3.11
 	github.com/magiconair/properties v1.8.4
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/pkg/errors v0.9.1
