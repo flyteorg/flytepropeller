@@ -437,3 +437,35 @@ func (_m *Meta) IsInterruptible() bool {
 
 	return r0
 }
+
+type Meta_GetArchitecture struct {
+	*mock.Call
+}
+
+func (_m Meta_GetArchitecture) Return(_a0 bool) *Meta_GetArchitecture {
+	return &Meta_GetArchitecture{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Meta) OnIGetArchitecture() *Meta_GetArchitecture {
+	c := _m.On("GetArchitecture")
+	return &Meta_GetArchitecture{Call: c}
+}
+
+func (_m *Meta) OnGetArchitectureMatch(matchers ...interface{}) *Meta_GetArchitecture {
+	c := _m.On("GetArchitecture", matchers...)
+	return &Meta_GetArchitecture{Call: c}
+}
+
+// GetArchitecture provides a mock function with given fields:
+func (_m *Meta) GetArchitecture() core.Container_Architecture {
+	ret := _m.Called()
+
+	var r0 core.Container_Architecture
+	if rf, ok := ret.Get(0).(func() core.Container_Architecture); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(core.Container_Architecture)
+	}
+
+	return r0
+}
