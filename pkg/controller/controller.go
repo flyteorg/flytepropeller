@@ -486,19 +486,25 @@ func StartController(ctx context.Context, cfg *config.Config, defaultNamespace s
 		return errors.Wrapf(err, "error building FlyteWorkflow clientset")
 	}
 
-	// Create FlyteWorkflow CRD
+	// Create FlyteWorkflow CRD if it does not exist
 	apiextensionsClient, err := apiextensionsclientset.NewForConfig(kubecfg)
 	if err != nil {
 		return errors.Wrapf(err, "error building apiextensions clientset")
 	}
 
-	logger.Infof(ctx, "Creating FlyteWorkflow CRD")
-	_, err = apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Create(ctx, &flyteworkflow.CRD, v1.CreateOptions{})
+	_, err = apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, flyteworkflow.CRD.Name, v1.GetOptions{})
 	if err != nil {
-		if apierrors.IsAlreadyExists(err) {
-			logger.Warnf(ctx, "FlyteWorkflow CRD already exists")
+		if apierrors.IsNotFound(err) {
+			_, err = apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Create(ctx, &flyteworkflow.CRD, v1.CreateOptions{})
+			if err != nil {
+				if !apierrors.IsAlreadyExists(err) {
+					return errors.Wrapf(err, "failed to create FlyteWorkflow CRD")
+				}
+			} else {
+				logger.Infof(ctx, "created FlyteWorkflow CRD")
+			}
 		} else {
-			return errors.Wrapf(err, "failed to create FlyteWorkflow CRD")
+			return errors.Wrapf(err, "failed to check FlyteWorkflow CRD existence")
 		}
 	}
 
