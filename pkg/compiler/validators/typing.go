@@ -207,17 +207,17 @@ func (t unionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	}
 
 	// Matches iff we can unambiguously select a variant
-	found_one := false
+	foundOne := false
 	for _, x := range unionType.GetVariants() {
 		if AreTypesCastable(upstreamType, x) {
-			if found_one {
+			if foundOne {
 				return false
 			}
-			found_one = true
+			foundOne = true
 		}
 	}
 
-	return found_one
+	return foundOne
 }
 
 // Upstream (structuredDatasetType) -> downstream (structuredDatasetType)
