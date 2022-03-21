@@ -5,12 +5,15 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 
+	"github.com/flyteorg/flytepropeller/pkg/webhook"
+
 	webhookConfig "github.com/flyteorg/flytepropeller/pkg/webhook/config"
 
 	"github.com/flyteorg/flytestdlib/logger"
 	kubeErrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+	"github.com/flyteorg/flytepropeller/pkg/utils"
 
 	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,7 +76,7 @@ func init() {
 }
 
 func runCertsCmd(ctx context.Context, propellerCfg *config.Config, cfg *webhookConfig.Config) error {
-	podNamespace, found := os.LookupEnv(PodNamespaceEnvVar)
+	podNamespace, found := os.LookupEnv(webhook.PodNamespaceEnvVar)
 	if !found {
 		podNamespace = podDefaultNamespace
 	}
@@ -84,7 +87,7 @@ func runCertsCmd(ctx context.Context, propellerCfg *config.Config, cfg *webhookC
 		return err
 	}
 
-	kubeClient, _, err := getKubeConfig(ctx, propellerCfg)
+	kubeClient, _, err := utils.GetKubeConfig(ctx, propellerCfg)
 	if err != nil {
 		return err
 	}

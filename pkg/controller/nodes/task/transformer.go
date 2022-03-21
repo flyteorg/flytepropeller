@@ -79,6 +79,7 @@ type ToTaskExecutionEventInputs struct {
 	TaskType              string
 	PluginID              string
 	ResourcePoolInfo      []*event.ResourcePoolInfo
+	ClusterID             string
 }
 
 func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutionEvent, error) {
@@ -98,20 +99,33 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 	if err != nil {
 		return nil, err
 	}
-	metadata := input.Info.Info().Metadata
-	if metadata == nil {
-		metadata = &event.TaskExecutionMetadata{}
+
+	metadata := &event.TaskExecutionMetadata{
+		GeneratedName:    input.TaskExecContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
+		PluginIdentifier: input.PluginID,
+		ResourcePoolInfo: input.ResourcePoolInfo,
 	}
-	metadata.PluginIdentifier = input.PluginID
-	metadata.GeneratedName = input.TaskExecContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	metadata.ResourcePoolInfo = input.ResourcePoolInfo
+
+	externalResources := input.Info.Info().ExternalResources
+	if externalResources != nil {
+		metadata.ExternalResources = make([]*event.ExternalResourceInfo, len(externalResources))
+		for idx, e := range input.Info.Info().ExternalResources {
+			metadata.ExternalResources[idx] = &event.ExternalResourceInfo{
+				ExternalId:   e.ExternalID,
+				Index:        e.Index,
+				RetryAttempt: e.RetryAttempt,
+				Phase:        ToTaskEventPhase(e.Phase),
+			}
+		}
+	}
+
 	tev := &event.TaskExecutionEvent{
 		TaskId:                taskExecID.TaskId,
 		ParentNodeExecutionId: nodeExecutionID,
 		RetryAttempt:          taskExecID.RetryAttempt,
 		Phase:                 ToTaskEventPhase(input.Info.Phase()),
 		PhaseVersion:          input.Info.Version(),
-		ProducerId:            "propeller",
+		ProducerId:            input.ClusterID,
 		OccurredAt:            tm,
 		InputUri:              input.InputReader.GetInputPath().String(),
 		TaskType:              input.TaskType,

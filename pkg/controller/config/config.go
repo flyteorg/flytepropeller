@@ -108,6 +108,7 @@ var (
 		EventConfig: EventConfig{
 			RawOutputPolicy: RawOutputPolicyReference,
 		},
+		ClusterID: "propeller",
 	}
 )
 
@@ -137,6 +138,13 @@ type Config struct {
 	NodeConfig             NodeConfig           `json:"node-config,omitempty" pflag:",config for a workflow node"`
 	MaxStreakLength        int                  `json:"max-streak-length" pflag:",Maximum number of consecutive rounds that one propeller worker can use for one workflow - >1 => turbo-mode is enabled."`
 	EventConfig            EventConfig          `json:"event-config,omitempty" pflag:",Configures execution event behavior."`
+	IncludeShardKeyLabel   []string             `json:"include-shard-key-label" pflag:",Include the specified shard key label in the k8s FlyteWorkflow CRD label selector"`
+	ExcludeShardKeyLabel   []string             `json:"exclude-shard-key-label" pflag:",Exclude the specified shard key label from the k8s FlyteWorkflow CRD label selector"`
+	IncludeProjectLabel    []string             `json:"include-project-label" pflag:",Include the specified project label in the k8s FlyteWorkflow CRD label selector"`
+	ExcludeProjectLabel    []string             `json:"exclude-project-label" pflag:",Exclude the specified project label from the k8s FlyteWorkflow CRD label selector"`
+	IncludeDomainLabel     []string             `json:"include-domain-label" pflag:",Include the specified domain label in the k8s FlyteWorkflow CRD label selector"`
+	ExcludeDomainLabel     []string             `json:"exclude-domain-label" pflag:",Exclude the specified domain label from the k8s FlyteWorkflow CRD label selector"`
+	ClusterID              string               `json:"cluster-id" pflag:",Unique cluster id running this flytepropeller instance with which to annotate execution events"`
 }
 
 // KubeClientConfig contains the configuration used by flytepropeller to configure its internal Kubernetes Client.

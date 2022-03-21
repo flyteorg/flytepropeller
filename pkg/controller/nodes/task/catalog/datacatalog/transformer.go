@@ -116,13 +116,67 @@ func generateTaskSignatureHash(ctx context.Context, taskInterface core.TypedInte
 	return fmt.Sprintf("%v-%v", inputHashString, outputHashString), nil
 }
 
+// Hashify a literal, in other words, produce a new literal where the corresponding value is removed in case
+// the literal hash is set.
+func hashify(literal *core.Literal) *core.Literal {
+	// Two recursive cases:
+	//   1. A collection of literals or
+	//   2. A map of literals
+
+	if literal.GetCollection() != nil {
+		literals := literal.GetCollection().Literals
+		literalsHash := make([]*core.Literal, 0)
+		for _, lit := range literals {
+			literalsHash = append(literalsHash, hashify(lit))
+		}
+		return &core.Literal{
+			Value: &core.Literal_Collection{
+				Collection: &core.LiteralCollection{
+					Literals: literalsHash,
+				},
+			},
+		}
+	}
+	if literal.GetMap() != nil {
+		literalsMap := make(map[string]*core.Literal)
+		for key, lit := range literal.GetMap().Literals {
+			literalsMap[key] = hashify(lit)
+		}
+		return &core.Literal{
+			Value: &core.Literal_Map{
+				Map: &core.LiteralMap{
+					Literals: literalsMap,
+				},
+			},
+		}
+	}
+
+	// And a base case that consists of a scalar, where the hash might be set
+	if literal.GetHash() != "" {
+		return &core.Literal{
+			Hash: literal.GetHash(),
+		}
+	}
+	return literal
+}
+
 // Generate a tag by hashing the input values
 func GenerateArtifactTagName(ctx context.Context, inputs *core.LiteralMap) (string, error) {
 	if inputs == nil || len(inputs.Literals) == 0 {
 		inputs = &emptyLiteralMap
 	}
 
-	inputsHash, err := pbhash.ComputeHash(ctx, inputs)
+	// Hashify, i.e. generate a copy of the literal map where each literal value is removed
+	// in case the corresponding hash is set.
+	hashifiedLiteralMap := make(map[string]*core.Literal, len(inputs.Literals))
+	for name, literal := range inputs.Literals {
+		hashifiedLiteralMap[name] = hashify(literal)
+	}
+	hashifiedInputs := &core.LiteralMap{
+		Literals: hashifiedLiteralMap,
+	}
+
+	inputsHash, err := pbhash.ComputeHash(ctx, hashifiedInputs)
 	if err != nil {
 		return "", err
 	}
@@ -199,18 +253,24 @@ func GetArtifactMetadataForSource(taskExecutionID *core.TaskExecutionIdentifier)
 	}
 }
 
-// Returns the Source TaskExecutionIdentifier from the catalog metadata
+// GetSourceFromMetadata returns the Source TaskExecutionIdentifier from the catalog metadata
 // For all the information not available it returns Unknown. This is because as of July-2020 Catalog does not have all
 // the information. After the first deployment of this code, it will have this and the "unknown's" can be phased out
-func GetSourceFromMetadata(datasetMd, artifactMd *datacatalog.Metadata, currentID core.Identifier) *core.TaskExecutionIdentifier {
+func GetSourceFromMetadata(datasetMd, artifactMd *datacatalog.Metadata, currentID core.Identifier) (*core.TaskExecutionIdentifier, error) {
 	if datasetMd == nil || datasetMd.KeyMap == nil {
 		datasetMd = &datacatalog.Metadata{KeyMap: map[string]string{}}
 	}
 	if artifactMd == nil || artifactMd.KeyMap == nil {
 		artifactMd = &datacatalog.Metadata{KeyMap: map[string]string{}}
 	}
+
 	// Jul-06-2020 DataCatalog stores only wfExecutionKey & taskVersionKey So we will default the project / domain to the current dataset's project domain
-	attempt, _ := strconv.Atoi(GetOrDefault(artifactMd.KeyMap, execTaskAttemptKey, "0"))
+	val := GetOrDefault(artifactMd.KeyMap, execTaskAttemptKey, "0")
+	attempt, err := strconv.ParseUint(val, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse [%v] to integer. Error: %w", val, err)
+	}
+
 	return &core.TaskExecutionIdentifier{
 		TaskId: &core.Identifier{
 			ResourceType: currentID.ResourceType,
@@ -228,7 +288,7 @@ func GetSourceFromMetadata(datasetMd, artifactMd *datacatalog.Metadata, currentI
 				Name:    GetOrDefault(artifactMd.KeyMap, execNameKey, "unknown"),
 			},
 		},
-	}
+	}, nil
 }
 
 // Given the Catalog Information (returned from a Catalog call), returns the CatalogMetadata that is populated in the event.
