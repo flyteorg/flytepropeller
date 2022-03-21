@@ -52,7 +52,7 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 		}
 	}
 
-	switch binding.GetValue().(type) {
+	switch val := binding.GetValue().(type) {
 	case *flyte.BindingData_Collection:
 		if val.Collection == nil {
 			errs.Collect(errors.NewParameterNotBoundErr(nodeID, nodeParam))
