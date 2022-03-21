@@ -218,6 +218,8 @@ func (t unionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	}
 
 	return found_one
+}
+
 // Upstream (structuredDatasetType) -> downstream (structuredDatasetType)
 func structuredDatasetCastFromStructuredDataset(upstream *flyte.StructuredDatasetType, downstream *flyte.StructuredDatasetType) bool {
 	if len(upstream.Columns) == 0 || len(downstream.Columns) == 0 {
