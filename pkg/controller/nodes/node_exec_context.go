@@ -151,7 +151,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 			NodeId:      node.GetID(),
 			ExecutionId: execContext.GetExecutionID().WorkflowExecutionIdentifier,
 		},
-		interrutptible: interruptible,
+		interrutptible:                interruptible,
 		interruptibleFailureThreshold: interruptibleFailureThreshold,
 	}
 
