@@ -106,8 +106,9 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		ResourcePoolInfo: input.ResourcePoolInfo,
 	}
 
-	externalResources := input.Info.Info().ExternalResources
-	if externalResources != nil {
+	if input.Info.Info() != nil && input.Info.Info().ExternalResources != nil {
+		externalResources := input.Info.Info().ExternalResources
+
 		metadata.ExternalResources = make([]*event.ExternalResourceInfo, len(externalResources))
 		for idx, e := range input.Info.Info().ExternalResources {
 			metadata.ExternalResources[idx] = &event.ExternalResourceInfo{
