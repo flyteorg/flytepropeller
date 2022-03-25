@@ -76,7 +76,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	status v1alpha1.ExecutableNodeStatus,
 	eventVersion v1alpha1.EventVersion,
 	parentInfo executors.ImmutableParentInfo,
-	node v1alpha1.ExecutableNode, clusterID string) (*event.NodeExecutionEvent, error) {
+	node v1alpha1.ExecutableNode, clusterID string, dynamicNodePhase v1alpha1.DynamicNodePhase) (*event.NodeExecutionEvent, error) {
 	if info.GetPhase() == handler.EPhaseNotReady {
 		return nil, nil
 	}
@@ -159,6 +159,14 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	} else if info.GetErr() != nil {
 		nev.OutputResult = &event.NodeExecutionEvent_Error{
 			Error: info.GetErr(),
+		}
+	}
+	if node.GetKind() == v1alpha1.NodeKindWorkflow && node.GetWorkflowNode() != nil && node.GetWorkflowNode().GetSubWorkflowRef() != nil {
+		nev.IsParent = true
+	} else if dynamicNodePhase != v1alpha1.DynamicNodePhaseNone {
+		nev.IsDynamic = true
+		if nev.GetTaskNodeMetadata() != nil && nev.GetTaskNodeMetadata().DynamicWorkflow != nil {
+			nev.IsParent = true
 		}
 	}
 	return nev, nil
