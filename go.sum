@@ -244,6 +244,8 @@ github.com/flyteorg/flyteidl v0.24.7-0.20220325151357-3a5050675a3b h1:G/WaK2h/ys
 github.com/flyteorg/flyteidl v0.24.7-0.20220325151357-3a5050675a3b/go.mod h1:576W2ViEyjTpT+kEVHAGbrTP3HARNUZ/eCwrNPmdx9U=
 github.com/flyteorg/flyteplugins v0.10.16 h1:rwNI2MACPbcST2O6CEUsNW6bccz7ZLni0GiY3orevfw=
 github.com/flyteorg/flyteplugins v0.10.16/go.mod h1:YBWV8QnFakDJfLyua8pYddiWqszAqseBKIJPNMERlos=
+github.com/flyteorg/flyteplugins v0.10.17-0.20220325150915-bf9c3fff5968 h1:AyoJBfoWOATatIl04BHLD/afmPSXCJSZs9JJl6eNmCU=
+github.com/flyteorg/flyteplugins v0.10.17-0.20220325150915-bf9c3fff5968/go.mod h1:YBWV8QnFakDJfLyua8pYddiWqszAqseBKIJPNMERlos=
 github.com/flyteorg/flytestdlib v0.3.13/go.mod h1:Tz8JCECAbX6VWGwFT6cmEQ+RJpZ/6L9pswu3fzWs220=
 github.com/flyteorg/flytestdlib v0.4.13 h1:TzgqhECRGfOHYH1A7rUwcKEEH2rTtPxGy+oYcif7iBw=
 github.com/flyteorg/flytestdlib v0.4.13/go.mod h1:fv1ar34LJLMTaf0tbfetisLykUlARi7rP+NQTUn6QQs=

@@ -38,4 +38,4 @@ replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazo
 
 replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v0.24.7-0.20220325151357-3a5050675a3b
 
-replace github.com/flyteorg/flyteplugins => ../flyteplugins
+replace github.com/flyteorg/flyteplugins => github.com/flyteorg/flyteplugins v0.10.17-0.20220325150915-bf9c3fff5968
