@@ -51,6 +51,7 @@ func TestToNodeExecutionEvent(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, nev.IsDynamic)
 		assert.True(t, nev.IsParent)
+		assert.Equal(t, nodeExecutionEventVersion, nev.EventVersion)
 	})
 	t.Run("is parent", func(t *testing.T) {
 		info := handler.PhaseInfoDynamicRunning(&handler.ExecutionInfo{TaskNodeInfo: &handler.TaskNodeInfo{
@@ -82,5 +83,6 @@ func TestToNodeExecutionEvent(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, nev.IsDynamic)
 		assert.True(t, nev.IsParent)
+		assert.Equal(t, nodeExecutionEventVersion, nev.EventVersion)
 	})
 }
