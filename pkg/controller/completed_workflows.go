@@ -58,9 +58,9 @@ func HasCompletedLabel(w *v1alpha1.FlyteWorkflow) bool {
 // Usually this is a list of all hours out of the 24 hours in the day - retention period - the current hour of the day
 func CalculateHoursToKeep(retentionPeriodHours int, currentTime time.Time) []string {
 	hoursToKeep := make([]string, 0, retentionPeriodHours+1)
-	for i := 0; i <= retentionPeriodHours; i++{
-		hoursToKeep = append(hoursToKeep, strconv.Itoa(currentTime.Day()) + "." + strconv.Itoa(currentTime.Hour()))
-		currentTime = currentTime.Add(-1*time.Hour)
+	for i := 0; i <= retentionPeriodHours; i++ {
+		hoursToKeep = append(hoursToKeep, strconv.Itoa(currentTime.Day())+"."+strconv.Itoa(currentTime.Hour()))
+		currentTime = currentTime.Add(-1 * time.Hour)
 	}
 	return hoursToKeep
 }

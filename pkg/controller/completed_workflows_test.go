@@ -130,7 +130,6 @@ func TestCalculateHoursToDelete(t *testing.T) {
 		"10.0", "9.23", "9.22", "9.21", "9.20", "9.19", "9.18", "9.17", "9.16", "9.15", "9.14", "9.13", "9.12", "9.11", "9.10", "9.9", "9.8", "9.7", "9.6", "9.5", "9.4", "9.3", "9.2",
 	}, CalculateHoursToKeep(22, time.Date(2009, time.November, 10, 0, 0, 0, 0, time.UTC)))
 
-
 	assert.Equal(t, []string{"30.12", "30.11"}, CalculateHoursToKeep(1, time.Date(2022, time.March, 30, 12, 10, 0, 0, time.UTC)))
 }
 
