@@ -102,45 +102,36 @@ func TestSetCompletedLabel(t *testing.T) {
 
 func TestCalculateHoursToDelete(t *testing.T) {
 	assert.Equal(t, []string{
-		"6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22",
-	}, CalculateHoursToDelete(6, 5))
+		"10.6", "10.5", "10.4", "10.3", "10.2", "10.1", "10.0",
+	}, CalculateHoursToKeep(6, time.Date(2009, time.November, 10, 6, 0, 0, 0, time.UTC)))
 
 	assert.Equal(t, []string{
-		"7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23",
-	}, CalculateHoursToDelete(6, 6))
+		"1.3", "1.2", "1.1", "1.0", "30.23", "30.22", "30.21",
+	}, CalculateHoursToKeep(6, time.Date(2009, time.October, 1, 3, 0, 0, 0, time.UTC)))
 
 	assert.Equal(t, []string{
-		"0", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23",
-	}, CalculateHoursToDelete(6, 7))
+		"1.0", "31.23", "31.22", "31.21", "31.20", "31.19", "31.18",
+	}, CalculateHoursToKeep(6, time.Date(2009, time.January, 1, 0, 0, 0, 0, time.UTC)))
 
 	assert.Equal(t, []string{
-		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "23",
-	}, CalculateHoursToDelete(6, 22))
+		"10.22", "10.21", "10.20", "10.19", "10.18", "10.17", "10.16",
+	}, CalculateHoursToKeep(6, time.Date(2009, time.November, 10, 22, 0, 0, 0, time.UTC)))
 
 	assert.Equal(t, []string{
-		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16",
-	}, CalculateHoursToDelete(6, 23))
+		"10.23", "10.22", "10.21", "10.20", "10.19", "10.18", "10.17",
+	}, CalculateHoursToKeep(6, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)))
+
+	assert.Equal(t, []string{"10.20", "10.19"}, CalculateHoursToKeep(1, time.Date(2009, time.November, 10, 20, 0, 0, 0, time.UTC)))
 
 	assert.Equal(t, []string{
-		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22",
-	}, CalculateHoursToDelete(0, 23))
-
+		"10.12", "10.11", "10.10", "10.9", "10.8", "10.7", "10.6", "10.5", "10.4", "10.3", "10.2", "10.1", "10.0", "9.23", "9.22", "9.21", "9.20", "9.19", "9.18", "9.17", "9.16", "9.15", "9.14",
+	}, CalculateHoursToKeep(22, time.Date(2009, time.November, 10, 12, 0, 0, 0, time.UTC)))
 	assert.Equal(t, []string{
-		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "21", "22", "23",
-	}, CalculateHoursToDelete(0, 20))
+		"10.0", "9.23", "9.22", "9.21", "9.20", "9.19", "9.18", "9.17", "9.16", "9.15", "9.14", "9.13", "9.12", "9.11", "9.10", "9.9", "9.8", "9.7", "9.6", "9.5", "9.4", "9.3", "9.2",
+	}, CalculateHoursToKeep(22, time.Date(2009, time.November, 10, 0, 0, 0, 0, time.UTC)))
 
-	assert.Equal(t, []string{
-		"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23",
-	}, CalculateHoursToDelete(0, 0))
 
-	assert.Equal(t, []string{
-		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23",
-	}, CalculateHoursToDelete(0, 12))
-
-	assert.Equal(t, []string{"13"}, CalculateHoursToDelete(22, 12))
-	assert.Equal(t, []string{"1"}, CalculateHoursToDelete(22, 0))
-	assert.Equal(t, []string{"0"}, CalculateHoursToDelete(22, 23))
-	assert.Equal(t, []string{"23"}, CalculateHoursToDelete(22, 22))
+	assert.Equal(t, []string{"30.12", "30.11"}, CalculateHoursToKeep(1, time.Date(2022, time.March, 30, 12, 10, 0, 0, time.UTC)))
 }
 
 func TestCompletedWorkflowsSelectorOutsideRetentionPeriod(t *testing.T) {
@@ -151,10 +142,10 @@ func TestCompletedWorkflowsSelectorOutsideRetentionPeriod(t *testing.T) {
 	assert.Equal(t, workflowTerminatedValue, v)
 	assert.NotEmpty(t, s.MatchExpressions)
 	r := s.MatchExpressions[0]
-	assert.Equal(t, hourOfDayCompletedKey, r.Key)
-	assert.Equal(t, v1.LabelSelectorOpIn, r.Operator)
-	assert.Equal(t, 21, len(r.Values))
+	assert.Equal(t, CompletedTimeKey, r.Key)
+	assert.Equal(t, v1.LabelSelectorOpNotIn, r.Operator)
+	assert.Equal(t, 3, len(r.Values))
 	assert.Equal(t, []string{
-		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+		"10.23", "10.22", "10.21",
 	}, r.Values)
 }
