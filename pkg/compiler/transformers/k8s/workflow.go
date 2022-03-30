@@ -191,9 +191,12 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		interruptible = wf.GetMetadataDefaults().GetInterruptible()
 	}
 
-	var architecture core.Container_Architecture
+	architecture := core.Container_UNKNOWN
 	for _, t := range tasks {
-		architecture = t.Template.GetContainer().GetArchitecture()
+		if t.Template.GetContainer().GetArchitecture() != core.Container_UNKNOWN {
+			architecture = t.Template.GetContainer().GetArchitecture()
+			break
+		}
 	}
 
 	obj := &v1alpha1.FlyteWorkflow{
