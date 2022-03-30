@@ -101,7 +101,7 @@ func TestGarbageCollector_StartGC(t *testing.T) {
 		DeleteCollectionCb: func(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 			assert.NotNil(t, options)
 			assert.NotNil(t, listOptions)
-			assert.Equal(t, "hour-of-day in (0,1,10,11,12,13,14,15,16,17,18,19,2,20,21,3,4,5,6,7,8,9),termination-status=terminated", listOptions.LabelSelector)
+			assert.Equal(t, "hour-of-day notin (10.22,10.23),termination-status=terminated", listOptions.LabelSelector)
 			wg.Done()
 			return nil
 		},
