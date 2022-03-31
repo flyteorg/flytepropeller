@@ -40,7 +40,7 @@ jobs:
       cache_key: ${{ needs.docker-build.outputs.cache_key }}
 
   generate:
-    name: Check Go Gennerate
+    name: Check Go Generate
     uses: flyteorg/flytetools/.github/workflows/go_generate.yml@master
 
   bump_version:
