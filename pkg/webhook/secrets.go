@@ -7,8 +7,8 @@ import (
 
 	secretUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils/secrets"
 
-	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
+	"github.com/flyteorg/flytepropeller/pkg/webhook/config"
 
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
