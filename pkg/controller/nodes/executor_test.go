@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flytestdlib/contextutils"
+
 	"github.com/golang/protobuf/proto"
 
 	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
@@ -588,6 +590,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 					Message: "Expected Failure",
 				})
 			}
+			mockN2Status.OnGetDynamicNodeStatus().Return(&v1alpha1.DynamicNodeStatus{})
 
 			mockNode := &mocks.ExecutableNode{}
 			mockNode.OnGetID().Return(nodeN2)
@@ -619,6 +622,8 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockN0Status.OnGetParentTaskID().Return(nil)
 			n := v1.Now()
 			mockN0Status.OnGetStoppedAt().Return(&n)
+
+			mockN0Status.OnGetDynamicNodeStatus().Return(&v1alpha1.DynamicNodeStatus{})
 
 			tk := &mocks.ExecutableTask{}
 			tk.OnCoreTask().Return(&core.TaskTemplate{})
@@ -1269,6 +1274,7 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 				bns := &mocks.MutableBranchNodeStatus{}
 				parentBranchNodeStatus.OnGetBranchStatus().Return(bns)
 				bns.OnGetPhase().Return(test.parentNodePhase)
+				parentBranchNodeStatus.OnGetDynamicNodeStatus().Return(&v1alpha1.DynamicNodeStatus{})
 
 				tk := &mocks.ExecutableTask{}
 				tk.OnCoreTask().Return(&core.TaskTemplate{})
@@ -1305,6 +1311,7 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 				branchTakeNodeStatus.OnGetParentNodeID().Return(&parentBranchNodeID)
 				branchTakeNodeStatus.OnGetParentTaskID().Return(nil)
 				branchTakeNodeStatus.OnGetStartedAt().Return(&now)
+				branchTakeNodeStatus.OnGetDynamicNodeStatus().Return(&v1alpha1.DynamicNodeStatus{})
 
 				if test.phaseUpdateExpected {
 					var ee *core.ExecutionError
@@ -1705,13 +1712,15 @@ func TestNodeExecutionEventStartNode(t *testing.T) {
 	n := &mocks.ExecutableNode{}
 	n.OnGetID().Return(id)
 	n.OnGetName().Return("name")
+	n.OnGetKind().Return(v1alpha1.NodeKindStart)
 	nl := &mocks4.NodeLookup{}
 	ns := &mocks.ExecutableNodeStatus{}
 	ns.OnGetPhase().Return(v1alpha1.NodePhaseNotYetStarted)
 	nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
 	ns.OnGetParentTaskID().Return(tID)
 	ns.OnGetOutputDirMatch(mock.Anything).Return("dummy://dummyOutUrl")
-	ev, err := ToNodeExecutionEvent(nID, p, "reference", ns, v1alpha1.EventVersion0, parentInfo, n, testClusterID)
+	ns.OnGetDynamicNodeStatus().Return(&v1alpha1.DynamicNodeStatus{})
+	ev, err := ToNodeExecutionEvent(nID, p, "reference", ns, v1alpha1.EventVersion0, parentInfo, n, testClusterID, v1alpha1.DynamicNodePhaseNone)
 	assert.NoError(t, err)
 	assert.Equal(t, "start-node", ev.Id.NodeId)
 	assert.Equal(t, execID, ev.Id.ExecutionId)
@@ -1747,12 +1756,13 @@ func TestNodeExecutionEventV0(t *testing.T) {
 	n := &mocks.ExecutableNode{}
 	n.OnGetID().Return(id)
 	n.OnGetName().Return("name")
+	n.OnGetKind().Return(v1alpha1.NodeKindTask)
 	nl := &mocks4.NodeLookup{}
 	ns := &mocks.ExecutableNodeStatus{}
 	ns.OnGetPhase().Return(v1alpha1.NodePhaseNotYetStarted)
 	nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
 	ns.OnGetParentTaskID().Return(tID)
-	ev, err := ToNodeExecutionEvent(nID, p, "reference", ns, v1alpha1.EventVersion0, parentInfo, n, testClusterID)
+	ev, err := ToNodeExecutionEvent(nID, p, "reference", ns, v1alpha1.EventVersion0, parentInfo, n, testClusterID, v1alpha1.DynamicNodePhaseNone)
 	assert.NoError(t, err)
 	assert.Equal(t, "n1", ev.Id.NodeId)
 	assert.Equal(t, execID, ev.Id.ExecutionId)
@@ -1787,12 +1797,13 @@ func TestNodeExecutionEventV1(t *testing.T) {
 	n := &mocks.ExecutableNode{}
 	n.OnGetID().Return(id)
 	n.OnGetName().Return("name")
+	n.OnGetKind().Return(v1alpha1.NodeKindTask)
 	nl := &mocks4.NodeLookup{}
 	ns := &mocks.ExecutableNodeStatus{}
 	ns.OnGetPhase().Return(v1alpha1.NodePhaseNotYetStarted)
 	nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
 	ns.OnGetParentTaskID().Return(tID)
-	eventOpt, err := ToNodeExecutionEvent(nID, p, "reference", ns, v1alpha1.EventVersion1, parentInfo, n, testClusterID)
+	eventOpt, err := ToNodeExecutionEvent(nID, p, "reference", ns, v1alpha1.EventVersion1, parentInfo, n, testClusterID, v1alpha1.DynamicNodePhaseNone)
 	assert.NoError(t, err)
 	assert.Equal(t, "np1-2-n1", eventOpt.Id.NodeId)
 	assert.Equal(t, execID, eventOpt.Id.ExecutionId)
@@ -2412,4 +2423,8 @@ func TestIsMaxParallelismAchieved(t *testing.T) {
 			}
 		})
 	}
+}
+
+func init() {
+	labeled.SetMetricKeys(contextutils.ProjectKey, contextutils.DomainKey, contextutils.WorkflowIDKey, contextutils.TaskIDKey)
 }
