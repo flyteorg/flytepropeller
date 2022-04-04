@@ -55,11 +55,12 @@ func Run(ctx context.Context, propellerCfg *config.Config, cfg *config2.Config, 
 	}
 
 	mgr, err := manager.New(kubecfg, manager.Options{
-		Port:          cfg.ListenPort,
-		CertDir:       cfg.CertDir,
-		Namespace:     limitNamespace,
-		SyncPeriod:    &propellerCfg.DownstreamEval.Duration,
-		ClientBuilder: executors.NewFallbackClientBuilder(webhookScope),
+		Port:               cfg.ListenPort,
+		CertDir:            cfg.CertDir,
+		Namespace:          limitNamespace,
+		SyncPeriod:         &propellerCfg.DownstreamEval.Duration,
+		ClientBuilder:      executors.NewFallbackClientBuilder(webhookScope),
+		MetricsBindAddress: cfg.MetricsBindAddress,
 	})
 
 	if err != nil {

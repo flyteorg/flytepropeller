@@ -35,6 +35,7 @@ var (
 			Role:      "flyte",
 			KVVersion: KVVersion2,
 		},
+		MetricsBindAddress: "0.0.0.0:8080",
 	}
 
 	configSection = config.MustRegisterSection("webhook", DefaultConfig)
@@ -78,6 +79,7 @@ type Config struct {
 	SecretManagerType        SecretManagerType        `json:"secretManagerType" pflag:"-,Secret manager type to use if secrets are not found in global secrets."`
 	AWSSecretManagerConfig   AWSSecretManagerConfig   `json:"awsSecretManager" pflag:",AWS Secret Manager config."`
 	VaultSecretManagerConfig VaultSecretManagerConfig `json:"vaultSecretManager" pflag:",Vault Secret Manager config."`
+	MetricsBindAddress       string                   `json:"metricsBindAddress" pflag:",TCP address that the controller should bind for serving prometheus metrics."`
 }
 
 type AWSSecretManagerConfig struct {
