@@ -147,6 +147,7 @@ type Config struct {
 	ExcludeDomainLabel     []string             `json:"exclude-domain-label" pflag:",Exclude the specified domain label from the k8s FlyteWorkflow CRD label selector"`
 	ClusterID              string               `json:"cluster-id" pflag:",Unique cluster id running this flytepropeller instance with which to annotate execution events"`
 	CreateFlyteWorkflowCRD bool                 `json:"create-flyteworkflow-crd" pflag:",Enable creation of the FlyteWorkflow CRD on startup"`
+	MetricsBindAddress     string               `json:"metricsBindAddress" pflag:",TCP address that the controller should bind for serving prometheus metrics."`
 }
 
 // KubeClientConfig contains the configuration used by flytepropeller to configure its internal Kubernetes Client.

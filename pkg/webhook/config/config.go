@@ -35,7 +35,6 @@ var (
 			Role:      "flyte",
 			KVVersion: KVVersion2,
 		},
-		MetricsBindAddress: "0.0.0.0:8080",
 	}
 
 	configSection = config.MustRegisterSection("webhook", DefaultConfig)

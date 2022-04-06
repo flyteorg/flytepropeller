@@ -541,9 +541,10 @@ func StartController(ctx context.Context, cfg *config.Config, defaultNamespace s
 	}
 
 	mgr, err := manager.New(kubecfg, manager.Options{
-		Namespace:     limitNamespace,
-		SyncPeriod:    &cfg.DownstreamEval.Duration,
-		ClientBuilder: executors.NewFallbackClientBuilder(propellerScope.NewSubScope("kube")),
+		Namespace:          limitNamespace,
+		SyncPeriod:         &cfg.DownstreamEval.Duration,
+		ClientBuilder:      executors.NewFallbackClientBuilder(propellerScope.NewSubScope("kube")),
+		MetricsBindAddress: cfg.MetricsBindAddress,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "failed to initialize controller-runtime manager")
