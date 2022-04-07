@@ -13,6 +13,9 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 )
 
+// This is used by flyteadmin to indicate that map tasks now report subtask metadata individually.
+var taskExecutionEventVersion = int32(1)
+
 func ToTransitionType(ttype pluginCore.TransitionType) handler.TransitionType {
 	if ttype == pluginCore.TransitionTypeBarrier {
 		return handler.TransitionTypeBarrier
@@ -134,6 +137,7 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		TaskType:              input.TaskType,
 		Reason:                input.Info.Reason(),
 		Metadata:              metadata,
+		EventVersion:          taskExecutionEventVersion,
 	}
 
 	if input.Info.Phase().IsSuccess() && input.OutputWriter != nil {
