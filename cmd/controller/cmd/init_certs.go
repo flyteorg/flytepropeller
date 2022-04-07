@@ -58,7 +58,7 @@ for the Webhook command to mount and read correctly.
 `,
 	Example: "flytepropeller webhook init-certs",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCertsCmd(context.Background(), config.GetConfig(), webhookConfig.GetConfig())
+		return RunCertsCmd(context.Background(), config.GetConfig(), webhookConfig.GetConfig())
 	},
 }
 
@@ -75,7 +75,7 @@ func init() {
 	webhookCmd.AddCommand(initCertsCmd)
 }
 
-func runCertsCmd(ctx context.Context, propellerCfg *config.Config, cfg *webhookConfig.Config) error {
+func RunCertsCmd(ctx context.Context, propellerCfg *config.Config, cfg *webhookConfig.Config) error {
 	podNamespace, found := os.LookupEnv(webhook.PodNamespaceEnvVar)
 	if !found {
 		podNamespace = podDefaultNamespace
