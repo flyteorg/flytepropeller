@@ -40,7 +40,7 @@ type GarbageCollector struct {
 // Issues a background deletion command with label selector for all completed workflows outside of the retention period
 func (g *GarbageCollector) deleteWorkflows(ctx context.Context) error {
 
-	s := CompletedWorkflowsSelectorOutsideRetentionPeriod(g.ttlHours-1, g.clk.Now())
+	s := CompletedWorkflowsSelectorOutsideRetentionPeriod(g.ttlHours, g.clk.Now())
 
 	// Delete doesn't support 'all' namespaces. Let's fetch namespaces and loop over each.
 	if g.namespace == "" || strings.ToLower(g.namespace) == "all" || strings.ToLower(g.namespace) == "all-namespaces" {

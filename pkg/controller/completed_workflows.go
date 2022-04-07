@@ -2,6 +2,7 @@ package controller
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -41,7 +42,8 @@ func SetCompletedLabel(w *v1alpha1.FlyteWorkflow, currentTime time.Time) {
 		w.Labels = make(map[string]string)
 	}
 	w.Labels[workflowTerminationStatusKey] = workflowTerminatedValue
-	w.Labels[hourOfDayCompletedKey] = strconv.Itoa(currentTime.Day()) + "." + strconv.Itoa(currentTime.Hour())
+	w.Labels[hourOfDayCompletedKey] = strings.ReplaceAll(
+		strings.Split(currentTime.Round(time.Hour).String(), " +")[0], " ", ".")
 }
 
 func HasCompletedLabel(w *v1alpha1.FlyteWorkflow) bool {
@@ -77,7 +79,8 @@ func CalculateHoursToDelete(retentionPeriodHours, currentHourOfDay int) []string
 func CalculateHoursToKeep(retentionPeriodHours int, currentTime time.Time) []string {
 	hoursToKeep := make([]string, 0, retentionPeriodHours+1)
 	for i := 0; i <= retentionPeriodHours; i++ {
-		hoursToKeep = append(hoursToKeep, strconv.Itoa(currentTime.Day())+"."+strconv.Itoa(currentTime.Hour()))
+		hoursToKeep = append(hoursToKeep, strings.ReplaceAll(
+			strings.Split(currentTime.Round(time.Hour).String(), ":")[0], " ", "."))
 		currentTime = currentTime.Add(-1 * time.Hour)
 	}
 	return hoursToKeep
