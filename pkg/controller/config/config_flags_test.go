@@ -841,4 +841,18 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_metricsBindAddress", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("metricsBindAddress", testValue)
+			if vString, err := cmdFlags.GetString("metricsBindAddress"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.MetricsBindAddress)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

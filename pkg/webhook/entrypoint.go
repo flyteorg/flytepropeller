@@ -54,6 +54,7 @@ func Run(ctx context.Context, propellerCfg *config.Config, cfg *config2.Config, 
 		return err
 	}
 
+	logger.Infof(ctx, "cfg.ListenPort: %v", cfg.ListenPort)
 	mgr, err := manager.New(kubecfg, manager.Options{
 		Port:               cfg.ListenPort,
 		CertDir:            cfg.CertDir,

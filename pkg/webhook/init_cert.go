@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"path"
 	"time"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
@@ -37,6 +38,7 @@ const (
 	ServerCertKey        = "tls.crt"
 	ServerCertPrivateKey = "tls.key"
 	podDefaultNamespace  = "flyte"
+	permission           = 0644
 )
 
 func InitCerts(ctx context.Context, propellerCfg *config.Config, cfg *webhookConfig.Config) error {
@@ -71,6 +73,26 @@ func createWebhookSecret(ctx context.Context, namespace string, cfg *webhookConf
 		CaCertKey:            certs.CaPEM.Bytes(),
 		ServerCertKey:        certs.ServerPEM.Bytes(),
 		ServerCertPrivateKey: certs.PrivateKeyPEM.Bytes(),
+	}
+
+	if cfg.LocalCert {
+		if _, err := os.Stat(cfg.CertDir); os.IsNotExist(err) {
+			if err := os.Mkdir(cfg.CertDir, permission); err != nil {
+				return err
+			}
+		}
+
+		if err := os.WriteFile(path.Join(cfg.CertDir, CaCertKey), certs.CaPEM.Bytes(), permission); err != nil {
+			return err
+		}
+
+		if err := os.WriteFile(path.Join(cfg.CertDir, ServerCertKey), certs.ServerPEM.Bytes(), permission); err != nil {
+			return err
+		}
+
+		if err := os.WriteFile(path.Join(cfg.CertDir, ServerCertPrivateKey), certs.PrivateKeyPEM.Bytes(), permission); err != nil {
+			return err
+		}
 	}
 
 	secret := &corev1.Secret{
