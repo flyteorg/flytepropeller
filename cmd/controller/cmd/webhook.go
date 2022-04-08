@@ -13,10 +13,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	podDefaultNamespace = "default"
-)
-
 var webhookCmd = &cobra.Command{
 	Use:     "webhook",
 	Aliases: []string{"webhooks"},

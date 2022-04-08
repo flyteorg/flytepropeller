@@ -2,16 +2,15 @@ package cmd
 
 import (
 	"context"
+
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 
 	webhookConfig "github.com/flyteorg/flytepropeller/pkg/webhook/config"
 
 	"github.com/flyteorg/flytepropeller/pkg/webhook"
 
-
 	"github.com/spf13/cobra"
 )
-
 
 // initCertsCmd initializes x509 TLS Certificates and saves them to a secret.
 var initCertsCmd = &cobra.Command{
