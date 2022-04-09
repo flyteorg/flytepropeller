@@ -3,6 +3,10 @@ package cmd
 import (
 	"context"
 
+	"github.com/flyteorg/flytepropeller/pkg/controller"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"golang.org/x/sync/errgroup"
+
 	webhookConfig "github.com/flyteorg/flytepropeller/pkg/webhook/config"
 	"github.com/flyteorg/flytestdlib/profutils"
 
@@ -77,12 +81,30 @@ func init() {
 func runWebhook(origContext context.Context, propellerCfg *config.Config, cfg *webhookConfig.Config) error {
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler(origContext)
+	g, childCtx := errgroup.WithContext(ctx)
 
-	go func() {
-		err := profutils.StartProfilingServerWithDefaultHandlers(ctx, propellerCfg.ProfilerPort.Port, nil)
+	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(propellerCfg.LimitNamespace)
+	mgr, err := controller.CreateControllerManager(childCtx, propellerCfg, defaultNamespace, &propellerScope)
+	if err != nil {
+		logger.Fatalf(childCtx, "Failed to create controller manager. Error: %v", err)
+		return err
+	}
+
+	g.Go(func() error {
+		err := profutils.StartProfilingServerWithDefaultHandlers(childCtx, propellerCfg.ProfilerPort.Port, nil)
 		if err != nil {
-			logger.Panicf(ctx, "Failed to Start profiling and metrics server. Error: %v", err)
+			logger.Fatalf(childCtx, "Failed to Start profiling and metrics server. Error: %v", err)
 		}
-	}()
-	return webhook.Run(ctx, propellerCfg, cfg, defaultNamespace)
+		return err
+	})
+
+	g.Go(func() error {
+		err := webhook.Run(ctx, propellerCfg, cfg, defaultNamespace, &propellerScope, mgr)
+		if err != nil {
+			logger.Fatalf(childCtx, "Failed to start webhook. Error: %v", err)
+		}
+		return err
+	})
+
+	return g.Wait()
 }

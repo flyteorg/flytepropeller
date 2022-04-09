@@ -103,6 +103,5 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.StringSlice(fmt.Sprintf("%v%v", prefix, "exclude-domain-label"), []string{}, "Exclude the specified domain label from the k8s FlyteWorkflow CRD label selector")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "cluster-id"), defaultConfig.ClusterID, "Unique cluster id running this flytepropeller instance with which to annotate execution events")
 	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "create-flyteworkflow-crd"), defaultConfig.CreateFlyteWorkflowCRD, "Enable creation of the FlyteWorkflow CRD on startup")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "metricsBindAddress"), defaultConfig.MetricsBindAddress, "TCP address that the controller should bind for serving prometheus metrics.")
 	return cmdFlags
 }
