@@ -81,15 +81,15 @@ func init() {
 func runWebhook(origContext context.Context, propellerCfg *config.Config, cfg *webhookConfig.Config) error {
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler(origContext)
-	g, childCtx := errgroup.WithContext(ctx)
 
 	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(propellerCfg.LimitNamespace)
-	mgr, err := controller.CreateControllerManager(childCtx, propellerCfg, defaultNamespace, &propellerScope)
+	mgr, err := controller.CreateControllerManager(ctx, propellerCfg, defaultNamespace, &propellerScope)
 	if err != nil {
-		logger.Fatalf(childCtx, "Failed to create controller manager. Error: %v", err)
+		logger.Fatalf(ctx, "Failed to create controller manager. Error: %v", err)
 		return err
 	}
 
+	g, childCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		err := profutils.StartProfilingServerWithDefaultHandlers(childCtx, propellerCfg.ProfilerPort.Port, nil)
 		if err != nil {
@@ -99,7 +99,15 @@ func runWebhook(origContext context.Context, propellerCfg *config.Config, cfg *w
 	})
 
 	g.Go(func() error {
-		err := webhook.Run(ctx, propellerCfg, cfg, defaultNamespace, &propellerScope, mgr)
+		err := controller.StartControllerManager(childCtx, mgr)
+		if err != nil {
+			logger.Fatalf(childCtx, "Failed to start controller manager. Error: %v", err)
+		}
+		return err
+	})
+
+	g.Go(func() error {
+		err := webhook.Run(childCtx, propellerCfg, cfg, defaultNamespace, &propellerScope, mgr)
 		if err != nil {
 			logger.Fatalf(childCtx, "Failed to start webhook. Error: %v", err)
 		}
