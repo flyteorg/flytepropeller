@@ -516,6 +516,10 @@ func CreateControllerManager(ctx context.Context, cfg *config.Config,
 	return &mgr, nil
 }
 
+// StartControllerManager Start controller runtime manager to start listening to resource changes.
+// K8sPluginManager uses controller runtime to create informers for the CRDs being monitored by plugins. The informer
+// EventHandler enqueues the owner workflow for reevaluation. These informer events allow propeller to detect
+// workflow changes faster than the default sync interval for workflow CRDs.
 func StartControllerManager(ctx context.Context, mgr *manager.Manager) error {
 	ctx = contextutils.WithGoroutineLabel(ctx, "controller-runtime-manager")
 	pprof.SetGoroutineLabels(ctx)
