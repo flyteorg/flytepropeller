@@ -9,55 +9,58 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"github.com/flyteorg/flyteidl/clients/go/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	flyteK8sConfig "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+
+	"github.com/flyteorg/flytepropeller/events"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	clientset "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned"
+	informers "github.com/flyteorg/flytepropeller/pkg/client/informers/externalversions"
+	lister "github.com/flyteorg/flytepropeller/pkg/client/listers/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes"
+	errors3 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
+	"github.com/flyteorg/flytepropeller/pkg/controller/workflow"
+	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
+	leader "github.com/flyteorg/flytepropeller/pkg/leaderelection"
+	"github.com/flyteorg/flytepropeller/pkg/utils"
+
+	"github.com/flyteorg/flytestdlib/contextutils"
+	stdErrs "github.com/flyteorg/flytestdlib/errors"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/storage"
+
+	"github.com/pkg/errors"
+
+	"github.com/prometheus/client_golang/prometheus"
 
 	"google.golang.org/grpc"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
-	"github.com/flyteorg/flytestdlib/promutils/labeled"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 
-	"github.com/flyteorg/flytestdlib/contextutils"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-
-	stdErrs "github.com/flyteorg/flytestdlib/errors"
-
-	errors3 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
-
-	"github.com/flyteorg/flytepropeller/events"
-	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
-
-	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
-
-	"github.com/flyteorg/flyteidl/clients/go/admin"
-	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/flyteorg/flytestdlib/storage"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/util/clock"
+
 	k8sInformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/record"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-	flyteK8sConfig "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	clientset "github.com/flyteorg/flytepropeller/pkg/client/clientset/versioned"
-	informers "github.com/flyteorg/flytepropeller/pkg/client/informers/externalversions"
-	lister "github.com/flyteorg/flytepropeller/pkg/client/listers/flyteworkflow/v1alpha1"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
-	"github.com/flyteorg/flytepropeller/pkg/controller/workflow"
-	leader "github.com/flyteorg/flytepropeller/pkg/leaderelection"
-	"github.com/flyteorg/flytepropeller/pkg/utils"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 const (
@@ -490,8 +493,42 @@ func SharedInformerOptions(cfg *config.Config, defaultNamespace string) []inform
 	return opts
 }
 
+func CreateControllerManager(ctx context.Context, cfg *config.Config,
+	defaultNamespace string, scope *promutils.Scope) (*manager.Manager, error) {
+
+	_, kubecfg, err := utils.GetKubeConfig(ctx, cfg)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error building Kubernetes Clientset")
+	}
+
+	limitNamespace := ""
+	if cfg.LimitNamespace != defaultNamespace {
+		limitNamespace = cfg.LimitNamespace
+	}
+	mgr, err := manager.New(kubecfg, manager.Options{
+		Namespace:     limitNamespace,
+		SyncPeriod:    &cfg.DownstreamEval.Duration,
+		ClientBuilder: executors.NewFallbackClientBuilder((*scope).NewSubScope("kube")),
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to initialize controller-runtime manager")
+	}
+	return &mgr, nil
+}
+
+// StartControllerManager Start controller runtime manager to start listening to resource changes.
+// K8sPluginManager uses controller runtime to create informers for the CRDs being monitored by plugins. The informer
+// EventHandler enqueues the owner workflow for reevaluation. These informer events allow propeller to detect
+// workflow changes faster than the default sync interval for workflow CRDs.
+func StartControllerManager(ctx context.Context, mgr *manager.Manager) error {
+	ctx = contextutils.WithGoroutineLabel(ctx, "controller-runtime-manager")
+	pprof.SetGoroutineLabels(ctx)
+	logger.Infof(ctx, "Starting controller-runtime manager")
+	return (*mgr).Start(ctx)
+}
+
 // StartController creates a new FlytePropeller Controller and starts it
-func StartController(ctx context.Context, cfg *config.Config, defaultNamespace string) error {
+func StartController(ctx context.Context, cfg *config.Config, defaultNamespace string, mgr *manager.Manager, scope *promutils.Scope) error {
 	// Setup cancel on the context
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -506,43 +543,30 @@ func StartController(ctx context.Context, cfg *config.Config, defaultNamespace s
 		return errors.Wrapf(err, "error building FlyteWorkflow clientset")
 	}
 
+	// Create FlyteWorkflow CRD if it does not exist
+	if cfg.CreateFlyteWorkflowCRD {
+		logger.Infof(ctx, "creating FlyteWorkflow CRD")
+		apiextensionsClient, err := apiextensionsclientset.NewForConfig(kubecfg)
+		if err != nil {
+			return errors.Wrapf(err, "error building apiextensions clientset")
+		}
+
+		_, err = apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Create(ctx, &flyteworkflow.CRD, v1.CreateOptions{})
+		if err != nil {
+			if apierrors.IsAlreadyExists(err) {
+				logger.Warnf(ctx, "FlyteWorkflow CRD already exists")
+			} else {
+				return errors.Wrapf(err, "failed to create FlyteWorkflow CRD")
+			}
+		}
+	}
+
 	opts := SharedInformerOptions(cfg, defaultNamespace)
 	flyteworkflowInformerFactory := informers.NewSharedInformerFactoryWithOptions(flyteworkflowClient, cfg.WorkflowReEval.Duration, opts...)
 
 	informerFactory := k8sInformers.NewSharedInformerFactoryWithOptions(kubeClient, flyteK8sConfig.GetK8sPluginConfig().DefaultPodTemplateResync.Duration)
 
-	// Add the propeller subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
-	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(cfg.LimitNamespace)
-
-	limitNamespace := ""
-	if cfg.LimitNamespace != defaultNamespace {
-		limitNamespace = cfg.LimitNamespace
-	}
-
-	mgr, err := manager.New(kubecfg, manager.Options{
-		Namespace:     limitNamespace,
-		SyncPeriod:    &cfg.DownstreamEval.Duration,
-		ClientBuilder: executors.NewFallbackClientBuilder(propellerScope.NewSubScope("kube")),
-	})
-	if err != nil {
-		return errors.Wrapf(err, "failed to initialize controller-runtime manager")
-	}
-
-	// Start controller runtime manager to start listening to resource changes.
-	// K8sPluginManager uses controller runtime to create informers for the CRDs being monitored by plugins. The informer
-	// EventHandler enqueues the owner workflow for reevaluation. These informer events allow propeller to detect
-	// workflow changes faster than the default sync interval for workflow CRDs.
-	go func(ctx context.Context) {
-		ctx = contextutils.WithGoroutineLabel(ctx, "controller-runtime-manager")
-		pprof.SetGoroutineLabels(ctx)
-		logger.Infof(ctx, "Starting controller-runtime manager")
-		err := mgr.Start(ctx)
-		if err != nil {
-			logger.Fatalf(ctx, "Failed to start manager. Error: %v", err)
-		}
-	}(ctx)
-
-	c, err := New(ctx, cfg, kubeClient, flyteworkflowClient, flyteworkflowInformerFactory, informerFactory, mgr, propellerScope)
+	c, err := New(ctx, cfg, kubeClient, flyteworkflowClient, flyteworkflowInformerFactory, informerFactory, *mgr, *scope)
 	if err != nil {
 		return errors.Wrap(err, "failed to start FlytePropeller")
 	} else if c == nil {
