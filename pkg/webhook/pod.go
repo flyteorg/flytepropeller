@@ -180,6 +180,7 @@ func (pm PodMutator) CreateMutationWebhookConfiguration(namespace string) (*admi
 			Name:      pm.cfg.ServiceName,
 			Namespace: namespace,
 		},
+
 		Webhooks: []admissionregistrationv1.MutatingWebhook{
 			{
 				Name: webhookName,
@@ -189,6 +190,7 @@ func (pm PodMutator) CreateMutationWebhookConfiguration(namespace string) (*admi
 						Name:      pm.cfg.ServiceName,
 						Namespace: namespace,
 						Path:      &path,
+						Port:      &pm.cfg.ServicePort,
 					},
 				},
 				Rules: []admissionregistrationv1.RuleWithOperations{
