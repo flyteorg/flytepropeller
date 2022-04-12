@@ -13,6 +13,7 @@ const controllerAgentName = "flyteworkflow-controller"
 const workflowTerminationStatusKey = "termination-status"
 const workflowTerminatedValue = "terminated"
 const hourOfDayCompletedKey = "hour-of-day"
+const completedTimeKey = "completed-time"
 
 // This function creates a label selector, that will ignore all objects (in this case workflow) that DOES NOT have a
 // label key=workflowTerminationStatusKey with a value=workflowTerminatedValue
@@ -42,8 +43,8 @@ func SetCompletedLabel(w *v1alpha1.FlyteWorkflow, currentTime time.Time) {
 		w.Labels = make(map[string]string)
 	}
 	w.Labels[workflowTerminationStatusKey] = workflowTerminatedValue
-	w.Labels[hourOfDayCompletedKey] = strings.ReplaceAll(
-		strings.Split(currentTime.Round(time.Hour).String(), " +")[0], " ", ".")
+	w.Labels[completedTimeKey] = strings.ReplaceAll(
+		strings.Split(currentTime.Round(time.Hour).String(), ":")[0], " ", ".")
 }
 
 func HasCompletedLabel(w *v1alpha1.FlyteWorkflow) bool {
@@ -92,9 +93,25 @@ func CompletedWorkflowsSelectorOutsideRetentionPeriod(retentionPeriodHours int, 
 	hoursToKeep := CalculateHoursToKeep(retentionPeriodHours, currentTime)
 	s := CompletedWorkflowsLabelSelector()
 	s.MatchExpressions = append(s.MatchExpressions, v1.LabelSelectorRequirement{
-		Key:      hourOfDayCompletedKey,
+		Key:      completedTimeKey,
 		Operator: v1.LabelSelectorOpNotIn,
 		Values:   hoursToKeep,
+	})
+	s.MatchExpressions = append(s.MatchExpressions, v1.LabelSelectorRequirement{
+		Key:      hourOfDayCompletedKey,
+		Operator: v1.LabelSelectorOpIn,
+		Values:   []string{""},
+	})
+	return s
+}
+
+func CompletedWorkflowsSelectorOutsideRetentionPeriodAbandon(retentionPeriodHours int, currentTime time.Time) *v1.LabelSelector {
+	hoursToDelete := CalculateHoursToDelete(retentionPeriodHours-1, currentTime.Hour())
+	s := CompletedWorkflowsLabelSelector()
+	s.MatchExpressions = append(s.MatchExpressions, v1.LabelSelectorRequirement{
+		Key:      hourOfDayCompletedKey,
+		Operator: v1.LabelSelectorOpIn,
+		Values:   hoursToDelete,
 	})
 	return s
 }

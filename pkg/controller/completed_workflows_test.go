@@ -142,7 +142,7 @@ func TestCompletedWorkflowsSelectorOutsideRetentionPeriod(t *testing.T) {
 	assert.Equal(t, workflowTerminatedValue, v)
 	assert.NotEmpty(t, s.MatchExpressions)
 	r := s.MatchExpressions[0]
-	assert.Equal(t, hourOfDayCompletedKey, r.Key)
+	assert.Equal(t, completedTimeKey, r.Key)
 	assert.Equal(t, v1.LabelSelectorOpNotIn, r.Operator)
 	assert.Equal(t, 3, len(r.Values))
 	assert.Equal(t, []string{
