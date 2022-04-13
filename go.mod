@@ -3,45 +3,31 @@ module github.com/flyteorg/flytepropeller
 go 1.16
 
 require (
-	cloud.google.com/go v0.80.0 // indirect
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295
-	github.com/aws/aws-sdk-go v1.43.37 // indirect
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/fatih/color v1.13.0
 	github.com/flyteorg/flyteidl v0.24.19
 	github.com/flyteorg/flyteplugins v0.10.23
-	github.com/flyteorg/flytestdlib v0.4.23
-	github.com/flyteorg/stow v0.3.4 // indirect
-	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/flyteorg/flytestdlib v0.4.24-0.20220413001941-d1364430a962
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/go-test/deep v1.0.7
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
 	github.com/imdario/mergo v0.3.11
 	github.com/magiconair/properties v1.8.5
-	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mitchellh/mapstructure v1.4.3
-	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.1
 	github.com/sirupsen/logrus v1.7.0
-	github.com/spf13/afero v1.6.0 // indirect
-	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
-	go.uber.org/zap v1.17.0 // indirect
-	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
-	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
-	google.golang.org/api v0.44.0-impersonate-preview // indirect
-	google.golang.org/grpc v1.36.0
+	google.golang.org/grpc v1.43.0
 	google.golang.org/protobuf v1.27.1
-	gopkg.in/ini.v1 v1.66.2 // indirect
 	k8s.io/api v0.20.2
 	k8s.io/apiextensions-apiserver v0.20.1
 	k8s.io/apimachinery v0.20.2
@@ -51,3 +37,5 @@ require (
 )
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
+
+replace google.golang.org/grpc => google.golang.org/grpc v1.36.0
