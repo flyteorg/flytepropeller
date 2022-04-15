@@ -43,8 +43,7 @@ func SetCompletedLabel(w *v1alpha1.FlyteWorkflow, currentTime time.Time) {
 		w.Labels = make(map[string]string)
 	}
 	w.Labels[workflowTerminationStatusKey] = workflowTerminatedValue
-	w.Labels[completedTimeKey] = strings.ReplaceAll(
-		strings.Split(currentTime.Round(time.Hour).String(), ":")[0], " ", ".")
+	w.Labels[completedTimeKey] = SplitTimeToMeetsLabelFormat(currentTime)
 }
 
 func HasCompletedLabel(w *v1alpha1.FlyteWorkflow) bool {
@@ -80,8 +79,7 @@ func CalculateHoursToDelete(retentionPeriodHours, currentHourOfDay int) []string
 func CalculateHoursToKeep(retentionPeriodHours int, currentTime time.Time) []string {
 	hoursToKeep := make([]string, 0, retentionPeriodHours+1)
 	for i := 0; i <= retentionPeriodHours; i++ {
-		hoursToKeep = append(hoursToKeep, strings.ReplaceAll(
-			strings.Split(currentTime.Round(time.Hour).String(), ":")[0], " ", "."))
+		hoursToKeep = append(hoursToKeep, SplitTimeToMeetsLabelFormat(currentTime))
 		currentTime = currentTime.Add(-1 * time.Hour)
 	}
 	return hoursToKeep
@@ -114,4 +112,9 @@ func CompletedWorkflowsSelectorOutsideRetentionPeriodAbandon(retentionPeriodHour
 		Values:   hoursToDelete,
 	})
 	return s
+}
+
+func SplitTimeToMeetsLabelFormat(currentTime time.Time) string {
+	return strings.ReplaceAll(
+		strings.Split(currentTime.Round(time.Hour).String(), ":")[0], " ", ".")
 }

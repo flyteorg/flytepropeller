@@ -53,9 +53,9 @@ var (
 			Duration: 30 * time.Second,
 		},
 		MaxWorkflowRetries: 10,
-		MaxTTLInHours:      1,
+		MaxTTLInHours:      23,
 		GCInterval: config.Duration{
-			Duration: 5 * time.Minute,
+			Duration: 30 * time.Minute,
 		},
 		MaxDatasetSizeBytes: 10 * 1024 * 1024,
 		Queue: CompositeQueueConfig{
