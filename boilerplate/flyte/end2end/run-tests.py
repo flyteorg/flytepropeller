@@ -6,10 +6,11 @@ import sys
 import time
 import traceback
 import requests
-from pathlib import Path
 from typing import List, Mapping, Tuple, Dict
 from flytekit.remote import FlyteRemote
 from flytekit.models.core.execution import WorkflowExecutionPhase
+from flytekit.configuration import Config, ImageConfig, SerializationSettings
+
 
 WAIT_TIME = 10
 MAX_ATTEMPTS = 60
@@ -35,9 +36,9 @@ FLYTESNACKS_WORKFLOW_GROUPS: Mapping[str, List[Tuple[str, dict]]] = {
         ("core.control_flow.subworkflows.parent_wf", {"a": 3}),
         ("core.control_flow.subworkflows.nested_parent_wf", {"a": 3}),
         ("core.flyte_basics.basic_workflow.my_wf", {"a": 50, "b": "hello"}),
-        # Getting a 403 for the wikipedia image
+        # TODO: enable new files and folders workflows
         # ("core.flyte_basics.files.rotate_one_workflow", {"in_image": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Julia_set_%28C_%3D_0.285%2C_0.01%29.jpg"}),
-        ("core.flyte_basics.folders.download_and_rotate", {}),
+        # ("core.flyte_basics.folders.download_and_rotate", {}),
         ("core.flyte_basics.hello_world.my_wf", {}),
         ("core.flyte_basics.lp.my_wf", {"val": 4}),
         ("core.flyte_basics.lp.go_greet", {"day_of_week": "5", "number": 3, "am": True}),
@@ -79,7 +80,7 @@ def schedule_workflow_group(
     # Wait for all launch plans to finish
     attempt = 0
     while attempt == 0 or (
-        not all([lp.is_complete for lp in launch_plans]) and attempt < MAX_ATTEMPTS
+        not all([lp.is_done for lp in launch_plans]) and attempt < MAX_ATTEMPTS
     ):
         attempt += 1
         print(
@@ -129,15 +130,16 @@ def run(
     config_file_path,
     terminate_workflow_on_failure: bool,
 ) -> List[Dict[str, str]]:
-    remote = FlyteRemote.from_config(
+    remote = FlyteRemote(
+        Config.auto(config_file=config_file_path),
         default_project="flytesnacks",
         default_domain="development",
-        config_file_path=config_file_path,
     )
 
-    # For a given release tag and priority, this function filters the workflow groups from the flytesnacks manifest file. For
-    # example, for the release tag "v0.2.224" and the priority "P0" it returns [ "core" ].
-    manifest_url = f"https://raw.githubusercontent.com/flyteorg/flytesnacks/{flytesnacks_release_tag}/cookbook/flyte_tests_manifest.json"
+    # For a given release tag and priority, this function filters the workflow groups from the flytesnacks
+    # manifest file. For example, for the release tag "v0.2.224" and the priority "P0" it returns [ "core" ].
+    manifest_url = "https://raw.githubusercontent.com/flyteorg/flytesnacks/" \
+                   f"{flytesnacks_release_tag}/cookbook/flyte_tests_manifest.json"
     r = requests.get(manifest_url)
     parsed_manifest = r.json()
 
