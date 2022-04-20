@@ -8,7 +8,7 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/flyteorg/flyteidl v0.24.19
 	github.com/flyteorg/flyteplugins v0.10.23
-	github.com/flyteorg/flytestdlib v0.4.24-0.20220413001941-d1364430a962
+	github.com/flyteorg/flytestdlib v0.4.24-0.20220420071428-553de87f7c90
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/go-test/deep v1.0.7
@@ -23,6 +23,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
+	github.com/spf13/viper v1.10.1 // indirect
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
@@ -37,5 +38,3 @@ require (
 )
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
-
-replace google.golang.org/grpc => google.golang.org/grpc v1.36.0
