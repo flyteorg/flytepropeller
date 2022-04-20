@@ -51,3 +51,19 @@ func TestWorkflowSpec(t *testing.T) {
 	assert.Equal(t, 7, len(w.GetConnections().Downstream))
 	assert.Equal(t, 8, len(w.GetConnections().Upstream))
 }
+
+func TestWorkflowIsInterruptible(t *testing.T) {
+	w := &v1alpha1.FlyteWorkflow{}
+
+	// no execution spec or metadata defined -> interruptible defaults to false
+	assert.False(t, w.IsInterruptible())
+
+	// marked as interruptible via execution config (e.g. for a single execution)
+	w.ExecutionConfig.Interruptible = true
+	assert.True(t, w.IsInterruptible())
+
+	// interruptible flag retrieved from node defaults (e.g. workflow definition)
+	w.ExecutionConfig.Interruptible = false
+	w.NodeDefaults.Interruptible = true
+	assert.True(t, w.IsInterruptible())
+}
