@@ -97,8 +97,7 @@ func CompletedWorkflowsSelectorOutsideRetentionPeriod(retentionPeriodHours int, 
 	})
 	s.MatchExpressions = append(s.MatchExpressions, v1.LabelSelectorRequirement{
 		Key:      hourOfDayCompletedKey,
-		Operator: v1.LabelSelectorOpIn,
-		Values:   []string{""},
+		Operator: v1.LabelSelectorOpDoesNotExist,
 	})
 	return s
 }
