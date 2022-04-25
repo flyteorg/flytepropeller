@@ -66,13 +66,16 @@ func CalculateHoursToDelete(retentionPeriodHours, currentHourOfDay int) []string
 	for i := 0; i < currentHourOfDay-retentionPeriodHours; i++ {
 		hoursToDelete = append(hoursToDelete, strconv.Itoa(i))
 	}
+
 	maxHourOfDay := 24
 	if currentHourOfDay-retentionPeriodHours < 0 {
 		maxHourOfDay = 24 + (currentHourOfDay - retentionPeriodHours)
 	}
+
 	for i := currentHourOfDay + 1; i < maxHourOfDay; i++ {
 		hoursToDelete = append(hoursToDelete, strconv.Itoa(i))
 	}
+
 	return hoursToDelete
 }
 
@@ -96,6 +99,11 @@ func CompletedWorkflowsSelectorOutsideRetentionPeriod(retentionPeriodHours int, 
 		Key:      completedTimeKey,
 		Operator: v1.LabelSelectorOpNotIn,
 		Values:   hoursToKeep,
+	})
+
+	s.MatchExpressions = append(s.MatchExpressions, v1.LabelSelectorRequirement{
+		Key:      hourOfDayCompletedKey,
+		Operator: v1.LabelSelectorOpDoesNotExist,
 	})
 
 	return s
