@@ -151,5 +151,5 @@ func TestCompletedWorkflowsSelectorOutsideRetentionPeriod(t *testing.T) {
 }
 
 func TestFormatTimeForLabel(t *testing.T) {
-	assert.Equal(t, "1970-12-01.14", FormatTimeForLabel(time.Unix(1000000, 100000)))
+	assert.Equal(t, "1970-01-12.13", FormatTimeForLabel(time.Unix(1000000, 100000)))
 }

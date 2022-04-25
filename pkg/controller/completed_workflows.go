@@ -16,7 +16,7 @@ const (
 	completedTimeKey             = "completed-time"
 	// Layout string for time.Format() function expects the time ("Mon, 02 Jan 2006 15:04:05 MST") formatted
 	// in the desired layout.
-	labelTimeFormat = "2006-02-01.15"
+	labelTimeFormat = "2006-01-02.15"
 )
 
 // IgnoreCompletedWorkflowsLabelSelector this function creates a label selector, that will ignore all objects (in this
