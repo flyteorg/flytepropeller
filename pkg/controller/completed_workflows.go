@@ -2,18 +2,22 @@ package controller
 
 import (
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const controllerAgentName = "flyteworkflow-controller"
-const workflowTerminationStatusKey = "termination-status"
-const workflowTerminatedValue = "terminated"
-const hourOfDayCompletedKey = "hour-of-day"
-const completedTimeKey = "completed-time"
+const (
+	controllerAgentName          = "flyteworkflow-controller"
+	workflowTerminationStatusKey = "termination-status"
+	workflowTerminatedValue      = "terminated"
+	hourOfDayCompletedKey        = "hour-of-day"
+	completedTimeKey             = "completed-time"
+	// Layout string for time.Format() function expects the time ("Mon, 02 Jan 2006 15:04:05 MST") formatted
+	// in the desired layout.
+	labelTimeFormat = "2006-02-01.15"
+)
 
 // IgnoreCompletedWorkflowsLabelSelector this function creates a label selector, that will ignore all objects (in this
 // case workflow) that DOES NOT have a label key=workflowTerminationStatusKey with a value=workflowTerminatedValue
@@ -123,7 +127,13 @@ func DeprecatedCompletedWorkflowsSelectorOutsideRetentionPeriod(retentionPeriodH
 	return s
 }
 
+// FormatTimeForLabel returns a string representation of the time with the following properties:
+// 1. It's safe to put as a label in k8s objects' metadata
+// 2. The granularity is up to the hour only.
+// 3. The format is YYYY-MM-DD.HH
+// 4. Is always in UTC.
 func FormatTimeForLabel(currentTime time.Time) string {
-	return strings.ReplaceAll(
-		strings.Split(currentTime.Round(time.Hour).String(), ":")[0], " ", ".")
+	// We only care about the date and the hour within.
+	// We convert to UTC to avoid possible issues with changing timezones between deployments.
+	return currentTime.UTC().Format(labelTimeFormat)
 }
