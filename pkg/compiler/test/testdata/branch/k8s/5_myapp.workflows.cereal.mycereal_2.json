@@ -667,6 +667,6 @@
         "GPU": "0"
       }
     },
-    "Interruptible": false
+    "Interruptible": null
   }
 }

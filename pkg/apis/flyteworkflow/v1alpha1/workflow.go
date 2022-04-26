@@ -151,8 +151,13 @@ func (in *FlyteWorkflow) GetServiceAccountName() string {
 }
 
 func (in *FlyteWorkflow) IsInterruptible() bool {
-	// prefer interruptible flag from execution config, fall back to node defaults (e.g. specified via workflow definition)
-	return in.ExecutionConfig.Interruptible || in.NodeDefaults.Interruptible
+	// use execution config override if set (can enable/disable interruptible flag for a single execution)
+	if in.ExecutionConfig.Interruptible != nil {
+		return *in.ExecutionConfig.Interruptible
+	}
+
+	// fall back to node defaults if no override was provided
+	return in.NodeDefaults.Interruptible
 }
 
 func (in *FlyteWorkflow) GetRawOutputDataConfig() RawOutputDataConfig {

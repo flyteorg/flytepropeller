@@ -59,11 +59,22 @@ func TestWorkflowIsInterruptible(t *testing.T) {
 	assert.False(t, w.IsInterruptible())
 
 	// marked as interruptible via execution config (e.g. for a single execution)
-	w.ExecutionConfig.Interruptible = true
+	execConfigInterruptible := true
+	w.ExecutionConfig.Interruptible = &execConfigInterruptible
 	assert.True(t, w.IsInterruptible())
 
-	// interruptible flag retrieved from node defaults (e.g. workflow definition)
-	w.ExecutionConfig.Interruptible = false
+	// marked as not interruptible via execution config, overwriting node defaults
+	execConfigInterruptible = false
+	w.NodeDefaults.Interruptible = true
+	assert.False(t, w.IsInterruptible())
+
+	// marked as interruptible via execution config, overwriting node defaults
+	execConfigInterruptible = true
+	w.NodeDefaults.Interruptible = false
+	assert.True(t, w.IsInterruptible())
+
+	// interruptible flag retrieved from node defaults (e.g. workflow definition), no execution config override
+	w.ExecutionConfig.Interruptible = nil
 	w.NodeDefaults.Interruptible = true
 	assert.True(t, w.IsInterruptible())
 }

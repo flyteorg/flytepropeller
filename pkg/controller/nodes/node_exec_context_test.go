@@ -43,6 +43,7 @@ func getTestNodeSpec(interruptible *bool) *v1alpha1.NodeSpec {
 }
 
 func getTestFlyteWorkflow() *v1alpha1.FlyteWorkflow {
+	interruptible := false
 	return &v1alpha1.FlyteWorkflow{
 		NodeDefaults: v1alpha1.NodeDefaults{Interruptible: false},
 		RawOutputDataConfig: v1alpha1.RawOutputDataConfig{RawOutputDataConfig: &admin.RawOutputDataConfig{
@@ -64,7 +65,7 @@ func getTestFlyteWorkflow() *v1alpha1.FlyteWorkflow {
 				},
 			},
 		},
-		ExecutionConfig: v1alpha1.ExecutionConfig{Interruptible: false},
+		ExecutionConfig: v1alpha1.ExecutionConfig{Interruptible: &interruptible},
 	}
 }
 
@@ -171,17 +172,29 @@ func Test_NodeContextDefaultInterruptible(t *testing.T) {
 		verifyNodeExecContext(t, execContext, nodeLookup, false)
 
 		// both exec config and node defaults have interruptible flag, node spec defines no override -> true
-		w.ExecutionConfig.Interruptible = true
+		execConfigInterruptible := true
+		w.ExecutionConfig.Interruptible = &execConfigInterruptible
 		w.NodeDefaults.Interruptible = true
 		verifyNodeExecContext(t, execContext, nodeLookup, true)
 
-		// either exec config or node defaults has interruptible flag, node spec defines no override -> true
-		w.ExecutionConfig.Interruptible = false
+		// node defaults set interruptible flag, but exec config overwrites it -> false
+		execConfigInterruptible = false
 		w.NodeDefaults.Interruptible = true
-		verifyNodeExecContext(t, execContext, nodeLookup, true)
+		verifyNodeExecContext(t, execContext, nodeLookup, false)
 
-		w.ExecutionConfig.Interruptible = true
+		// node defaults do not have interruptible flags, but exec config enables it -> true
+		execConfigInterruptible = true
 		w.NodeDefaults.Interruptible = false
+		verifyNodeExecContext(t, execContext, nodeLookup, true)
+
+		// exec config does not specify interruptible flag, node defaults contain false, node spec defines no override -> false
+		w.ExecutionConfig.Interruptible = nil
+		w.NodeDefaults.Interruptible = false
+		verifyNodeExecContext(t, execContext, nodeLookup, false)
+
+		// exec config does not specify interruptible flag, node defaults contain true, node spec defines no override -> true
+		w.ExecutionConfig.Interruptible = nil
+		w.NodeDefaults.Interruptible = true
 		verifyNodeExecContext(t, execContext, nodeLookup, true)
 	})
 
@@ -201,18 +214,30 @@ func Test_NodeContextDefaultInterruptible(t *testing.T) {
 		// exec config and node defaults have no interruptible flag, node spec defines true -> true
 		verifyNodeExecContext(t, execContext, nodeLookup, true)
 
-		// node spec, exec config and node defaults have interruptible flag -> true
-		w.ExecutionConfig.Interruptible = true
+		// both exec config and node defaults have interruptible flag, node spec defines true -> true
+		execConfigInterruptible := true
+		w.ExecutionConfig.Interruptible = &execConfigInterruptible
 		w.NodeDefaults.Interruptible = true
 		verifyNodeExecContext(t, execContext, nodeLookup, true)
 
-		// either exec config or node defaults has interruptible flag, node spec defines true -> true
-		w.ExecutionConfig.Interruptible = false
+		// node defaults set interruptible flag, exec config overwrites it, but node spec defines true -> true
+		execConfigInterruptible = false
 		w.NodeDefaults.Interruptible = true
 		verifyNodeExecContext(t, execContext, nodeLookup, true)
 
-		w.ExecutionConfig.Interruptible = true
+		// node defaults do not have interruptible flags, but exec config enables it -> true
+		execConfigInterruptible = true
 		w.NodeDefaults.Interruptible = false
+		verifyNodeExecContext(t, execContext, nodeLookup, true)
+
+		// exec config does not specify interruptible flag, node defaults contain false, node spec defines true -> true
+		w.ExecutionConfig.Interruptible = nil
+		w.NodeDefaults.Interruptible = false
+		verifyNodeExecContext(t, execContext, nodeLookup, true)
+
+		// exec config does not specify interruptible flag, node defaults contain true, node spec defines true -> true
+		w.ExecutionConfig.Interruptible = nil
+		w.NodeDefaults.Interruptible = true
 		verifyNodeExecContext(t, execContext, nodeLookup, true)
 	})
 
@@ -232,18 +257,30 @@ func Test_NodeContextDefaultInterruptible(t *testing.T) {
 		// exec config and node defaults have no interruptible flag, node spec defines false -> false
 		verifyNodeExecContext(t, execContext, nodeLookup, false)
 
-		// node spec, exec config and node defaults have interruptible flag, node spec defines false -> false
-		w.ExecutionConfig.Interruptible = true
+		// both exec config and node defaults have interruptible flag, node spec defines false -> true
+		execConfigInterruptible := true
+		w.ExecutionConfig.Interruptible = &execConfigInterruptible
 		w.NodeDefaults.Interruptible = true
 		verifyNodeExecContext(t, execContext, nodeLookup, false)
 
-		// either exec config or node defaults has interruptible flag, node spec defines false -> false
-		w.ExecutionConfig.Interruptible = false
+		// node defaults set interruptible flag, exec config overwrites it, node spec defines false -> false
+		execConfigInterruptible = false
 		w.NodeDefaults.Interruptible = true
 		verifyNodeExecContext(t, execContext, nodeLookup, false)
 
-		w.ExecutionConfig.Interruptible = true
+		// node defaults do not have interruptible flags, exec config enables it, but node spec defines false -> false
+		execConfigInterruptible = true
 		w.NodeDefaults.Interruptible = false
+		verifyNodeExecContext(t, execContext, nodeLookup, false)
+
+		// exec config does not specify interruptible flag, node defaults contain false, node spec defines false -> false
+		w.ExecutionConfig.Interruptible = nil
+		w.NodeDefaults.Interruptible = false
+		verifyNodeExecContext(t, execContext, nodeLookup, false)
+
+		// exec config does not specify interruptible flag, node defaults contain true, node spec defines false -> false
+		w.ExecutionConfig.Interruptible = nil
+		w.NodeDefaults.Interruptible = true
 		verifyNodeExecContext(t, execContext, nodeLookup, false)
 	})
 }

@@ -29,7 +29,7 @@ type ExecutionConfig struct {
 	// applied at execution time.
 	TaskResources TaskResources
 	// Defines whether a workflow has been flagged as interruptible.
-	Interruptible bool
+	Interruptible *bool
 }
 
 type TaskPluginOverride struct {
