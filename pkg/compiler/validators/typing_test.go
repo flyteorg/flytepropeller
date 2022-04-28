@@ -493,6 +493,27 @@ func TestMapCasting(t *testing.T) {
 		assert.False(t, castable, "{k: Integer} should not be castable to {k: Float}")
 	})
 
+	t.Run("ScalarIntegerMapToScalarFloatMap", func(t *testing.T) {
+		castable := AreTypesCastable(
+			&core.LiteralType{
+				Type: &core.LiteralType_MapValueType{
+					MapValueType: &core.LiteralType{
+						Type: &core.LiteralType_Simple{Simple: core.SimpleType_NONE},
+					},
+				},
+			},
+			&core.LiteralType{
+				Type: &core.LiteralType_MapValueType{
+					MapValueType: &core.LiteralType{
+						Type: &core.LiteralType_Simple{Simple: core.SimpleType_FLOAT},
+					},
+				},
+			},
+		)
+
+		assert.True(t, castable, "{k: None} should be castable to {k: Float}")
+	})
+
 	t.Run("ScalarStructToStruct", func(t *testing.T) {
 		castable := AreTypesCastable(
 			&core.LiteralType{
