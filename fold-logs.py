@@ -39,6 +39,7 @@ class Workflow(Block):
     def handle_log(self, log):
         global queued
 
+        # TODO - need to regex check for self.id - and use everywhere for Enqueueing workflow
         # match {msg:"==\u003e Enqueueing workflow [flytesnacks-development/self.id]"}
         if "msg" in log and "Enqueueing workflow" in log["msg"]:
             if not self.start_time:
@@ -123,6 +124,17 @@ class StreakRound(Block):
             self.end_time = log["ts"]
 
         # match {json: {exec_id: self.id}, msg:"TODO ..."}
+        if "msg" in log and "Transitioning/Recording event for workflow state transition" in log["msg"]:
+            id = "UpdateWorkflowPhase("
+
+            match = re.search(r'\[([\w]+)\] -> \[([\w]+)\]', log["msg"])
+            if match:
+                id += f"{match.group(1)},{match.group(2)})"
+
+            self.children.append(IDBlock(id, self.last_recorded_time, log["ts"]))
+            self.last_recorded_time = log["ts"]
+
+        # match {json: {exec_id: self.id}, msg:"TODO ..."}
         if "msg" in log and "Change in node state detected" in log["msg"]:
             id = "UpdateNodePhase(" + log["json"]["node"]
 
@@ -130,6 +142,12 @@ class StreakRound(Block):
             if match:
                 id += f",{match.group(1)},{match.group(2)})"
 
+            self.children.append(IDBlock(id, self.last_recorded_time, log["ts"]))
+            self.last_recorded_time = log["ts"]
+
+        # match {json: {exec_id: self.id}, msg:"TODO ..."}
+        if "msg" in log and "node succeeding" in log["msg"]:
+            id = "UpdateNodePhase(" + log["json"]["node"] + ",Succeeding,Succeeded)"
             self.children.append(IDBlock(id, self.last_recorded_time, log["ts"]))
             self.last_recorded_time = log["ts"]
 
@@ -192,7 +210,7 @@ def print_block_flame(block, prefix):
         count += 1
 
 def print_block(block, indent):
-    start_time = datetime.strptime(block.end_time, '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
+    start_time = datetime.strptime(block.start_time, '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
     id = start_time + indent + block.get_id()
 
     elapsed_time = 0
@@ -225,7 +243,3 @@ if __name__ == "__main__":
     workflow.end_time = workflow.children[len(workflow.children) - 1].end_time
     print_block(workflow, "    ")
     #print_block_flame(workflow, None)
-
-    # TODO - fix workflow start_time
-    # TODO - add info on when workflow is queued
-    # TODO - add info on transitioning node (ex. n0) to success
