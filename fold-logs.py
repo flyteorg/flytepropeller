@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# tracking workflow state requires debug logs
+# note: tracking workflow state requires debug logs
 
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -43,11 +43,9 @@ class Block(ABC):
 class Workflow(Block):
     def __init__(self):
         super().__init__(-1)
-        self.last_recorded_time = None
 
     def handle_log(self, log, line_number):
         global enqueue_line_numbers
-        global queued
 
         # match {msg:"==\u003e Enqueueing workflow ..."}
         if "Enqueueing workflow" in log["msg"]:
@@ -56,28 +54,11 @@ class Workflow(Block):
                 self.start_time = log["ts"]
                 self.line_number = line_number
 
-            if not queued:
-                # add idle block
-                #if self.last_recorded_time:
-                #    self.children.append(IDBlock("Idle", self.last_recorded_time, log["ts"], line_number))
-
-                self.last_recorded_time = log["ts"]
-                queued = True
-
         # match {json: {exec_id: self.id}, msg:"Processing Workflow"}
         if "Processing Workflow" in log["msg"]:
-            # add queued block - TODO figure out the correct way to handle this
-            #if queued:
-                #self.children.append(IDBlock("Queued", self.last_recorded_time, log["ts"]))
-
-            queued = False
-
             block = Processing(log["ts"], line_number)
             block.parse()
             self.children.append(block)
-
-            # set idle time
-            self.last_recorded_time = block.end_time
 
 class IDBlock(Block):
     def __init__(self, id, start_time, end_time, line_number):
@@ -100,7 +81,6 @@ class Processing(Block):
 
     def handle_log(self, log, line_number):
         global enqueue_line_numbers
-        global queued
 
         # match {json: {exec_id: self.id}, msg:"Completed processing workflow"}
         if "Completed processing workflow" in log["msg"]:
@@ -117,7 +97,6 @@ class Processing(Block):
         # match {json: {exec_id: self.id}, msg:"Enqueueing workflow ..."}
         if "Enqueueing workflow" in log["msg"]:
             enqueue_line_numbers.append((line_number, log["ts"]))
-            queued = True
 
 class StreakRound(Block):
     def __init__(self, phase, start_time, line_number):
@@ -131,7 +110,6 @@ class StreakRound(Block):
 
     def handle_log(self, log, line_number):
         global enqueue_line_numbers
-        global queued
 
         # match {json: {exec_id: self.id}, msg:"Handling Workflow ..."}
         if "Handling Workflow" in log["msg"]:
@@ -179,7 +157,6 @@ class StreakRound(Block):
         # match {json: {exec_id: self.id}, msg:"Enqueueing workflow ..."}
         if "Enqueueing workflow" in log["msg"]:
             enqueue_line_numbers.append((line_number, log["ts"]))
-            queued = True
 
 # define JsonLogParser class
 class JsonLogParser:
@@ -204,15 +181,15 @@ class JsonLogParser:
                 # TODO - stderr?
                 pass
 
-def print_block(block, indent, prefix):
+def print_block(block, prefix):
     while len(enqueue_line_numbers) > 0 and enqueue_line_numbers[0][0] <= block.line_number:
         enqueue_time = datetime.strptime(enqueue_line_numbers[0][1], '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
 
-        #print(printfmt %(enqueue_time, enqueue_line_numbers[0][0], "-", "Enqueue Workflow"))
+        print(printfmt %(enqueue_time, enqueue_line_numbers[0][0], "-", "Enqueue Workflow"))
         enqueue_line_numbers.pop(0)
 
     start_time = datetime.strptime(block.start_time, '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
-    id = indent + prefix + " " + block.get_id()
+    id = prefix + " " + block.get_id()
 
     elapsed_time = 0
     if block.end_time and block.start_time:
@@ -223,7 +200,7 @@ def print_block(block, indent, prefix):
 
     count = 1
     for child in block.children:
-        print_block(child, f"{indent}    ", f"{prefix}.{count}")
+        print_block(child, f"    {prefix}.{count}")
         count += 1
 
 if __name__ == "__main__":
@@ -239,13 +216,9 @@ if __name__ == "__main__":
         global enqueue_line_numbers
         enqueue_line_numbers = []
 
-        global queued
-        queued = False
-
         workflow.parse()
 
     workflow.end_time = workflow.children[len(workflow.children) - 1].end_time
 
     print(header)
-    print_block(workflow, "", "1")
-    #print_block_flame(workflow, None)
+    print_block(workflow, "1")
