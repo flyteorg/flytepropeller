@@ -349,6 +349,26 @@ func TestCollectionCasting(t *testing.T) {
 		assert.True(t, castable, "[Integer] should be castable to [Integer].")
 	})
 
+	t.Run("Empty collection", func(t *testing.T) {
+		castable := AreTypesCastable(
+			&core.LiteralType{
+				Type: &core.LiteralType_CollectionType{
+					CollectionType: &core.LiteralType{
+						Type: &core.LiteralType_Simple{Simple: core.SimpleType_NONE},
+					},
+				},
+			},
+			&core.LiteralType{
+				Type: &core.LiteralType_CollectionType{
+					CollectionType: &core.LiteralType{
+						Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER},
+					},
+				},
+			},
+		)
+		assert.True(t, castable, "[] should be castable to [Integer].")
+	})
+
 	t.Run("SingleIntegerCollectionToSingleFloatCollection", func(t *testing.T) {
 		castable := AreTypesCastable(
 			&core.LiteralType{
