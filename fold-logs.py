@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# note: tracking workflow state requires debug logs
+# TODO - add tracking of "Enqueueing owner for object"
 
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -9,7 +9,7 @@ import random
 import re
 import sys
 
-header = "timestamp   line    duration    heirarchical log layout"
+header = "Timestamp   Line    Duration    Heirarchical Log Layout"
 printfmt = "%-11s %-7d %-11s %s"
 
 # define propeller log blocks
@@ -45,16 +45,16 @@ class Workflow(Block):
         super().__init__(-1)
 
     def handle_log(self, log, line_number):
-        global enqueue_line_numbers
+        global enqueue_msgs
 
-        # match {msg:"==\u003e Enqueueing workflow ..."}
+        # match {"level":"info", "msg":"==\u003e Enqueueing workflow [NAMESPACE/ID]}"}
         if "Enqueueing workflow" in log["msg"]:
-            enqueue_line_numbers.append((line_number, log["ts"]))
+            enqueue_msgs.append((line_number, log["ts"]))
             if not self.start_time:
                 self.start_time = log["ts"]
                 self.line_number = line_number
 
-        # match {json: {exec_id: self.id}, msg:"Processing Workflow"}
+        # match {"level":"info", "msg":"Processing Workflow"}
         if "Processing Workflow" in log["msg"]:
             block = Processing(log["ts"], line_number)
             block.parse()
@@ -80,23 +80,23 @@ class Processing(Block):
         self.last_recorded_time = start_time
 
     def handle_log(self, log, line_number):
-        global enqueue_line_numbers
+        global enqueue_msgs
 
-        # match {json: {exec_id: self.id}, msg:"Completed processing workflow"}
+        # match {"level":"info", "msg":"==\u003e Enqueueing workflow [NAMESPACE/ID]}"}
+        if "Enqueueing workflow" in log["msg"]:
+            enqueue_msgs.append((line_number, log["ts"]))
+
+        # match {"level":"info", "msg":"Completed processing workflow"}
         if "Completed processing workflow" in log["msg"]:
             self.end_time = log["ts"]
 
-        # match {json: {exec_id: self.id}, msg:"Handling Workflow ..."}
+        # match {"level":"info", "msg":"Handling Workflow [ID], id: [project:\"PROJECT\" domain:\"DOMAIN\" name:\"ID\" ], p [STATUS]"}
         if "Handling Workflow" in log["msg"]:
             match = re.search(r'p \[([\w]+)\]', log["msg"])
             if match:
                 block = StreakRound(f"{match.group(1)}", log["ts"], line_number)
                 block.parse()
                 self.children.append(block)
-
-        # match {json: {exec_id: self.id}, msg:"Enqueueing workflow ..."}
-        if "Enqueueing workflow" in log["msg"]:
-            enqueue_line_numbers.append((line_number, log["ts"]))
 
 class StreakRound(Block):
     def __init__(self, phase, start_time, line_number):
@@ -109,42 +109,28 @@ class StreakRound(Block):
         return f"{self.__class__.__name__}({self.phase})"
 
     def handle_log(self, log, line_number):
-        global enqueue_line_numbers
+        global enqueue_msgs
 
-        # match {json: {exec_id: self.id}, msg:"Handling Workflow ..."}
-        if "Handling Workflow" in log["msg"]:
-            self.end_time = log["ts"]
-
-        # match {json: {exec_id: self.id}, msg:"TODO ..."}
-        if "Catalog CacheHit" in log["msg"]:
-            id = "CacheHit(" + log["json"]["node"] + ")"
-            self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
-            self.last_recorded_time = log["ts"]
-
-        # match {json: {exec_id: self.id}, msg:"TODO ..."}
-        if "Catalog CacheMiss" in log["msg"]:
-            id = "CacheMiss(" + log["json"]["node"] + ")"
-            self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
-            self.last_recorded_time = log["ts"]
-
-        # match {json: {exec_id: self.id}, msg:"TODO ..."}
+        # match {"level":"info", "msg":"Catalog CacheEnabled: recording execution [PROJECT/DOMAIN/TASK_ID/TASK_VERSION]"}
         if "Catalog CacheEnabled. recording execution" in log["msg"]:
             id = "CacheWrite(" + log["json"]["node"] + ")"
             self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
             self.last_recorded_time = log["ts"]
 
-        # match {json: {exec_id: self.id}, msg:"TODO ..."}
-        if "Transitioning/Recording event for workflow state transition" in log["msg"]:
-            id = "UpdateWorkflowPhase("
-
-            match = re.search(r'\[([\w]+)\] -> \[([\w]+)\]', log["msg"])
-            if match:
-                id += f"{match.group(1)},{match.group(2)})"
-
+        # match {"level":"info", "msg":"Catalog CacheHit: for task [PROJECT/DOMAIN/TASK_ID/TASK_VERSION]"}
+        if "Catalog CacheHit" in log["msg"]:
+            id = "CacheHit(" + log["json"]["node"] + ")"
             self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
             self.last_recorded_time = log["ts"]
 
-        # match {json: {exec_id: self.id}, msg:"TODO ..."}
+        # match {"level":"info", "msg":"Catalog CacheMiss: Artifact not found in Catalog. Executing Task."}
+        if "Catalog CacheMiss" in log["msg"]:
+            id = "CacheMiss(" + log["json"]["node"] + ")"
+            self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
+            self.last_recorded_time = log["ts"]
+
+        # match {"level":"info", "msg":"Change in node state detected from [STATUS] -\u003e [STATUS], (handler phase [STATUS])"}
+        # or {"level":"info", "msg":"Change in node state detected from [STATUS] -\u003e [STATUS]"}
         if "Change in node state detected" in log["msg"]:
             id = "UpdateNodePhase(" + log["json"]["node"]
 
@@ -155,13 +141,21 @@ class StreakRound(Block):
             self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
             self.last_recorded_time = log["ts"]
 
-        # match {json: {exec_id: self.id}, msg:"TODO ..."}
+        # match {"level":"info", "msg":"==\u003e Enqueueing workflow [NAMESPACE/ID]}"}
+        if "Enqueueing workflow" in log["msg"]:
+            enqueue_msgs.append((line_number, log["ts"]))
+
+        # match {"level":"info", "msg":"Handling Workflow [ID] done"}
+        if "Handling Workflow" in log["msg"]:
+            self.end_time = log["ts"]
+
+        # match {"level":"debug", "msg":"node succeeding"}
         if "node succeeding" in log["msg"]:
             id = "UpdateNodePhase(" + log["json"]["node"] + ",Succeeding,Succeeded)"
             self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
             self.last_recorded_time = log["ts"]
 
-        # match {json: {exec_id: self.id}, msg:"TODO ..."}
+        # match {"level":"debug", "msg":"Sending transition event for plugin phase [STATUS]"}
         if "Sending transition event for plugin phase" in log["msg"]:
             id = "UpdatePluginPhase(" + log["json"]["node"]
 
@@ -172,9 +166,16 @@ class StreakRound(Block):
             self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
             self.last_recorded_time = log["ts"]
 
-        # match {json: {exec_id: self.id}, msg:"Enqueueing workflow ..."}
-        if "Enqueueing workflow" in log["msg"]:
-            enqueue_line_numbers.append((line_number, log["ts"]))
+        # match {"level":"info", "msg":"Transitioning/Recording event for workflow state transition [STATUS] -\u003e [STATUS]"}
+        if "Transitioning/Recording event for workflow state transition" in log["msg"]:
+            id = "UpdateWorkflowPhase("
+
+            match = re.search(r'\[([\w]+)\] -> \[([\w]+)\]', log["msg"])
+            if match:
+                id += f"{match.group(1)},{match.group(2)})"
+
+            self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
+            self.last_recorded_time = log["ts"]
 
 # define JsonLogParser class
 class JsonLogParser:
@@ -200,11 +201,11 @@ class JsonLogParser:
                 pass
 
 def print_block(block, prefix):
-    while len(enqueue_line_numbers) > 0 and enqueue_line_numbers[0][0] <= block.line_number:
-        enqueue_time = datetime.strptime(enqueue_line_numbers[0][1], '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
+    while len(enqueue_msgs) > 0 and enqueue_msgs[0][0] <= block.line_number:
+        enqueue_time = datetime.strptime(enqueue_msgs[0][1], '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
 
-        print(printfmt %(enqueue_time, enqueue_line_numbers[0][0], "-", "Enqueue Workflow"))
-        enqueue_line_numbers.pop(0)
+        print(printfmt %(enqueue_time, enqueue_msgs[0][0], "-", "Enqueue Workflow"))
+        enqueue_msgs.pop(0)
 
     start_time = datetime.strptime(block.start_time, '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
     id = prefix + " " + block.get_id()
@@ -231,8 +232,8 @@ if __name__ == "__main__":
         global parser
         parser = JsonLogParser(file, sys.argv[2])
 
-        global enqueue_line_numbers
-        enqueue_line_numbers = []
+        global enqueue_msgs
+        enqueue_msgs = []
 
         workflow.parse()
 
