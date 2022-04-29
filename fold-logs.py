@@ -9,7 +9,8 @@ import random
 import re
 import sys
 
-header = "Timestamp   Line    Duration    Heirarchical Log Layout"
+header = """Timestamp   Line    Duration    Heirarchical Log Layout
+----------------------------------------------------------------------------------------------------"""
 printfmt = "%-11s %-7d %-11s %s"
 
 # define propeller log blocks
@@ -186,12 +187,14 @@ class JsonLogParser:
 
     def next(self):
         while True:
+            # read next line
             line = self.file.readline()
             if not line:
                 return None, -1
             self.line_number += 1
 
             try:
+                # only process if {"json":{"exec_id":"WORKFLOW_ID"}} or json.msg contains WORKFLOW_ID
                 log = json.loads(line)
                 if ("exec_id" in log["json"] and log["json"]["exec_id"] == self.workflow_id) \
                         or ("msg" in log and self.workflow_id in log["msg"]):
@@ -201,22 +204,26 @@ class JsonLogParser:
                 pass
 
 def print_block(block, prefix):
+    # print all enqueue messages from prior to this line number
     while len(enqueue_msgs) > 0 and enqueue_msgs[0][0] <= block.line_number:
         enqueue_time = datetime.strptime(enqueue_msgs[0][1], '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
 
         print(printfmt %(enqueue_time, enqueue_msgs[0][0], "-", "Enqueue Workflow"))
         enqueue_msgs.pop(0)
 
-    start_time = datetime.strptime(block.start_time, '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
-    id = prefix + " " + block.get_id()
-
+    # compute block elapsed time
     elapsed_time = 0
     if block.end_time and block.start_time:
         elapsed_time = datetime.strptime(block.end_time, '%Y-%m-%dT%H:%M:%S%z').timestamp() \
             - datetime.strptime(block.start_time, '%Y-%m-%dT%H:%M:%S%z').timestamp()
 
+    # compute formatted id
+    start_time = datetime.strptime(block.start_time, '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
+    id = prefix + " " + block.get_id()
+
     print(printfmt %(start_time, block.line_number, str(elapsed_time) + "s", id))
 
+    # process all children
     count = 1
     for child in block.children:
         print_block(child, f"    {prefix}.{count}")
