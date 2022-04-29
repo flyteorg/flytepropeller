@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-# TODO - add tracking of "Enqueueing owner for object"
-
 from abc import ABC, abstractmethod
 from datetime import datetime
 
@@ -39,6 +37,16 @@ class Block(ABC):
             if "msg" not in log:
                 continue
 
+            global enqueue_msgs
+
+            # match {"level":"debug", "msg":"Enqueueing owner for updated object [flytesnacks-development/a4f8dxddvnfrfs6jr9nx-n0-0]"}
+            if "Enqueueing owner for updated object" in log["msg"]:
+                enqueue_msgs.append((line_number, log["ts"], True))
+
+            # match {"level":"info", "msg":"==\u003e Enqueueing workflow [NAMESPACE/ID]}"}
+            if "Enqueueing workflow" in log["msg"]:
+                enqueue_msgs.append((line_number, log["ts"], False))
+
             self.handle_log(log, line_number)
             if self.end_time:
                 return
@@ -48,11 +56,8 @@ class Workflow(Block):
         super().__init__(-1)
 
     def handle_log(self, log, line_number):
-        global enqueue_msgs
-
         # match {"level":"info", "msg":"==\u003e Enqueueing workflow [NAMESPACE/ID]}"}
         if "Enqueueing workflow" in log["msg"]:
-            enqueue_msgs.append((line_number, log["ts"]))
             if not self.start_time:
                 self.start_time = log["ts"]
                 self.line_number = line_number
@@ -83,12 +88,6 @@ class Processing(Block):
         self.last_recorded_time = start_time
 
     def handle_log(self, log, line_number):
-        global enqueue_msgs
-
-        # match {"level":"info", "msg":"==\u003e Enqueueing workflow [NAMESPACE/ID]}"}
-        if "Enqueueing workflow" in log["msg"]:
-            enqueue_msgs.append((line_number, log["ts"]))
-
         # match {"level":"info", "msg":"Completed processing workflow"}
         if "Completed processing workflow" in log["msg"]:
             self.end_time = log["ts"]
@@ -112,8 +111,6 @@ class StreakRound(Block):
         return f"{self.__class__.__name__}({self.phase})"
 
     def handle_log(self, log, line_number):
-        global enqueue_msgs
-
         # match {"level":"info", "msg":"Catalog CacheEnabled: recording execution [PROJECT/DOMAIN/TASK_ID/TASK_VERSION]"}
         if "Catalog CacheEnabled. recording execution" in log["msg"]:
             id = "CacheWrite(" + log["json"]["node"] + ")"
@@ -143,10 +140,6 @@ class StreakRound(Block):
 
             self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
             self.last_recorded_time = log["ts"]
-
-        # match {"level":"info", "msg":"==\u003e Enqueueing workflow [NAMESPACE/ID]}"}
-        if "Enqueueing workflow" in log["msg"]:
-            enqueue_msgs.append((line_number, log["ts"]))
 
         # match {"level":"info", "msg":"Handling Workflow [ID] done"}
         if "Handling Workflow" in log["msg"]:
@@ -209,10 +202,13 @@ def print_block(block, prefix, print_enqueue):
     # print all enqueue messages from prior to this line number
     if print_enqueue:
         while len(enqueue_msgs) > 0 and enqueue_msgs[0][0] <= block.line_number:
-            enqueue_time = datetime.strptime(enqueue_msgs[0][1], '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
+            enqueue_msg = enqueue_msgs.pop(0)
+            enqueue_time = datetime.strptime(enqueue_msg[1], '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
+            id = "EnqueueWorkflow"
+            if enqueue_msg[2]:
+                id += "OnNodeUpdate"
 
-            print(printfmt %(enqueue_time, enqueue_msgs[0][0], "-", "Enqueue Workflow"))
-            enqueue_msgs.pop(0)
+            print(printfmt %(enqueue_time, enqueue_msg[0], "-", id))
 
     # compute block elapsed time
     elapsed_time = 0
