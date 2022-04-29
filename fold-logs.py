@@ -116,6 +116,24 @@ class StreakRound(Block):
             self.end_time = log["ts"]
 
         # match {json: {exec_id: self.id}, msg:"TODO ..."}
+        if "Catalog CacheHit" in log["msg"]:
+            id = "CacheHit(" + log["json"]["node"] + ")"
+            self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
+            self.last_recorded_time = log["ts"]
+
+        # match {json: {exec_id: self.id}, msg:"TODO ..."}
+        if "Catalog CacheMiss" in log["msg"]:
+            id = "CacheMiss(" + log["json"]["node"] + ")"
+            self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
+            self.last_recorded_time = log["ts"]
+
+        # match {json: {exec_id: self.id}, msg:"TODO ..."}
+        if "Catalog CacheEnabled. recording execution" in log["msg"]:
+            id = "CacheWrite(" + log["json"]["node"] + ")"
+            self.children.append(IDBlock(id, self.last_recorded_time, log["ts"], line_number))
+            self.last_recorded_time = log["ts"]
+
+        # match {json: {exec_id: self.id}, msg:"TODO ..."}
         if "Transitioning/Recording event for workflow state transition" in log["msg"]:
             id = "UpdateWorkflowPhase("
 
