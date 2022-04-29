@@ -4,6 +4,8 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
+
+import argparse
 import json
 import random
 import re
@@ -203,13 +205,14 @@ class JsonLogParser:
                 # TODO - stderr?
                 pass
 
-def print_block(block, prefix):
+def print_block(block, prefix, print_enqueue):
     # print all enqueue messages from prior to this line number
-    while len(enqueue_msgs) > 0 and enqueue_msgs[0][0] <= block.line_number:
-        enqueue_time = datetime.strptime(enqueue_msgs[0][1], '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
+    if print_enqueue:
+        while len(enqueue_msgs) > 0 and enqueue_msgs[0][0] <= block.line_number:
+            enqueue_time = datetime.strptime(enqueue_msgs[0][1], '%Y-%m-%dT%H:%M:%S%z').strftime("%H:%M:%S")
 
-        print(printfmt %(enqueue_time, enqueue_msgs[0][0], "-", "Enqueue Workflow"))
-        enqueue_msgs.pop(0)
+            print(printfmt %(enqueue_time, enqueue_msgs[0][0], "-", "Enqueue Workflow"))
+            enqueue_msgs.pop(0)
 
     # compute block elapsed time
     elapsed_time = 0
@@ -226,18 +229,22 @@ def print_block(block, prefix):
     # process all children
     count = 1
     for child in block.children:
-        print_block(child, f"    {prefix}.{count}")
+        print_block(child, f"    {prefix}.{count}", print_enqueue)
         count += 1
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("args no good")
-        sys.exit(1)
+    # parse arguments
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("path", help="path to FlytePropeller log dump")
+    arg_parser.add_argument("workflow_id", help="workflow ID to analyze")
+    arg_parser.add_argument("-e", "--print-enqueue", action="store_true", help="print enqueue workflow messages")
+    args = arg_parser.parse_args()
 
+    # parse workflow
     workflow = Workflow()
-    with open(sys.argv[1], "r") as file:
+    with open(args.path, "r") as file:
         global parser
-        parser = JsonLogParser(file, sys.argv[2])
+        parser = JsonLogParser(file, args.workflow_id)
 
         global enqueue_msgs
         enqueue_msgs = []
@@ -246,5 +253,6 @@ if __name__ == "__main__":
 
     workflow.end_time = workflow.children[len(workflow.children) - 1].end_time
 
+    # print workflow
     print(header)
-    print_block(workflow, "1")
+    print_block(workflow, "1", args.print_enqueue)
