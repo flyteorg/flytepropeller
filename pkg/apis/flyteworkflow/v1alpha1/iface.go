@@ -44,6 +44,7 @@ const (
 	NodeKindTask     NodeKind = "task"
 	NodeKindBranch   NodeKind = "branch"   // A Branch node with conditions
 	NodeKindWorkflow NodeKind = "workflow" // Either an inline workflow or a remote workflow definition
+	NodeKindGate     NodeKind = "gate"     // A Gate node with a conditional
 	NodeKindStart    NodeKind = "start"    // Start node is a special node
 	NodeKindEnd      NodeKind = "end"
 )

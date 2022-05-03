@@ -100,6 +100,7 @@ type NodeSpec struct {
 	BranchNode    *BranchNodeSpec               `json:"branch,omitempty"`
 	TaskRef       *TaskID                       `json:"task,omitempty"`
 	WorkflowNode  *WorkflowNodeSpec             `json:"workflow,omitempty"`
+	GateNode      *GateNodeSpec                 `json:"gate,omitempty"`
 	InputBindings []*Binding                    `json:"inputBindings,omitempty"`
 	Config        *typesv1.ConfigMap            `json:"config,omitempty"`
 	RetryStrategy *RetryStrategy                `json:"retry,omitempty"`

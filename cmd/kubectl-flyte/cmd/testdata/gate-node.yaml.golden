@@ -1,0 +1,11 @@
+workflow:
+  id:
+    name: workflow-id-123
+  interface:
+    inputs:
+      variables: {}
+  nodes:
+  - id: node-1
+    gateNode:
+      sleep:
+        duration: 10s

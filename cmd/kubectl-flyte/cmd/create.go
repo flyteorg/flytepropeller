@@ -209,7 +209,7 @@ func (c *CreateOpts) createWorkflowFromProto() error {
 	}
 
 	if c.dryRun {
-		fmt.Printf("Dry Run mode enabled. Printing the compiled workflow.")
+		fmt.Printf("Dry Run mode enabled. Printing the compiled workflow.\n")
 		j, err := json.Marshal(flyteWf)
 		if err != nil {
 			return errors.Wrapf(err, "Failed to marshal final workflow to Propeller format.")

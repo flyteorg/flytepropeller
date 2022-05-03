@@ -128,6 +128,27 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		// as the first element in the list. That way list[0] will always be the first node
 		actualNode := []*v1alpha1.NodeSpec{nodeSpec}
 		return append(actualNode, ns...), !errs.HasErrors()
+	case *core.Node_GateNode:
+		nodeSpec.Kind = v1alpha1.NodeKindGate
+		gateNode := n.GetGateNode()
+		switch gateNode.Conditional.(type) {
+		case *core.GateNode_Signal:
+			nodeSpec.GateNode = &v1alpha1.GateNodeSpec{
+				Kind:   v1alpha1.ConditionalKindSignal,
+				Signal: &v1alpha1.SignalConditional{
+					SignalConditional: gateNode.GetSignal(),
+				},
+			}
+		case *core.GateNode_Sleep:
+			nodeSpec.GateNode = &v1alpha1.GateNodeSpec{
+				Kind:  v1alpha1.ConditionalKindSleep,
+				Sleep: &v1alpha1.SleepConditional{
+					SleepConditional: gateNode.GetSleep(),
+				},
+			}
+		default:
+			// TODO hamersaw - handle?
+		}
 	default:
 		if n.GetId() == v1alpha1.StartNodeID {
 			nodeSpec.Kind = v1alpha1.NodeKindStart
