@@ -79,14 +79,13 @@ type collectionTypeChecker struct {
 // subtypes match.
 func (t collectionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	// Empty collections should match any collection.
+	collectionType := upstreamType.GetCollectionType()
 	if isNoneType(upstreamType.GetCollectionType()) {
 		return true
-	}
-
-	collectionType := upstreamType.GetCollectionType()
-	if collectionType != nil {
+	} else if collectionType != nil {
 		return getTypeChecker(t.literalType.GetCollectionType()).CastsFrom(collectionType)
 	}
+
 	return false
 }
 
