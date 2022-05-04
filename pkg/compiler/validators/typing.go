@@ -130,8 +130,8 @@ type structuredDatasetChecker struct {
 	literalType *flyte.LiteralType
 }
 
-// Structured dataset are more complex types in the Flyte ecosystem. A structured dataset is considered castable in the following
-// cases.
+// CastsFrom for Structured dataset are more complex types in the Flyte ecosystem. A structured dataset is considered
+// castable in the following cases:
 //
 //    1. The downstream structured dataset has no column types specified.  In such a case, it accepts all structured dataset input since it is
 //       generic.
