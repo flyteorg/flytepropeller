@@ -44,7 +44,8 @@ func (g *gateNodeHandler) Setup(_ context.Context, _ handler.SetupContext) error
 func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
 	gateNode := nCtx.Node().GetGateNode()
 
-	// TODO - retrieve gate node status?
+	// retrieve gate node status?
+	//gateNodeState := nCtx.NodeStateReader().GetGateNodeState()
 	
 	logger.Debug(ctx, "starting gate node %+v", gateNode)
 	switch gateNode.GetKind() {
@@ -73,7 +74,13 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 			errors.BadSpecificationError, errMsg, nil)), nil
 	}
 
-	// TODO - update gate node status?
+	/*// update gate node status?
+	err := nCtx.NodeStateWriter().PutGateNodeState(handler.GateNodeState{
+		Phase: v1alpha1.GateNodePhaseExecuting,
+	})
+	if err != nil {
+		// TODO - handle:
+	}*/
 
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{})), nil
 
