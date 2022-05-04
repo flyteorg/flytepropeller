@@ -199,6 +199,13 @@ func (in *NodeSpec) GetBranchNode() ExecutableBranchNode {
 	return in.BranchNode
 }
 
+func (in *NodeSpec) GetGateNode() ExecutableGateNode {
+	if in.GateNode == nil {
+		return nil
+	}
+	return in.GateNode
+}
+
 func (in *NodeSpec) GetTaskID() *TaskID {
 	return in.TaskRef
 }

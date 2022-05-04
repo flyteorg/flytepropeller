@@ -246,6 +246,13 @@ type ExecutableBranchNode interface {
 	GetElseFail() *core.Error
 }
 
+// TODO hamersaw - document
+type ExecutableGateNode interface {
+	GetKind() ConditionalKind
+	GetSignal() *core.SignalConditional
+	GetSleep() *core.SleepConditional
+}
+
 type ExecutableWorkflowNodeStatus interface {
 	GetWorkflowNodePhase() WorkflowNodePhase
 	GetExecutionError() *core.ExecutionError
@@ -256,6 +263,18 @@ type MutableWorkflowNodeStatus interface {
 	ExecutableWorkflowNodeStatus
 	SetWorkflowNodePhase(phase WorkflowNodePhase)
 	SetExecutionError(executionError *core.ExecutionError)
+}
+
+type ExecutableGateNodeStatus interface {
+	GetGateNodePhase() GateNodePhase
+	// TODO hamersaw - fill out
+}
+
+type MutableGateNodeStatus interface {
+	Mutable
+	ExecutableGateNodeStatus
+	SetGateNodePhase(phase GateNodePhase)
+	// TODO hamersaw - fill out
 }
 
 type Mutable interface {
@@ -289,6 +308,10 @@ type MutableNodeStatus interface {
 	ClearDynamicNodeStatus()
 	ClearLastAttemptStartedAt()
 	ClearSubNodeStatus()
+
+	GetGateNodeStatus() MutableGateNodeStatus
+	GetOrCreateGateNodeStatus() MutableGateNodeStatus
+	ClearGateNodeStatus()
 }
 
 type ExecutionTimeInfo interface {
@@ -369,6 +392,7 @@ type ExecutableNode interface {
 	GetTaskID() *TaskID
 	GetBranchNode() ExecutableBranchNode
 	GetWorkflowNode() ExecutableWorkflowNode
+	GetGateNode() ExecutableGateNode
 	GetOutputAlias() []Alias
 	GetInputBindings() []*Binding
 	GetResources() *v1.ResourceRequirements

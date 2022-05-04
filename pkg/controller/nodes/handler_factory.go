@@ -19,6 +19,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/branch"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/end"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/gate"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/start"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow"
@@ -68,6 +69,7 @@ func NewHandlerFactory(ctx context.Context, executor executors.Node, workflowLau
 			v1alpha1.NodeKindBranch:   branch.New(executor, eventConfig, scope),
 			v1alpha1.NodeKindTask:     dynamic.New(t, executor, launchPlanReader, eventConfig, scope),
 			v1alpha1.NodeKindWorkflow: subworkflow.New(executor, workflowLauncher, recoveryClient, eventConfig, scope),
+			v1alpha1.NodeKindGate:     gate.New(eventConfig, scope),
 			v1alpha1.NodeKindStart:    start.New(),
 			v1alpha1.NodeKindEnd:      end.New(),
 		},

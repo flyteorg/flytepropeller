@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	compilerErrors "github.com/flyteorg/flytepropeller/pkg/compiler/errors"
@@ -199,6 +200,9 @@ func (c *CreateOpts) createWorkflowFromProto() error {
 	flyteWf, err := k8s.BuildFlyteWorkflow(wf, inputs, executionID, c.ConfigOverrides.Context.Namespace)
 	if err != nil {
 		return err
+	}
+	flyteWf.ExecutionID = v1alpha1.WorkflowExecutionIdentifier{
+		WorkflowExecutionIdentifier: executionID,
 	}
 	if flyteWf.Annotations == nil {
 		flyteWf.Annotations = *c.annotations.value

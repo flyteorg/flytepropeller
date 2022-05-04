@@ -71,10 +71,10 @@ func (g *GateNodeSpec) GetKind() ConditionalKind {
 	return g.Kind
 }
 
-func (g *GateNodeSpec) GetSignal() *SignalConditional {
-	return g.Signal
+func (g *GateNodeSpec) GetSignal() *core.SignalConditional {
+	return g.Signal.SignalConditional
 }
 
-func (g *GateNodeSpec) GetSleep() *SleepConditional {
-	return g.Sleep
+func (g *GateNodeSpec) GetSleep() *core.SleepConditional {
+	return g.Sleep.SleepConditional
 }
