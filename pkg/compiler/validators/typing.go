@@ -61,12 +61,9 @@ type mapTypeChecker struct {
 // and value types match.
 func (t mapTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	// Empty maps should match any collection.
-	if isNoneType(upstreamType.GetMapValueType()) {
+	if mapLiteralType := upstreamType.GetMapValueType(); isNoneType(mapLiteralType) {
 		return true
-	}
-
-	mapLiteralType := upstreamType.GetMapValueType()
-	if mapLiteralType != nil {
+	} else if mapLiteralType != nil {
 		return getTypeChecker(t.literalType.GetMapValueType()).CastsFrom(mapLiteralType)
 	}
 
