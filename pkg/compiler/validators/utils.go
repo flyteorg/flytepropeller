@@ -3,6 +3,8 @@ package validators
 import (
 	"fmt"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/exp/maps"
@@ -174,6 +176,9 @@ func literalTypeForLiterals(literals []*core.Literal) *core.LiteralType {
 	} else if len(innerType) == 1 {
 		return innerType[0]
 	}
+
+	// sort inner types to ensure consistent union types are generated
+	slices.SortFunc(innerType, func(a, b *core.LiteralType) bool { return a.String() < b.String() })
 
 	return &core.LiteralType{
 		Type: &core.LiteralType_UnionType{

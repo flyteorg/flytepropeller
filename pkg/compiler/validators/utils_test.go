@@ -35,8 +35,21 @@ func TestLiteralTypeForLiterals(t *testing.T) {
 		})
 
 		assert.Len(t, lt.GetUnionType().Variants, 2)
-		assert.Equal(t, flyte.SimpleType_STRING.String(), lt.GetUnionType().Variants[0].GetSimple().String())
-		assert.Equal(t, flyte.SimpleType_INTEGER.String(), lt.GetUnionType().Variants[1].GetSimple().String())
+		assert.Equal(t, flyte.SimpleType_INTEGER.String(), lt.GetUnionType().Variants[0].GetSimple().String())
+		assert.Equal(t, flyte.SimpleType_STRING.String(), lt.GetUnionType().Variants[1].GetSimple().String())
+	})
+
+	t.Run("non-homogenous ensure ordering", func(t *testing.T) {
+		lt := literalTypeForLiterals([]*flyte.Literal{
+			coreutils.MustMakeLiteral(5),
+			coreutils.MustMakeLiteral("world"),
+			coreutils.MustMakeLiteral(0),
+			coreutils.MustMakeLiteral(2),
+		})
+
+		assert.Len(t, lt.GetUnionType().Variants, 2)
+		assert.Equal(t, flyte.SimpleType_INTEGER.String(), lt.GetUnionType().Variants[0].GetSimple().String())
+		assert.Equal(t, flyte.SimpleType_STRING.String(), lt.GetUnionType().Variants[1].GetSimple().String())
 	})
 }
 
