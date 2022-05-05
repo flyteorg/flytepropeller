@@ -267,14 +267,14 @@ type MutableWorkflowNodeStatus interface {
 
 type ExecutableGateNodeStatus interface {
 	GetGateNodePhase() GateNodePhase
-	// TODO hamersaw - fill out
+	GetGateNodeStartedAt() time.Time
 }
 
 type MutableGateNodeStatus interface {
 	Mutable
 	ExecutableGateNodeStatus
 	SetGateNodePhase(phase GateNodePhase)
-	// TODO hamersaw - fill out
+	SetGateNodeStartedAt(t time.Time)
 }
 
 type Mutable interface {

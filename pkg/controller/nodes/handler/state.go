@@ -41,7 +41,7 @@ type WorkflowNodeState struct {
 
 type GateNodeState struct {
 	Phase v1alpha1.GateNodePhase
-	Error *core.ExecutionError
+	StartedAt time.Time
 }
 
 type NodeStateWriter interface {

@@ -95,6 +95,7 @@ func (n nodeStateManager) GetGateNodeState() handler.GateNodeState {
 	gs := handler.GateNodeState{}
 	if gn != nil {
 		gs.Phase = gn.GetGateNodePhase()
+		gs.StartedAt = gn.GetGateNodeStartedAt()
 	}
 	return gs
 }
