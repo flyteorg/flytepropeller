@@ -10,7 +10,6 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
 	"github.com/flyteorg/flytepropeller/pkg/utils"
-	"github.com/flyteorg/flytestdlib/logger"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -196,7 +195,6 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 	for _, t := range tasks {
 		if t.Template.GetContainer().GetArchitecture() != core.Container_UNKNOWN {
 			architecture = t.Template.GetContainer().GetArchitecture()
-			logger.Info(ctx, "architecture is %s", architecture)
 			break
 		}
 	}
