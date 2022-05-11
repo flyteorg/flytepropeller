@@ -7,74 +7,74 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 )
 
-// ConditionalKind refers to the type of Node.
-type ConditionalKind string
+// ConditionKind refers to the type of Node.
+type ConditionKind string
 
-func (n ConditionalKind) String() string {
+func (n ConditionKind) String() string {
 	return string(n)
 }
 
 const (
-	ConditionalKindSignal ConditionalKind = "signal"
-	ConditionalKindSleep  ConditionalKind = "sleep"
+	ConditionKindSignal ConditionKind = "signal"
+	ConditionKindSleep  ConditionKind = "sleep"
 )
 
-type SignalConditional struct {
-	*core.SignalConditional
+type SignalCondition struct {
+	*core.SignalCondition
 }
 
-func (in SignalConditional) MarshalJSON() ([]byte, error) {
-	if in.SignalConditional == nil {
+func (in SignalCondition) MarshalJSON() ([]byte, error) {
+	if in.SignalCondition == nil {
 		return nilJSON, nil
 	}
 
 	var buf bytes.Buffer
-	if err := marshaler.Marshal(&buf, in.SignalConditional); err != nil {
+	if err := marshaler.Marshal(&buf, in.SignalCondition); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
 }
 
-func (in *SignalConditional) UnmarshalJSON(b []byte) error {
-	in.SignalConditional = &core.SignalConditional{}
-	return jsonpb.Unmarshal(bytes.NewReader(b), in.SignalConditional)
+func (in *SignalCondition) UnmarshalJSON(b []byte) error {
+	in.SignalCondition = &core.SignalCondition{}
+	return jsonpb.Unmarshal(bytes.NewReader(b), in.SignalCondition)
 }
 
-type SleepConditional struct {
-	*core.SleepConditional
+type SleepCondition struct {
+	*core.SleepCondition
 }
 
-func (in SleepConditional) MarshalJSON() ([]byte, error) {
-	if in.SleepConditional == nil {
+func (in SleepCondition) MarshalJSON() ([]byte, error) {
+	if in.SleepCondition == nil {
 		return nilJSON, nil
 	}
 
 	var buf bytes.Buffer
-	if err := marshaler.Marshal(&buf, in.SleepConditional); err != nil {
+	if err := marshaler.Marshal(&buf, in.SleepCondition); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
 }
 
-func (in *SleepConditional) UnmarshalJSON(b []byte) error {
-	in.SleepConditional = &core.SleepConditional{}
-	return jsonpb.Unmarshal(bytes.NewReader(b), in.SleepConditional)
+func (in *SleepCondition) UnmarshalJSON(b []byte) error {
+	in.SleepCondition = &core.SleepCondition{}
+	return jsonpb.Unmarshal(bytes.NewReader(b), in.SleepCondition)
 }
 
 type GateNodeSpec struct {
-	Kind   ConditionalKind    `json:"kind"`
-	Signal *SignalConditional `json:"signal,omitempty"`
-	Sleep  *SleepConditional  `json:"sleep,omitempty"`
+	Kind   ConditionKind    `json:"kind"`
+	Signal *SignalCondition `json:"signal,omitempty"`
+	Sleep  *SleepCondition  `json:"sleep,omitempty"`
 }
 
-func (g *GateNodeSpec) GetKind() ConditionalKind {
+func (g *GateNodeSpec) GetKind() ConditionKind {
 	return g.Kind
 }
 
-func (g *GateNodeSpec) GetSignal() *core.SignalConditional {
-	return g.Signal.SignalConditional
+func (g *GateNodeSpec) GetSignal() *core.SignalCondition {
+	return g.Signal.SignalCondition
 }
 
-func (g *GateNodeSpec) GetSleep() *core.SleepConditional {
-	return g.Sleep.SleepConditional
+func (g *GateNodeSpec) GetSleep() *core.SleepCondition {
+	return g.Sleep.SleepCondition
 }

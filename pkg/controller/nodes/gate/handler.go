@@ -54,19 +54,19 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 	
 	logger.Debug(ctx, "starting gate node %+v", gateNode)
 	switch gateNode.GetKind() {
-	case v1alpha1.ConditionalKindSignal:
+	case v1alpha1.ConditionKindSignal:
 		// TODO - handle
-	case v1alpha1.ConditionalKindSleep:
+	case v1alpha1.ConditionKindSleep:
 		logger.Infof(ctx, "HAMERSAW: accessing sleep conditional")
 		// retrieve sleep duration
-		sleepConditional := gateNode.GetSleep()
-		if sleepConditional == nil {
+		sleepCondition := gateNode.GetSleep()
+		if sleepCondition == nil {
 			errMsg := "gateNode sleep conditional is nil"
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM,
 				errors.BadSpecificationError, errMsg, nil)), nil
 		}
 
-		sleepDuration := sleepConditional.GetDuration().AsDuration()
+		sleepDuration := sleepCondition.GetDuration().AsDuration()
 
 		// check duration of node sleep
 		now := time.Now()

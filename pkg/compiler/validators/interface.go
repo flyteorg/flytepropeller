@@ -120,7 +120,7 @@ func ValidateUnderlyingInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs e
 		iface, _ = validateBranchInterface(w, node, errs.NewScope())
 	case *core.Node_GateNode:
 		gateNode := node.GetGateNode()
-		switch gateNode.GetConditional().(type) {
+		switch gateNode.GetCondition().(type) {
 		case *core.GateNode_Signal:
 			// TODO handle
 		case *core.GateNode_Sleep:

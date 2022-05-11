@@ -248,9 +248,9 @@ type ExecutableBranchNode interface {
 
 // TODO hamersaw - document
 type ExecutableGateNode interface {
-	GetKind() ConditionalKind
-	GetSignal() *core.SignalConditional
-	GetSleep() *core.SleepConditional
+	GetKind() ConditionKind
+	GetSignal() *core.SignalCondition
+	GetSleep() *core.SleepCondition
 }
 
 type ExecutableWorkflowNodeStatus interface {
