@@ -4,23 +4,23 @@ import (
 	"context"
 	"time"
 
-	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-
-	//"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytestdlib/promutils"
-
-	"github.com/flyteorg/flytestdlib/logger"
-	//"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	//"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
+
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
+	//"github.com/flyteorg/flytestdlib/promutils/labeled"
 )
 
 type gateNodeHandler struct {
-	metrics      metrics
+	adminClient service.AdminServiceClient
+	metrics     metrics
 }
 
 type metrics struct {
@@ -106,9 +106,10 @@ func (w *gateNodeHandler) Finalize(ctx context.Context, _ handler.NodeExecutionC
 	return nil
 }
 
-func New(eventConfig *config.EventConfig, scope promutils.Scope) handler.Node {
+func New(eventConfig *config.EventConfig, adminClient service.AdminServiceClient, scope promutils.Scope) handler.Node {
 	gateScope := scope.NewSubScope("gate")
 	return &gateNodeHandler{
-		metrics: newMetrics(gateScope),
+		adminClient: adminClient,
+		metrics:     newMetrics(gateScope),
 	}
 }
