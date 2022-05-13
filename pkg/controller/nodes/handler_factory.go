@@ -59,7 +59,7 @@ func (f handlerFactory) Setup(ctx context.Context, setup handler.SetupContext) e
 
 func NewHandlerFactory(ctx context.Context, executor executors.Node, workflowLauncher launchplan.Executor,
 	launchPlanReader launchplan.Reader, kubeClient executors.Client, client catalog.Client, recoveryClient recovery.Client,
-	eventConfig *config.EventConfig, clusterID string, adminClient service.AdminServiceClient, scope promutils.Scope) (HandlerFactory, error) {
+	eventConfig *config.EventConfig, clusterID string, signalClient service.SignalServiceClient, scope promutils.Scope) (HandlerFactory, error) {
 
 	t, err := task.New(ctx, kubeClient, client, eventConfig, clusterID, scope)
 	if err != nil {
@@ -71,7 +71,7 @@ func NewHandlerFactory(ctx context.Context, executor executors.Node, workflowLau
 			v1alpha1.NodeKindBranch:   branch.New(executor, eventConfig, scope),
 			v1alpha1.NodeKindTask:     dynamic.New(t, executor, launchPlanReader, eventConfig, scope),
 			v1alpha1.NodeKindWorkflow: subworkflow.New(executor, workflowLauncher, recoveryClient, eventConfig, scope),
-			v1alpha1.NodeKindGate:     gate.New(eventConfig, adminClient, scope),
+			v1alpha1.NodeKindGate:     gate.New(eventConfig, signalClient, scope),
 			v1alpha1.NodeKindStart:    start.New(),
 			v1alpha1.NodeKindEnd:      end.New(),
 		},

@@ -2,8 +2,10 @@ package gate
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
@@ -16,11 +18,12 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	//"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/storage"
 )
 
 type gateNodeHandler struct {
-	adminClient service.AdminServiceClient
-	metrics     metrics
+	signalClient service.SignalServiceClient
+	metrics      metrics
 }
 
 type metrics struct {
@@ -55,9 +58,51 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 	logger.Debug(ctx, "starting gate node %+v", gateNode)
 	switch gateNode.GetKind() {
 	case v1alpha1.ConditionKindSignal:
-		// TODO - handle
+		// retrieve sleep duration
+		signalCondition := gateNode.GetSignal()
+		if signalCondition == nil {
+			errMsg := "gateNode signal conditional is nil"
+			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM,
+				errors.BadSpecificationError, errMsg, nil)), nil
+		}
+
+		// use admin client to query for signal
+		request := &admin.SignalGetOrCreateRequest{
+			Id: &core.SignalIdentifier{
+				ExecutionId: nCtx.ExecutionContext().GetExecutionID().WorkflowExecutionIdentifier,
+				SignalId:    signalCondition.SignalId,
+			},
+			Type: signalCondition.Type,
+		}
+
+		signal, err := g.signalClient.GetOrCreateSignal(ctx, request)
+		if err != nil {
+			// TODO - handle
+			//return handler.UnknownTransition, prevState, err
+		}
+
+		if signal.Value.Value != nil {
+			outputs := &core.LiteralMap{
+				Literals: map[string]*core.Literal{
+					"o0": signal.Value, // TODO hamersaw - how to set the variable name for this output data?
+				},
+			}
+
+			outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
+
+			so := storage.Options{}
+			if err := nCtx.DataStore().WriteProtobuf(ctx, outputFile, so, outputs); err != nil {
+				logger.Errorf(ctx, "Failed to write signal outputs. Error [%v]", err)
+				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, "WriteOutputsFailed",
+					fmt.Sprintf("Failed to write signal value to [%v]. Error: %s", outputFile, err.Error()), nil)), nil
+			}
+
+			o := &handler.OutputInfo{OutputURI: outputFile}
+			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{
+				OutputInfo: o,
+			})), nil
+		}
 	case v1alpha1.ConditionKindSleep:
-		logger.Infof(ctx, "HAMERSAW: accessing sleep conditional")
 		// retrieve sleep duration
 		sleepCondition := gateNode.GetSleep()
 		if sleepCondition == nil {
@@ -106,10 +151,10 @@ func (w *gateNodeHandler) Finalize(ctx context.Context, _ handler.NodeExecutionC
 	return nil
 }
 
-func New(eventConfig *config.EventConfig, adminClient service.AdminServiceClient, scope promutils.Scope) handler.Node {
+func New(eventConfig *config.EventConfig, signalClient service.SignalServiceClient, scope promutils.Scope) handler.Node {
 	gateScope := scope.NewSubScope("gate")
 	return &gateNodeHandler{
-		adminClient: adminClient,
-		metrics:     newMetrics(gateScope),
+		signalClient: signalClient,
+		metrics:      newMetrics(gateScope),
 	}
 }
