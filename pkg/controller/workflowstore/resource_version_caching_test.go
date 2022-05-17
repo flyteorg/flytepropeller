@@ -76,7 +76,9 @@ func TestResourceVersionCaching_Get_NotInCache(t *testing.T) {
 
 func fromHashToByteArray(input [32]byte) []byte {
 	output := make([]byte, 32)
-	copy(output, input[:])
+	for idx, val := range input { //nolint
+		output[idx] = val
+	}
 	return output
 }
 
