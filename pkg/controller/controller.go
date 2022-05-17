@@ -446,7 +446,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	controller.workerPool = NewWorkerPool(ctx, scope, workQ, handler)
 
 	if cfg.EnableGrpcLatencyMetrics {
-		grpc_prometheus.EnableHandlingTimeHistogram()
+		grpc_prometheus.EnableClientHandlingTimeHistogram()
 	}
 
 	logger.Info(ctx, "Setting up event handlers")
