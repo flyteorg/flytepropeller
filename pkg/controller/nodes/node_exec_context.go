@@ -166,7 +166,9 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 		nodeLabels[TaskNameLabel] = utils.SanitizeLabelValue(tr.GetTaskID().Name)
 	}
 	nodeLabels[NodeInterruptibleLabel] = strconv.FormatBool(interruptible)
-	nodeLabels[NodeArchitectureLabel] = architecture.String()
+	if architecture != core.Container_UNKNOWN {
+		nodeLabels[NodeArchitectureLabel] = architecture.String()
+	}
 	md.nodeLabels = nodeLabels
 
 	return &nodeExecContext{
@@ -195,6 +197,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 	}
 
 	var tr handler.TaskReader
+	var architecture core.Container_Architecture
 	if n.GetKind() == v1alpha1.NodeKindTask {
 		if n.GetTaskID() == nil {
 			return nil, fmt.Errorf("bad state, no task-id defined for node [%s]", n.GetID())
@@ -203,6 +206,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		if err != nil {
 			return nil, err
 		}
+		architecture = tk.CoreTask().GetContainer().Architecture
 		tr = taskReader{TaskTemplate: tk.CoreTask()}
 	}
 
@@ -216,7 +220,6 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		interruptible = *n.IsInterruptible()
 	}
 
-	architecture := executionContext.GetArchitecture()
 	if n.GetArchitecture() != core.Container_UNKNOWN {
 		architecture = n.GetArchitecture()
 	}
