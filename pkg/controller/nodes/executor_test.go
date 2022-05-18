@@ -593,6 +593,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockNode.OnGetTaskID().Return(&taskID)
 			mockNode.OnGetInputBindings().Return([]*v1alpha1.Binding{})
 			mockNode.OnIsInterruptible().Return(nil)
+			mockNode.OnGetArchitecture().Return(core.Container_UNKNOWN)
 			mockNode.OnGetName().Return("name")
 
 			mockNodeN0 := &mocks.ExecutableNode{}
@@ -603,6 +604,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockNodeN0.OnIsEndNode().Return(false)
 			mockNodeN0.OnGetTaskID().Return(&taskID0)
 			mockNodeN0.OnIsInterruptible().Return(nil)
+			mockNodeN0.OnGetArchitecture().Return(core.Container_UNKNOWN)
 			mockNodeN0.OnGetName().Return("name")
 
 			mockN0Status := &mocks.ExecutableNodeStatus{}
@@ -635,6 +637,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 			mockWf.OnGetTask(taskID).Return(tk, nil)
 			mockWf.OnGetLabels().Return(make(map[string]string))
 			mockWf.OnIsInterruptible().Return(false)
+			mockWf.OnGetArchitecture().Return(core.Container_UNKNOWN)
 			mockWf.OnGetEventVersion().Return(v1alpha1.EventVersion0)
 			mockWf.OnGetOnFailurePolicy().Return(v1alpha1.WorkflowOnFailurePolicy(core.WorkflowMetadata_FAIL_IMMEDIATELY))
 			mockWf.OnGetRawOutputDataConfig().Return(v1alpha1.RawOutputDataConfig{
@@ -1271,6 +1274,7 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 				eCtx := &mocks4.ExecutionContext{}
 				eCtx.OnGetTask(tid).Return(tk, nil)
 				eCtx.OnIsInterruptible().Return(true)
+				eCtx.OnGetArchitecture().Return(core.Container_UNKNOWN)
 				eCtx.OnGetExecutionID().Return(v1alpha1.WorkflowExecutionIdentifier{WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{}})
 				eCtx.OnGetLabels().Return(nil)
 				eCtx.OnGetEventVersion().Return(v1alpha1.EventVersion0)
@@ -1287,6 +1291,7 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 				branchTakenNode.OnGetKind().Return(v1alpha1.NodeKindTask)
 				branchTakenNode.OnGetTaskID().Return(&tid)
 				branchTakenNode.OnIsInterruptible().Return(nil)
+				branchTakenNode.OnGetArchitecture().Return(core.Container_UNKNOWN)
 				branchTakenNode.OnIsStartNode().Return(false)
 				branchTakenNode.OnIsEndNode().Return(false)
 				branchTakenNode.OnGetInputBindings().Return(nil)

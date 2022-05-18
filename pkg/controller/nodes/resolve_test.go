@@ -32,6 +32,7 @@ type dummyBaseWorkflow struct {
 	Status         map[v1alpha1.NodeID]*v1alpha1.NodeStatus
 	DataStore      *storage.DataStore
 	Interruptible  bool
+	Architecture   core.Container_Architecture
 }
 
 func (d *dummyBaseWorkflow) GetParentInfo() executors.ImmutableParentInfo {
@@ -106,6 +107,10 @@ func (d *dummyBaseWorkflow) GetLabels() map[string]string {
 
 func (d *dummyBaseWorkflow) IsInterruptible() bool {
 	return d.Interruptible
+}
+
+func (d *dummyBaseWorkflow) GetArchitecture() core.Container_Architecture {
+	return d.Architecture
 }
 
 func (d *dummyBaseWorkflow) GetRawOutputDataConfig() v1alpha1.RawOutputDataConfig {
