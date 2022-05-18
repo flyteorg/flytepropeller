@@ -68,7 +68,7 @@ func Test_NodeContextDefault(t *testing.T) {
 	ctx := context.Background()
 
 	w1 := &v1alpha1.FlyteWorkflow{
-		NodeDefaults: v1alpha1.NodeDefaults{Interruptible: false},
+		NodeDefaults: v1alpha1.NodeDefaults{Interruptible: false, Architecture: core.Container_ARM64},
 		RawOutputDataConfig: v1alpha1.RawOutputDataConfig{RawOutputDataConfig: &admin.RawOutputDataConfig{
 			OutputLocationPrefix: ""},
 		},

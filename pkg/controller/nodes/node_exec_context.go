@@ -166,7 +166,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 		nodeLabels[TaskNameLabel] = utils.SanitizeLabelValue(tr.GetTaskID().Name)
 	}
 	nodeLabels[NodeInterruptibleLabel] = strconv.FormatBool(interruptible)
-	nodeLabels[NodeArchitectureLabel] = core.Container_Architecture_name[int32(architecture)]
+	nodeLabels[NodeArchitectureLabel] = architecture.String()
 	md.nodeLabels = nodeLabels
 
 	return &nodeExecContext{
@@ -216,7 +216,10 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		interruptible = *n.IsInterruptible()
 	}
 
-	architecture := n.GetArchitecture()
+	architecture := executionContext.GetArchitecture()
+	if n.GetArchitecture() != core.Container_UNKNOWN {
+		architecture = n.GetArchitecture()
+	}
 
 	s := nl.GetNodeExecutionStatus(ctx, currentNodeID)
 
