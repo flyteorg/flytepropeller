@@ -713,7 +713,7 @@ type ExecutionContext_GetArchitecture struct {
 	*mock.Call
 }
 
-func (_m ExecutionContext_GetArchitecture) Return(_a0 bool) *ExecutionContext_GetArchitecture {
+func (_m ExecutionContext_GetArchitecture) Return(_a0 core.Container_Architecture) *ExecutionContext_GetArchitecture {
 	return &ExecutionContext_GetArchitecture{Call: _m.Call.Return(_a0)}
 }
 

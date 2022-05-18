@@ -539,7 +539,7 @@ type ImmutableExecutionContext_GetArchitecture struct {
 	*mock.Call
 }
 
-func (_m ImmutableExecutionContext_GetArchitecture) Return(_a0 bool) *ImmutableExecutionContext_GetArchitecture {
+func (_m ImmutableExecutionContext_GetArchitecture) Return(_a0 core.Container_Architecture) *ImmutableExecutionContext_GetArchitecture {
 	return &ImmutableExecutionContext_GetArchitecture{Call: _m.Call.Return(_a0)}
 }
 
