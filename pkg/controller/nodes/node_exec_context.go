@@ -206,7 +206,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		if err != nil {
 			return nil, err
 		}
-		architecture = tk.CoreTask().GetContainer().Architecture
+		architecture = tk.CoreTask().GetContainer().GetArchitecture()
 		tr = taskReader{TaskTemplate: tk.CoreTask()}
 	}
 
