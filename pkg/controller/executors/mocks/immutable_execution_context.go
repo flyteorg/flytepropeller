@@ -534,35 +534,3 @@ func (_m *ImmutableExecutionContext) IsInterruptible() bool {
 
 	return r0
 }
-
-type ImmutableExecutionContext_GetArchitecture struct {
-	*mock.Call
-}
-
-func (_m ImmutableExecutionContext_GetArchitecture) Return(_a0 core.Container_Architecture) *ImmutableExecutionContext_GetArchitecture {
-	return &ImmutableExecutionContext_GetArchitecture{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *ImmutableExecutionContext) OnGetArchitecture() *ImmutableExecutionContext_GetArchitecture {
-	c := _m.On("GetArchitecture")
-	return &ImmutableExecutionContext_GetArchitecture{Call: c}
-}
-
-func (_m *ImmutableExecutionContext) OnGetArchitectureMatch(matchers ...interface{}) *ImmutableExecutionContext_GetArchitecture {
-	c := _m.On("GetArchitecture", matchers...)
-	return &ImmutableExecutionContext_GetArchitecture{Call: c}
-}
-
-// GetArchitecture provides a mock function with given fields:
-func (_m *ImmutableExecutionContext) GetArchitecture() core.Container_Architecture {
-	ret := _m.Called()
-
-	var r0 core.Container_Architecture
-	if rf, ok := ret.Get(0).(func() core.Container_Architecture); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(core.Container_Architecture)
-	}
-
-	return r0
-}

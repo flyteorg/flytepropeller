@@ -310,35 +310,3 @@ func (_m *NodeExecutionMetadata) IsInterruptible() bool {
 
 	return r0
 }
-
-type NodeExecutionMetadata_GetArchitecture struct {
-	*mock.Call
-}
-
-func (_m NodeExecutionMetadata_GetArchitecture) Return(_a0 bool) *NodeExecutionMetadata_GetArchitecture {
-	return &NodeExecutionMetadata_GetArchitecture{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *NodeExecutionMetadata) OnGetArchitecture() *NodeExecutionMetadata_GetArchitecture {
-	c := _m.On("GetArchitecture")
-	return &NodeExecutionMetadata_GetArchitecture{Call: c}
-}
-
-func (_m *NodeExecutionMetadata) OnGetArchitectureMatch(matchers ...interface{}) *NodeExecutionMetadata_GetArchitecture {
-	c := _m.On("GetArchitecture", matchers...)
-	return &NodeExecutionMetadata_GetArchitecture{Call: c}
-}
-
-// GetArchitecture provides a mock function with given fields:
-func (_m *NodeExecutionMetadata) GetArchitecture() core.Container_Architecture {
-	ret := _m.Called()
-
-	var r0 core.Container_Architecture
-	if rf, ok := ret.Get(0).(func() core.Container_Architecture); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(core.Container_Architecture)
-	}
-
-	return r0
-}

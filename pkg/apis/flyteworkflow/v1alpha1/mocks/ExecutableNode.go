@@ -9,7 +9,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	v1alpha1 "github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
@@ -514,40 +513,6 @@ func (_m *ExecutableNode) IsInterruptible() *bool {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*bool)
-		}
-	}
-
-	return r0
-}
-
-type ExecutableNode_GetArchitecture struct {
-	*mock.Call
-}
-
-func (_m ExecutableNode_GetArchitecture) Return(_a0 core.Container_Architecture) *ExecutableNode_GetArchitecture {
-	return &ExecutableNode_GetArchitecture{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *ExecutableNode) OnGetArchitecture() *ExecutableNode_GetArchitecture {
-	c := _m.On("GetArchitecture")
-	return &ExecutableNode_GetArchitecture{Call: c}
-}
-
-func (_m *ExecutableNode) OnGetArchitectureMatch(matchers ...interface{}) *ExecutableNode_GetArchitecture {
-	c := _m.On("GetArchitecture", matchers...)
-	return &ExecutableNode_GetArchitecture{Call: c}
-}
-
-// IsInterruptible provides a mock function with given fields:
-func (_m *ExecutableNode) GetArchitecture() core.Container_Architecture {
-	ret := _m.Called()
-
-	var r0 core.Container_Architecture
-	if rf, ok := ret.Get(0).(func() core.Container_Architecture); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(core.Container_Architecture)
 		}
 	}
 

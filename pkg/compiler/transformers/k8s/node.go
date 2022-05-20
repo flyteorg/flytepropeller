@@ -77,9 +77,6 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		name = n.GetMetadata().Name
 	}
 
-	var architecture core.Container_Architecture
-	architecture = task.GetContainer().GetArchitecture()
-
 	nodeSpec := &v1alpha1.NodeSpec{
 		ID:                n.GetId(),
 		Name:              name,
@@ -90,7 +87,6 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		InputBindings:     toBindingValueArray(n.GetInputs()),
 		ActiveDeadline:    activeDeadline,
 		Interruptibe:      interruptible,
-		Architecture:      architecture,
 	}
 
 	switch v := n.GetTarget().(type) {

@@ -191,14 +191,6 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		interruptible = wf.GetMetadataDefaults().GetInterruptible()
 	}
 
-	architecture := core.Container_UNKNOWN
-	for _, t := range tasks {
-		if t.Template.GetContainer().GetArchitecture() != core.Container_UNKNOWN {
-			architecture = t.Template.GetContainer().GetArchitecture()
-			break
-		}
-	}
-
 	obj := &v1alpha1.FlyteWorkflow{
 		TypeMeta: v1.TypeMeta{
 			Kind:       v1alpha1.FlyteWorkflowKind,
@@ -212,7 +204,7 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 		WorkflowSpec: primarySpec,
 		SubWorkflows: subwfs,
 		Tasks:        buildTasks(tasks, errs.NewScope()),
-		NodeDefaults: v1alpha1.NodeDefaults{Interruptible: interruptible, Architecture: architecture},
+		NodeDefaults: v1alpha1.NodeDefaults{Interruptible: interruptible},
 	}
 
 	obj.ObjectMeta.Name, obj.ObjectMeta.GenerateName, obj.ObjectMeta.Labels[ExecutionIDLabel], err =

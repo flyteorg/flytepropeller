@@ -448,37 +448,3 @@ func (_m *WorkflowMetaExtended) IsInterruptible() bool {
 
 	return r0
 }
-
-/*
-type WorkflowMetaExtended_GetArchitecture struct {
-	*mock.Call
-}
-
-func (_m WorkflowMetaExtended_GetArchitecture) Return(_a0 bool) *WorkflowMetaExtended_GetArchitecture {
-	return &WorkflowMetaExtended_GetArchitecture{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *WorkflowMetaExtended) OnGetArchitecture() *WorkflowMetaExtended_GetArchitecture {
-	c := _m.On("GetArchitecture")
-	return &WorkflowMetaExtended_GetArchitecture{Call: c}
-}
-
-func (_m *WorkflowMetaExtended) OnGetArchitectureMatch(matchers ...interface{}) *WorkflowMetaExtended_GetArchitecture {
-	c := _m.On("GetArchitecture", matchers...)
-	return &WorkflowMetaExtended_GetArchitecture{Call: c}
-}
-
-// GetArchitecture provides a mock function with given fields:
-func (_m *WorkflowMetaExtended) GetArchitecture() core.Container_Architecture {
-	ret := _m.Called()
-
-	var r0 core.Container_Architecture
-	if rf, ok := ret.Get(0).(func() core.Container_Architecture); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(core.Container_Architecture)
-	}
-
-	return r0
-}
-*/

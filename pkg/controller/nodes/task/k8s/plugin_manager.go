@@ -189,7 +189,6 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 
 	k8sTaskCtx := newTaskExecutionContext(tCtx, k8sTaskCtxMetadata)
 
-	logger.Infof(ctx, "Archtecture is %s", tmpl.GetContainer().GetArchitecture())
 	o, err := e.plugin.BuildResource(ctx, k8sTaskCtx)
 	if err != nil {
 		return pluginsCore.UnknownTransition, err

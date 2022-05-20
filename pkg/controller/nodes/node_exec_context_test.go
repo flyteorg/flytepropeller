@@ -57,12 +57,11 @@ func Test_NodeContext(t *testing.T) {
 	s, _ := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 	p := parentInfo{}
 	execContext := executors.NewExecutionContext(w1, nil, nil, p, nil)
-	//nCtx := newNodeExecContext(context.TODO(), s, execContext, w1, n, nil, nil, false, core.Container_ARM64, nil, TaskReader{}, nil, nil, "s3://bucket", ioutils.NewConstantShardSelector([]string{"x"}))
 	nCtx := newNodeExecContext(context.TODO(), s, execContext, w1, n, nil, nil, false, core.Container_ARM64, 0, nil, TaskReader{}, nil, nil, "s3://bucket", ioutils.NewConstantShardSelector([]string{"x"}))
 	assert.Equal(t, "id", nCtx.NodeExecutionMetadata().GetLabels()["node-id"])
 	assert.Equal(t, "false", nCtx.NodeExecutionMetadata().GetLabels()["interruptible"])
 	assert.Equal(t, "task-name", nCtx.NodeExecutionMetadata().GetLabels()["task-name"])
-	assert.Equal(t, "ARM64", nCtx.NodeExecutionMetadata().GetLabels()["architecture"])
+	assert.Equal(t, "arm64", nCtx.NodeExecutionMetadata().GetLabels()["architecture"])
 	assert.Equal(t, p, nCtx.ExecutionContext().GetParentInfo())
 }
 
@@ -70,7 +69,7 @@ func Test_NodeContextDefault(t *testing.T) {
 	ctx := context.Background()
 
 	w1 := &v1alpha1.FlyteWorkflow{
-		NodeDefaults: v1alpha1.NodeDefaults{Interruptible: false, Architecture: core.Container_ARM64},
+		NodeDefaults: v1alpha1.NodeDefaults{Interruptible: false},
 		RawOutputDataConfig: v1alpha1.RawOutputDataConfig{RawOutputDataConfig: &admin.RawOutputDataConfig{
 			OutputLocationPrefix: ""},
 		},

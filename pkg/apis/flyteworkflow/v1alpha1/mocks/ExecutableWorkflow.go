@@ -931,38 +931,6 @@ func (_m *ExecutableWorkflow) IsInterruptible() bool {
 	return r0
 }
 
-type ExecutableWorkflow_GetArchitecture struct {
-	*mock.Call
-}
-
-func (_m ExecutableWorkflow_GetArchitecture) Return(_a0 core.Container_Architecture) *ExecutableWorkflow_GetArchitecture {
-	return &ExecutableWorkflow_GetArchitecture{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *ExecutableWorkflow) OnGetArchitecture() *ExecutableWorkflow_GetArchitecture {
-	c := _m.On("GetArchitecture")
-	return &ExecutableWorkflow_GetArchitecture{Call: c}
-}
-
-func (_m *ExecutableWorkflow) OnIGetArchitectureMatch(matchers ...interface{}) *ExecutableWorkflow_GetArchitecture {
-	c := _m.On("GetArchitecture", matchers...)
-	return &ExecutableWorkflow_GetArchitecture{Call: c}
-}
-
-// GetArchitecture provides a mock function with given fields:
-func (_m *ExecutableWorkflow) GetArchitecture() core.Container_Architecture {
-	ret := _m.Called()
-
-	var r0 core.Container_Architecture
-	if rf, ok := ret.Get(0).(func() core.Container_Architecture); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(core.Container_Architecture)
-	}
-
-	return r0
-}
-
 type ExecutableWorkflow_StartNode struct {
 	*mock.Call
 }
