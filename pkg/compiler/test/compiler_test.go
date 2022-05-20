@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/flyteorg/flytepropeller/pkg/visualize"
 
@@ -55,6 +56,8 @@ func makeDefaultInputs(iface *core.TypedInterface) *core.LiteralMap {
 					},
 				},
 			}
+		} else if reflect.TypeOf(inputVar.Type.Type) == reflect.TypeOf(&core.LiteralType_Simple{}) && inputVar.Type.GetSimple() == core.SimpleType_DATETIME {
+			res[inputName] = coreutils.MustMakeLiteral(time.UnixMicro(10))
 		} else {
 			res[inputName] = coreutils.MustMakeDefaultLiteralForType(inputVar.Type)
 		}
