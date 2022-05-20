@@ -34,7 +34,7 @@ func findVariableByName(vars *core.VariableMap, name string) (variable *core.Var
 func literalTypeForScalar(scalar *core.Scalar) *core.LiteralType {
 	// TODO: Should we just pass the type information with the value?  That way we don't have to guess?
 	var literalType *core.LiteralType
-	switch scalar.GetValue().(type) {
+	switch v := scalar.GetValue().(type) {
 	case *core.Scalar_Primitive:
 		literalType = literalTypeForPrimitive(scalar.GetPrimitive())
 	case *core.Scalar_Blob:
@@ -52,6 +52,12 @@ func literalTypeForScalar(scalar *core.Scalar) *core.LiteralType {
 			},
 		}
 	case *core.Scalar_StructuredDataset:
+		if v.StructuredDataset == nil || v.StructuredDataset.Metadata == nil {
+			return &core.LiteralType{
+				Type: &core.LiteralType_StructuredDatasetType{},
+			}
+		}
+
 		literalType = &core.LiteralType{
 			Type: &core.LiteralType_StructuredDatasetType{
 				StructuredDatasetType: scalar.GetStructuredDataset().GetMetadata().StructuredDatasetType,
@@ -154,6 +160,44 @@ func UnionDistinctVariableMaps(m1, m2 map[string]*core.Variable) (map[string]*co
 	}
 
 	return res, nil
+}
+
+// StripTypeMetadata strips the type metadata from the given type.
+func StripTypeMetadata(t *core.LiteralType) *core.LiteralType {
+	if t == nil {
+		return nil
+	}
+
+	c := *t
+	c.Metadata = nil
+	c.Structure = nil
+	c.Annotation = nil
+
+	switch underlyingType := c.Type.(type) {
+	case *core.LiteralType_UnionType:
+		variants := make([]*core.LiteralType, 0, len(c.GetUnionType().Variants))
+		for _, variant := range c.GetUnionType().Variants {
+			variants = append(variants, StripTypeMetadata(variant))
+		}
+
+		underlyingType.UnionType.Variants = variants
+	case *core.LiteralType_MapValueType:
+		underlyingType.MapValueType = StripTypeMetadata(c.GetMapValueType())
+	case *core.LiteralType_CollectionType:
+		underlyingType.CollectionType = StripTypeMetadata(c.GetCollectionType())
+	case *core.LiteralType_StructuredDatasetType:
+		columns := make([]*core.StructuredDatasetType_DatasetColumn, 0, len(c.GetStructuredDatasetType().Columns))
+		for _, column := range c.GetStructuredDatasetType().Columns {
+			columns = append(columns, &core.StructuredDatasetType_DatasetColumn{
+				Name:        column.Name,
+				LiteralType: StripTypeMetadata(column.LiteralType),
+			})
+		}
+
+		underlyingType.StructuredDatasetType.Columns = columns
+	}
+
+	return &c
 }
 
 func literalTypeForLiterals(literals []*core.Literal) *core.LiteralType {

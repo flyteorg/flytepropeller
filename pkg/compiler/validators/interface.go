@@ -8,7 +8,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
 )
 
-// Validate interface has its required attributes set
+// ValidateInterface validates interface has its required attributes set
 func ValidateInterface(nodeID c.NodeID, iface *core.TypedInterface, errs errors.CompileErrors) (
 	typedInterface *core.TypedInterface, ok bool) {
 
@@ -32,7 +32,7 @@ func ValidateInterface(nodeID c.NodeID, iface *core.TypedInterface, errs errors.
 	return iface, !errs.HasErrors()
 }
 
-// Validates underlying interface of a node and returns the effective Typed Interface.
+// ValidateUnderlyingInterface validates the underlying interface of a node and returns the effective Typed Interface.
 func ValidateUnderlyingInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs errors.CompileErrors) (iface *core.TypedInterface, ok bool) {
 	if node.GetInterface() != nil {
 		return node.GetInterface(), true
@@ -131,4 +131,28 @@ func ValidateUnderlyingInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs e
 	}
 
 	return iface, !errs.HasErrors()
+}
+
+func StripInterfaceTypeMetadata(iface *core.TypedInterface) *core.TypedInterface {
+	if iface == nil {
+		return nil
+	}
+
+	newIface := *iface
+
+	if iface.Inputs != nil {
+		for name, i := range iface.Inputs.Variables {
+			i.Type = StripTypeMetadata(i.Type)
+			newIface.Inputs.Variables[name] = i
+		}
+	}
+
+	if iface.Outputs != nil {
+		for name, i := range iface.Outputs.Variables {
+			i.Type = StripTypeMetadata(i.Type)
+			iface.Outputs.Variables[name] = i
+		}
+	}
+
+	return &newIface
 }

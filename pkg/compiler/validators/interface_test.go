@@ -3,6 +3,8 @@ package validators
 import (
 	"testing"
 
+	_struct "github.com/golang/protobuf/ptypes/struct"
+
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	c "github.com/flyteorg/flytepropeller/pkg/compiler/common"
@@ -11,6 +13,44 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+func TestStripInterfaceTypeMetadata(t *testing.T) {
+	t.Run("nil", func(t *testing.T) {
+		assert.Nil(t, StripInterfaceTypeMetadata(nil))
+	})
+
+	t.Run("populated", func(t *testing.T) {
+		vars := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"a": {
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_Simple{
+							Simple: core.SimpleType_INTEGER,
+						},
+						Metadata: &_struct.Struct{
+							Fields: map[string]*_struct.Value{
+								"foo": {
+									Kind: &_struct.Value_StringValue{
+										StringValue: "bar",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		i := &core.TypedInterface{
+			Inputs:  &(*vars),
+			Outputs: &(*vars),
+		}
+
+		stripped := StripInterfaceTypeMetadata(i)
+		assert.Nil(t, stripped.Inputs.Variables["a"].Type.Metadata)
+		assert.Nil(t, stripped.Outputs.Variables["a"].Type.Metadata)
+	})
+}
 
 func TestValidateInterface(t *testing.T) {
 	t.Run("Happy path", func(t *testing.T) {
