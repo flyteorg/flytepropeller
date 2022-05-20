@@ -143,6 +143,7 @@ func StripInterfaceTypeMetadata(iface *core.TypedInterface) *core.TypedInterface
 	if iface.Inputs != nil {
 		for name, i := range iface.Inputs.Variables {
 			i.Type = StripTypeMetadata(i.Type)
+			i.Description = ""
 			newIface.Inputs.Variables[name] = i
 		}
 	}
@@ -150,6 +151,7 @@ func StripInterfaceTypeMetadata(iface *core.TypedInterface) *core.TypedInterface
 	if iface.Outputs != nil {
 		for name, i := range iface.Outputs.Variables {
 			i.Type = StripTypeMetadata(i.Type)
+			i.Description = ""
 			iface.Outputs.Variables[name] = i
 		}
 	}
