@@ -36,6 +36,7 @@ template:
     inputs:
       variables:
         df:
+          description: df
           type:
             Type:
               StructuredDatasetType:
@@ -43,6 +44,7 @@ template:
     outputs:
       variables:
         o0:
+          description: o0
           type:
             Type:
               StructuredDatasetType:

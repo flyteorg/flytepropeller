@@ -37,6 +37,7 @@ template:
     outputs:
       variables:
         o0:
+          description: o0
           type:
             Type:
               Simple: 1

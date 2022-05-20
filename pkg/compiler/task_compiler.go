@@ -3,8 +3,6 @@ package compiler
 import (
 	"fmt"
 
-	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -106,7 +104,6 @@ func compileTaskInternal(task *core.TaskTemplate, errs errors.CompileErrors) com
 		validateK8sPod(task, errs.NewScope())
 	}
 
-	task.Interface = validators.StripInterfaceTypeMetadata(task.Interface)
 	return taskBuilder{flyteTask: task}
 }
 

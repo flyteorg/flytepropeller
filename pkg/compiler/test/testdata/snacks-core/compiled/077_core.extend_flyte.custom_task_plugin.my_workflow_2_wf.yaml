@@ -28,12 +28,14 @@ primary:
       inputs:
         variables:
           path:
+            description: path
             type:
               Type:
                 Simple: 3
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 3
@@ -140,12 +142,14 @@ tasks:
       inputs:
         variables:
           path:
+            description: path
             type:
               Type:
                 Simple: 3
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 3
@@ -166,12 +170,14 @@ tasks:
       inputs:
         variables:
           path:
+            description: path
             type:
               Type:
                 Simple: 3
       outputs:
         variables:
           path:
+            description: path
             type:
               Type:
                 Simple: 3

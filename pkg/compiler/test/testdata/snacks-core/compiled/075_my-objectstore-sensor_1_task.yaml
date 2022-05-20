@@ -7,12 +7,14 @@ template:
     inputs:
       variables:
         path:
+          description: path
           type:
             Type:
               Simple: 3
     outputs:
       variables:
         path:
+          description: path
           type:
             Type:
               Simple: 3

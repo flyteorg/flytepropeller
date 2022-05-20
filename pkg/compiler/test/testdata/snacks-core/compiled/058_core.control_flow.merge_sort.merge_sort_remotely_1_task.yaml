@@ -39,18 +39,21 @@ template:
     inputs:
       variables:
         numbers:
+          description: numbers
           type:
             Type:
               CollectionType:
                 Type:
                   Simple: 1
         run_local_at_count:
+          description: run_local_at_count
           type:
             Type:
               Simple: 1
     outputs:
       variables:
         o0:
+          description: o0
           type:
             Type:
               CollectionType:

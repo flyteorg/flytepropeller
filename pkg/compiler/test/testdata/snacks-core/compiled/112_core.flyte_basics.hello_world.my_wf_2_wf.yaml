@@ -23,6 +23,7 @@ primary:
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 3
@@ -99,6 +100,7 @@ tasks:
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 3

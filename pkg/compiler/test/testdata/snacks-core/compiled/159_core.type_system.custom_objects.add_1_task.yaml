@@ -36,19 +36,82 @@ template:
     inputs:
       variables:
         x:
+          description: x
           type:
             Type:
               Simple: 9
+            metadata:
+              $ref: '#/definitions/DatumSchema'
+              $schema: http://json-schema.org/draft-07/schema#
+              definitions:
+                DatumSchema:
+                  additionalProperties: false
+                  properties:
+                    x:
+                      title: x
+                      type: integer
+                    "y":
+                      title: "y"
+                      type: string
+                    z:
+                      additionalProperties:
+                        title: z
+                        type: string
+                      title: z
+                      type: object
+                  type: object
         "y":
+          description: "y"
           type:
             Type:
               Simple: 9
+            metadata:
+              $ref: '#/definitions/DatumSchema'
+              $schema: http://json-schema.org/draft-07/schema#
+              definitions:
+                DatumSchema:
+                  additionalProperties: false
+                  properties:
+                    x:
+                      title: x
+                      type: integer
+                    "y":
+                      title: "y"
+                      type: string
+                    z:
+                      additionalProperties:
+                        title: z
+                        type: string
+                      title: z
+                      type: object
+                  type: object
     outputs:
       variables:
         o0:
+          description: o0
           type:
             Type:
               Simple: 9
+            metadata:
+              $ref: '#/definitions/DatumSchema'
+              $schema: http://json-schema.org/draft-07/schema#
+              definitions:
+                DatumSchema:
+                  additionalProperties: false
+                  properties:
+                    x:
+                      title: x
+                      type: integer
+                    "y":
+                      title: "y"
+                      type: string
+                    z:
+                      additionalProperties:
+                        title: z
+                        type: string
+                      title: z
+                      type: object
+                  type: object
   metadata:
     InterruptibleValue: null
     retries: {}

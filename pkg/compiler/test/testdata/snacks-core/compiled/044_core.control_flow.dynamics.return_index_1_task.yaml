@@ -36,12 +36,14 @@ template:
     inputs:
       variables:
         character:
+          description: character
           type:
             Type:
               Simple: 3
     outputs:
       variables:
         o0:
+          description: o0
           type:
             Type:
               Simple: 1

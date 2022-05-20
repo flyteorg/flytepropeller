@@ -344,7 +344,6 @@ func CompileWorkflow(primaryWf *core.WorkflowTemplate, subworkflows []*core.Work
 		}
 
 		coreWf := validatedWf.GetCoreWorkflow()
-		coreWf.Template.Interface = v.StripInterfaceTypeMetadata(coreWf.Template.Interface)
 
 		return &core.CompiledWorkflowClosure{
 			Primary:      coreWf,

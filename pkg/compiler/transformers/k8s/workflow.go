@@ -82,6 +82,8 @@ func WorkflowNameFromID(id string) string {
 
 func buildFlyteWorkflowSpec(wf *core.CompiledWorkflow, tasks []*core.CompiledTask, errs errors.CompileErrors) (
 	spec *v1alpha1.WorkflowSpec, err error) {
+	wf.Template.Interface = StripInterfaceTypeMetadata(wf.Template.Interface)
+
 	var failureN *v1alpha1.NodeSpec
 	if n := wf.Template.GetFailureNode(); n != nil {
 		nodes, ok := buildNodeSpec(n, tasks, errs.NewScope())
@@ -164,6 +166,10 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 	if wfClosure == nil {
 		errs.Collect(errors.NewValueRequiredErr("root", "wfClosure"))
 		return nil, errs
+	}
+
+	for _, t := range wfClosure.Tasks {
+		t.Template.Interface = StripInterfaceTypeMetadata(t.Template.Interface)
 	}
 
 	primarySpec, err := buildFlyteWorkflowSpec(wfClosure.Primary, wfClosure.Tasks, errs.NewScope())

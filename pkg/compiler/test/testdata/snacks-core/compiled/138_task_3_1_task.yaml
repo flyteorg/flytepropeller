@@ -36,21 +36,25 @@ template:
     inputs:
       variables:
         x:
+          description: x
           type:
             Type:
               Blob: {}
         "y":
+          description: "y"
           type:
             Type:
               Blob:
                 dimensionality: 1
         z:
+          description: z
           type:
             Type:
               Blob: {}
     outputs:
       variables:
         k:
+          description: k
           type:
             Type:
               Blob: {}

@@ -36,6 +36,7 @@ template:
     inputs:
       variables:
         columns_metadata:
+          description: columns_metadata
           type:
             Type:
               CollectionType:
@@ -44,6 +45,7 @@ template:
                     Type:
                       Simple: 3
         columns_to_normalize_metadata:
+          description: columns_to_normalize_metadata
           type:
             Type:
               CollectionType:
@@ -52,6 +54,7 @@ template:
                     Type:
                       Simple: 3
         csv_files_dir:
+          description: csv_files_dir
           type:
             Type:
               Blob:
@@ -59,6 +62,7 @@ template:
     outputs:
       variables:
         o0:
+          description: o0
           type:
             Type:
               Blob:

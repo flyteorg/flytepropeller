@@ -36,42 +36,52 @@ template:
     inputs:
       variables:
         area_haskell:
+          description: area_haskell
           type:
             Type:
               Simple: 2
         area_julia:
+          description: area_julia
           type:
             Type:
               Simple: 2
         area_python:
+          description: area_python
           type:
             Type:
               Simple: 2
         area_r:
+          description: area_r
           type:
             Type:
               Simple: 2
         area_shell:
+          description: area_shell
           type:
             Type:
               Simple: 2
         metadata_haskell:
+          description: metadata_haskell
           type:
             Type:
               Simple: 3
         metadata_julia:
+          description: metadata_julia
           type:
             Type:
               Simple: 3
         metadata_python:
+          description: metadata_python
           type:
             Type:
               Simple: 3
         metadata_r:
+          description: metadata_r
           type:
             Type:
               Simple: 3
         metadata_shell:
+          description: metadata_shell
           type:
             Type:
               Simple: 3

@@ -40,16 +40,19 @@ primary:
       inputs:
         variables:
           my_input:
+            description: my_input
             type:
               Type:
                 Simple: 2
           seed:
+            description: seed
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 2
@@ -229,16 +232,19 @@ tasks:
       inputs:
         variables:
           a:
+            description: a
             type:
               Type:
                 Simple: 2
           b:
+            description: b
             type:
               Type:
                 Simple: 2
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 2
@@ -288,12 +294,14 @@ tasks:
       inputs:
         variables:
           seed:
+            description: seed
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 4
@@ -343,12 +351,16 @@ tasks:
       inputs:
         variables:
           "n":
+            description: |-
+              name of the parameter for the task is derived from the name of the input variable
+              and the type is mapped to ``Types.Integer``
             type:
               Type:
                 Simple: 2
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 2
@@ -398,12 +410,16 @@ tasks:
       inputs:
         variables:
           "n":
+            description: |-
+              name of the parameter for the task is derived from the name of the input variable, and
+              the type is automatically mapped to Types.Integer
             type:
               Type:
                 Simple: 2
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 2

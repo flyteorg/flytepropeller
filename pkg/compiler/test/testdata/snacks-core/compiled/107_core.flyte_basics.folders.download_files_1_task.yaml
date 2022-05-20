@@ -36,6 +36,7 @@ template:
     inputs:
       variables:
         csv_urls:
+          description: csv_urls
           type:
             Type:
               CollectionType:
@@ -44,6 +45,7 @@ template:
     outputs:
       variables:
         o0:
+          description: o0
           type:
             Type:
               Blob:

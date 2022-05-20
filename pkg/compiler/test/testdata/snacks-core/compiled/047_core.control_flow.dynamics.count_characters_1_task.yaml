@@ -39,16 +39,19 @@ template:
     inputs:
       variables:
         s1:
+          description: s1
           type:
             Type:
               Simple: 3
         s2:
+          description: s2
           type:
             Type:
               Simple: 3
     outputs:
       variables:
         o0:
+          description: o0
           type:
             Type:
               Simple: 1

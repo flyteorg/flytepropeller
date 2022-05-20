@@ -22,6 +22,7 @@ primary:
       inputs:
         variables:
           name:
+            description: name
             type:
               Type:
                 Simple: 3
@@ -91,12 +92,14 @@ tasks:
       inputs:
         variables:
           name:
+            description: name
             type:
               Type:
                 Simple: 3
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 3

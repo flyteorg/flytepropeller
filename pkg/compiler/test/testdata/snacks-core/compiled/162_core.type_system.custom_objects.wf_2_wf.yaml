@@ -52,23 +52,88 @@ primary:
       inputs:
         variables:
           x:
+            description: x
             type:
               Type:
                 Simple: 1
           "y":
+            description: "y"
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 9
+              metadata:
+                $ref: '#/definitions/DatumSchema'
+                $schema: http://json-schema.org/draft-07/schema#
+                definitions:
+                  DatumSchema:
+                    additionalProperties: false
+                    properties:
+                      x:
+                        title: x
+                        type: integer
+                      "y":
+                        title: "y"
+                        type: string
+                      z:
+                        additionalProperties:
+                          title: z
+                          type: string
+                        title: z
+                        type: object
+                    type: object
           o1:
+            description: o1
             type:
               Type:
                 Simple: 9
+              metadata:
+                $ref: '#/definitions/ResultSchema'
+                $schema: http://json-schema.org/draft-07/schema#
+                definitions:
+                  FlytedirectorySchema:
+                    additionalProperties: false
+                    properties:
+                      path:
+                        title: path
+                        type: string
+                    type: object
+                  FlytefileSchema:
+                    additionalProperties: false
+                    properties:
+                      path:
+                        title: path
+                        type: string
+                    type: object
+                  FlyteschemaSchema:
+                    additionalProperties: false
+                    properties:
+                      remote_path:
+                        title: remote_path
+                        type: string
+                    type: object
+                  ResultSchema:
+                    additionalProperties: false
+                    properties:
+                      directory:
+                        $ref: '#/definitions/FlytedirectorySchema'
+                        field_many: false
+                        type: object
+                      file:
+                        $ref: '#/definitions/FlytefileSchema'
+                        field_many: false
+                        type: object
+                      schema:
+                        $ref: '#/definitions/FlyteschemaSchema'
+                        field_many: false
+                        type: object
+                    type: object
     metadata: {}
     metadata_defaults: {}
     nodes:
@@ -240,19 +305,82 @@ tasks:
       inputs:
         variables:
           x:
+            description: x
             type:
               Type:
                 Simple: 9
+              metadata:
+                $ref: '#/definitions/DatumSchema'
+                $schema: http://json-schema.org/draft-07/schema#
+                definitions:
+                  DatumSchema:
+                    additionalProperties: false
+                    properties:
+                      x:
+                        title: x
+                        type: integer
+                      "y":
+                        title: "y"
+                        type: string
+                      z:
+                        additionalProperties:
+                          title: z
+                          type: string
+                        title: z
+                        type: object
+                    type: object
           "y":
+            description: "y"
             type:
               Type:
                 Simple: 9
+              metadata:
+                $ref: '#/definitions/DatumSchema'
+                $schema: http://json-schema.org/draft-07/schema#
+                definitions:
+                  DatumSchema:
+                    additionalProperties: false
+                    properties:
+                      x:
+                        title: x
+                        type: integer
+                      "y":
+                        title: "y"
+                        type: string
+                      z:
+                        additionalProperties:
+                          title: z
+                          type: string
+                        title: z
+                        type: object
+                    type: object
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 9
+              metadata:
+                $ref: '#/definitions/DatumSchema'
+                $schema: http://json-schema.org/draft-07/schema#
+                definitions:
+                  DatumSchema:
+                    additionalProperties: false
+                    properties:
+                      x:
+                        title: x
+                        type: integer
+                      "y":
+                        title: "y"
+                        type: string
+                      z:
+                        additionalProperties:
+                          title: z
+                          type: string
+                        title: z
+                        type: object
+                    type: object
     metadata:
       InterruptibleValue: null
       retries: {}
@@ -299,9 +427,51 @@ tasks:
       inputs:
         variables:
           res:
+            description: res
             type:
               Type:
                 Simple: 9
+              metadata:
+                $ref: '#/definitions/ResultSchema'
+                $schema: http://json-schema.org/draft-07/schema#
+                definitions:
+                  FlytedirectorySchema:
+                    additionalProperties: false
+                    properties:
+                      path:
+                        title: path
+                        type: string
+                    type: object
+                  FlytefileSchema:
+                    additionalProperties: false
+                    properties:
+                      path:
+                        title: path
+                        type: string
+                    type: object
+                  FlyteschemaSchema:
+                    additionalProperties: false
+                    properties:
+                      remote_path:
+                        title: remote_path
+                        type: string
+                    type: object
+                  ResultSchema:
+                    additionalProperties: false
+                    properties:
+                      directory:
+                        $ref: '#/definitions/FlytedirectorySchema'
+                        field_many: false
+                        type: object
+                      file:
+                        $ref: '#/definitions/FlytefileSchema'
+                        field_many: false
+                        type: object
+                      schema:
+                        $ref: '#/definitions/FlyteschemaSchema'
+                        field_many: false
+                        type: object
+                    type: object
       outputs: {}
     metadata:
       InterruptibleValue: null
@@ -349,15 +519,37 @@ tasks:
       inputs:
         variables:
           x:
+            description: x
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 9
+              metadata:
+                $ref: '#/definitions/DatumSchema'
+                $schema: http://json-schema.org/draft-07/schema#
+                definitions:
+                  DatumSchema:
+                    additionalProperties: false
+                    properties:
+                      x:
+                        title: x
+                        type: integer
+                      "y":
+                        title: "y"
+                        type: string
+                      z:
+                        additionalProperties:
+                          title: z
+                          type: string
+                        title: z
+                        type: object
+                    type: object
     metadata:
       InterruptibleValue: null
       retries: {}
@@ -405,9 +597,51 @@ tasks:
       outputs:
         variables:
           o0:
+            description: o0
             type:
               Type:
                 Simple: 9
+              metadata:
+                $ref: '#/definitions/ResultSchema'
+                $schema: http://json-schema.org/draft-07/schema#
+                definitions:
+                  FlytedirectorySchema:
+                    additionalProperties: false
+                    properties:
+                      path:
+                        title: path
+                        type: string
+                    type: object
+                  FlytefileSchema:
+                    additionalProperties: false
+                    properties:
+                      path:
+                        title: path
+                        type: string
+                    type: object
+                  FlyteschemaSchema:
+                    additionalProperties: false
+                    properties:
+                      remote_path:
+                        title: remote_path
+                        type: string
+                    type: object
+                  ResultSchema:
+                    additionalProperties: false
+                    properties:
+                      directory:
+                        $ref: '#/definitions/FlytedirectorySchema'
+                        field_many: false
+                        type: object
+                      file:
+                        $ref: '#/definitions/FlytefileSchema'
+                        field_many: false
+                        type: object
+                      schema:
+                        $ref: '#/definitions/FlyteschemaSchema'
+                        field_many: false
+                        type: object
+                    type: object
     metadata:
       InterruptibleValue: null
       retries: {}
