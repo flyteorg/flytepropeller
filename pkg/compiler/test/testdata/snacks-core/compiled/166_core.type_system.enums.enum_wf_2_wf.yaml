@@ -30,7 +30,6 @@ primary:
       inputs:
         variables:
           c:
-            description: c
             type:
               Type:
                 EnumType:
@@ -41,7 +40,6 @@ primary:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 EnumType:
@@ -50,7 +48,6 @@ primary:
                   - green
                   - blue
           o1:
-            description: o1
             type:
               Type:
                 Simple: 3
@@ -166,7 +163,6 @@ tasks:
       inputs:
         variables:
           c:
-            description: c
             type:
               Type:
                 EnumType:
@@ -177,7 +173,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 3
@@ -227,14 +222,12 @@ tasks:
       inputs:
         variables:
           c:
-            description: c
             type:
               Type:
                 Simple: 3
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 EnumType:

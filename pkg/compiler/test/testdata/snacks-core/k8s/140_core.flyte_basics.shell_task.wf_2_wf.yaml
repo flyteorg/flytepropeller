@@ -164,7 +164,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           blob: {}
 status:
@@ -208,11 +207,9 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               blob: {}
           o1:
-            description: o1
             type:
               blob:
                 dimensionality: MULTIPART
@@ -260,13 +257,11 @@ tasks:
       inputs:
         variables:
           x:
-            description: x
             type:
               blob: {}
       outputs:
         variables:
           i:
-            description: i
             type:
               blob: {}
     metadata:
@@ -313,18 +308,15 @@ tasks:
       inputs:
         variables:
           x:
-            description: x
             type:
               blob: {}
           "y":
-            description: "y"
             type:
               blob:
                 dimensionality: MULTIPART
       outputs:
         variables:
           j:
-            description: j
             type:
               blob: {}
     metadata:
@@ -371,22 +363,18 @@ tasks:
       inputs:
         variables:
           x:
-            description: x
             type:
               blob: {}
           "y":
-            description: "y"
             type:
               blob:
                 dimensionality: MULTIPART
           z:
-            description: z
             type:
               blob: {}
       outputs:
         variables:
           k:
-            description: k
             type:
               blob: {}
     metadata:

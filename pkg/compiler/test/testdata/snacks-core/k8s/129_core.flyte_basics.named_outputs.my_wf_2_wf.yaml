@@ -110,11 +110,9 @@ spec:
   outputs:
     variables:
       greet1:
-        description: greet1
         type:
           simple: STRING
       greet2:
-        description: greet2
         type:
           simple: STRING
 status:
@@ -158,7 +156,6 @@ tasks:
       outputs:
         variables:
           greet:
-            description: greet
             type:
               simple: STRING
     metadata:

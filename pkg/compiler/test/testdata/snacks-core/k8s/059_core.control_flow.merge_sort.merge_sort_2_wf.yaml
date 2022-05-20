@@ -156,7 +156,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           collectionType:
             simple: INTEGER
@@ -203,18 +202,15 @@ tasks:
       inputs:
         variables:
           numbers:
-            description: numbers
             type:
               collectionType:
                 simple: INTEGER
           run_local_at_count:
-            description: run_local_at_count
             type:
               simple: INTEGER
       outputs:
         variables:
           o0:
-            description: o0
             type:
               collectionType:
                 simple: INTEGER
@@ -262,14 +258,12 @@ tasks:
       inputs:
         variables:
           numbers:
-            description: numbers
             type:
               collectionType:
                 simple: INTEGER
       outputs:
         variables:
           o0:
-            description: o0
             type:
               collectionType:
                 simple: INTEGER

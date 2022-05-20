@@ -36,7 +36,6 @@ template:
     inputs:
       variables:
         numbers:
-          description: numbers
           type:
             Type:
               CollectionType:
@@ -45,21 +44,18 @@ template:
     outputs:
       variables:
         o0:
-          description: o0
           type:
             Type:
               CollectionType:
                 Type:
                   Simple: 1
         o1:
-          description: o1
           type:
             Type:
               CollectionType:
                 Type:
                   Simple: 1
         o2:
-          description: o2
           type:
             Type:
               Simple: 1

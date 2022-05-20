@@ -103,7 +103,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           schema:
             columns:
@@ -149,7 +148,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               schema:
                 columns:
@@ -200,7 +198,6 @@ tasks:
       inputs:
         variables:
           schema:
-            description: schema
             type:
               schema:
                 columns:
@@ -210,7 +207,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               schema:
                 columns:

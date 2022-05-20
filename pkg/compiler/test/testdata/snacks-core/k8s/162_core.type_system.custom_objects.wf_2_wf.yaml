@@ -196,11 +196,9 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           simple: STRUCT
       o1:
-        description: o1
         type:
           simple: STRUCT
 status:
@@ -243,17 +241,14 @@ tasks:
       inputs:
         variables:
           x:
-            description: x
             type:
               simple: STRUCT
           "y":
-            description: "y"
             type:
               simple: STRUCT
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: STRUCT
     metadata:
@@ -300,7 +295,6 @@ tasks:
       inputs:
         variables:
           res:
-            description: res
             type:
               simple: STRUCT
       outputs: {}
@@ -348,13 +342,11 @@ tasks:
       inputs:
         variables:
           x:
-            description: x
             type:
               simple: INTEGER
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: STRUCT
     metadata:
@@ -402,7 +394,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: STRUCT
     metadata:

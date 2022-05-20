@@ -52,24 +52,20 @@ primary:
       inputs:
         variables:
           x:
-            description: x
             type:
               Type:
                 Simple: 1
           "y":
-            description: "y"
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 9
           o1:
-            description: o1
             type:
               Type:
                 Simple: 9
@@ -244,19 +240,16 @@ tasks:
       inputs:
         variables:
           x:
-            description: x
             type:
               Type:
                 Simple: 9
           "y":
-            description: "y"
             type:
               Type:
                 Simple: 9
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 9
@@ -306,7 +299,6 @@ tasks:
       inputs:
         variables:
           res:
-            description: res
             type:
               Type:
                 Simple: 9
@@ -357,14 +349,12 @@ tasks:
       inputs:
         variables:
           x:
-            description: x
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 9
@@ -415,7 +405,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 9

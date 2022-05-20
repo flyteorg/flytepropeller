@@ -36,12 +36,10 @@ template:
     inputs:
       variables:
         x:
-          description: x
           type:
             Type:
               Blob: {}
         "y":
-          description: "y"
           type:
             Type:
               Blob:
@@ -49,7 +47,6 @@ template:
     outputs:
       variables:
         j:
-          description: j
           type:
             Type:
               Blob: {}

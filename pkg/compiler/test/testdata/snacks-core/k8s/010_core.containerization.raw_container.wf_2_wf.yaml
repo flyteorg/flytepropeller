@@ -306,43 +306,33 @@ tasks:
       inputs:
         variables:
           area_haskell:
-            description: area_haskell
             type:
               simple: FLOAT
           area_julia:
-            description: area_julia
             type:
               simple: FLOAT
           area_python:
-            description: area_python
             type:
               simple: FLOAT
           area_r:
-            description: area_r
             type:
               simple: FLOAT
           area_shell:
-            description: area_shell
             type:
               simple: FLOAT
           metadata_haskell:
-            description: metadata_haskell
             type:
               simple: STRING
           metadata_julia:
-            description: metadata_julia
             type:
               simple: STRING
           metadata_python:
-            description: metadata_python
             type:
               simple: STRING
           metadata_r:
-            description: metadata_r
             type:
               simple: STRING
           metadata_shell:
-            description: metadata_shell
             type:
               simple: STRING
       outputs: {}
@@ -379,21 +369,17 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               simple: FLOAT
           b:
-            description: b
             type:
               simple: FLOAT
       outputs:
         variables:
           area:
-            description: area
             type:
               simple: FLOAT
           metadata:
-            description: metadata
             type:
               simple: STRING
     metadata:
@@ -430,21 +416,17 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               simple: FLOAT
           b:
-            description: b
             type:
               simple: FLOAT
       outputs:
         variables:
           area:
-            description: area
             type:
               simple: FLOAT
           metadata:
-            description: metadata
             type:
               simple: STRING
     metadata:
@@ -481,21 +463,17 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               simple: FLOAT
           b:
-            description: b
             type:
               simple: FLOAT
       outputs:
         variables:
           area:
-            description: area
             type:
               simple: FLOAT
           metadata:
-            description: metadata
             type:
               simple: STRING
     metadata:
@@ -533,21 +511,17 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               simple: FLOAT
           b:
-            description: b
             type:
               simple: FLOAT
       outputs:
         variables:
           area:
-            description: area
             type:
               simple: FLOAT
           metadata:
-            description: metadata
             type:
               simple: STRING
     metadata:
@@ -583,21 +557,17 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               simple: FLOAT
           b:
-            description: b
             type:
               simple: FLOAT
       outputs:
         variables:
           area:
-            description: area
             type:
               simple: FLOAT
           metadata:
-            description: metadata
             type:
               simple: STRING
     metadata:

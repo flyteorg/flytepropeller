@@ -116,7 +116,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           simple: STRING
 status:
@@ -159,13 +158,11 @@ tasks:
       inputs:
         variables:
           path:
-            description: path
             type:
               simple: STRING
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: STRING
     metadata:
@@ -183,13 +180,11 @@ tasks:
       inputs:
         variables:
           path:
-            description: path
             type:
               simple: STRING
       outputs:
         variables:
           path:
-            description: path
             type:
               simple: STRING
     metadata:

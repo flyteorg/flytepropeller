@@ -26,24 +26,20 @@ template:
     inputs:
       variables:
         a:
-          description: a
           type:
             Type:
               Simple: 2
         b:
-          description: b
           type:
             Type:
               Simple: 2
     outputs:
       variables:
         area:
-          description: area
           type:
             Type:
               Simple: 2
         metadata:
-          description: metadata
           type:
             Type:
               Simple: 3

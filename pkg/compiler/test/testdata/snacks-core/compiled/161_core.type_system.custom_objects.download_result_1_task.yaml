@@ -36,7 +36,6 @@ template:
     inputs:
       variables:
         res:
-          description: res
           type:
             Type:
               Simple: 9

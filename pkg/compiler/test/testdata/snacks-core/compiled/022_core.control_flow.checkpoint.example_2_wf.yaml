@@ -22,14 +22,12 @@ primary:
       inputs:
         variables:
           n_iterations:
-            description: n_iterations
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 1
@@ -113,14 +111,12 @@ tasks:
       inputs:
         variables:
           n_iterations:
-            description: n_iterations
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 1

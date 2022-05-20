@@ -36,14 +36,12 @@ template:
     inputs:
       variables:
         freq1:
-          description: freq1
           type:
             Type:
               CollectionType:
                 Type:
                   Simple: 1
         freq2:
-          description: freq2
           type:
             Type:
               CollectionType:
@@ -52,7 +50,6 @@ template:
     outputs:
       variables:
         o0:
-          description: o0
           type:
             Type:
               Simple: 1

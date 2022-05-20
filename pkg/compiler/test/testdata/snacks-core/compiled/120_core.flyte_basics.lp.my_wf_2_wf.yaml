@@ -22,14 +22,12 @@ primary:
       inputs:
         variables:
           val:
-            description: val
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 1
@@ -112,14 +110,12 @@ tasks:
       inputs:
         variables:
           val:
-            description: val
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 1

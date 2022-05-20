@@ -45,7 +45,6 @@ primary:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Blob: {}
@@ -205,12 +204,10 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Blob: {}
           o1:
-            description: o1
             type:
               Type:
                 Blob:
@@ -261,14 +258,12 @@ tasks:
       inputs:
         variables:
           x:
-            description: x
             type:
               Type:
                 Blob: {}
       outputs:
         variables:
           i:
-            description: i
             type:
               Type:
                 Blob: {}
@@ -318,12 +313,10 @@ tasks:
       inputs:
         variables:
           x:
-            description: x
             type:
               Type:
                 Blob: {}
           "y":
-            description: "y"
             type:
               Type:
                 Blob:
@@ -331,7 +324,6 @@ tasks:
       outputs:
         variables:
           j:
-            description: j
             type:
               Type:
                 Blob: {}
@@ -381,25 +373,21 @@ tasks:
       inputs:
         variables:
           x:
-            description: x
             type:
               Type:
                 Blob: {}
           "y":
-            description: "y"
             type:
               Type:
                 Blob:
                   dimensionality: 1
           z:
-            description: z
             type:
               Type:
                 Blob: {}
       outputs:
         variables:
           k:
-            description: k
             type:
               Type:
                 Blob: {}

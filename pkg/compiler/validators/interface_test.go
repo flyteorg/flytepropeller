@@ -42,8 +42,8 @@ func TestStripInterfaceTypeMetadata(t *testing.T) {
 		}
 
 		i := &core.TypedInterface{
-			Inputs:  &(*vars),
-			Outputs: &(*vars),
+			Inputs:  vars,
+			Outputs: vars,
 		}
 
 		stripped := StripInterfaceTypeMetadata(i)

@@ -94,7 +94,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           simple: STRUCT
 status:
@@ -137,13 +136,11 @@ tasks:
       inputs:
         variables:
           input_string1:
-            description: input_string1
             type:
               simple: STRING
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: STRUCT
     metadata:

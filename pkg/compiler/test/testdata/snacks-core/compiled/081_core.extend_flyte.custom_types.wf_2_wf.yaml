@@ -29,7 +29,6 @@ primary:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 3
@@ -126,7 +125,6 @@ tasks:
       inputs:
         variables:
           d:
-            description: d
             type:
               Type:
                 Blob:
@@ -135,7 +133,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 3
@@ -186,7 +183,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Blob:

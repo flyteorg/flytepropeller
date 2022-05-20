@@ -36,25 +36,21 @@ template:
     inputs:
       variables:
         X_test:
-          description: X_test
           type:
             Type:
               StructuredDatasetType:
                 format: parquet
         X_train:
-          description: X_train
           type:
             Type:
               StructuredDatasetType:
                 format: parquet
         y_test:
-          description: y_test
           type:
             Type:
               StructuredDatasetType:
                 format: parquet
         y_train:
-          description: y_train
           type:
             Type:
               StructuredDatasetType:
@@ -62,7 +58,6 @@ template:
     outputs:
       variables:
         o0:
-          description: o0
           type:
             Type:
               Simple: 2

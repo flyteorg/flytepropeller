@@ -120,7 +120,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           simple: INTEGER
 status:
@@ -164,7 +163,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: INTEGER
     metadata:
@@ -212,7 +210,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: INTEGER
     metadata:

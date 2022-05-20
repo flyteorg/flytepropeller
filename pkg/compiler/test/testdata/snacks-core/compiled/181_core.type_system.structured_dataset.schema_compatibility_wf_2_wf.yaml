@@ -34,14 +34,12 @@ primary:
       inputs:
         variables:
           a:
-            description: a
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 StructuredDatasetType:
@@ -172,14 +170,12 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Schema:
@@ -234,7 +230,6 @@ tasks:
       inputs:
         variables:
           df:
-            description: df
             type:
               Type:
                 StructuredDatasetType:
@@ -247,7 +242,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 StructuredDatasetType:
@@ -303,7 +297,6 @@ tasks:
       inputs:
         variables:
           ds:
-            description: ds
             type:
               Type:
                 StructuredDatasetType:
@@ -316,7 +309,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 StructuredDatasetType:

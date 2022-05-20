@@ -36,13 +36,11 @@ template:
     inputs:
       variables:
         df1:
-          description: df1
           type:
             Type:
               StructuredDatasetType:
                 format: parquet
         df2:
-          description: df2
           type:
             Type:
               StructuredDatasetType:

@@ -22,13 +22,10 @@ primary:
       inputs:
         variables:
           data:
-            description: A data class pertaining to the new record to be stored in
-              the DataFrame
             type:
               Type:
                 Simple: 9
           df:
-            description: Pandas DataFrame
             type:
               Type:
                 StructuredDatasetType:
@@ -36,7 +33,6 @@ primary:
       outputs:
         variables:
           o0:
-            description: Pandas DataFrame
             type:
               Type:
                 StructuredDatasetType:
@@ -126,12 +122,10 @@ tasks:
       inputs:
         variables:
           data:
-            description: data
             type:
               Type:
                 Simple: 9
           df:
-            description: df
             type:
               Type:
                 StructuredDatasetType:
@@ -139,7 +133,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 StructuredDatasetType:

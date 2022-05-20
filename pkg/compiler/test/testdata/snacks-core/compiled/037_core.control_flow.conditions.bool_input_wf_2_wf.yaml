@@ -22,14 +22,12 @@ primary:
       inputs:
         variables:
           b:
-            description: b
             type:
               Type:
                 Simple: 4
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 1
@@ -148,7 +146,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 1
@@ -199,7 +196,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 1

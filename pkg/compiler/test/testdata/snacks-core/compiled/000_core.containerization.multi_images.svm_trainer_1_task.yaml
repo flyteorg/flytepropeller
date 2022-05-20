@@ -37,25 +37,21 @@ template:
     outputs:
       variables:
         test_features:
-          description: test_features
           type:
             Type:
               StructuredDatasetType:
                 format: parquet
         test_labels:
-          description: test_labels
           type:
             Type:
               StructuredDatasetType:
                 format: parquet
         train_features:
-          description: train_features
           type:
             Type:
               StructuredDatasetType:
                 format: parquet
         train_labels:
-          description: train_labels
           type:
             Type:
               StructuredDatasetType:

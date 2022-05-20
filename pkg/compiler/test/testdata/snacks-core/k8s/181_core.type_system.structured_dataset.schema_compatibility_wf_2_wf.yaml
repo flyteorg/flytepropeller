@@ -134,7 +134,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           structuredDatasetType:
             columns:
@@ -182,13 +181,11 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               simple: INTEGER
       outputs:
         variables:
           o0:
-            description: o0
             type:
               schema:
                 columns:
@@ -240,7 +237,6 @@ tasks:
       inputs:
         variables:
           df:
-            description: df
             type:
               structuredDatasetType:
                 columns:
@@ -251,7 +247,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               structuredDatasetType:
                 columns:
@@ -303,7 +298,6 @@ tasks:
       inputs:
         variables:
           ds:
-            description: ds
             type:
               structuredDatasetType:
                 columns:
@@ -314,7 +308,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               structuredDatasetType:
                 columns:

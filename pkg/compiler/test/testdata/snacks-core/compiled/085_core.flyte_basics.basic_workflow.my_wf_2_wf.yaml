@@ -32,24 +32,20 @@ primary:
       inputs:
         variables:
           a:
-            description: a
             type:
               Type:
                 Simple: 1
           b:
-            description: b
             type:
               Type:
                 Simple: 3
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 1
           o1:
-            description: o1
             type:
               Type:
                 Simple: 3
@@ -171,19 +167,16 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               Type:
                 Simple: 1
       outputs:
         variables:
           c:
-            description: c
             type:
               Type:
                 Simple: 3
           t1_int_output:
-            description: t1_int_output
             type:
               Type:
                 Simple: 1
@@ -233,19 +226,16 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               Type:
                 Simple: 3
           b:
-            description: b
             type:
               Type:
                 Simple: 3
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 3

@@ -30,7 +30,6 @@ primary:
       inputs:
         variables:
           columns_metadata:
-            description: columns_metadata
             type:
               Type:
                 CollectionType:
@@ -39,7 +38,6 @@ primary:
                       Type:
                         Simple: 3
           columns_to_normalize_metadata:
-            description: columns_to_normalize_metadata
             type:
               Type:
                 CollectionType:
@@ -48,7 +46,6 @@ primary:
                       Type:
                         Simple: 3
           csv_urls:
-            description: csv_urls
             type:
               Type:
                 CollectionType:
@@ -57,7 +54,6 @@ primary:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Blob:
@@ -174,7 +170,6 @@ tasks:
       inputs:
         variables:
           csv_urls:
-            description: csv_urls
             type:
               Type:
                 CollectionType:
@@ -183,7 +178,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Blob:
@@ -234,7 +228,6 @@ tasks:
       inputs:
         variables:
           columns_metadata:
-            description: columns_metadata
             type:
               Type:
                 CollectionType:
@@ -243,7 +236,6 @@ tasks:
                       Type:
                         Simple: 3
           columns_to_normalize_metadata:
-            description: columns_to_normalize_metadata
             type:
               Type:
                 CollectionType:
@@ -252,7 +244,6 @@ tasks:
                       Type:
                         Simple: 3
           csv_files_dir:
-            description: csv_files_dir
             type:
               Type:
                 Blob:
@@ -260,7 +251,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Blob:

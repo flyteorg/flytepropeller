@@ -118,7 +118,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           simple: FLOAT
 status:
@@ -161,29 +160,24 @@ tasks:
       inputs:
         variables:
           X_test:
-            description: X_test
             type:
               structuredDatasetType:
                 format: parquet
           X_train:
-            description: X_train
             type:
               structuredDatasetType:
                 format: parquet
           y_test:
-            description: y_test
             type:
               structuredDatasetType:
                 format: parquet
           y_train:
-            description: y_train
             type:
               structuredDatasetType:
                 format: parquet
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: FLOAT
     metadata:
@@ -231,22 +225,18 @@ tasks:
       outputs:
         variables:
           test_features:
-            description: test_features
             type:
               structuredDatasetType:
                 format: parquet
           test_labels:
-            description: test_labels
             type:
               structuredDatasetType:
                 format: parquet
           train_features:
-            description: train_features
             type:
               structuredDatasetType:
                 format: parquet
           train_labels:
-            description: train_labels
             type:
               structuredDatasetType:
                 format: parquet

@@ -37,7 +37,6 @@ template:
     outputs:
       variables:
         greet:
-          description: greet
           type:
             Type:
               Simple: 3

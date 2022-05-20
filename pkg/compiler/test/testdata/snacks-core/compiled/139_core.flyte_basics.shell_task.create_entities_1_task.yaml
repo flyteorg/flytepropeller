@@ -37,12 +37,10 @@ template:
     outputs:
       variables:
         o0:
-          description: o0
           type:
             Type:
               Blob: {}
         o1:
-          description: o1
           type:
             Type:
               Blob:

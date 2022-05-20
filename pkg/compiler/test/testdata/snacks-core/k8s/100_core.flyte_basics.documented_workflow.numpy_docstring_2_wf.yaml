@@ -104,7 +104,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: Pandas DataFrame
         type:
           structuredDatasetType:
             format: parquet
@@ -148,18 +147,15 @@ tasks:
       inputs:
         variables:
           data:
-            description: data
             type:
               simple: STRUCT
           df:
-            description: df
             type:
               structuredDatasetType:
                 format: parquet
       outputs:
         variables:
           o0:
-            description: o0
             type:
               structuredDatasetType:
                 format: parquet

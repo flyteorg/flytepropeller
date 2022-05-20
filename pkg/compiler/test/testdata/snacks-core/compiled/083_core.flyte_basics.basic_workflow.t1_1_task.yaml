@@ -36,19 +36,16 @@ template:
     inputs:
       variables:
         a:
-          description: a
           type:
             Type:
               Simple: 1
     outputs:
       variables:
         c:
-          description: c
           type:
             Type:
               Simple: 3
         t1_int_output:
-          description: t1_int_output
           type:
             Type:
               Simple: 1

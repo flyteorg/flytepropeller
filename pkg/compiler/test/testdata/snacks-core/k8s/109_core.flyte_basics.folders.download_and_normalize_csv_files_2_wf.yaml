@@ -145,7 +145,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           blob:
             dimensionality: MULTIPART
@@ -189,14 +188,12 @@ tasks:
       inputs:
         variables:
           csv_urls:
-            description: csv_urls
             type:
               collectionType:
                 simple: STRING
       outputs:
         variables:
           o0:
-            description: o0
             type:
               blob:
                 dimensionality: MULTIPART
@@ -244,26 +241,22 @@ tasks:
       inputs:
         variables:
           columns_metadata:
-            description: columns_metadata
             type:
               collectionType:
                 collectionType:
                   simple: STRING
           columns_to_normalize_metadata:
-            description: columns_to_normalize_metadata
             type:
               collectionType:
                 collectionType:
                   simple: STRING
           csv_files_dir:
-            description: csv_files_dir
             type:
               blob:
                 dimensionality: MULTIPART
       outputs:
         variables:
           o0:
-            description: o0
             type:
               blob:
                 dimensionality: MULTIPART

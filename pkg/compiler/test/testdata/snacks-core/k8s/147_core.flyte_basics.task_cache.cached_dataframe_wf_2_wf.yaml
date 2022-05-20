@@ -180,14 +180,12 @@ tasks:
       inputs:
         variables:
           df:
-            description: df
             type:
               structuredDatasetType:
                 format: parquet
       outputs:
         variables:
           o0:
-            description: o0
             type:
               structuredDatasetType:
                 format: parquet
@@ -237,12 +235,10 @@ tasks:
       inputs:
         variables:
           df1:
-            description: df1
             type:
               structuredDatasetType:
                 format: parquet
           df2:
-            description: df2
             type:
               structuredDatasetType:
                 format: parquet
@@ -292,7 +288,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               structuredDatasetType:
                 format: parquet

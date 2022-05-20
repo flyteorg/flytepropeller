@@ -120,7 +120,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           simple: STRING
 status:
@@ -163,14 +162,12 @@ tasks:
       inputs:
         variables:
           b:
-            description: b
             type:
               collectionType:
                 simple: STRING
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: STRING
     metadata:
@@ -219,14 +216,12 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               collectionType:
                 simple: INTEGER
       outputs:
         variables:
           o0:
-            description: o0
             type:
               collectionType:
                 simple: STRING

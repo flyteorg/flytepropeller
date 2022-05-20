@@ -189,7 +189,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           simple: FLOAT
 status:
@@ -232,15 +231,11 @@ tasks:
       inputs:
         variables:
           "n":
-            description: |-
-              name of the parameter for the task is derived from the name of the input variable
-              and the type is mapped to ``Types.Integer``
             type:
               simple: FLOAT
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: FLOAT
     metadata:
@@ -287,15 +282,11 @@ tasks:
       inputs:
         variables:
           "n":
-            description: |-
-              name of the parameter for the task is derived from the name of the input variable, and
-              the type is automatically mapped to Types.Integer
             type:
               simple: FLOAT
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: FLOAT
     metadata:

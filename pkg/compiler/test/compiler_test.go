@@ -32,7 +32,6 @@ import (
 )
 
 var update = flag.Bool("update", false, "Update .golden files")
-var reverse = flag.Bool("reverse", false, "Reverse .golden files")
 
 func makeDefaultInputs(iface *core.TypedInterface) *core.LiteralMap {
 	if iface == nil || iface.GetInputs() == nil {
@@ -41,8 +40,24 @@ func makeDefaultInputs(iface *core.TypedInterface) *core.LiteralMap {
 
 	res := make(map[string]*core.Literal, len(iface.GetInputs().Variables))
 	for inputName, inputVar := range iface.GetInputs().Variables {
-		val := coreutils.MustMakeDefaultLiteralForType(inputVar.Type)
-		res[inputName] = val
+		// A workaround because the coreutils don't support the "StructuredDataSet" type
+		if reflect.TypeOf(inputVar.Type.Type) == reflect.TypeOf(&core.LiteralType_StructuredDatasetType{}) {
+			res[inputName] = &core.Literal{
+				Value: &core.Literal_Scalar{
+					Scalar: &core.Scalar{
+						Value: &core.Scalar_StructuredDataset{
+							StructuredDataset: &core.StructuredDataset{
+								Metadata: &core.StructuredDatasetMetadata{
+									StructuredDatasetType: inputVar.Type.Type.(*core.LiteralType_StructuredDatasetType).StructuredDatasetType,
+								},
+							},
+						},
+					},
+				},
+			}
+		} else {
+			res[inputName] = coreutils.MustMakeDefaultLiteralForType(inputVar.Type)
+		}
 	}
 
 	return &core.LiteralMap{
@@ -84,28 +99,6 @@ func mustCompileTasks(t *testing.T, tasks []*core.TaskTemplate) []*core.Compiled
 	}
 
 	return compiledTasks
-}
-
-func marshalProto(t *testing.T, filename string, p proto.Message) {
-	marshaller := &jsonpb.Marshaler{}
-	s, err := marshaller.MarshalToString(p)
-	assert.NoError(t, err)
-
-	if err != nil {
-		return
-	}
-
-	originalRaw, err := proto.Marshal(p)
-	assert.NoError(t, err)
-	assert.NoError(t, ioutil.WriteFile(strings.Replace(filename, filepath.Ext(filename), ".pb", 1), originalRaw, os.ModePerm))
-
-	m := map[string]interface{}{}
-	err = json.Unmarshal([]byte(s), &m)
-	assert.NoError(t, err)
-
-	b, err := yaml.Marshal(m)
-	assert.NoError(t, err)
-	assert.NoError(t, ioutil.WriteFile(strings.Replace(filename, filepath.Ext(filename), ".yaml", 1), b, os.ModePerm))
 }
 
 func TestDynamic(t *testing.T) {
@@ -162,13 +155,10 @@ func TestDynamic(t *testing.T) {
 				t.FailNow()
 			}
 
-			inputs := map[string]interface{}{}
-			for varName, v := range compiledWfc.Primary.Template.Interface.Inputs.Variables {
-				inputs[varName] = coreutils.MustMakeDefaultLiteralForType(v.Type)
-			}
+			inputs := makeDefaultInputs(compiledWfc.Primary.Template.Interface)
 
 			flyteWf, err := k8s.BuildFlyteWorkflow(compiledWfc,
-				coreutils.MustMakeLiteral(inputs).GetMap(),
+				inputs,
 				&core.WorkflowExecutionIdentifier{
 					Project: "hello",
 					Domain:  "domain",
@@ -432,9 +422,9 @@ func runCompileTest(t *testing.T, dirName string) {
 
 				tasks := make([]*core.CompiledTask, 0, len(reqs.GetRequiredTaskIds()))
 
-				for _, taskId := range reqs.GetRequiredTaskIds() {
-					compiledTask, found := compiledTasks[taskId.String()]
-					if !assert.True(t, found, "Could not find compiled task %s", taskId) {
+				for _, taskID := range reqs.GetRequiredTaskIds() {
+					compiledTask, found := compiledTasks[taskID.String()]
+					if !assert.True(t, found, "Could not find compiled task %s", taskID) {
 						t.FailNow()
 					}
 
@@ -486,33 +476,13 @@ func runCompileTest(t *testing.T, dirName string) {
 					t.FailNow()
 				}
 
-				inputs := map[string]interface{}{}
-				for varName, v := range compiledWfc.Primary.Template.Interface.Inputs.Variables {
-					// A workaround because the coreutils don't support the "StructuredDataSet" type
-					if reflect.TypeOf(v.Type.Type) == reflect.TypeOf(&core.LiteralType_StructuredDatasetType{}) {
-						inputs[varName] = &core.Literal{
-							Value: &core.Literal_Scalar{
-								Scalar: &core.Scalar{
-									Value: &core.Scalar_StructuredDataset{
-										StructuredDataset: &core.StructuredDataset{
-											Metadata: &core.StructuredDatasetMetadata{
-												StructuredDatasetType: v.Type.Type.(*core.LiteralType_StructuredDatasetType).StructuredDatasetType,
-											},
-										},
-									},
-								},
-							},
-						}
-					} else {
-						inputs[varName] = coreutils.MustMakeDefaultLiteralForType(v.Type)
-					}
-				}
+				inputs := makeDefaultInputs(compiledWfc.Primary.Template.Interface)
 
 				dotFormat := visualize.ToGraphViz(compiledWfc.Primary)
 				t.Logf("GraphViz Dot: %v\n", dotFormat)
 
 				flyteWf, err := k8s.BuildFlyteWorkflow(compiledWfc,
-					coreutils.MustMakeLiteral(inputs).GetMap(),
+					inputs,
 					&core.WorkflowExecutionIdentifier{
 						Project: "hello",
 						Domain:  "domain",

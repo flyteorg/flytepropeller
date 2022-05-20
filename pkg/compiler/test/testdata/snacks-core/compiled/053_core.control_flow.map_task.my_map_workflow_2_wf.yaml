@@ -28,7 +28,6 @@ primary:
       inputs:
         variables:
           a:
-            description: a
             type:
               Type:
                 CollectionType:
@@ -37,7 +36,6 @@ primary:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 3
@@ -149,7 +147,6 @@ tasks:
       inputs:
         variables:
           b:
-            description: b
             type:
               Type:
                 CollectionType:
@@ -158,7 +155,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 3
@@ -210,7 +206,6 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               Type:
                 CollectionType:
@@ -219,7 +214,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 CollectionType:

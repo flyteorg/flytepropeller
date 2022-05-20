@@ -94,7 +94,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           blob:
             format: PythonPickle
@@ -138,13 +137,11 @@ tasks:
       inputs:
         variables:
           name:
-            description: name
             type:
               simple: STRING
       outputs:
         variables:
           o0:
-            description: o0
             type:
               blob:
                 format: PythonPickle

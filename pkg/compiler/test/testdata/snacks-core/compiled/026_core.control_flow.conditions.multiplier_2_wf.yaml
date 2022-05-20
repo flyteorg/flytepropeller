@@ -28,14 +28,12 @@ primary:
       inputs:
         variables:
           my_input:
-            description: my_input
             type:
               Type:
                 Simple: 2
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 2
@@ -183,16 +181,12 @@ tasks:
       inputs:
         variables:
           "n":
-            description: |-
-              name of the parameter for the task is derived from the name of the input variable
-              and the type is mapped to ``Types.Integer``
             type:
               Type:
                 Simple: 2
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 2
@@ -242,16 +236,12 @@ tasks:
       inputs:
         variables:
           "n":
-            description: |-
-              name of the parameter for the task is derived from the name of the input variable, and
-              the type is automatically mapped to Types.Integer
             type:
               Type:
                 Simple: 2
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 2

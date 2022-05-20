@@ -38,24 +38,20 @@ primary:
       inputs:
         variables:
           in1:
-            description: in1
             type:
               Type:
                 Simple: 3
           in2:
-            description: in2
             type:
               Type:
                 Simple: 3
       outputs:
         variables:
           output_from_t1:
-            description: output_from_t1
             type:
               Type:
                 Simple: 3
           output_list:
-            description: output_list
             type:
               Type:
                 CollectionType:
@@ -204,14 +200,12 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               Type:
                 Simple: 3
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 3
@@ -306,7 +300,6 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               Type:
                 CollectionType:
@@ -315,7 +308,6 @@ tasks:
       outputs:
         variables:
           o0:
-            description: o0
             type:
               Type:
                 Simple: 3

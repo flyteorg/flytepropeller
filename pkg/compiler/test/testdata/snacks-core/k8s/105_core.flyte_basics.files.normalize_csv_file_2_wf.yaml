@@ -127,7 +127,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           blob: {}
 status:
@@ -170,27 +169,22 @@ tasks:
       inputs:
         variables:
           column_names:
-            description: column_names
             type:
               collectionType:
                 simple: STRING
           columns_to_normalize:
-            description: columns_to_normalize
             type:
               collectionType:
                 simple: STRING
           csv_url:
-            description: csv_url
             type:
               blob: {}
           output_location:
-            description: output_location
             type:
               simple: STRING
       outputs:
         variables:
           o0:
-            description: o0
             type:
               blob: {}
     metadata:

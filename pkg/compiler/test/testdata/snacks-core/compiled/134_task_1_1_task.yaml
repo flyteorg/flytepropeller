@@ -36,14 +36,12 @@ template:
     inputs:
       variables:
         x:
-          description: x
           type:
             Type:
               Blob: {}
     outputs:
       variables:
         i:
-          description: i
           type:
             Type:
               Blob: {}

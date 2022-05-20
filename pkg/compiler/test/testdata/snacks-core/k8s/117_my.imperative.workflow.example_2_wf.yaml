@@ -163,11 +163,9 @@ spec:
   outputs:
     variables:
       output_from_t1:
-        description: output_from_t1
         type:
           simple: STRING
       output_list:
-        description: output_list
         type:
           collectionType:
             simple: STRING
@@ -211,13 +209,11 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               simple: STRING
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: STRING
     metadata:
@@ -307,14 +303,12 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               collectionType:
                 simple: STRING
       outputs:
         variables:
           o0:
-            description: o0
             type:
               simple: STRING
     metadata:

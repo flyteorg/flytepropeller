@@ -36,14 +36,12 @@ template:
     inputs:
       variables:
         run_date:
-          description: run_date
           type:
             Type:
               Simple: 5
     outputs:
       variables:
         o0:
-          description: o0
           type:
             Type:
               Simple: 3

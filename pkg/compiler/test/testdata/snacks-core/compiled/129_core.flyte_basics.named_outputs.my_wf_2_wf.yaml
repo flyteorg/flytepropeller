@@ -31,12 +31,10 @@ primary:
       outputs:
         variables:
           greet1:
-            description: greet1
             type:
               Type:
                 Simple: 3
           greet2:
-            description: greet2
             type:
               Type:
                 Simple: 3
@@ -137,7 +135,6 @@ tasks:
       outputs:
         variables:
           greet:
-            description: greet
             type:
               Type:
                 Simple: 3

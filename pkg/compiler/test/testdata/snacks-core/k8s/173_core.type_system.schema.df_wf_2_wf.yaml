@@ -114,7 +114,6 @@ spec:
   outputs:
     variables:
       o0:
-        description: o0
         type:
           structuredDatasetType:
             format: parquet
@@ -158,14 +157,12 @@ tasks:
       inputs:
         variables:
           df:
-            description: df
             type:
               structuredDatasetType:
                 format: parquet
       outputs:
         variables:
           o0:
-            description: o0
             type:
               structuredDatasetType:
                 format: parquet
@@ -213,13 +210,11 @@ tasks:
       inputs:
         variables:
           a:
-            description: a
             type:
               simple: INTEGER
       outputs:
         variables:
           o0:
-            description: o0
             type:
               structuredDatasetType:
                 format: parquet
