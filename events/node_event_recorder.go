@@ -59,7 +59,7 @@ func (r *nodeEventRecorder) RecordNodeEvent(ctx context.Context, ev *event.NodeE
 		// Both outputs.pb and deck.html should be in the same folder
 		deckURI := strings.Replace(ev.GetOutputUri(), outputsFile, deckFile, 1)
 		metadata, err := r.store.Head(ctx, storage.DataReference(deckURI))
-		if err == nil && metadata.Exists() == true {
+		if err == nil && metadata.Exists() {
 			ev.DeckUri = deckURI
 		}
 	}
