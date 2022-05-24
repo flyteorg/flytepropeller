@@ -18,6 +18,11 @@ import (
 
 //go:generate mockery -all -output=mocks -case=underscore
 
+const (
+	outputsFile = "outputs.pb"
+	deckFile    = "deck.html"
+)
+
 // NodeEventRecorder records Node events
 type NodeEventRecorder interface {
 	// RecordNodeEvent records execution events indicating the node has undergone a phase change and additional metadata.
@@ -49,6 +54,16 @@ func (r *nodeEventRecorder) handleFailure(ctx context.Context, ev *event.NodeExe
 func (r *nodeEventRecorder) RecordNodeEvent(ctx context.Context, ev *event.NodeExecutionEvent, eventConfig *config.EventConfig) error {
 	var origEvent = ev
 	var rawOutputPolicy = eventConfig.RawOutputPolicy
+
+	if len(ev.GetOutputUri()) > 0 {
+		// Both outputs.pb and deck.html should be in the same folder
+		deckURI := strings.Replace(ev.GetOutputUri(), outputsFile, deckFile, 1)
+		metadata, err := r.store.Head(ctx, storage.DataReference(deckURI))
+		if err == nil && metadata.Exists() == true {
+			ev.DeckUri = deckURI
+		}
+	}
+
 	if rawOutputPolicy == config.RawOutputPolicyInline && len(ev.GetOutputUri()) > 0 {
 		outputs := &core.LiteralMap{}
 		err := r.store.ReadProtobuf(ctx, storage.DataReference(ev.GetOutputUri()), outputs)

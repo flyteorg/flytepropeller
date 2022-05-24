@@ -23,6 +23,7 @@ func getReferenceNodeEv() *event.NodeExecutionEvent {
 		OutputResult: &event.NodeExecutionEvent_OutputUri{
 			OutputUri: referenceURI,
 		},
+		DeckUri: deckURI,
 	}
 }
 
@@ -32,6 +33,7 @@ func getRawOutputNodeEv() *event.NodeExecutionEvent {
 		OutputResult: &event.NodeExecutionEvent_OutputData{
 			OutputData: outputData,
 		},
+		DeckUri: deckURI,
 	}
 }
 
@@ -42,8 +44,12 @@ func TestRecordNodeEvent_Success_ReferenceOutputs(t *testing.T) {
 		assert.True(t, proto.Equal(event, getReferenceNodeEv()))
 		return true
 	})).Return(nil)
+	metadata := existsMetadata{}
+	pbStore := &storageMocks.ComposedProtobufStore{}
+	pbStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckURI)).
+		Return(&metadata, nil)
 	mockStore := &storage.DataStore{
-		ComposedProtobufStore: &storageMocks.ComposedProtobufStore{},
+		ComposedProtobufStore: pbStore,
 		ReferenceConstructor:  &storageMocks.ReferenceConstructor{},
 	}
 
@@ -69,6 +75,9 @@ func TestRecordNodeEvent_Success_InlineOutputs(t *testing.T) {
 		arg := args.Get(2).(*core.LiteralMap)
 		*arg = *outputData
 	})
+	metadata := existsMetadata{}
+	pbStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckURI)).
+		Return(&metadata, nil)
 	mockStore := &storage.DataStore{
 		ComposedProtobufStore: pbStore,
 		ReferenceConstructor:  &storageMocks.ReferenceConstructor{},
@@ -78,7 +87,9 @@ func TestRecordNodeEvent_Success_InlineOutputs(t *testing.T) {
 		eventRecorder: &eventRecorder,
 		store:         mockStore,
 	}
-	err := recorder.RecordNodeEvent(ctx, getReferenceNodeEv(), inlineEventConfig)
+	nodeEvent := getReferenceNodeEv()
+	err := recorder.RecordNodeEvent(ctx, nodeEvent, inlineEventConfig)
+	assert.Equal(t, deckURI, nodeEvent.DeckUri)
 	assert.NoError(t, err)
 }
 
@@ -93,6 +104,9 @@ func TestRecordNodeEvent_Failure_FetchInlineOutputs(t *testing.T) {
 	pbStore.OnReadProtobufMatch(mock.Anything, mock.MatchedBy(func(ref storage.DataReference) bool {
 		return ref.String() == referenceURI
 	}), mock.Anything).Return(errors.New("foo"))
+	metadata := existsMetadata{}
+	pbStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckURI)).
+		Return(&metadata, nil)
 	mockStore := &storage.DataStore{
 		ComposedProtobufStore: pbStore,
 		ReferenceConstructor:  &storageMocks.ReferenceConstructor{},
@@ -122,6 +136,9 @@ func TestRecordNodeEvent_Failure_FallbackReference_Retry(t *testing.T) {
 		arg := args.Get(2).(*core.LiteralMap)
 		*arg = *outputData
 	})
+	metadata := existsMetadata{}
+	pbStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckURI)).
+		Return(&metadata, nil)
 	mockStore := &storage.DataStore{
 		ComposedProtobufStore: pbStore,
 		ReferenceConstructor:  &storageMocks.ReferenceConstructor{},
@@ -146,6 +163,9 @@ func TestRecordNodeEvent_Failure_FallbackReference_Unretriable(t *testing.T) {
 		arg := args.Get(2).(*core.LiteralMap)
 		*arg = *outputData
 	})
+	metadata := existsMetadata{}
+	pbStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckURI)).
+		Return(&metadata, nil)
 	mockStore := &storage.DataStore{
 		ComposedProtobufStore: pbStore,
 		ReferenceConstructor:  &storageMocks.ReferenceConstructor{},
@@ -157,4 +177,14 @@ func TestRecordNodeEvent_Failure_FallbackReference_Unretriable(t *testing.T) {
 	}
 	err := recorder.RecordNodeEvent(ctx, getReferenceNodeEv(), inlineEventConfigFallback)
 	assert.EqualError(t, err, "foo")
+}
+
+type existsMetadata struct{}
+
+func (e existsMetadata) Exists() bool {
+	return true
+}
+
+func (e existsMetadata) Size() int64 {
+	return int64(1)
 }
