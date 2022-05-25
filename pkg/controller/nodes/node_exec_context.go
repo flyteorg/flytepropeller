@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/flyteorg/flyteidl/clients/go/events"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -22,6 +23,7 @@ import (
 const NodeIDLabel = "node-id"
 const TaskNameLabel = "task-name"
 const NodeInterruptibleLabel = "interruptible"
+const NodeArchitectureLabel = "architecture"
 
 type nodeExecMetadata struct {
 	v1alpha1.Meta
@@ -136,7 +138,7 @@ func (e nodeExecContext) MaxDatasetSizeBytes() int64 {
 }
 
 func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup,
-	node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool,
+	node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, architecture core.Container_Architecture,
 	maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager,
 	enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
 
@@ -159,6 +161,10 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 		nodeLabels[TaskNameLabel] = utils.SanitizeLabelValue(tr.GetTaskID().Name)
 	}
 	nodeLabels[NodeInterruptibleLabel] = strconv.FormatBool(interruptible)
+
+	if architecture != core.Container_UNKNOWN {
+		nodeLabels[NodeArchitectureLabel] = strings.ToLower(architecture.String())
+	}
 	md.nodeLabels = nodeLabels
 
 	return &nodeExecContext{
@@ -187,6 +193,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 	}
 
 	var tr handler.TaskReader
+	var architecture core.Container_Architecture
 	if n.GetKind() == v1alpha1.NodeKindTask {
 		if n.GetTaskID() == nil {
 			return nil, fmt.Errorf("bad state, no task-id defined for node [%s]", n.GetID())
@@ -195,6 +202,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 		if err != nil {
 			return nil, err
 		}
+		architecture = tk.CoreTask().GetContainer().GetArchitecture()
 		tr = taskReader{TaskTemplate: tk.CoreTask()}
 	}
 
@@ -235,6 +243,7 @@ func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNod
 			),
 		),
 		interruptible,
+		architecture,
 		c.maxDatasetSizeBytes,
 		&taskEventRecorder{TaskEventRecorder: c.taskRecorder},
 		tr,
