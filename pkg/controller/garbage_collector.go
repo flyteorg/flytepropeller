@@ -28,14 +28,14 @@ type gcMetrics struct {
 // GarbageCollector is an active background cleanup service, that deletes all workflows that are completed and older
 // than the configured TTL
 type GarbageCollector struct {
-	wfClient                   v1alpha1.FlyteworkflowV1alpha1Interface
-	namespaceClient            corev1.NamespaceInterface
-	ttlHours                   int
-	interval                   time.Duration
-	clk                        clock.Clock
-	metrics                    *gcMetrics
-	namespace                  string
-	labelSelectorRequirements  []v1.LabelSelectorRequirement
+	wfClient                  v1alpha1.FlyteworkflowV1alpha1Interface
+	namespaceClient           corev1.NamespaceInterface
+	ttlHours                  int
+	interval                  time.Duration
+	clk                       clock.Clock
+	metrics                   *gcMetrics
+	namespace                 string
+	labelSelectorRequirements []v1.LabelSelectorRequirement
 }
 
 // Issues a background deletion command with label selector for all completed workflows outside of the retention period
