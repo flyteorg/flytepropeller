@@ -109,7 +109,7 @@ func executeRootCmd(baseCtx context.Context, cfg *config2.Config) error {
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler(baseCtx)
 
-    // set metric keys
+	// set metric keys
 	keys := contextutils.MetricKeysFromStrings(cfg.MetricKeys)
 	logger.Infof(context.TODO(), "setting metrics keys to %+v", keys)
 	if len(keys) > 0 {

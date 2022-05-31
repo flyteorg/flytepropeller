@@ -88,7 +88,7 @@ func runWebhook(origContext context.Context, propellerCfg *config.Config, cfg *w
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler(origContext)
 
-    // set metric keys
+	// set metric keys
 	keys := contextutils.MetricKeysFromStrings(propellerCfg.MetricKeys)
 	logger.Infof(context.TODO(), "setting metrics keys to %+v", keys)
 	if len(keys) > 0 {
