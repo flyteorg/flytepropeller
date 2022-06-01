@@ -86,7 +86,7 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		OutputAliases:     toAliasValueArray(n.GetOutputAliases()),
 		InputBindings:     toBindingValueArray(n.GetInputs()),
 		ActiveDeadline:    activeDeadline,
-		Interruptibe:      interruptible,
+		Interruptible:     interruptible,
 	}
 
 	switch v := n.GetTarget().(type) {
@@ -219,28 +219,6 @@ func buildTasks(tasks []*core.CompiledTask, errs errors.CompileErrors) map[commo
 			taskID := flyteTask.Template.Id.String()
 			if _, exists := res[taskID]; exists {
 				errs.Collect(errors.NewValueCollisionError(taskID, "Id", taskID))
-			}
-
-			// We don't want Annotation data available at task runtime for performance.
-			if flyteTask.Template != nil &&
-				flyteTask.Template.Interface != nil {
-
-				if flyteTask.Template.Interface.Inputs != nil {
-					for _, v := range flyteTask.Template.Interface.Inputs.Variables {
-						if v.Type != nil && v.Type.Annotation != nil {
-							v.Type.Annotation = nil
-						}
-					}
-				}
-
-				if flyteTask.Template.Interface.Outputs != nil {
-					for _, v := range flyteTask.Template.Interface.Outputs.Variables {
-						if v.Type != nil && v.Type.Annotation != nil {
-							v.Type.Annotation = nil
-						}
-					}
-				}
-
 			}
 
 			res[taskID] = &v1alpha1.TaskSpec{TaskTemplate: flyteTask.Template}
