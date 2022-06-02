@@ -104,7 +104,7 @@ catalog-cache:
   type: noop
   endpoint: datacatalog:8089
   insecure: true
-  defaultServiceConfig: '{"loadBalancingConfig": [{"round_robin":{}}]}'
+  default-service-config: '{"loadBalancingConfig": [{"round_robin":{}}]}'
 logger:
   level: 5
   show-source: true
