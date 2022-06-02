@@ -169,4 +169,17 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_default-service-config", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := `{"loadBalancingConfig": [{"round_robin":{}}]}`
+
+			cmdFlags.Set("default-service-config", testValue)
+			if vString, err := cmdFlags.GetString("default-service-config"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DefaultServiceConfig)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }
