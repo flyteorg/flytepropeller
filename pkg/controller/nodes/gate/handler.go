@@ -51,17 +51,18 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 	gateNodeState := nCtx.NodeStateReader().GetGateNodeState()
 
 	if gateNodeState.Phase == v1alpha1.GateNodePhaseUndefined {
+		// Using GateNodeState to store a StartedAt timestamp because the NodeStatus on
+		// NodeExecutionContext is deprecated
 		gateNodeState.Phase = v1alpha1.GateNodePhaseExecuting
 		gateNodeState.StartedAt = time.Now()
 	}
-	
-	logger.Debug(ctx, "starting gate node %+v", gateNode)
+
 	switch gateNode.GetKind() {
 	case v1alpha1.ConditionKindSignal:
-		// retrieve sleep duration
+		// retrieve signal duration
 		signalCondition := gateNode.GetSignal()
 		if signalCondition == nil {
-			errMsg := "gateNode signal conditional is nil"
+			errMsg := "gateNode signal condition is nil"
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM,
 				errors.BadSpecificationError, errMsg, nil)), nil
 		}
@@ -77,14 +78,18 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 
 		signal, err := g.signalClient.GetOrCreateSignal(ctx, request)
 		if err != nil {
-			// TODO - handle
-			//return handler.UnknownTransition, prevState, err
+			return handler.UnknownTransition, err
 		}
 
+		// if signal has value then write to output and transition to success
 		if signal.Value.Value != nil {
 			outputs := &core.LiteralMap{
 				Literals: map[string]*core.Literal{
-					"o0": signal.Value, // TODO hamersaw - how to set the variable name for this output data?
+					// TODO - please verify
+					// I believe the TypedInterface proto is only designed for tasks and workflows.
+					// Therefore, I think we need to use a constant variable name here for signal
+					// outputs so that it is translatable between flytekit and the backend.
+					"o0": signal.Value,
 				},
 			}
 
@@ -106,7 +111,7 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 		// retrieve sleep duration
 		sleepCondition := gateNode.GetSleep()
 		if sleepCondition == nil {
-			errMsg := "gateNode sleep conditional is nil"
+			errMsg := "gateNode sleep condition is nil"
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM,
 				errors.BadSpecificationError, errMsg, nil)), nil
 		}
@@ -115,17 +120,16 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 
 		// check duration of node sleep
 		now := time.Now()
-		logger.Infof(ctx, "HAMERSAW: %+v %s %v", gateNodeState.StartedAt, now.Sub(gateNodeState.StartedAt), sleepDuration <= now.Sub(gateNodeState.StartedAt))
 		if sleepDuration <= now.Sub(gateNodeState.StartedAt) {
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{})), nil
 		}
 	default:
-		errMsg := "gateNode does not have a supported conditional reference"
+		errMsg := "gateNode does not have a supported condition reference"
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM,
 			errors.BadSpecificationError, errMsg, nil)), nil
 	}
 
-	// update gate node status?
+	// update gate node status
 	if err := nCtx.NodeStateWriter().PutGateNodeState(gateNodeState); err != nil {
 		logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())
 		return handler.UnknownTransition, err
