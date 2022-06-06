@@ -545,7 +545,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 				metadata, err := nCtx.DataStore().Head(ctx, *r.GetDeckPath())
 				if err == nil && metadata.Exists() {
 					tCtx.ow.GetDeckPath()
-					if err := nCtx.DataStore().CopyRaw(ctx, *r.GetDeckPath(), tCtx.ow.GetDeckPath(), storage.Options{Metadata: map[string]interface{}{"Content-Type": "text/html"}}); err != nil {
+					if err := nCtx.DataStore().CopyRaw(ctx, *r.GetDeckPath(), tCtx.ow.GetDeckPath(), storage.Options{}); err != nil {
 						logger.Errorf(ctx, "failed to write deck file to datastore, err: %s", err.Error())
 						return handler.UnknownTransition, err
 					}
