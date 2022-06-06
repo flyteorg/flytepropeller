@@ -243,12 +243,17 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 	}
 
 	if reader.GetDeckPath() != nil {
-		outputs.Literals[FlyteDeckFile] = &core.Literal{
+		lt := &core.Literal{
 			Value: &core.Literal_Scalar{
 				Scalar: &core.Scalar{
 					Value: &core.Scalar_Blob{Blob: &core.Blob{Uri: reader.GetDeckPath().String()}},
 				},
 			},
+		}
+		if outputs.Literals == nil {
+			outputs.Literals = map[string]*core.Literal{FlyteDeckFile: lt}
+		} else {
+			outputs.Literals[FlyteDeckFile] = lt
 		}
 	}
 

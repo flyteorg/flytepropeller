@@ -18,11 +18,6 @@ import (
 
 //go:generate mockery -all -output=mocks -case=underscore
 
-const (
-	outputsFile = "outputs.pb"
-	deckFile    = "deck.html"
-)
-
 // NodeEventRecorder records Node events
 type NodeEventRecorder interface {
 	// RecordNodeEvent records execution events indicating the node has undergone a phase change and additional metadata.

@@ -2,6 +2,7 @@ package datacatalog
 
 import (
 	"context"
+	"github.com/flyteorg/flytestdlib/storage"
 	"strconv"
 	"testing"
 	"time"
@@ -462,7 +463,7 @@ func TestCatalog_Put(t *testing.T) {
 		mockClient.On("CreateArtifact",
 			ctx,
 			mock.MatchedBy(func(o *datacatalog.CreateArtifactRequest) bool {
-				assert.EqualValues(t, 0, len(o.Artifact.Data))
+				assert.EqualValues(t, 1, len(o.Artifact.Data))
 				return true
 			}),
 		).Return(&datacatalog.CreateArtifactResponse{}, nil)
@@ -474,7 +475,10 @@ func TestCatalog_Put(t *testing.T) {
 				return true
 			}),
 		).Return(&datacatalog.AddTagResponse{}, nil)
-		s, err := catalogClient.Put(ctx, noInputOutputKey, &mocks2.OutputReader{}, catalog.Metadata{})
+		deckPath := storage.DataReference("s3://foo/bar/deck.html")
+		or := &mocks2.OutputReader{}
+		or.On("GetDeckPath").Return(&deckPath)
+		s, err := catalogClient.Put(ctx, noInputOutputKey, or, catalog.Metadata{})
 		assert.NoError(t, err)
 		assert.Equal(t, core.CatalogCacheStatus_CACHE_POPULATED, s.GetCacheStatus())
 		assert.NotNil(t, s.GetMetadata())
