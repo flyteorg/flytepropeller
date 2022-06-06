@@ -2,10 +2,11 @@ package datacatalog
 
 import (
 	"context"
-	"github.com/flyteorg/flytestdlib/storage"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/flyteorg/flyteidl/clients/go/datacatalog/mocks"
 
