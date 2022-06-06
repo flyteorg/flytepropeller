@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
@@ -17,6 +20,11 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+)
+
+const (
+	outputsFile = "outputs.pb"
+	deckFile    = "deck.html"
 )
 
 // This is used by flyteadmin to indicate that the events will now contain populated IsParent and IsDynamic bits.
@@ -79,7 +87,10 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	status v1alpha1.ExecutableNodeStatus,
 	eventVersion v1alpha1.EventVersion,
 	parentInfo executors.ImmutableParentInfo,
-	node v1alpha1.ExecutableNode, clusterID string, dynamicNodePhase v1alpha1.DynamicNodePhase) (*event.NodeExecutionEvent, error) {
+	node v1alpha1.ExecutableNode,
+	clusterID string,
+	dynamicNodePhase v1alpha1.DynamicNodePhase,
+	dataStore *storage.DataStore) (*event.NodeExecutionEvent, error) {
 	if info.GetPhase() == handler.EPhaseNotReady {
 		return nil, nil
 	}
@@ -102,6 +113,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	// into the OutputResult and in admin we copy it over into input aswell.
 	if nodeExecID.NodeId == v1alpha1.StartNodeID {
 		outputsFile := v1alpha1.GetOutputsFile(status.GetOutputDir())
+
 		nev = &event.NodeExecutionEvent{
 			Id:    nodeExecID,
 			Phase: phase,
@@ -160,6 +172,12 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 		}
 	}
 	if eInfo != nil && eInfo.OutputInfo != nil {
+		// Both outputs.pb and deck.html should be in the same folder
+		deckURI := strings.Replace(eInfo.OutputInfo.OutputURI.String(), outputsFile, deckFile, 1)
+		metadata, err := dataStore.Head(context.Background(), storage.DataReference(deckURI))
+		if err == nil && metadata.Exists() {
+			nev.DeckUri = deckURI
+		}
 		nev.OutputResult = ToNodeExecOutput(eInfo.OutputInfo)
 	} else if info.GetErr() != nil {
 		nev.OutputResult = &event.NodeExecutionEvent_Error{

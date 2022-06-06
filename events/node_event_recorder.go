@@ -55,15 +55,6 @@ func (r *nodeEventRecorder) RecordNodeEvent(ctx context.Context, ev *event.NodeE
 	var origEvent = ev
 	var rawOutputPolicy = eventConfig.RawOutputPolicy
 
-	if len(ev.GetOutputUri()) > 0 {
-		// Both outputs.pb and deck.html should be in the same folder
-		deckURI := strings.Replace(ev.GetOutputUri(), outputsFile, deckFile, 1)
-		metadata, err := r.store.Head(ctx, storage.DataReference(deckURI))
-		if err == nil && metadata.Exists() {
-			ev.DeckUri = deckURI
-		}
-	}
-
 	if rawOutputPolicy == config.RawOutputPolicyInline && len(ev.GetOutputUri()) > 0 {
 		outputs := &core.LiteralMap{}
 		err := r.store.ReadProtobuf(ctx, storage.DataReference(ev.GetOutputUri()), outputs)

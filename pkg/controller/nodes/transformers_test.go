@@ -3,6 +3,8 @@ package nodes
 import (
 	"testing"
 
+	"github.com/flyteorg/flytestdlib/promutils"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -39,7 +41,7 @@ func TestToNodeExecutionEvent(t *testing.T) {
 		node.OnGetID().Return("n")
 		node.OnGetName().Return("nodey")
 		node.OnGetKind().Return(v1alpha1.NodeKindTask)
-
+		store := createInmemoryDataStore(t, promutils.NewTestScope())
 		nev, err := ToNodeExecutionEvent(&core.NodeExecutionIdentifier{
 			NodeId: "nodey",
 			ExecutionId: &core.WorkflowExecutionIdentifier{
@@ -47,7 +49,7 @@ func TestToNodeExecutionEvent(t *testing.T) {
 				Domain:  "domain",
 				Name:    "exec",
 			},
-		}, info, "inputPath", &status, v1alpha1.EventVersion2, &parentInfo, &node, "clusterID", v1alpha1.DynamicNodePhaseParentFinalized)
+		}, info, "inputPath", &status, v1alpha1.EventVersion2, &parentInfo, &node, "clusterID", v1alpha1.DynamicNodePhaseParentFinalized, store)
 		assert.NoError(t, err)
 		assert.True(t, nev.IsDynamic)
 		assert.True(t, nev.IsParent)
@@ -71,7 +73,7 @@ func TestToNodeExecutionEvent(t *testing.T) {
 		subworkflowRef := "ref"
 		executableWorkflowNode.OnGetSubWorkflowRef().Return(&subworkflowRef)
 		node.OnGetWorkflowNode().Return(&executableWorkflowNode)
-
+		store := createInmemoryDataStore(t, promutils.NewTestScope())
 		nev, err := ToNodeExecutionEvent(&core.NodeExecutionIdentifier{
 			NodeId: "nodey",
 			ExecutionId: &core.WorkflowExecutionIdentifier{
@@ -79,7 +81,7 @@ func TestToNodeExecutionEvent(t *testing.T) {
 				Domain:  "domain",
 				Name:    "exec",
 			},
-		}, info, "inputPath", &status, v1alpha1.EventVersion2, &parentInfo, &node, "clusterID", v1alpha1.DynamicNodePhaseNone)
+		}, info, "inputPath", &status, v1alpha1.EventVersion2, &parentInfo, &node, "clusterID", v1alpha1.DynamicNodePhaseNone, store)
 		assert.NoError(t, err)
 		assert.False(t, nev.IsDynamic)
 		assert.True(t, nev.IsParent)
