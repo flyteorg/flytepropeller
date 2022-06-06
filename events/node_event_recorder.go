@@ -49,7 +49,6 @@ func (r *nodeEventRecorder) handleFailure(ctx context.Context, ev *event.NodeExe
 func (r *nodeEventRecorder) RecordNodeEvent(ctx context.Context, ev *event.NodeExecutionEvent, eventConfig *config.EventConfig) error {
 	var origEvent = ev
 	var rawOutputPolicy = eventConfig.RawOutputPolicy
-
 	if rawOutputPolicy == config.RawOutputPolicyInline && len(ev.GetOutputUri()) > 0 {
 		outputs := &core.LiteralMap{}
 		err := r.store.ReadProtobuf(ctx, storage.DataReference(ev.GetOutputUri()), outputs)
