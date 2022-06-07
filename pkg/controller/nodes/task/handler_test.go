@@ -894,8 +894,6 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			c := &pluginCatalogMocks.Client{}
 			if tt.args.catalogFetch {
 				or := &ioMocks.OutputReader{}
-				deckPath := storage.DataReference("deck.html")
-				or.OnGetDeckPath().Return(&deckPath)
 				or.OnReadMatch(mock.Anything).Return(&core.LiteralMap{}, nil, nil)
 				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewCatalogEntry(or, catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil)), nil)
 			} else {

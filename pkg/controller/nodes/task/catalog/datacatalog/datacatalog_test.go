@@ -464,7 +464,7 @@ func TestCatalog_Put(t *testing.T) {
 		mockClient.On("CreateArtifact",
 			ctx,
 			mock.MatchedBy(func(o *datacatalog.CreateArtifactRequest) bool {
-				assert.EqualValues(t, 1, len(o.Artifact.Data))
+				assert.EqualValues(t, 0, len(o.Artifact.Data))
 				return true
 			}),
 		).Return(&datacatalog.CreateArtifactResponse{}, nil)
