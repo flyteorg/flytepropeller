@@ -59,6 +59,7 @@ var eventConfig = &controllerConfig.EventConfig{
 }
 
 const testClusterID = "C1"
+const deckPath = "/output-dir/deck.html"
 
 func Test_task_setDefault(t *testing.T) {
 	type fields struct {
@@ -894,6 +895,8 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			c := &pluginCatalogMocks.Client{}
 			if tt.args.catalogFetch {
 				or := &ioMocks.OutputReader{}
+				deckPath := storage.DataReference(deckPath)
+				or.OnGetDeckPath().Return(&deckPath)
 				or.OnReadMatch(mock.Anything).Return(&core.LiteralMap{}, nil, nil)
 				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewCatalogEntry(or, catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil)), nil)
 			} else {
@@ -935,7 +938,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 					assert.NotNil(t, got.Info().GetInfo().OutputInfo)
 					s := storage.DataReference("/output-dir/outputs.pb")
 					assert.Equal(t, s, got.Info().GetInfo().OutputInfo.OutputURI)
-					assert.Equal(t, storage.DataReference("/output-dir/deck.html"), got.Info().GetInfo().OutputInfo.DeckURI)
+					assert.Equal(t, storage.DataReference(deckPath), got.Info().GetInfo().OutputInfo.DeckURI)
 					r, err := nCtx.DataStore().Head(context.TODO(), s)
 					assert.NoError(t, err)
 					assert.True(t, r.Exists())
