@@ -39,6 +39,7 @@ func TestToNodeExecutionEvent(t *testing.T) {
 		node.OnGetID().Return("n")
 		node.OnGetName().Return("nodey")
 		node.OnGetKind().Return(v1alpha1.NodeKindTask)
+
 		nev, err := ToNodeExecutionEvent(&core.NodeExecutionIdentifier{
 			NodeId: "nodey",
 			ExecutionId: &core.WorkflowExecutionIdentifier{
@@ -70,6 +71,7 @@ func TestToNodeExecutionEvent(t *testing.T) {
 		subworkflowRef := "ref"
 		executableWorkflowNode.OnGetSubWorkflowRef().Return(&subworkflowRef)
 		node.OnGetWorkflowNode().Return(&executableWorkflowNode)
+
 		nev, err := ToNodeExecutionEvent(&core.NodeExecutionIdentifier{
 			NodeId: "nodey",
 			ExecutionId: &core.WorkflowExecutionIdentifier{

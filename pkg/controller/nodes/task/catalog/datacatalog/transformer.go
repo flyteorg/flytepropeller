@@ -43,7 +43,6 @@ func GenerateTaskOutputsFromArtifact(id core.Identifier, taskInterface core.Type
 	artifactDataList := artifact.Data
 
 	// verify the task outputs matches what is stored in ArtifactData
-	// output artifact may contain deck file path
 	if len(outputVariables) != len(artifactDataList) {
 		return nil, fmt.Errorf("the task %s with %d outputs, should have %d artifactData for artifact %s", id.String(), len(outputVariables), len(artifactDataList), artifact.Id)
 	}

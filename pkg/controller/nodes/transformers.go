@@ -79,9 +79,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	status v1alpha1.ExecutableNodeStatus,
 	eventVersion v1alpha1.EventVersion,
 	parentInfo executors.ImmutableParentInfo,
-	node v1alpha1.ExecutableNode,
-	clusterID string,
-	dynamicNodePhase v1alpha1.DynamicNodePhase) (*event.NodeExecutionEvent, error) {
+	node v1alpha1.ExecutableNode, clusterID string, dynamicNodePhase v1alpha1.DynamicNodePhase) (*event.NodeExecutionEvent, error) {
 	if info.GetPhase() == handler.EPhaseNotReady {
 		return nil, nil
 	}
@@ -104,7 +102,6 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	// into the OutputResult and in admin we copy it over into input aswell.
 	if nodeExecID.NodeId == v1alpha1.StartNodeID {
 		outputsFile := v1alpha1.GetOutputsFile(status.GetOutputDir())
-
 		nev = &event.NodeExecutionEvent{
 			Id:    nodeExecID,
 			Phase: phase,

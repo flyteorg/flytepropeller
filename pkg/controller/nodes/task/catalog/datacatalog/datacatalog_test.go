@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flyteorg/flytestdlib/storage"
-
 	"github.com/flyteorg/flyteidl/clients/go/datacatalog/mocks"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -476,10 +474,7 @@ func TestCatalog_Put(t *testing.T) {
 				return true
 			}),
 		).Return(&datacatalog.AddTagResponse{}, nil)
-		deckPath := storage.DataReference("s3://foo/bar/deck.html")
-		or := &mocks2.OutputReader{}
-		or.On("GetDeckPath").Return(&deckPath)
-		s, err := catalogClient.Put(ctx, noInputOutputKey, or, catalog.Metadata{})
+		s, err := catalogClient.Put(ctx, noInputOutputKey, &mocks2.OutputReader{}, catalog.Metadata{})
 		assert.NoError(t, err)
 		assert.Equal(t, core.CatalogCacheStatus_CACHE_POPULATED, s.GetCacheStatus())
 		assert.NotNil(t, s.GetMetadata())
