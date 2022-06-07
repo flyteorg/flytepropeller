@@ -4,10 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
-
-	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
@@ -20,11 +17,6 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
-)
-
-const (
-	outputsFile = "outputs.pb"
-	deckFile    = "deck.html"
 )
 
 // This is used by flyteadmin to indicate that the events will now contain populated IsParent and IsDynamic bits.
@@ -89,8 +81,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	parentInfo executors.ImmutableParentInfo,
 	node v1alpha1.ExecutableNode,
 	clusterID string,
-	dynamicNodePhase v1alpha1.DynamicNodePhase,
-	dataStore *storage.DataStore) (*event.NodeExecutionEvent, error) {
+	dynamicNodePhase v1alpha1.DynamicNodePhase) (*event.NodeExecutionEvent, error) {
 	if info.GetPhase() == handler.EPhaseNotReady {
 		return nil, nil
 	}
@@ -172,12 +163,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 		}
 	}
 	if eInfo != nil && eInfo.OutputInfo != nil {
-		// Both outputs.pb and deck.html should be in the same folder
-		deckURI := strings.Replace(eInfo.OutputInfo.OutputURI.String(), outputsFile, deckFile, 1)
-		metadata, err := dataStore.Head(context.Background(), storage.DataReference(deckURI))
-		if err == nil && metadata.Exists() {
-			nev.DeckUri = deckURI
-		}
+		nev.DeckUri = eInfo.OutputInfo.DeckURI.String()
 		nev.OutputResult = ToNodeExecOutput(eInfo.OutputInfo)
 	} else if info.GetErr() != nil {
 		nev.OutputResult = &event.NodeExecutionEvent_Error{

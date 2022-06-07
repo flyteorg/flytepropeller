@@ -491,3 +491,14 @@ func GetOutputsFile(outputDir DataReference) DataReference {
 func GetInputsFile(inputDir DataReference) DataReference {
 	return inputDir + "/inputs.pb"
 }
+
+func GetDeckFile(inputDir DataReference, store *storage.DataStore) DataReference {
+	deckURI := inputDir + "/deck.html"
+
+	// Deck file will not exist if we use the older version of flytekit or disable deck
+	metadata, err := store.Head(context.Background(), deckURI)
+	if err == nil && metadata.Exists() {
+		return deckURI
+	}
+	return ""
+}

@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/flyteorg/flytestdlib/storage"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
@@ -34,11 +32,11 @@ func getDatasetNameFromTask(taskID core.Identifier) string {
 }
 
 // Transform the artifact Data into task execution outputs as a literal map
-func GenerateTaskOutputsFromArtifact(id core.Identifier, taskInterface core.TypedInterface, artifact *datacatalog.Artifact) (*core.LiteralMap, *storage.DataReference, error) {
+func GenerateTaskOutputsFromArtifact(id core.Identifier, taskInterface core.TypedInterface, artifact *datacatalog.Artifact) (*core.LiteralMap, error) {
 
 	// if there are no outputs in the task, return empty map
 	if taskInterface.Outputs == nil || len(taskInterface.Outputs.Variables) == 0 {
-		return &emptyLiteralMap, nil, nil
+		return &emptyLiteralMap, nil
 	}
 
 	outputVariables := taskInterface.Outputs.Variables
@@ -46,32 +44,27 @@ func GenerateTaskOutputsFromArtifact(id core.Identifier, taskInterface core.Type
 
 	// verify the task outputs matches what is stored in ArtifactData
 	// output artifact may contain deck file path
-	if len(outputVariables) != len(artifactDataList) && len(outputVariables)+1 != len(artifactDataList) {
-		return nil, nil, fmt.Errorf("the task %s with %d outputs, should have %d artifactData for artifact %s", id.String(), len(outputVariables), len(artifactDataList), artifact.Id)
+	if len(outputVariables) != len(artifactDataList) {
+		return nil, fmt.Errorf("the task %s with %d outputs, should have %d artifactData for artifact %s", id.String(), len(outputVariables), len(artifactDataList), artifact.Id)
 	}
 
 	outputs := make(map[string]*core.Literal, len(artifactDataList))
-	var deckURI storage.DataReference
 	for _, artifactData := range artifactDataList {
 		// verify that the name and type of artifactData matches what is expected from the interface
 		if _, ok := outputVariables[artifactData.Name]; !ok {
-			if artifactData.Name == FlyteDeckFile {
-				deckURI = storage.DataReference(artifactData.Value.GetScalar().GetBlob().Uri)
-				continue
-			}
-			return nil, nil, fmt.Errorf("unexpected artifactData with name [%v] does not match any task output variables %v", artifactData.Name, reflect.ValueOf(outputVariables).MapKeys())
+			return nil, fmt.Errorf("unexpected artifactData with name [%v] does not match any task output variables %v", artifactData.Name, reflect.ValueOf(outputVariables).MapKeys())
 		}
 
 		expectedVarType := outputVariables[artifactData.Name].GetType()
 		inputType := validators.LiteralTypeForLiteral(artifactData.Value)
 		if !validators.AreTypesCastable(inputType, expectedVarType) {
-			return nil, nil, fmt.Errorf("unexpected artifactData: [%v] type: [%v] does not match any task output type: [%v]", artifactData.Name, inputType, expectedVarType)
+			return nil, fmt.Errorf("unexpected artifactData: [%v] type: [%v] does not match any task output type: [%v]", artifactData.Name, inputType, expectedVarType)
 		}
 
 		outputs[artifactData.Name] = artifactData.Value
 	}
 
-	return &core.LiteralMap{Literals: outputs}, &deckURI, nil
+	return &core.LiteralMap{Literals: outputs}, nil
 }
 
 func generateDataSetVersionFromTask(ctx context.Context, taskInterface core.TypedInterface, cacheVersion string) (string, error) {

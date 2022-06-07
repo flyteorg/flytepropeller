@@ -16,11 +16,12 @@ func TestDoTransition(t *testing.T) {
 
 	t.Run("barrier", func(t *testing.T) {
 		tr := DoTransition(TransitionTypeBarrier, PhaseInfoSuccess(&ExecutionInfo{
-			OutputInfo: &OutputInfo{OutputURI: "uri"},
+			OutputInfo: &OutputInfo{OutputURI: "uri", DeckURI: "deck"},
 		}))
 		assert.Equal(t, TransitionTypeBarrier, tr.Type())
 		assert.Equal(t, EPhaseSuccess, tr.Info().p)
 		assert.Equal(t, storage.DataReference("uri"), tr.Info().GetInfo().OutputInfo.OutputURI)
+		assert.Equal(t, storage.DataReference("deck"), tr.Info().GetInfo().OutputInfo.DeckURI)
 	})
 }
 

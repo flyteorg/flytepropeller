@@ -170,6 +170,7 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 		var oInfo *handler.OutputInfo
 		if wfStatusClosure.GetOutputs() != nil {
 			outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
+			deckFile := v1alpha1.GetDeckFile(nCtx.NodeStatus().GetOutputDir(), nCtx.DataStore())
 			if wfStatusClosure.GetOutputs().GetUri() != "" {
 				uri := wfStatusClosure.GetOutputs().GetUri()
 				store := nCtx.DataStore()
@@ -185,7 +186,7 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 					return handler.UnknownTransition, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "failed to copy outputs for child workflow")
 				}
 			}
-			oInfo = &handler.OutputInfo{OutputURI: outputFile}
+			oInfo = &handler.OutputInfo{OutputURI: outputFile, DeckURI: deckFile}
 		}
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{
 			WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},

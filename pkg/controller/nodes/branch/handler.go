@@ -150,7 +150,7 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 	if downstreamStatus.IsComplete() {
 		// For branch node we set the output node to be the same as the child nodes output
 		phase := handler.PhaseInfoSuccess(&handler.ExecutionInfo{
-			OutputInfo: &handler.OutputInfo{OutputURI: v1alpha1.GetOutputsFile(childNodeStatus.GetOutputDir())},
+			OutputInfo: &handler.OutputInfo{OutputURI: v1alpha1.GetOutputsFile(childNodeStatus.GetOutputDir()), DeckURI: v1alpha1.GetDeckFile(childNodeStatus.GetOutputDir(), nCtx.DataStore())},
 		})
 		return handler.DoTransition(handler.TransitionTypeEphemeral, phase), nil
 	}

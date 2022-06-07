@@ -29,8 +29,6 @@ var (
 	_ catalog.Client = &CatalogClient{}
 )
 
-const FlyteDeckFile = "FLYTE_DECK_FILE"
-
 // This is the client that caches task executions to DataCatalog service.
 type CatalogClient struct {
 	client      datacatalog.DataCatalogClient
@@ -137,14 +135,14 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (catalog.Entry
 
 	md := EventCatalogMetadata(dataset.GetId(), relevantTag, source)
 
-	outputs, deckURI, err := GenerateTaskOutputsFromArtifact(key.Identifier, key.TypedInterface, artifact)
+	outputs, err := GenerateTaskOutputsFromArtifact(key.Identifier, key.TypedInterface, artifact)
 	if err != nil {
 		logger.Errorf(ctx, "DataCatalog failed to get outputs from artifact %+v, err: %+v", artifact.Id, err)
-		return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, deckURI, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, md)), err
+		return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, md)), err
 	}
 
 	logger.Infof(ctx, "Retrieved %v outputs from artifact %v, tag: %v", len(outputs.Literals), artifact.Id, tag)
-	return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, deckURI, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, md)), nil
+	return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, md)), nil
 }
 
 func (m *CatalogClient) CreateDataset(ctx context.Context, key catalog.Key, metadata *datacatalog.Metadata) (*datacatalog.DatasetID, error) {
@@ -240,21 +238,6 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 		}
 		logger.Debugf(ctx, "DataCatalog read outputs")
 		outputs = retOutputs
-	}
-
-	if reader.GetDeckPath() != nil {
-		lt := &core.Literal{
-			Value: &core.Literal_Scalar{
-				Scalar: &core.Scalar{
-					Value: &core.Scalar_Blob{Blob: &core.Blob{Uri: reader.GetDeckPath().String()}},
-				},
-			},
-		}
-		if outputs.Literals == nil {
-			outputs.Literals = map[string]*core.Literal{FlyteDeckFile: lt}
-		} else {
-			outputs.Literals[FlyteDeckFile] = lt
-		}
 	}
 
 	// Create the artifact for the execution that belongs in the task

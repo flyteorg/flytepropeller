@@ -82,10 +82,10 @@ func getPluginMetricKey(pluginID, taskType string) string {
 	return taskType + "_" + pluginID
 }
 
-func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference, entry catalog.Entry) {
+func (p *pluginRequestedTransition) CacheHit(outputPath, deckPath storage.DataReference, entry catalog.Entry) {
 	p.ttype = handler.TransitionTypeEphemeral
 	p.pInfo = pluginCore.PhaseInfoSuccess(nil)
-	p.ObserveSuccess(outputPath, &event.TaskNodeMetadata{CacheStatus: entry.GetStatus().GetCacheStatus(), CatalogKey: entry.GetStatus().GetMetadata()})
+	p.ObserveSuccess(outputPath, deckPath, &event.TaskNodeMetadata{CacheStatus: entry.GetStatus().GetCacheStatus(), CatalogKey: entry.GetStatus().GetMetadata()})
 }
 
 func (p *pluginRequestedTransition) PopulateCacheInfo(entry catalog.Entry) {
@@ -141,8 +141,8 @@ func (p *pluginRequestedTransition) FinalTaskEvent(input ToTaskExecutionEventInp
 	return ToTaskExecutionEvent(input)
 }
 
-func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference, taskMetadata *event.TaskNodeMetadata) {
-	p.execInfo.OutputInfo = &handler.OutputInfo{OutputURI: outputPath}
+func (p *pluginRequestedTransition) ObserveSuccess(outputPath, deckPath storage.DataReference, taskMetadata *event.TaskNodeMetadata) {
+	p.execInfo.OutputInfo = &handler.OutputInfo{OutputURI: outputPath, DeckURI: deckPath}
 	p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
 		TaskNodeMetadata: taskMetadata,
 	}
@@ -479,7 +479,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		if ee != nil {
 			pluginTrns.ObservedExecutionError(ee)
 		} else {
-			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), &event.TaskNodeMetadata{CacheStatus: cacheStatus.GetCacheStatus(), CatalogKey: cacheStatus.GetMetadata()})
+			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), tCtx.ow.GetDeckPath(), &event.TaskNodeMetadata{CacheStatus: cacheStatus.GetCacheStatus(), CatalogKey: cacheStatus.GetMetadata()})
 		}
 	}
 
@@ -541,18 +541,8 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 				logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
 				return handler.UnknownTransition, err
 			}
-			if r.GetDeckPath() != nil {
-				metadata, err := nCtx.DataStore().Head(ctx, *r.GetDeckPath())
-				if err == nil && metadata.Exists() {
-					tCtx.ow.GetDeckPath()
-					if err := nCtx.DataStore().CopyRaw(ctx, *r.GetDeckPath(), tCtx.ow.GetDeckPath(), storage.Options{}); err != nil {
-						logger.Errorf(ctx, "failed to write deck file to datastore, err: %s", err.Error())
-						return handler.UnknownTransition, err
-					}
-				}
-			}
 
-			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), entry)
+			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), *r.GetDeckPath(), entry)
 		} else {
 			logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
 			pluginTrns.PopulateCacheInfo(entry)
