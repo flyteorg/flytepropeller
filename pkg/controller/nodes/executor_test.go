@@ -53,6 +53,7 @@ var recoveryClient = &recoveryMocks.RecoveryClient{}
 
 const taskID = "tID"
 const inputsPath = "inputs.pb"
+const deckPath = "out/deck.html"
 const outputsPath = "out/outputs.pb"
 const testClusterID = "C1"
 
@@ -2111,7 +2112,7 @@ func TestRecover(t *testing.T) {
 
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
 		metadata := existsMetadata{}
-		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("out/deck.html")).
+		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckPath)).
 			Return(&metadata, nil)
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
 			return reference.String() == inputsPath || reference.String() == outputsPath
@@ -2185,7 +2186,7 @@ func TestRecover(t *testing.T) {
 
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
 		metadata := existsMetadata{}
-		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("out/deck.html")).
+		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckPath)).
 			Return(&metadata, nil)
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
 			return reference.String() == inputsPath || reference.String() == outputsPath
@@ -2249,7 +2250,7 @@ func TestRecover(t *testing.T) {
 
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
 		metadata := existsMetadata{}
-		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("out/deck.html")).
+		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckPath)).
 			Return(&metadata, nil)
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
 			return reference.String() == inputsPath || reference.String() == outputsPath
@@ -2315,7 +2316,7 @@ func TestRecover(t *testing.T) {
 
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
 		metadata := existsMetadata{}
-		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("out/deck.html")).
+		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckPath)).
 			Return(&metadata, nil)
 
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
@@ -2360,7 +2361,7 @@ func TestRecover(t *testing.T) {
 
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
 		metadata := existsMetadata{}
-		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("out/deck.html")).
+		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckPath)).
 			Return(&metadata, nil)
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
 			return reference.String() == inputsPath || reference.String() == outputsPath
