@@ -659,7 +659,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 
 	if currentPhase == v1alpha1.NodePhaseFailing {
 		logger.Debugf(ctx, "node failing")
-		if err := c.finalize(ctx, h, nCtx); err != nil {
+		if err := c.abort(ctx, h, nCtx, "node failing"); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), nodeStatus.GetMessage(), nodeStatus.GetExecutionError())
@@ -1057,7 +1057,7 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, execContext executors.E
 			},
 			ProducerId: c.clusterID,
 		})
-		if err != nil && !eventsErr.IsEventIncompatibleClusterError(err) {
+		if err != nil && !eventsErr.IsNotFound(err) && !eventsErr.IsEventIncompatibleClusterError(err) {
 			if errors2.IsCausedBy(err, errors.IllegalStateError) {
 				logger.Debugf(ctx, "Failed to record abort event due to illegal state transition. Ignoring the error. Error: %v", err)
 			} else {
