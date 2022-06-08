@@ -6,8 +6,8 @@ require (
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/fatih/color v1.13.0
-	github.com/flyteorg/flyteidl v1.1.3-0.20220601015921-c9884d54d34a
-	github.com/flyteorg/flyteplugins v1.0.4-0.20220608045913-f7aff7212e16
+	github.com/flyteorg/flyteidl v1.1.7-0.20220608052921-d6e455ce8da6
+	github.com/flyteorg/flyteplugins v1.0.4-0.20220608053146-9c9fdc7b6cfc
 	github.com/flyteorg/flytestdlib v1.0.4-0.20220601010535-57c1386c358f
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-redis/redis v6.15.7+incompatible
