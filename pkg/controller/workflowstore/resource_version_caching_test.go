@@ -275,6 +275,9 @@ func TestResourceVersionCaching_UpdateTerminated(t *testing.T) {
 	assert.Nil(t, v)
 
 	// validate that terminated workflows are not retrievable
+	terminated := rvStore.terminatedFilter.Contains(ctx, []byte(resourceVersionKey(namespace, name)))
+	assert.True(t, terminated)
+
 	terminatedWf, err := wfStore.Get(ctx, namespace, name)
 	assert.Nil(t, terminatedWf)
 	assert.True(t, IsWorkflowTerminated(err))
