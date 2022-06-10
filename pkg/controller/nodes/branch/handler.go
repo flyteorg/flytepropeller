@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-	"github.com/flyteorg/flytestdlib/storage"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
 	stdErrors "github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -149,10 +147,10 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 	}
 
 	if downstreamStatus.IsComplete() {
-		deckURI := storage.DataReference("")
+		deckURI := v1alpha1.GetDeckFile(childNodeStatus.GetOutputDir())
 		metadata, err := nCtx.DataStore().Head(context.Background(), deckURI)
-		if err == nil && metadata.Exists() {
-			deckURI = v1alpha1.GetDeckFile(childNodeStatus.GetOutputDir())
+		if err != nil || !metadata.Exists() {
+			deckURI = ""
 		}
 		// For branch node we set the output node to be the same as the child nodes output
 		phase := handler.PhaseInfoSuccess(&handler.ExecutionInfo{

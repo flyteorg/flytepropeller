@@ -313,10 +313,10 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 			}
 
 			destinationPath := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
-			deckPath := storage.DataReference("")
+			deckPath := v1alpha1.GetDeckFile(nCtx.NodeStatus().GetOutputDir())
 			metadata, err := nCtx.DataStore().Head(context.Background(), deckPath)
-			if err == nil && metadata.Exists() {
-				deckPath = v1alpha1.GetDeckFile(nCtx.NodeStatus().GetOutputDir())
+			if err != nil || !metadata.Exists() {
+				deckPath = ""
 			}
 			if err := nCtx.DataStore().CopyRaw(ctx, sourcePath, destinationPath, storage.Options{}); err != nil {
 				return handler.DoTransition(handler.TransitionTypeEphemeral,

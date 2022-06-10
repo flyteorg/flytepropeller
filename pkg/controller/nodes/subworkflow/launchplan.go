@@ -170,10 +170,10 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 		var oInfo *handler.OutputInfo
 		if wfStatusClosure.GetOutputs() != nil {
 			outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
-			deckFile := storage.DataReference("")
+			deckFile := v1alpha1.GetDeckFile(nCtx.NodeStatus().GetOutputDir())
 			metadata, err := nCtx.DataStore().Head(context.Background(), deckFile)
-			if err == nil && metadata.Exists() {
-				deckFile = v1alpha1.GetDeckFile(nCtx.NodeStatus().GetOutputDir())
+			if err != nil || !metadata.Exists() {
+				deckFile = ""
 			}
 			if wfStatusClosure.GetOutputs().GetUri() != "" {
 				uri := wfStatusClosure.GetOutputs().GetUri()

@@ -236,10 +236,10 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		logger.Debugf(ctx, "No outputs found for recovered node [%+v]", nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 	}
 	outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
-	deckFile := storage.DataReference("")
+	deckFile := v1alpha1.GetDeckFile(nCtx.NodeStatus().GetOutputDir())
 	metadata, err := nCtx.DataStore().Head(context.Background(), deckFile)
-	if err == nil && metadata.Exists() {
-		deckFile = v1alpha1.GetDeckFile(nCtx.NodeStatus().GetOutputDir())
+	if err != nil || !metadata.Exists() {
+		deckFile = ""
 	}
 	if err := c.store.WriteProtobuf(ctx, outputFile, so, outputs); err != nil {
 		logger.Errorf(ctx, "Failed to write protobuf (metadata). Error [%v]", err)
