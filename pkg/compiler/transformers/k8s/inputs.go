@@ -22,7 +22,6 @@ func validateInputs(nodeID common.NodeID, iface *core.TypedInterface, inputs cor
 	varMap := make(map[string]*core.Variable, len(iface.Inputs.Variables))
 	requiredInputsSet := sets.String{}
 	for name, v := range iface.Inputs.Variables {
-
 		varMap[name] = v
 		requiredInputsSet.Insert(name)
 	}
