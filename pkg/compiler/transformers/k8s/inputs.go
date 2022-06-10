@@ -24,9 +24,7 @@ func validateInputs(nodeID common.NodeID, iface *core.TypedInterface, inputs cor
 	for name, v := range iface.Inputs.Variables {
 
 		varMap[name] = v
-		if v.Type.GetUnionType() == nil {
-			requiredInputsSet.Insert(name)
-		}
+		requiredInputsSet.Insert(name)
 	}
 
 	boundInputsSet := sets.String{}
