@@ -224,8 +224,8 @@ func ValidateBindings(w c.WorkflowBuilder, node c.Node, bindings []*flyte.Bindin
 
 	// If we missed binding some params, add errors
 	if params != nil {
-		for paramName := range params.Variables {
-			if !providedBindings.Has(paramName) {
+		for paramName, Variable := range params.Variables {
+			if !providedBindings.Has(paramName) && Variable.Type.GetUnionType() == nil {
 				errs.Collect(errors.NewParameterNotBoundErr(node.GetId(), paramName))
 			}
 		}
