@@ -46,12 +46,12 @@ func newMetrics(scope promutils.Scope) metrics {
 }
 
 // Abort stops the gate node defined in the NodeExecutionContext
-func (b *gateNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
+func (g *gateNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
 	return nil
 }
 
 // Finalize completes the gate node defined in the NodeExecutionContext
-func (w *gateNodeHandler) Finalize(ctx context.Context, _ handler.NodeExecutionContext) error {
+func (g *gateNodeHandler) Finalize(ctx context.Context, _ handler.NodeExecutionContext) error {
 	return nil
 }
 

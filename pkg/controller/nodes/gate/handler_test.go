@@ -9,8 +9,6 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	//ioMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	flyteMocks "github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
@@ -28,10 +26,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"google.golang.org/protobuf/types/known/durationpb"
-
-	//v12 "k8s.io/api/core/v1"
-	//v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	//"k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -42,8 +36,8 @@ var (
 	signalGateNode = &v1alpha1.GateNodeSpec{
 		Kind: v1alpha1.ConditionKindSignal,
 		Signal: &v1alpha1.SignalCondition{
-			&core.SignalCondition{
-				SignalId: "foo", 
+			SignalCondition: &core.SignalCondition{
+				SignalId: "foo",
 				Type: &core.LiteralType{
 					Type: &core.LiteralType_Simple{
 						Simple: core.SimpleType_BOOLEAN,
@@ -56,7 +50,7 @@ var (
 	sleepMinuteGateNode = &v1alpha1.GateNodeSpec{
 		Kind: v1alpha1.ConditionKindSleep,
 		Sleep: &v1alpha1.SleepCondition{
-			&core.SleepCondition{
+			SleepCondition: &core.SleepCondition{
 				Duration: durationpb.New(time.Minute),
 			},
 		},
@@ -65,7 +59,7 @@ var (
 	sleepNowGateNode = &v1alpha1.GateNodeSpec{
 		Kind: v1alpha1.ConditionKindSleep,
 		Sleep: &v1alpha1.SleepCondition{
-			&core.SleepCondition{
+			SleepCondition: &core.SleepCondition{
 				Duration: durationpb.New(time.Minute * 0),
 			},
 		},
@@ -79,7 +73,7 @@ func init() {
 
 func createNodeExecutionContext(gateNode *v1alpha1.GateNodeSpec) *nodeMocks.NodeExecutionContext {
 	wfExecID := v1alpha1.WorkflowExecutionIdentifier{
-		&core.WorkflowExecutionIdentifier{
+		WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{
 			Project: "project",
 			Domain:  "domain",
 			Name:    "name",
@@ -90,45 +84,6 @@ func createNodeExecutionContext(gateNode *v1alpha1.GateNodeSpec) *nodeMocks.Node
 	n.OnGetGateNode().Return(gateNode)
 
 	nm := &nodeMocks.NodeExecutionMetadata{}
-	//nm.OnGetAnnotations().Return(map[string]string{})
-	/*nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
-		ExecutionId: wfExecID,
-		NodeId:      n.GetID(),
-	})*/
-	//nm.OnGetK8sServiceAccount().Return("service-account")
-	//nm.OnGetLabels().Return(map[string]string{})
-	//nm.OnGetNamespace().Return("namespace")
-	//nm.OnGetOwnerID().Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
-	/*nm.OnGetOwnerReference().Return(v1.OwnerReference{
-		Kind: "sample",
-		Name: "name",
-	})*/
-
-	/*taskID := &core.Identifier{}
-	tk := &core.TaskTemplate{
-		Id:   taskID,
-		Type: "test",
-		Metadata: &core.TaskMetadata{
-			Discoverable: true,
-		},
-		Interface: &core.TypedInterface{
-			Outputs: &core.VariableMap{
-				Variables: map[string]*core.Variable{
-					"x": {
-						Type: &core.LiteralType{
-							Type: &core.LiteralType_Simple{
-								Simple: core.SimpleType_BOOLEAN,
-							},
-						},
-					},
-				},
-			},
-		},
-	}*/
-	//tr := &nodeMocks.TaskReader{}
-	//tr.OnGetTaskID().Return(taskID)
-	//tr.OnGetTaskType().Return(ttype)
-	//tr.OnReadMatch(mock.Anything).Return(tk, nil)
 
 	ns := &flyteMocks.ExecutableNodeStatus{}
 	ns.OnGetDataDir().Return(storage.DataReference("data-dir"))
@@ -139,17 +94,10 @@ func createNodeExecutionContext(gateNode *v1alpha1.GateNodeSpec) *nodeMocks.Node
 	eCtx := &executormocks.ExecutionContext{}
 	eCtx.OnGetExecutionID().Return(wfExecID)
 
-	//ir := &ioMocks.InputReader{}
 	nCtx := &nodeMocks.NodeExecutionContext{}
 	nCtx.OnNodeExecutionMetadata().Return(nm)
 	nCtx.OnNode().Return(n)
-	//nCtx.OnInputReader().Return(ir)
-	//nCtx.OnCurrentAttempt().Return(uint32(1))
-	//nCtx.OnTaskReader().Return(tr)
-	//nCtx.OnMaxDatasetSizeBytes().Return(int64(1))
 	nCtx.OnNodeStatus().Return(ns)
-	//nCtx.OnNodeID().Return("n1")
-	//nCtx.OnEnqueueOwnerFunc().Return(nil)
 	nCtx.OnDataStore().Return(dataStore)
 	nCtx.OnExecutionContext().Return(eCtx)
 
@@ -187,7 +135,7 @@ func TestHandle(t *testing.T) {
 	ctx := context.TODO()
 	scope := promutils.NewTestScope()
 
-	t.Run("SignalCheck", func (t *testing.T) {
+	t.Run("SignalCheck", func(t *testing.T) {
 		nCtx := createNodeExecutionContext(signalGateNode)
 		signalClient := mocks.SignalServiceClient{}
 		signalClient.OnGetOrCreateSignalMatch(mock.Anything, mock.Anything).Return(&admin.Signal{}, nil)
@@ -199,7 +147,7 @@ func TestHandle(t *testing.T) {
 		assert.Equal(t, handler.EPhaseRunning, transition.Info().GetPhase())
 	})
 
-	t.Run("SignalComplete", func (t *testing.T) {
+	t.Run("SignalComplete", func(t *testing.T) {
 		nCtx := createNodeExecutionContext(signalGateNode)
 		signalClient := mocks.SignalServiceClient{}
 		signalClient.OnGetOrCreateSignalMatch(mock.Anything, mock.Anything).Return(&admin.Signal{
@@ -225,7 +173,7 @@ func TestHandle(t *testing.T) {
 		assert.Equal(t, handler.EPhaseSuccess, transition.Info().GetPhase())
 	})
 
-	t.Run("SignalError", func (t *testing.T) {
+	t.Run("SignalError", func(t *testing.T) {
 		nCtx := createNodeExecutionContext(signalGateNode)
 		signalClient := mocks.SignalServiceClient{}
 		signalClient.OnGetOrCreateSignalMatch(mock.Anything, mock.Anything).Return(&admin.Signal{}, errors.New("foo"))
@@ -237,7 +185,7 @@ func TestHandle(t *testing.T) {
 		assert.Equal(t, handler.EPhaseUndefined, transition.Info().GetPhase())
 	})
 
-	t.Run("SleepCheck", func (t *testing.T) {
+	t.Run("SleepCheck", func(t *testing.T) {
 		nCtx := createNodeExecutionContext(sleepMinuteGateNode)
 		signalClient := mocks.SignalServiceClient{}
 
@@ -248,7 +196,7 @@ func TestHandle(t *testing.T) {
 		assert.Equal(t, handler.EPhaseRunning, transition.Info().GetPhase())
 	})
 
-	t.Run("SleepComplete", func (t *testing.T) {
+	t.Run("SleepComplete", func(t *testing.T) {
 		nCtx := createNodeExecutionContext(sleepNowGateNode)
 		signalClient := mocks.SignalServiceClient{}
 

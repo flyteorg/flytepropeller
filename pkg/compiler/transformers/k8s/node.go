@@ -134,14 +134,14 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		switch gateNode.Condition.(type) {
 		case *core.GateNode_Signal:
 			nodeSpec.GateNode = &v1alpha1.GateNodeSpec{
-				Kind:   v1alpha1.ConditionKindSignal,
+				Kind: v1alpha1.ConditionKindSignal,
 				Signal: &v1alpha1.SignalCondition{
 					SignalCondition: gateNode.GetSignal(),
 				},
 			}
 		case *core.GateNode_Sleep:
 			nodeSpec.GateNode = &v1alpha1.GateNodeSpec{
-				Kind:  v1alpha1.ConditionKindSleep,
+				Kind: v1alpha1.ConditionKindSleep,
 				Sleep: &v1alpha1.SleepCondition{
 					SleepCondition: gateNode.GetSleep(),
 				},

@@ -40,7 +40,7 @@ type WorkflowNodeState struct {
 }
 
 type GateNodeState struct {
-	Phase v1alpha1.GateNodePhase
+	Phase     v1alpha1.GateNodePhase
 	StartedAt time.Time
 }
 

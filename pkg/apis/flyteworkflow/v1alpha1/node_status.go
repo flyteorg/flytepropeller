@@ -194,7 +194,7 @@ const (
 type GateNodeStatus struct {
 	MutableStruct
 	Phase     GateNodePhase `json:"phase,omitempty"`
-	StartedAt time.Time     `json:"phase,omitempty"`
+	StartedAt time.Time     `json:"startedAt,omitempty"`
 }
 
 func (in *GateNodeStatus) GetGateNodePhase() GateNodePhase {
