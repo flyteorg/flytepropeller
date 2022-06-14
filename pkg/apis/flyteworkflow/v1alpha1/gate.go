@@ -7,7 +7,6 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 )
 
-// ConditionKind refers to the type of Node.
 type ConditionKind string
 
 func (n ConditionKind) String() string {

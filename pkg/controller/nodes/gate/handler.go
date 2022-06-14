@@ -27,33 +27,42 @@ type SignalServiceClient interface {
 	service.SignalServiceClient
 }
 
+// gateNodeHandler is a handle implementation for processing gate nodes
 type gateNodeHandler struct {
 	signalClient SignalServiceClient
 	metrics      metrics
 }
 
+// metrics encapsulates the prometheus metrics for this handler
 type metrics struct {
 	scope promutils.Scope
 }
 
+// newMetrics initializes a new metrics struct
 func newMetrics(scope promutils.Scope) metrics {
 	return metrics{
 		scope: scope,
 	}
 }
 
+// Abort stops the gate node defined in the NodeExecutionContext
 func (b *gateNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
 	return nil
 }
 
+// Finalize completes the gate node defined in the NodeExecutionContext
 func (w *gateNodeHandler) Finalize(ctx context.Context, _ handler.NodeExecutionContext) error {
 	return nil
 }
 
+// FinalizeRequired defines whether or not this handler requires finalize to be called on
+// node completion
 func (g *gateNodeHandler) FinalizeRequired() bool {
 	return false
 }
 
+// Handle is responsible for transitioning and reporting node state to complete the node defined
+// by the NodeExecutionContext
 func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
 	gateNode := nCtx.Node().GetGateNode()
 	gateNodeState := nCtx.NodeStateReader().GetGateNodeState()
@@ -142,10 +151,12 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{})), nil
 }
 
+// Setup handles any initialization requirements for this handler
 func (g *gateNodeHandler) Setup(_ context.Context, _ handler.SetupContext) error {
 	return nil
 }
 
+// New initializes a new gateNodeHandler
 func New(eventConfig *config.EventConfig, signalClient service.SignalServiceClient, scope promutils.Scope) handler.Node {
 	gateScope := scope.NewSubScope("gate")
 	return &gateNodeHandler{
