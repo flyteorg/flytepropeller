@@ -13,41 +13,49 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
-	//"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
-	//"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/flyteorg/flytestdlib/storage"
 )
 
+//go:generate mockery -all -case=underscore
+
+// SignalServiceClient is a SignalServiceClient wrapper interface used specifically for generating
+// mocks for testing
+type SignalServiceClient interface {
+	service.SignalServiceClient
+}
+
 type gateNodeHandler struct {
-	signalClient service.SignalServiceClient
+	signalClient SignalServiceClient
 	metrics      metrics
 }
 
 type metrics struct {
-	//CacheError labeled.Counter
+	scope promutils.Scope
 }
 
 func newMetrics(scope promutils.Scope) metrics {
 	return metrics{
-		//CacheError: labeled.NewCounter("cache_err", "workflow handler failed to store or load from data store.", scope),
+		scope: scope,
 	}
+}
+
+func (b *gateNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
+	return nil
+}
+
+func (w *gateNodeHandler) Finalize(ctx context.Context, _ handler.NodeExecutionContext) error {
+	return nil
 }
 
 func (g *gateNodeHandler) FinalizeRequired() bool {
 	return false
 }
 
-func (g *gateNodeHandler) Setup(_ context.Context, _ handler.SetupContext) error {
-	return nil
-}
-
 func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
 	gateNode := nCtx.Node().GetGateNode()
-
-	// retrieve gate node status?
 	gateNodeState := nCtx.NodeStateReader().GetGateNodeState()
 
 	if gateNodeState.Phase == v1alpha1.GateNodePhaseUndefined {
@@ -82,14 +90,10 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 		}
 
 		// if signal has value then write to output and transition to success
-		if signal.Value.Value != nil {
+		if signal.Value != nil && signal.Value.Value != nil {
 			outputs := &core.LiteralMap{
 				Literals: map[string]*core.Literal{
-					// TODO - please verify
-					// I believe the TypedInterface proto is only designed for tasks and workflows.
-					// Therefore, I think we need to use a constant variable name here for signal
-					// outputs so that it is translatable between flytekit and the backend.
-					"o0": signal.Value,
+					"o0": signal.Value, // TODO - please verify
 				},
 			}
 
@@ -138,20 +142,7 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{})), nil
 }
 
-func (b *gateNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
-	/*wfNode := nCtx.Node().GetWorkflowNode()
-	if wfNode.GetSubWorkflowRef() != nil {
-		return w.subWfHandler.HandleAbort(ctx, nCtx, reason)
-	}
-
-	if wfNode.GetLaunchPlanRefID() != nil {
-		return w.lpHandler.HandleAbort(ctx, nCtx, reason)
-	}*/
-	return nil
-}
-
-func (w *gateNodeHandler) Finalize(ctx context.Context, _ handler.NodeExecutionContext) error {
-	//logger.Warnf(ctx, "Subworkflow finalize invoked. Nothing to be done")
+func (g *gateNodeHandler) Setup(_ context.Context, _ handler.SetupContext) error {
 	return nil
 }
 

@@ -2,14 +2,20 @@ package k8s
 
 import (
 	"testing"
-
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/resource"
+	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
+
 	"github.com/stretchr/testify/assert"
+
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/structpb"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func createNodeWithTask() *core.Node {
@@ -208,6 +214,38 @@ func TestBuildNodeSpec(t *testing.T) {
 		mustBuild(t, n, 2, errs.NewScope())
 	})
 
+	t.Run("GateNodeSignal", func(t *testing.T) {
+		n.Node.Target = &core.Node_GateNode{
+			GateNode: &core.GateNode{
+				Condition: &core.GateNode_Signal{
+					Signal: &core.SignalCondition{
+						SignalId: "foo",
+						Type: &core.LiteralType{
+							Type: &core.LiteralType_Simple{
+								Simple: core.SimpleType_BOOLEAN,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		mustBuild(t, n, 1, errs.NewScope())
+	})
+
+	t.Run("GateNodeSleep", func(t *testing.T) {
+		n.Node.Target = &core.Node_GateNode{
+			GateNode: &core.GateNode{
+				Condition: &core.GateNode_Sleep{
+					Sleep: &core.SleepCondition{
+						Duration: durationpb.New(time.Minute),
+					},
+				},
+			},
+		}
+
+		mustBuild(t, n, 1, errs.NewScope())
+	})
 }
 
 func TestBuildTasks(t *testing.T) {
