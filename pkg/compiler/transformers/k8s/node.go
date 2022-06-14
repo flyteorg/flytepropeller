@@ -146,8 +146,6 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 					SleepCondition: gateNode.GetSleep(),
 				},
 			}
-		default:
-			// TODO hamersaw - handle?
 		}
 	default:
 		if n.GetId() == v1alpha1.StartNodeID {

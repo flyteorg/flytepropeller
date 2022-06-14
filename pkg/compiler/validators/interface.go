@@ -120,16 +120,26 @@ func ValidateUnderlyingInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs e
 		iface, _ = validateBranchInterface(w, node, errs.NewScope())
 	case *core.Node_GateNode:
 		gateNode := node.GetGateNode()
-		switch gateNode.GetCondition().(type) {
-		case *core.GateNode_Signal:
-			// TODO handle
-		case *core.GateNode_Sleep:
+		if signal := gateNode.GetSignal(); signal != nil {
+			if signal.GetType() == nil {
+				errs.Collect(errors.NewValueRequiredErr(node.GetId(), "GateNode.Signal.Type"))
+			} else {
+				iface = &core.TypedInterface{
+					Inputs:  &core.VariableMap{Variables: map[string]*core.Variable{}},
+					Outputs: &core.VariableMap{Variables: map[string]*core.Variable{
+						"o0": &core.Variable{ // TODO - variable name?
+							Type: signal.GetType(),
+						},
+					}},
+				}
+			}
+		} else if sleep := gateNode.GetSleep(); sleep != nil {
 			iface = &core.TypedInterface{
 				Inputs:  &core.VariableMap{Variables: map[string]*core.Variable{}},
 				Outputs: &core.VariableMap{Variables: map[string]*core.Variable{}},
 			}
-		default:
-			// TODO handle
+		} else {
+			errs.Collect(errors.NewNoConditionFound(node.GetId()))
 		}
 	default:
 		errs.Collect(errors.NewValueRequiredErr(node.GetId(), "Target"))
