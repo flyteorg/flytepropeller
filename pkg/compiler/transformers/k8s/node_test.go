@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"google.golang.org/protobuf/types/known/durationpb"
-	"google.golang.org/protobuf/types/known/structpb"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 )
