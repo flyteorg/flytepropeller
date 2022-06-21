@@ -895,8 +895,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			c := &pluginCatalogMocks.Client{}
 			if tt.args.catalogFetch {
 				or := &ioMocks.OutputReader{}
-				deckPath := storage.DataReference(deckPath)
-				or.OnGetDeckPath().Return(&deckPath)
+				or.OnDeckExistsMatch(mock.Anything).Return(true, nil)
 				or.OnReadMatch(mock.Anything).Return(&core.LiteralMap{}, nil, nil)
 				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewCatalogEntry(or, catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil)), nil)
 			} else {
@@ -1125,8 +1124,7 @@ func Test_task_Handle_Reservation(t *testing.T) {
 			nCtx.OnNodeStateReader().Return(nr)
 			if tt.args.catalogFetch {
 				or := &ioMocks.OutputReader{}
-				deckPath := storage.DataReference("deck.html")
-				or.OnGetDeckPath().Return(&deckPath)
+				or.OnDeckExistsMatch(mock.Anything).Return(true, nil)
 				or.OnReadMatch(mock.Anything).Return(&core.LiteralMap{}, nil, nil)
 				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewCatalogEntry(or, catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil)), nil)
 			} else {

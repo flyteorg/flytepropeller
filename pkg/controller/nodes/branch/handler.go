@@ -147,15 +147,11 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 	}
 
 	if downstreamStatus.IsComplete() {
-		deckURI := v1alpha1.GetDeckFile(childNodeStatus.GetOutputDir())
-		metadata, err := nCtx.DataStore().Head(context.Background(), deckURI)
-		if err != nil || !metadata.Exists() {
-			deckURI = ""
-		}
 		// For branch node we set the output node to be the same as the child nodes output
 		phase := handler.PhaseInfoSuccess(&handler.ExecutionInfo{
-			OutputInfo: &handler.OutputInfo{OutputURI: v1alpha1.GetOutputsFile(childNodeStatus.GetOutputDir()), DeckURI: deckURI},
+			OutputInfo: &handler.OutputInfo{OutputURI: v1alpha1.GetOutputsFile(childNodeStatus.GetOutputDir())},
 		})
+
 		return handler.DoTransition(handler.TransitionTypeEphemeral, phase), nil
 	}
 

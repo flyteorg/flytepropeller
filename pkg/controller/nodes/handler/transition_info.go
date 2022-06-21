@@ -51,7 +51,7 @@ type TaskNodeInfo struct {
 
 type OutputInfo struct {
 	OutputURI storage.DataReference
-	DeckURI   storage.DataReference
+	DeckURI   *storage.DataReference
 }
 
 type ExecutionInfo struct {
