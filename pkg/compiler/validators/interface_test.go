@@ -295,6 +295,7 @@ func TestValidateUnderlyingInterface(t *testing.T) {
 								Simple: core.SimpleType_BOOLEAN,
 							},
 						},
+						OutputVariableName: "foo",
 					},
 				},
 			}

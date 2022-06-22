@@ -26,6 +26,8 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"google.golang.org/protobuf/types/known/durationpb"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -88,6 +90,9 @@ func createNodeExecutionContext(gateNode *v1alpha1.GateNodeSpec) *nodeMocks.Node
 	ns := &flyteMocks.ExecutableNodeStatus{}
 	ns.OnGetDataDir().Return(storage.DataReference("data-dir"))
 	ns.OnGetOutputDir().Return(storage.DataReference("data-dir"))
+
+	t := v1.NewTime(time.Now())
+	ns.OnGetLastAttemptStartedAt().Return(&t)
 
 	dataStore, _ := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 
