@@ -564,17 +564,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 				return handler.UnknownTransition, err
 			}
 
-			var deckURI *storage.DataReference
-			exists, err := r.DeckExists(ctx)
-			if err != nil {
-				logger.Errorf(ctx, "Failed to check deck file existence. Error: %v", err)
-				return handler.UnknownTransition, regErrors.Wrapf(err, "failed to check existence of deck file")
-			} else if exists {
-				deckURIValue := tCtx.ow.GetDeckPath()
-				deckURI = &deckURIValue
-			}
-
-			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), deckURI, entry)
+			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), nil, entry)
 		} else {
 			logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
 			pluginTrns.PopulateCacheInfo(entry)
