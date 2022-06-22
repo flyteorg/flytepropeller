@@ -102,7 +102,7 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 		if signal.Value != nil && signal.Value.Value != nil {
 			outputs := &core.LiteralMap{
 				Literals: map[string]*core.Literal{
-					"o0": signal.Value, // TODO - please verify
+					signalCondition.OutputVariableName: signal.Value,
 				},
 			}
 

@@ -123,11 +123,13 @@ func ValidateUnderlyingInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs e
 		if signal := gateNode.GetSignal(); signal != nil {
 			if signal.GetType() == nil {
 				errs.Collect(errors.NewValueRequiredErr(node.GetId(), "GateNode.Signal.Type"))
+			} else if len(signal.GetOutputVariableName()) == 0 {
+				errs.Collect(errors.NewValueRequiredErr(node.GetId(), "GateNode.Signal.OutputVariableName"))
 			} else {
 				iface = &core.TypedInterface{
 					Inputs: &core.VariableMap{Variables: map[string]*core.Variable{}},
 					Outputs: &core.VariableMap{Variables: map[string]*core.Variable{
-						"o0": &core.Variable{ // TODO - variable name?
+						signal.GetOutputVariableName(): &core.Variable{
 							Type: signal.GetType(),
 						},
 					}},

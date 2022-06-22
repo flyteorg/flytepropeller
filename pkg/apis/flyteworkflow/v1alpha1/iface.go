@@ -246,7 +246,6 @@ type ExecutableBranchNode interface {
 	GetElseFail() *core.Error
 }
 
-// TODO hamersaw - document
 type ExecutableGateNode interface {
 	GetKind() ConditionKind
 	GetSignal() *core.SignalCondition
