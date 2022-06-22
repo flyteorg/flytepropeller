@@ -258,6 +258,5 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 	if n.g != nil {
 		t := s.GetOrCreateGateNodeStatus()
 		t.SetGateNodePhase(n.g.Phase)
-		t.SetGateNodeStartedAt(n.g.StartedAt)
 	}
 }

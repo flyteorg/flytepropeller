@@ -266,14 +266,12 @@ type MutableWorkflowNodeStatus interface {
 
 type ExecutableGateNodeStatus interface {
 	GetGateNodePhase() GateNodePhase
-	GetGateNodeStartedAt() time.Time
 }
 
 type MutableGateNodeStatus interface {
 	Mutable
 	ExecutableGateNodeStatus
 	SetGateNodePhase(phase GateNodePhase)
-	SetGateNodeStartedAt(t time.Time)
 }
 
 type Mutable interface {

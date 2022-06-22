@@ -68,10 +68,7 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 	gateNodeState := nCtx.NodeStateReader().GetGateNodeState()
 
 	if gateNodeState.Phase == v1alpha1.GateNodePhaseUndefined {
-		// Using GateNodeState to store a StartedAt timestamp because the NodeStatus on
-		// NodeExecutionContext is deprecated
 		gateNodeState.Phase = v1alpha1.GateNodePhaseExecuting
-		gateNodeState.StartedAt = time.Now()
 	}
 
 	switch gateNode.GetKind() {
@@ -133,7 +130,7 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 
 		// check duration of node sleep
 		now := time.Now()
-		if sleepDuration <= now.Sub(gateNodeState.StartedAt) {
+		if sleepDuration <= now.Sub(nCtx.NodeStatus().GetLastAttemptStartedAt().Time) {
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{})), nil
 		}
 	default:
