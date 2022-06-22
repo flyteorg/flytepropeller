@@ -59,7 +59,6 @@ var eventConfig = &controllerConfig.EventConfig{
 }
 
 const testClusterID = "C1"
-const deckPath = "/output-dir/deck.html"
 
 func Test_task_setDefault(t *testing.T) {
 	type fields struct {
