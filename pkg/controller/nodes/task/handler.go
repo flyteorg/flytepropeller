@@ -483,17 +483,17 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		if ee != nil {
 			pluginTrns.ObservedExecutionError(ee)
 		} else {
-			var deckUri *storage.DataReference
+			var deckURI *storage.DataReference
 			exists, err := tCtx.ow.GetReader().DeckExists(ctx)
 			if err != nil {
 				logger.Errorf(ctx, "Failed to check deck file existence. Error: %v", err)
 				return pluginTrns, regErrors.Wrapf(err, "failed to check existence of deck file")
 			} else if exists {
-				deckUriValue := tCtx.ow.GetDeckPath()
-				deckUri = &deckUriValue
+				deckURIValue := tCtx.ow.GetDeckPath()
+				deckURI = &deckURIValue
 			}
 
-			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), deckUri,
+			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), deckURI,
 				&event.TaskNodeMetadata{
 					CacheStatus: cacheStatus.GetCacheStatus(),
 					CatalogKey:  cacheStatus.GetMetadata(),
@@ -564,17 +564,17 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 				return handler.UnknownTransition, err
 			}
 
-			var deckUri *storage.DataReference
+			var deckURI *storage.DataReference
 			exists, err := r.DeckExists(ctx)
 			if err != nil {
 				logger.Errorf(ctx, "Failed to check deck file existence. Error: %v", err)
 				return handler.UnknownTransition, regErrors.Wrapf(err, "failed to check existence of deck file")
 			} else if exists {
-				deckUriValue := tCtx.ow.GetDeckPath()
-				deckUri = &deckUriValue
+				deckURIValue := tCtx.ow.GetDeckPath()
+				deckURI = &deckURIValue
 			}
 
-			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), deckUri, entry)
+			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), deckURI, entry)
 		} else {
 			logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
 			pluginTrns.PopulateCacheInfo(entry)
