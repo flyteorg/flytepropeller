@@ -25,7 +25,7 @@ func TestDoTransition(t *testing.T) {
 		assert.Equal(t, TransitionTypeBarrier, tr.Type())
 		assert.Equal(t, EPhaseSuccess, tr.Info().p)
 		assert.Equal(t, storage.DataReference("uri"), tr.Info().GetInfo().OutputInfo.OutputURI)
-		assert.Equal(t, storage.DataReference("deck"), tr.Info().GetInfo().OutputInfo.DeckURI)
+		assert.Equal(t, AsPointer(storage.DataReference("deck")), tr.Info().GetInfo().OutputInfo.DeckURI)
 	})
 }
 

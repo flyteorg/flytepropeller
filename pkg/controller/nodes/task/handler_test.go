@@ -937,7 +937,6 @@ func Test_task_Handle_Catalog(t *testing.T) {
 					assert.NotNil(t, got.Info().GetInfo().OutputInfo)
 					s := storage.DataReference("/output-dir/outputs.pb")
 					assert.Equal(t, s, got.Info().GetInfo().OutputInfo.OutputURI)
-					assert.Equal(t, storage.DataReference(deckPath), got.Info().GetInfo().OutputInfo.DeckURI)
 					r, err := nCtx.DataStore().Head(context.TODO(), s)
 					assert.NoError(t, err)
 					assert.True(t, r.Exists())
