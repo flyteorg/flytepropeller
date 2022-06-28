@@ -209,6 +209,7 @@ github.com/cncf/udpa/go v0.0.0-20210930031921-04548b0d99d4/go.mod h1:6pvJx4me5XP
 github.com/cncf/xds/go v0.0.0-20210312221358-fbca930ec8ed/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
 github.com/cncf/xds/go v0.0.0-20210805033703-aa0b78936158/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
 github.com/cncf/xds/go v0.0.0-20210922020428-25de7278fc84/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
+github.com/cncf/xds/go v0.0.0-20211001041855-01bcc9b48dfe/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
 github.com/cncf/xds/go v0.0.0-20211011173535-cb28da3451f1/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
 github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa/go.mod h1:zn76sxSg3SzpJ0PPJaLDCu+Bu0Lg3sKTORVIj19EIF8=
 github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd/go.mod h1:sE/e/2PUdi/liOCUjSTXgM1o87ZssimdTWN964YiIeI=
@@ -266,6 +267,7 @@ github.com/envoyproxy/go-control-plane v0.9.9-0.20201210154907-fd9021fe5dad/go.m
 github.com/envoyproxy/go-control-plane v0.9.9-0.20210217033140-668b12f5399d/go.mod h1:cXg6YxExXjJnVBQHBLXeUAgxn2UodCpnH306RInaBQk=
 github.com/envoyproxy/go-control-plane v0.9.9-0.20210512163311-63b5d3c536b0/go.mod h1:hliV/p42l8fGbc6Y9bQ70uLwIvmJyVE5k4iMKlh8wCQ=
 github.com/envoyproxy/go-control-plane v0.9.10-0.20210907150352-cf90f659a021/go.mod h1:AFq3mo9L8Lqqiid3OhADV3RfLJnjiw63cSpi+fDTRC0=
+github.com/envoyproxy/go-control-plane v0.10.2-0.20220325020618-49ff273808a1/go.mod h1:KJwIaB5Mv44NWtYuAOFCVOjcI94vtpEz2JU/D2v6IjE=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/ernesto-jimenez/gogen v0.0.0-20180125220232-d7d4131e6607/go.mod h1:Cg4fM0vhYWOZdgM7RIOSTRNIc8/VT7CXClC3Ni86lu4=
 github.com/evanphx/json-patch v0.0.0-20200808040245-162e5629780b/go.mod h1:NAJj0yf/KaRKURN6nyi7A9IZydMivZEm9oQLWNjfKDc=
@@ -278,12 +280,12 @@ github.com/fatih/color v1.9.0/go.mod h1:eQcE1qtQxscV5RaZvpXrrb8Drkc3/DdQ+uUYCNjL
 github.com/fatih/color v1.13.0 h1:8LOYc1KYPPmyKMuN8QV2DNRWNbLo6LZ0iLs8+mlH53w=
 github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
 github.com/fatih/structtag v1.2.0/go.mod h1:mBJUNpUnHmRKrKlQQlmCrh5PuhftFbNv8Ys4/aAZl94=
-github.com/flyteorg/flyteidl v1.1.7-0.20220608052921-d6e455ce8da6 h1:cHCB6hhRqP+eAKFP1gEa6UaIEqOWhzHsRVTxy6gMklo=
-github.com/flyteorg/flyteidl v1.1.7-0.20220608052921-d6e455ce8da6/go.mod h1:uvXCvYVld98+Ab7cxJyIvo/8P0F7OoNR+3DB4Lv5dkQ=
-github.com/flyteorg/flyteplugins v1.0.4-0.20220608053146-9c9fdc7b6cfc h1:ggNIlg2tddiP9jONbD65ZFio5os/slRwk094PcQmUgY=
-github.com/flyteorg/flyteplugins v1.0.4-0.20220608053146-9c9fdc7b6cfc/go.mod h1:EW8ZGBb9WA0co8sl95/gZzJrIkqzTd3tlnMWcXsxSnE=
-github.com/flyteorg/flytestdlib v1.0.4-0.20220601010535-57c1386c358f h1:0JVqzJOc4O/Z7LEuCg6leofJW6iNtRUwJDxSw+07K1k=
-github.com/flyteorg/flytestdlib v1.0.4-0.20220601010535-57c1386c358f/go.mod h1:WTe0k3DmmrKFjj3hwiIbjjdCK89X63MBzBbXhQ4Yxf0=
+github.com/flyteorg/flyteidl v1.1.8-0.20220628045429-5aaea4ba607a h1:EI4wjRf4WS9iTSMImW1RCiXyhtaaJXlY6Y4g+fsjpzE=
+github.com/flyteorg/flyteidl v1.1.8-0.20220628045429-5aaea4ba607a/go.mod h1:TM9AyQ44x5/SqTykzaGTVH65Lreg/1zOP2jrwmJd3HY=
+github.com/flyteorg/flyteplugins v1.0.6-0.20220628045641-61c0f6b70f9a h1:BM0Xdckn0cEXpkwnO2uzmi87rzEOn7P8jqRaKYXXMAc=
+github.com/flyteorg/flyteplugins v1.0.6-0.20220628045641-61c0f6b70f9a/go.mod h1:h5Nwk2e42SKnLmCuKnHsMW11UUFuGLoOMkLonP0mfIY=
+github.com/flyteorg/flytestdlib v1.0.5-0.20220628044039-2918e6121725 h1:SkrYbBke1xWJYo+7rvvXj4WFyOGUfSVb9xQqoAXHw/w=
+github.com/flyteorg/flytestdlib v1.0.5-0.20220628044039-2918e6121725/go.mod h1:WTe0k3DmmrKFjj3hwiIbjjdCK89X63MBzBbXhQ4Yxf0=
 github.com/flyteorg/stow v0.3.4 h1:gJVz1LCcEQ5ESWoedRxKh4uUv/V/c1eYLVAQVy07PPY=
 github.com/flyteorg/stow v0.3.4/go.mod h1:2T2f6KaIWoWCLgI6EFZQgjb83Vg5SolmBwc2O06WQU4=
 github.com/form3tech-oss/jwt-go v3.2.2+incompatible/go.mod h1:pbq4aXjuKjdthFRnoDwaVPLA+WlJuPGy+QneDUgJi2k=
@@ -1423,8 +1425,9 @@ google.golang.org/grpc v1.39.1/go.mod h1:PImNr+rS9TWYb2O4/emRugxiyHZ5JyHW5F+RPnD
 google.golang.org/grpc v1.40.0/go.mod h1:ogyxbiOoUXAkP+4+xa6PZSE9DZgIHtSpzjDTB9KAK34=
 google.golang.org/grpc v1.40.1/go.mod h1:ogyxbiOoUXAkP+4+xa6PZSE9DZgIHtSpzjDTB9KAK34=
 google.golang.org/grpc v1.44.0/go.mod h1:k+4IHHFw41K8+bbowsex27ge2rCb65oeWqe4jJ590SU=
-google.golang.org/grpc v1.45.0 h1:NEpgUqV3Z+ZjkqMsxMg11IaDrXY4RY6CQukSGK0uI1M=
 google.golang.org/grpc v1.45.0/go.mod h1:lN7owxKUQEqMfSyQikvvk5tf/6zMPsrK+ONuO11+0rQ=
+google.golang.org/grpc v1.46.0 h1:oCjezcn6g6A75TGoKYBPgKmVBLexhYLM6MebdrPApP8=
+google.golang.org/grpc v1.46.0/go.mod h1:vN9eftEi1UMyUsIF80+uQXhHjbXYbm0uXoFCACuMGWk=
 google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0/go.mod h1:6Kw0yEErY5E/yWrBtf03jp27GLLJujG4z/JK95pnjjw=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=
 google.golang.org/protobuf v0.0.0-20200221191635-4d8936d0db64/go.mod h1:kwYJMbMJ01Woi6D6+Kah6886xMZcty6N08ah7+eCXa0=
