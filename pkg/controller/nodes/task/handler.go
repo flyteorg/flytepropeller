@@ -307,6 +307,18 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 	return nil
 }
 
+func (t Handler) ResolveClusterResourcePlugin(ctx context.Context, ttype string, pluginID string) (pluginCore.Plugin, error) {
+	if len(t.pluginsForType[ttype]) > 0 {
+		pluginsForType := t.pluginsForType[ttype]
+		pluginImpl := pluginsForType[pluginID]
+		if pluginImpl != nil {
+			logger.Debugf(ctx, "Plugin [%s] resolved for Handler type [%s]", pluginImpl.GetID(), ttype)
+			return pluginImpl, nil
+		}
+	}
+	return nil, fmt.Errorf("no plugin defined for Handler type [%s] and no defaultPlugin configured", ttype)
+}
+
 func (t Handler) ResolvePlugin(ctx context.Context, ttype string, executionConfig v1alpha1.ExecutionConfig) (pluginCore.Plugin, error) {
 	// If the workflow specifies plugin overrides, check to see if any of the specified plugins for that type are
 	// registered in this deployment of flytepropeller.
@@ -507,6 +519,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
 	ttype := nCtx.TaskReader().GetTaskType()
 	ctx = contextutils.WithTaskType(ctx, ttype)
+
 	p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
 	if err != nil {
 		return handler.UnknownTransition, errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
@@ -613,6 +626,32 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		// Lets check if this value in cache is less than or equal to one in the store
 		if barrierTick <= ts.BarrierClockTick {
 			var err error
+
+			// Start a cluster if needed
+			tmpl, err := nCtx.TaskReader().Read(ctx)
+			for _, resource := range tmpl.Resources {
+				var resourcePlugin pluginCore.Plugin
+				if resource.GetRay() != nil {
+					resourcePlugin, err = t.ResolveClusterResourcePlugin(ctx, ttype, "ray")
+					if err != nil {
+						return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
+					}
+				} else {
+					continue
+				}
+
+				pluginTrns, err = t.invokePlugin(ctx, resourcePlugin, tCtx, ts)
+				if err != nil {
+					return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
+				}
+				if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
+					logger.Infof(ctx, "Successfully create a cluster.")
+				} else {
+					return pluginTrns.FinalTransition(ctx)
+				}
+			}
+
+			p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
 			pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
 			if err != nil {
 				return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
@@ -636,7 +675,6 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 						PluginTransition: pluginTrns,
 					},
 				})
-
 			}
 		} else {
 			// Barrier tick will remain to be the one in cache.
