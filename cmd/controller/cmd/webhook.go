@@ -2,10 +2,8 @@ package cmd
 
 import (
 	"context"
-
 	"github.com/flyteorg/flytepropeller/pkg/controller"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/signals"
 	"github.com/flyteorg/flytepropeller/pkg/webhook"
 	webhookConfig "github.com/flyteorg/flytepropeller/pkg/webhook/config"
@@ -101,11 +99,11 @@ func runWebhook(origContext context.Context, propellerCfg *config.Config, cfg *w
 		limitNamespace = propellerCfg.LimitNamespace
 	}
 	options := manager.Options{
-		Namespace:     limitNamespace,
-		SyncPeriod:    &propellerCfg.DownstreamEval.Duration,
-		ClientBuilder: executors.NewFallbackClientBuilder(webhookScope),
-		CertDir:       cfg.CertDir,
-		Port:          cfg.ListenPort,
+		Namespace:  limitNamespace,
+		SyncPeriod: &propellerCfg.DownstreamEval.Duration,
+		// ClientBuilder: executors.NewFallbackClientBuilder(webhookScope),
+		CertDir: cfg.CertDir,
+		Port:    cfg.ListenPort,
 	}
 
 	mgr, err := controller.CreateControllerManager(ctx, propellerCfg, options)

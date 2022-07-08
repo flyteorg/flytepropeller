@@ -9,7 +9,6 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/controller"
 	config2 "github.com/flyteorg/flytepropeller/pkg/controller/config"
-	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/signals"
 
 	"github.com/flyteorg/flytestdlib/config"
@@ -123,9 +122,9 @@ func executeRootCmd(baseCtx context.Context, cfg *config2.Config) error {
 		limitNamespace = cfg.LimitNamespace
 	}
 	options := manager.Options{
-		Namespace:     limitNamespace,
-		SyncPeriod:    &cfg.DownstreamEval.Duration,
-		ClientBuilder: executors.NewFallbackClientBuilder(propellerScope.NewSubScope("kube")),
+		Namespace:  limitNamespace,
+		SyncPeriod: &cfg.DownstreamEval.Duration,
+		// ClientBuilder: executors.NewFallbackClientBuilder(propellerScope.NewSubScope("kube")),
 	}
 
 	mgr, err := controller.CreateControllerManager(ctx, cfg, options)
