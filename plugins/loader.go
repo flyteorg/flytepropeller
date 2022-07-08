@@ -2,6 +2,7 @@
 package plugins
 
 import (
+	_ "github.com/flyteorg/flyteplugins/go/tasks/plugins/cluster_resource/ray"
 	// Common place to import all plugins, so that it can be imported by Singlebinary (flytelite) or by propeller main
 	_ "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/awsbatch"
 	_ "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/k8s"

@@ -628,28 +628,32 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			var err error
 
 			// Start a cluster if needed
-			tmpl, err := nCtx.TaskReader().Read(ctx)
-			for _, resource := range tmpl.Resources {
-				var resourcePlugin pluginCore.Plugin
-				if resource.GetRay() != nil {
-					resourcePlugin, err = t.ResolveClusterResourcePlugin(ctx, ttype, "ray")
-					if err != nil {
-						return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
-					}
-				} else {
-					continue
-				}
-
-				pluginTrns, err = t.invokePlugin(ctx, resourcePlugin, tCtx, ts)
-				if err != nil {
-					return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
-				}
-				if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
-					logger.Infof(ctx, "Successfully create a cluster.")
-				} else {
-					return pluginTrns.FinalTransition(ctx)
-				}
-			}
+			logger.Warnf(ctx, "Start to create a cluster.")
+			// tmpl, err := nCtx.TaskReader().Read(ctx)
+			//for _, resource := range tmpl.Resources {
+			//	var resourcePlugin pluginCore.Plugin
+			//	logger.Warnf(ctx, "resource.GetRay(). [%v]", resource.GetRay())
+			//	if resource.GetRay() != nil {
+			//		resourcePlugin, err = t.ResolveClusterResourcePlugin(ctx, ttype, "ray")
+			//		if err != nil {
+			//			return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
+			//		}
+			//	} else {
+			//		logger.Warnf(ctx, "continue.")
+			//		continue
+			//	}
+			//	logger.Warnf(ctx, "Creating a cluster.")
+			//	pluginTrns, err = t.invokePlugin(ctx, resourcePlugin, tCtx, ts)
+			//	if err != nil {
+			//		return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
+			//	}
+			//	if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
+			//		logger.Warnf(ctx, "Successfully create a cluster.")
+			//	} else {
+			//		logger.Warnf(ctx, "pluginTrns.FinalTransition.")
+			//		return pluginTrns.FinalTransition(ctx)
+			//	}
+			//}
 
 			p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
 			pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
