@@ -175,6 +175,7 @@ func (p *pluginRequestedTransition) FinalTransition(ctx context.Context) (handle
 type PluginRegistryIface interface {
 	GetCorePlugins() []pluginCore.PluginEntry
 	GetK8sPlugins() []pluginK8s.PluginEntry
+	GetClusterResourcePlugins() []pluginK8s.PluginEntry
 }
 
 type taskType = string
@@ -184,6 +185,7 @@ type Handler struct {
 	catalog         catalog.Client
 	asyncCatalog    catalog.AsyncClient
 	defaultPlugins  map[pluginCore.TaskType]pluginCore.Plugin
+	resourcePlugins map[pluginCore.TaskType]pluginCore.Plugin
 	pluginsForType  map[pluginCore.TaskType]map[pluginID]pluginCore.Plugin
 	taskMetricsMap  map[MetricKey]*taskMetrics
 	defaultPlugin   pluginCore.Plugin
@@ -225,10 +227,27 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 
 	// Create the resource negotiator here
 	// and then convert it to proxies later and pass them to plugins
-	enabledPlugins, defaultForTaskTypes, err := WranglePluginsAndGenerateFinalList(ctx, &t.cfg.TaskPlugins, t.pluginRegistry)
+	enabledPlugins, enabledResourcePlugins, defaultForTaskTypes, err := WranglePluginsAndGenerateFinalList(ctx, &t.cfg.TaskPlugins, t.pluginRegistry)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to finalize enabled plugins. Error: %s", err)
 		return err
+	}
+
+	for _, p := range enabledResourcePlugins {
+		// create a new resource registrar proxy for each plugin, and pass it into the plugin's LoadPlugin() via a setup context
+		pluginResourceNamespacePrefix := pluginCore.ResourceNamespace(newResourceManagerBuilder.GetID()).CreateSubNamespace(pluginCore.ResourceNamespace(p.ID))
+		sCtxFinal := newNameSpacedSetupCtx(
+			tSCtx, newResourceManagerBuilder.GetResourceRegistrar(pluginResourceNamespacePrefix), p.ID)
+		logger.Warnf(ctx, "Loading Plugin [%s] ENABLED", p.ID)
+		cp, err := pluginCore.LoadPlugin(ctx, sCtxFinal, p)
+		if err != nil {
+			return regErrors.Wrapf(err, "failed to load plugin - %s", p.ID)
+		}
+
+		for _, tt := range p.RegisteredTaskTypes {
+			t.resourcePlugins[tt] = cp
+		}
+
 	}
 
 	// Not every task type will have a default plugin specified in the flytepropeller config.
@@ -308,13 +327,9 @@ func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
 }
 
 func (t Handler) ResolveClusterResourcePlugin(ctx context.Context, ttype string, pluginID string) (pluginCore.Plugin, error) {
-	if len(t.pluginsForType[ttype]) > 0 {
-		pluginsForType := t.pluginsForType[ttype]
-		pluginImpl := pluginsForType[pluginID]
-		if pluginImpl != nil {
-			logger.Debugf(ctx, "Plugin [%s] resolved for Handler type [%s]", pluginImpl.GetID(), ttype)
-			return pluginImpl, nil
-		}
+	if t.resourcePlugins[ttype] != nil {
+		logger.Debugf(ctx, "Plugin [%s] resolved for Handler type [%s]", t.resourcePlugins[ttype].GetID(), ttype)
+		return t.resourcePlugins[ttype], nil
 	}
 	return nil, fmt.Errorf("no plugin defined for Handler type [%s] and no defaultPlugin configured", ttype)
 }
@@ -386,6 +401,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 				t.metrics.pluginPanics.Inc(ctx)
 				stack := debug.Stack()
 				logger.Errorf(ctx, "Panic in plugin[%s]", p.GetID())
+				logger.Errorf(ctx, "error [%s]")
 				err = fmt.Errorf("panic when executing a plugin [%s]. Stack: [%s]", p.GetID(), string(stack))
 				trns = pluginCore.UnknownTransition
 			}
@@ -415,6 +431,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		b = ts.PluginState
 		v = ts.PluginPhaseVersion
 	}
+
 	pluginTrns.ObservedTransitionAndState(trns, v, b)
 
 	// Emit the queue latency if the task has just transitioned from Queued to Running.
@@ -427,7 +444,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 
 	if pluginTrns.pInfo.Phase() == ts.PluginPhase {
 		if pluginTrns.pInfo.Version() == ts.PluginPhaseVersion {
-			logger.Debugf(ctx, "p+Version previously seen .. no event will be sent")
+			logger.Warnf(ctx, "p+Version previously seen .. no event will be sent")
 			pluginTrns.TransitionPreviouslyRecorded()
 			return pluginTrns, nil
 		}
@@ -510,6 +527,90 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 					CacheStatus: cacheStatus.GetCacheStatus(),
 					CatalogKey:  cacheStatus.GetMetadata(),
 				})
+		}
+	}
+
+	return pluginTrns, nil
+}
+
+func (t Handler) invokeResourcePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *taskExecutionContext, crs handler.ClusterResourceState) (*pluginRequestedTransition, error) {
+	pluginTrns := &pluginRequestedTransition{}
+
+	trns, err := func() (trns pluginCore.Transition, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.metrics.pluginPanics.Inc(ctx)
+				stack := debug.Stack()
+				logger.Errorf(ctx, "Panic in plugin[%s]", p.GetID())
+				err = fmt.Errorf("panic when executing a plugin [%s]. Stack: [%s]", p.GetID(), string(stack))
+				trns = pluginCore.UnknownTransition
+			}
+		}()
+		childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
+		trns, err = p.Handle(childCtx, tCtx)
+		return
+	}()
+	if err != nil {
+		logger.Warnf(ctx, "Runtime error from plugin [%s]. Error: %s", p.GetID(), err.Error())
+		return nil, regErrors.Wrapf(err, "failed to execute handle for plugin [%s]", p.GetID())
+	}
+
+	err = validateTransition(trns)
+	if err != nil {
+		logger.Errorf(ctx, "Invalid transition from plugin [%s]. Error: %s", p.GetID(), err.Error())
+		return nil, regErrors.Wrapf(err, "Invalid transition for plugin [%s]", p.GetID())
+	}
+
+	var b []byte
+	var v uint32
+	if tCtx.rpsm.newState != nil {
+		b = tCtx.rpsm.newState.Bytes()
+		v = uint32(tCtx.rpsm.newStateVersion)
+	} else {
+		// New state was not mutated, so we should write back the existing state
+		b = crs.PluginState
+		v = crs.PluginPhaseVersion
+	}
+
+	pluginTrns.ObservedTransitionAndState(trns, v, b)
+
+	// Emit the queue latency if the task has just transitioned from Queued to Running.
+	if crs.PluginPhase == pluginCore.PhaseQueued &&
+		(pluginTrns.pInfo.Phase() == pluginCore.PhaseInitializing || pluginTrns.pInfo.Phase() == pluginCore.PhaseClusterRunning) {
+		if !crs.LastPhaseUpdatedAt.IsZero() {
+			t.metrics.pluginQueueLatency.Observe(ctx, crs.LastPhaseUpdatedAt, time.Now())
+		}
+	}
+
+	if pluginTrns.pInfo.Phase() == crs.PluginPhase {
+		if pluginTrns.pInfo.Version() == crs.PluginPhaseVersion {
+			logger.Debugf(ctx, "p+Version previously seen .. no event will be sent")
+			pluginTrns.TransitionPreviouslyRecorded()
+			return pluginTrns, nil
+		}
+		if pluginTrns.pInfo.Version() > uint32(t.cfg.MaxPluginPhaseVersions) {
+			logger.Errorf(ctx, "Too many Plugin p versions for plugin [%s]. p versions [%d/%d]", p.GetID(), pluginTrns.pInfo.Version(), t.cfg.MaxPluginPhaseVersions)
+			pluginTrns.ObservedExecutionError(&io.ExecutionError{
+				ExecutionError: &core.ExecutionError{
+					Code: "TooManyPluginPhaseVersions",
+					Message: fmt.Sprintf("Total number of phase versions exceeded for phase [%s] in Plugin "+
+						"[%s]. Attempted to set version to [%v], max allowed [%d]",
+						pluginTrns.pInfo.Phase().String(), p.GetID(), pluginTrns.pInfo.Version(), t.cfg.MaxPluginPhaseVersions),
+				},
+				IsRecoverable: false,
+			})
+			return pluginTrns, nil
+		}
+	}
+
+	if !pluginTrns.IsPreviouslyObserved() {
+		taskType := fmt.Sprintf("%v", ctx.Value(contextutils.TaskTypeKey))
+		taskMetric, err := t.fetchPluginTaskMetrics(p.GetID(), taskType)
+		if err != nil {
+			return nil, err
+		}
+		if pluginTrns.pInfo.Phase() == pluginCore.PhasePermanentFailure || pluginTrns.pInfo.Phase() == pluginCore.PhaseRetryableFailure {
+			taskMetric.taskFailed.Inc(ctx)
 		}
 	}
 
@@ -617,6 +718,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	}
 
 	barrierTick := uint32(0)
+	clusterStated := false
 	// STEP 2: If no cache-hit and not transitioning to PhaseWaitingForCache, then lets invoke the plugin and wait for a transition out of undefined
 	if pluginTrns.execInfo.TaskNodeInfo == nil || (pluginTrns.pInfo.Phase() != pluginCore.PhaseWaitingForCache &&
 		pluginTrns.execInfo.TaskNodeInfo.TaskNodeMetadata.CacheStatus != core.CatalogCacheStatus_CACHE_HIT) {
@@ -625,43 +727,61 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		barrierTick = prevBarrier.BarrierClockTick
 		// Lets check if this value in cache is less than or equal to one in the store
 		if barrierTick <= ts.BarrierClockTick {
-			var err error
-
 			// Start a cluster if needed
 			logger.Warnf(ctx, "Start to create a cluster.")
-			// tmpl, err := nCtx.TaskReader().Read(ctx)
-			//for _, resource := range tmpl.Resources {
-			//	var resourcePlugin pluginCore.Plugin
-			//	logger.Warnf(ctx, "resource.GetRay(). [%v]", resource.GetRay())
-			//	if resource.GetRay() != nil {
-			//		resourcePlugin, err = t.ResolveClusterResourcePlugin(ctx, ttype, "ray")
-			//		if err != nil {
-			//			return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
-			//		}
-			//	} else {
-			//		logger.Warnf(ctx, "continue.")
-			//		continue
-			//	}
-			//	logger.Warnf(ctx, "Creating a cluster.")
-			//	pluginTrns, err = t.invokePlugin(ctx, resourcePlugin, tCtx, ts)
-			//	if err != nil {
-			//		return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
-			//	}
-			//	if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
-			//		logger.Warnf(ctx, "Successfully create a cluster.")
-			//	} else {
-			//		logger.Warnf(ctx, "pluginTrns.FinalTransition.")
-			//		return pluginTrns.FinalTransition(ctx)
-			//	}
-			//}
-
-			p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
-			pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
-			if err != nil {
-				return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
+			tmpl, err := nCtx.TaskReader().Read(ctx)
+			for _, resource := range tmpl.Resources {
+				var resourcePlugin pluginCore.Plugin
+				logger.Warnf(ctx, "resource.GetRay(). [%v]", resource.GetRay())
+				if resource.GetRay() != nil {
+					resourcePlugin, err = t.ResolveClusterResourcePlugin(ctx, ttype, "ray")
+					if err != nil {
+						return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
+					}
+				} else {
+					logger.Warnf(ctx, "continue.")
+					continue
+				}
+				logger.Warnf(ctx, "start to create a cluster [%v].", resourcePlugin)
+				clusterPluginTrns, err := t.invokeResourcePlugin(ctx, resourcePlugin, tCtx, nCtx.NodeStateReader().GetClusterResourceState())
+				if err != nil {
+					return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
+				}
+				if clusterPluginTrns.pInfo.Phase() == pluginCore.PhaseClusterRunning {
+					clusterStated = true
+					logger.Warnf(ctx, "clusterStated")
+				} else {
+					logger.Warnf(ctx, "Creating cluster")
+					err = nCtx.NodeStateWriter().PutClusterResourceState(handler.ClusterResourceState{
+						PluginState:        clusterPluginTrns.pluginState,
+						PluginStateVersion: clusterPluginTrns.pluginStateVersion,
+						PluginPhase:        clusterPluginTrns.pInfo.Phase(),
+						PluginPhaseVersion: clusterPluginTrns.pInfo.Version(),
+						BarrierClockTick:   barrierTick,
+						LastPhaseUpdatedAt: time.Now(),
+					})
+					if err != nil {
+						logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())
+						return handler.UnknownTransition, err
+					}
+					return clusterPluginTrns.FinalTransition(ctx)
+				}
 			}
+
+			if clusterStated == true {
+				p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
+				// tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p)
+				if err != nil {
+					return handler.UnknownTransition, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
+				}
+				pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
+				if err != nil {
+					return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
+				}
+			}
+
 			if pluginTrns.IsPreviouslyObserved() {
-				logger.Debugf(ctx, "No state change for Task, previously observed same transition. Short circuiting.")
+				logger.Warnf(ctx, "No state change for Task, previously observed same transition. Short circuiting.")
 				return pluginTrns.FinalTransition(ctx)
 			}
 			// Now no matter what we should update the barrierTick (stored in state)
@@ -748,6 +868,8 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	} else {
 		logger.Debugf(ctx, "Received no event to record.")
 	}
+
+	logger.Warnf(ctx, "Persist the plugin state.")
 
 	// STEP 6: Persist the plugin state
 	err = nCtx.NodeStateWriter().PutTaskNodeState(handler.TaskNodeState{
@@ -871,6 +993,11 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 	}()
 }
 
+func (t Handler) StartResourcePlugin(ctx context.Context, nCtx handler.NodeExecutionContext) (*pluginRequestedTransition, error) {
+	logger.Warnf(ctx, "StartResourcePlugin")
+	return nil, nil
+}
+
 func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, eventConfig *controllerConfig.EventConfig, clusterID string, scope promutils.Scope) (*Handler, error) {
 	// TODO New should take a pointer
 	async, err := catalog.NewAsyncClient(client, *catalog.GetConfig(), scope.NewSubScope("async_catalog"))
@@ -884,10 +1011,11 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 
 	cfg := config.GetConfig()
 	return &Handler{
-		pluginRegistry: pluginMachinery.PluginRegistry(),
-		defaultPlugins: make(map[pluginCore.TaskType]pluginCore.Plugin),
-		pluginsForType: make(map[pluginCore.TaskType]map[pluginID]pluginCore.Plugin),
-		taskMetricsMap: make(map[MetricKey]*taskMetrics),
+		pluginRegistry:  pluginMachinery.PluginRegistry(),
+		defaultPlugins:  make(map[pluginCore.TaskType]pluginCore.Plugin),
+		resourcePlugins: make(map[pluginCore.TaskType]pluginCore.Plugin),
+		pluginsForType:  make(map[pluginCore.TaskType]map[pluginID]pluginCore.Plugin),
+		taskMetricsMap:  make(map[MetricKey]*taskMetrics),
 		metrics: &metrics{
 			pluginPanics:                   labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),
 			unsupportedTaskType:            labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),

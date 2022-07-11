@@ -281,6 +281,7 @@ type MutableNodeStatus interface {
 
 	ClearWorkflowStatus()
 	GetOrCreateTaskStatus() MutableTaskNodeStatus
+	GetOrCreateClusterResourceStatus() MutableClusterResourceStatus
 	GetTaskStatus() MutableTaskNodeStatus
 	ClearTaskStatus()
 	GetOrCreateDynamicNodeStatus() MutableDynamicNodeStatus
@@ -315,6 +316,7 @@ type ExecutableNodeStatus interface {
 	GetSystemFailures() uint32
 	GetWorkflowNodeStatus() ExecutableWorkflowNodeStatus
 	GetTaskNodeStatus() ExecutableTaskNodeStatus
+	GetClusterResourceStatus() ExecutableClusterResourceStatus
 
 	IsCached() bool
 }
@@ -339,6 +341,26 @@ type ExecutableTaskNodeStatus interface {
 }
 
 type MutableTaskNodeStatus interface {
+	Mutable
+	ExecutableTaskNodeStatus
+	SetPhase(phase int)
+	SetLastPhaseUpdatedAt(updatedAt time.Time)
+	SetPhaseVersion(version uint32)
+	SetPluginState([]byte)
+	SetPluginStateVersion(uint32)
+	SetBarrierClockTick(tick uint32)
+}
+
+type ExecutableClusterResourceStatus interface {
+	GetPhase() int
+	GetPhaseVersion() uint32
+	GetPluginState() []byte
+	GetPluginStateVersion() uint32
+	GetBarrierClockTick() uint32
+	GetLastPhaseUpdatedAt() time.Time
+}
+
+type MutableClusterResourceStatus interface {
 	Mutable
 	ExecutableTaskNodeStatus
 	SetPhase(phase int)

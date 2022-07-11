@@ -55,7 +55,7 @@ func (p pluginStateManager) GetStateVersion() uint8 {
 }
 
 func (p pluginStateManager) Get(v interface{}) (stateVersion uint8, err error) {
-	if p.prevState == nil {
+	if p.prevState == nil || p.prevState.Len() == 0 {
 		return p.prevStateVersion, nil
 	}
 	if v == nil {

@@ -14,14 +14,14 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/k8s"
 )
 
-func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPluginConfig, pr PluginRegistryIface) (enabledPlugins []core.PluginEntry, defaultForTaskTypes map[pluginID][]taskType, err error) {
+func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPluginConfig, pr PluginRegistryIface) (enabledPlugins []core.PluginEntry, enabledResourcePlugins []core.PluginEntry, defaultForTaskTypes map[pluginID][]taskType, err error) {
 	if cfg == nil {
-		return nil, nil, fmt.Errorf("unable to initialize plugin list, cfg is a required argument")
+		return nil, nil, nil, fmt.Errorf("unable to initialize plugin list, cfg is a required argument")
 	}
 
 	pluginsConfigMeta, err := cfg.GetEnabledPlugins()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	allPluginsEnabled := false
@@ -66,5 +66,25 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 			enabledPlugins = append(enabledPlugins, plugin)
 		}
 	}
-	return enabledPlugins, pluginsConfigMeta.AllDefaultForTaskTypes, nil
+
+	for i := range pr.GetClusterResourcePlugins() {
+		kpe := pr.GetClusterResourcePlugins()[i]
+		id := strings.ToLower(kpe.ID)
+		if !allPluginsEnabled && !pluginsConfigMeta.EnabledPlugins.Has(id) {
+			logger.Warnf(ctx, "K8s Plugin [%s] is DISABLED (not found in enabled plugins list).", id)
+		} else {
+			logger.Warnf(ctx, "K8s Plugin [%s] is ENABLED.", id)
+			plugin := core.PluginEntry{
+				ID:                  id,
+				RegisteredTaskTypes: kpe.RegisteredTaskTypes,
+				LoadPlugin: func(ctx context.Context, iCtx core.SetupContext) (plugin core.Plugin, e error) {
+					return k8s.NewResourcePluginManagerWithBackOff(ctx, iCtx, kpe, backOffController, monitorIndex)
+				},
+				IsDefault: kpe.IsDefault,
+			}
+			enabledResourcePlugins = append(enabledResourcePlugins, plugin)
+		}
+	}
+
+	return enabledPlugins, enabledResourcePlugins, pluginsConfigMeta.AllDefaultForTaskTypes, nil
 }

@@ -111,6 +111,40 @@ func (_m *ExecutableNodeStatus) GetBranchStatus() v1alpha1.MutableBranchNodeStat
 	return r0
 }
 
+type ExecutableNodeStatus_GetClusterResourceStatus struct {
+	*mock.Call
+}
+
+func (_m ExecutableNodeStatus_GetClusterResourceStatus) Return(_a0 v1alpha1.ExecutableClusterResourceStatus) *ExecutableNodeStatus_GetClusterResourceStatus {
+	return &ExecutableNodeStatus_GetClusterResourceStatus{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableNodeStatus) OnGetClusterResourceStatus() *ExecutableNodeStatus_GetClusterResourceStatus {
+	c_call := _m.On("GetClusterResourceStatus")
+	return &ExecutableNodeStatus_GetClusterResourceStatus{Call: c_call}
+}
+
+func (_m *ExecutableNodeStatus) OnGetClusterResourceStatusMatch(matchers ...interface{}) *ExecutableNodeStatus_GetClusterResourceStatus {
+	c_call := _m.On("GetClusterResourceStatus", matchers...)
+	return &ExecutableNodeStatus_GetClusterResourceStatus{Call: c_call}
+}
+
+// GetClusterResourceStatus provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) GetClusterResourceStatus() v1alpha1.ExecutableClusterResourceStatus {
+	ret := _m.Called()
+
+	var r0 v1alpha1.ExecutableClusterResourceStatus
+	if rf, ok := ret.Get(0).(func() v1alpha1.ExecutableClusterResourceStatus); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha1.ExecutableClusterResourceStatus)
+		}
+	}
+
+	return r0
+}
+
 type ExecutableNodeStatus_GetDataDir struct {
 	*mock.Call
 }
@@ -373,6 +407,40 @@ func (_m *ExecutableNodeStatus) GetOrCreateBranchStatus() v1alpha1.MutableBranch
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(v1alpha1.MutableBranchNodeStatus)
+		}
+	}
+
+	return r0
+}
+
+type ExecutableNodeStatus_GetOrCreateClusterResourceStatus struct {
+	*mock.Call
+}
+
+func (_m ExecutableNodeStatus_GetOrCreateClusterResourceStatus) Return(_a0 v1alpha1.MutableClusterResourceStatus) *ExecutableNodeStatus_GetOrCreateClusterResourceStatus {
+	return &ExecutableNodeStatus_GetOrCreateClusterResourceStatus{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableNodeStatus) OnGetOrCreateClusterResourceStatus() *ExecutableNodeStatus_GetOrCreateClusterResourceStatus {
+	c_call := _m.On("GetOrCreateClusterResourceStatus")
+	return &ExecutableNodeStatus_GetOrCreateClusterResourceStatus{Call: c_call}
+}
+
+func (_m *ExecutableNodeStatus) OnGetOrCreateClusterResourceStatusMatch(matchers ...interface{}) *ExecutableNodeStatus_GetOrCreateClusterResourceStatus {
+	c_call := _m.On("GetOrCreateClusterResourceStatus", matchers...)
+	return &ExecutableNodeStatus_GetOrCreateClusterResourceStatus{Call: c_call}
+}
+
+// GetOrCreateClusterResourceStatus provides a mock function with given fields:
+func (_m *ExecutableNodeStatus) GetOrCreateClusterResourceStatus() v1alpha1.MutableClusterResourceStatus {
+	ret := _m.Called()
+
+	var r0 v1alpha1.MutableClusterResourceStatus
+	if rf, ok := ret.Get(0).(func() v1alpha1.MutableClusterResourceStatus); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha1.MutableClusterResourceStatus)
 		}
 	}
 

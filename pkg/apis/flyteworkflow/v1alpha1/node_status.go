@@ -209,8 +209,9 @@ type NodeStatus struct {
 	// TODO not used delete
 	WorkflowNodeStatus *WorkflowNodeStatus `json:"workflowNodeStatus,omitempty"`
 
-	TaskNodeStatus    *TaskNodeStatus    `json:",omitempty"`
-	DynamicNodeStatus *DynamicNodeStatus `json:"dynamicNodeStatus,omitempty"`
+	TaskNodeStatus        *TaskNodeStatus        `json:",omitempty"`
+	ClusterResourceStatus *ClusterResourceStatus `json:",omitempty"`
+	DynamicNodeStatus     *DynamicNodeStatus     `json:"dynamicNodeStatus,omitempty"`
 	// In case of Failing/Failed Phase, an execution error can be optionally associated with the Node
 	Error *ExecutionError `json:"error,omitempty"`
 
@@ -412,6 +413,17 @@ func (in *NodeStatus) GetOrCreateTaskStatus() MutableTaskNodeStatus {
 	return in.TaskNodeStatus
 }
 
+func (in *NodeStatus) GetOrCreateClusterResourceStatus() MutableClusterResourceStatus {
+	if in.ClusterResourceStatus == nil {
+		in.SetDirty()
+		in.ClusterResourceStatus = &ClusterResourceStatus{
+			MutableStruct: MutableStruct{},
+		}
+	}
+
+	return in.ClusterResourceStatus
+}
+
 func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason string, err *core.ExecutionError) {
 	if in.Phase == p {
 		// We will not update the phase multiple times. This prevents the comparison from returning false positive
@@ -534,6 +546,15 @@ func (in NodeStatus) GetTaskNodeStatus() ExecutableTaskNodeStatus {
 	}
 
 	return in.TaskNodeStatus
+}
+
+func (in NodeStatus) GetClusterResourceStatus() ExecutableClusterResourceStatus {
+	// Explicitly return nil here to avoid a misleading non-nil interface.
+	if in.ClusterResourceStatus == nil {
+		return nil
+	}
+
+	return in.ClusterResourceStatus
 }
 
 func (in *NodeStatus) setEphemeralNodeExecutionStatusAttributes(ctx context.Context, id NodeID, n *NodeStatus) error {
@@ -808,6 +829,114 @@ func (in *TaskNodeStatus) DeepCopy() *TaskNodeStatus {
 }
 
 func (in *TaskNodeStatus) Equals(other *TaskNodeStatus) bool {
+	if in == nil && other == nil {
+		return true
+	}
+	if in == nil || other == nil {
+		return false
+	}
+	return in.Phase == other.Phase && in.PhaseVersion == other.PhaseVersion && in.PluginStateVersion == other.PluginStateVersion && bytes.Equal(in.PluginState, other.PluginState) && in.BarrierClockTick == other.BarrierClockTick
+}
+
+type ClusterResourceStatus struct {
+	MutableStruct
+	Phase              int       `json:"phase,omitempty"`
+	PhaseVersion       uint32    `json:"phaseVersion,omitempty"`
+	PluginState        []byte    `json:"pState,omitempty"`
+	PluginStateVersion uint32    `json:"psv,omitempty"`
+	BarrierClockTick   uint32    `json:"tick,omitempty"`
+	LastPhaseUpdatedAt time.Time `json:"updAt,omitempty"`
+}
+
+func (in *ClusterResourceStatus) GetBarrierClockTick() uint32 {
+	return in.BarrierClockTick
+}
+
+func (in *ClusterResourceStatus) SetBarrierClockTick(tick uint32) {
+	in.BarrierClockTick = tick
+	in.SetDirty()
+}
+
+func (in *ClusterResourceStatus) SetPluginState(s []byte) {
+	in.PluginState = s
+	in.SetDirty()
+}
+
+func (in *ClusterResourceStatus) SetLastPhaseUpdatedAt(updatedAt time.Time) {
+	in.LastPhaseUpdatedAt = updatedAt
+}
+
+func (in *ClusterResourceStatus) SetPluginStateVersion(v uint32) {
+	in.PluginStateVersion = v
+	in.SetDirty()
+}
+
+func (in *ClusterResourceStatus) GetPluginState() []byte {
+	return in.PluginState
+}
+
+func (in *ClusterResourceStatus) GetPluginStateVersion() uint32 {
+	return in.PluginStateVersion
+}
+
+func (in *ClusterResourceStatus) SetPhase(phase int) {
+	in.Phase = phase
+	in.SetDirty()
+}
+
+func (in *ClusterResourceStatus) SetPhaseVersion(version uint32) {
+	in.PhaseVersion = version
+	in.SetDirty()
+}
+
+func (in ClusterResourceStatus) GetPhase() int {
+	return in.Phase
+}
+
+func (in ClusterResourceStatus) GetLastPhaseUpdatedAt() time.Time {
+	return in.LastPhaseUpdatedAt
+}
+
+func (in ClusterResourceStatus) GetPhaseVersion() uint32 {
+	return in.PhaseVersion
+}
+
+func (in *ClusterResourceStatus) UpdatePhase(phase int, phaseVersion uint32) {
+	if in.Phase != phase || in.PhaseVersion != phaseVersion {
+		in.SetDirty()
+	}
+
+	in.Phase = phase
+	in.PhaseVersion = phaseVersion
+}
+
+func (in *ClusterResourceStatus) DeepCopyInto(out *ClusterResourceStatus) {
+	if in == nil {
+		return
+	}
+
+	raw, err := json.Marshal(in)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(raw, out)
+	if err != nil {
+		return
+	}
+}
+
+func (in *ClusterResourceStatus) DeepCopy() *ClusterResourceStatus {
+	if in == nil {
+		return nil
+	}
+
+	out := &ClusterResourceStatus{}
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *ClusterResourceStatus) Equals(other *ClusterResourceStatus) bool {
 	if in == nil && other == nil {
 		return true
 	}

@@ -3,18 +3,12 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/cache"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/backoff"
 	v1 "k8s.io/api/core/v1"
@@ -28,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -48,53 +41,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
 
-const finalizer = "flyte/flytek8s"
-
-type PluginPhase uint8
-
-type PluginState struct {
-	Phase PluginPhase
-}
-
-const PluginStateVersion = 1
-
-const (
-	PluginPhaseNotStarted PluginPhase = iota
-	PluginPhaseAllocationTokenAcquired
-	PluginPhaseStarted
-	SecondPluginPhaseNotStarted
-	SecondPluginPhaseStarted
-)
-
-type PluginMetrics struct {
-	Scope           promutils.Scope
-	GetCacheMiss    labeled.StopWatch
-	GetCacheHit     labeled.StopWatch
-	GetAPILatency   labeled.StopWatch
-	ResourceDeleted labeled.Counter
-}
-
-func newPluginMetrics(s promutils.Scope) PluginMetrics {
-	return PluginMetrics{
-		Scope: s,
-		GetCacheMiss: labeled.NewStopWatch("get_cache_miss", "Cache miss on get resource calls.",
-			time.Millisecond, s),
-		GetCacheHit: labeled.NewStopWatch("get_cache_hit", "Cache miss on get resource calls.",
-			time.Millisecond, s),
-		GetAPILatency: labeled.NewStopWatch("get_api", "Latency for APIServer Get calls.",
-			time.Millisecond, s),
-		ResourceDeleted: labeled.NewCounter("pods_deleted", "Counts how many times CheckTaskStatus is"+
-			" called with a deleted resource.", s),
-	}
-}
-
-func IsK8sObjectNotExists(err error) bool {
-	return k8serrors.IsNotFound(err) || k8serrors.IsGone(err) || k8serrors.IsResourceExpired(err)
-}
-
 // A generic Plugin for managing k8s-resources. Plugin writers wishing to use K8s resource can use the simplified api specified in
 // pluginmachinery.core
-type PluginManager struct {
+type ResourcePluginManager struct {
 	id              string
 	plugin          k8s.Plugin
 	resourceToWatch runtime.Object
@@ -105,7 +54,7 @@ type PluginManager struct {
 	resourceLevelMonitor *ResourceLevelMonitor
 }
 
-func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o client.Object, cfg *config.K8sPluginConfig) {
+func (e *ResourcePluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o client.Object, cfg *config.K8sPluginConfig) {
 	o.SetNamespace(taskCtx.GetNamespace())
 	o.SetAnnotations(utils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
 	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
@@ -125,18 +74,18 @@ func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetad
 	}
 }
 
-func (e *PluginManager) GetProperties() pluginsCore.PluginProperties {
+func (e *ResourcePluginManager) GetProperties() pluginsCore.PluginProperties {
 	props := e.plugin.GetProperties()
 	return pluginsCore.PluginProperties{
 		GeneratedNameMaxLength: props.GeneratedNameMaxLength,
 	}
 }
 
-func (e *PluginManager) GetID() string {
+func (e *ResourcePluginManager) GetID() string {
 	return e.id
 }
 
-func (e *PluginManager) getPodEffectiveResourceLimits(ctx context.Context, pod *v1.Pod) v1.ResourceList {
+func (e *ResourcePluginManager) getPodEffectiveResourceLimits(ctx context.Context, pod *v1.Pod) v1.ResourceList {
 	podRequestedResources := make(v1.ResourceList)
 	initContainersRequestedResources := make(v1.ResourceList)
 	containersRequestedResources := make(v1.ResourceList)
@@ -188,7 +137,7 @@ func (e *PluginManager) getPodEffectiveResourceLimits(ctx context.Context, pod *
 	return podRequestedResources
 }
 
-func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (pluginsCore.Transition, error) {
+func (e *ResourcePluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (pluginsCore.Transition, error) {
 
 	tmpl, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
@@ -251,7 +200,7 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 	return pluginsCore.DoTransition(pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "task submitted to K8s")), nil
 }
 
-func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (pluginsCore.Transition, error) {
+func (e *ResourcePluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (pluginsCore.Transition, error) {
 
 	o, err := e.plugin.BuildIdentityResource(ctx, tCtx.TaskExecutionMetadata())
 	if err != nil {
@@ -315,36 +264,31 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 	return pluginsCore.DoTransition(p), nil
 }
 
-func (e PluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (pluginsCore.Transition, error) {
+func (e ResourcePluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (pluginsCore.Transition, error) {
 	ps := PluginState{}
-	if v, err := tCtx.PluginStateReader().Get(&ps); err != nil {
+	if v, err := tCtx.ResourcePluginStateReader().Get(&ps); err != nil {
+		logger.Warnf(ctx, "tCtx.PluginStateReader().Get(&ps) [%v] [%v]", v, err)
 		if v != PluginStateVersion {
 			return pluginsCore.DoTransition(pluginsCore.PhaseInfoRetryableFailure(errors.CorruptedPluginState, fmt.Sprintf("plugin state version mismatch expected [%d] got [%d]", PluginStateVersion, v), nil)), nil
 		}
 		return pluginsCore.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
-	logger.Warnf(ctx, "PluginManager PluginState [%v]", ps.Phase)
+	logger.Warnf(ctx, "ResourcePluginManager PluginState [%v]", ps.Phase)
 	if ps.Phase == PluginPhaseNotStarted {
 		t, err := e.LaunchResource(ctx, tCtx)
 		if err == nil && t.Info().Phase() == pluginsCore.PhaseQueued {
-			if err := tCtx.PluginStateWriter().Put(PluginStateVersion, &PluginState{Phase: PluginPhaseStarted}); err != nil {
+			if err := tCtx.ResourcePluginStateWriter().Put(PluginStateVersion, &PluginState{Phase: PluginPhaseStarted}); err != nil {
 				logger.Warnf(ctx, "pluginsCore.UnknownTransition [%v]", t.Info().Phase())
 				return pluginsCore.UnknownTransition, err
 			}
-			logger.Warnf(ctx, "tCtx.psm.newState.Bytes() [%s].", ps.Phase)
 		}
-		// tCtx.PluginStateReader().Get(&ps)
-		logger.Warnf(ctx, "kevin test2 PluginState [%v]", t.Info().Phase())
-		logger.Warnf(ctx, "kevin test2 Get(&ps) [%v]", ps.Phase)
-		logger.Warnf(ctx, "kevin test2 t [%v] error [%v]", t, err == nil)
 		return t, err
 	}
 	logger.Warnf(ctx, "kevin 123456 CheckResourcePhase [%v]", ps.Phase)
-
 	return e.CheckResourcePhase(ctx, tCtx)
 }
 
-func (e PluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) error {
+func (e ResourcePluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) error {
 	logger.Infof(ctx, "KillTask invoked. We will attempt to delete object [%v].",
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
 
@@ -398,7 +342,7 @@ func (e PluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecution
 	return nil
 }
 
-func (e *PluginManager) ClearFinalizers(ctx context.Context, o client.Object) error {
+func (e *ResourcePluginManager) ClearFinalizers(ctx context.Context, o client.Object) error {
 	if len(o.GetFinalizers()) > 0 {
 		o.SetFinalizers([]string{})
 		err := e.kubeClient.GetClient().Update(ctx, o)
@@ -414,7 +358,7 @@ func (e *PluginManager) ClearFinalizers(ctx context.Context, o client.Object) er
 	return nil
 }
 
-func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (err error) {
+func (e *ResourcePluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (err error) {
 	errs := stdErrors.ErrorCollection{}
 	var o client.Object
 	var nsName k8stypes.NamespacedName
@@ -469,10 +413,10 @@ func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecu
 	return errs.ErrorOrDefault()
 }
 
-func NewPluginManagerWithBackOff(ctx context.Context, iCtx pluginsCore.SetupContext, entry k8s.PluginEntry, backOffController *backoff.Controller,
-	monitorIndex *ResourceMonitorIndex) (*PluginManager, error) {
+func NewResourcePluginManagerWithBackOff(ctx context.Context, iCtx pluginsCore.SetupContext, entry k8s.PluginEntry, backOffController *backoff.Controller,
+	monitorIndex *ResourceMonitorIndex) (*ResourcePluginManager, error) {
 
-	mgr, err := NewPluginManager(ctx, iCtx, entry, monitorIndex)
+	mgr, err := NewResourcePluginManager(ctx, iCtx, entry, monitorIndex)
 	if err == nil {
 		mgr.backOffController = backOffController
 	}
@@ -480,8 +424,8 @@ func NewPluginManagerWithBackOff(ctx context.Context, iCtx pluginsCore.SetupCont
 }
 
 // Creates a K8s generic task executor. This provides an easier way to build task executors that create K8s resources.
-func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry k8s.PluginEntry,
-	monitorIndex *ResourceMonitorIndex) (*PluginManager, error) {
+func NewResourcePluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry k8s.PluginEntry,
+	monitorIndex *ResourceMonitorIndex) (*ResourcePluginManager, error) {
 
 	if iCtx.EnqueueOwner() == nil {
 		return nil, errors.Errorf(errors.PluginInitializationFailed, "Failed to initialize plugin, enqueue Owner cannot be nil or empty.")
@@ -602,7 +546,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	// Start the poller and gauge emitter
 	rm.RunCollectorOnce(ctx)
 
-	return &PluginManager{
+	return &ResourcePluginManager{
 		id:                   entry.ID,
 		plugin:               entry.Plugin,
 		resourceToWatch:      entry.ResourceToWatch,
@@ -610,26 +554,4 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		kubeClient:           kubeClient,
 		resourceLevelMonitor: rm,
 	}, nil
-}
-
-func getPluginGvk(resourceToWatch runtime.Object) (schema.GroupVersionKind, error) {
-	kinds, _, err := scheme.Scheme.ObjectKinds(resourceToWatch)
-	if err != nil && len(kinds) == 0 {
-		return schema.GroupVersionKind{}, errors.Errorf(errors.PluginInitializationFailed, "No kind in schema for %v", resourceToWatch)
-	}
-	return kinds[0], nil
-}
-
-func getPluginSharedInformer(ctx context.Context, iCtx pluginsCore.SetupContext, resourceToWatch client.Object) (cache.SharedIndexInformer, error) {
-	i, err := iCtx.KubeClient().GetCache().GetInformer(ctx, resourceToWatch)
-	if err != nil {
-		return nil, errors.Wrapf(errors.PluginInitializationFailed, err, "Error getting informer for %s", reflect.TypeOf(i))
-	}
-
-	si, casted := i.(cache.SharedIndexInformer)
-	if !casted {
-		return nil, errors.Errorf(errors.PluginInitializationFailed, "wrong type. Actual: %v", reflect.TypeOf(i))
-	}
-
-	return si, nil
 }

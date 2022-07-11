@@ -44,6 +44,38 @@ func (_m *NodeStateReader) GetBranchNode() handler.BranchNodeState {
 	return r0
 }
 
+type NodeStateReader_GetClusterResourceState struct {
+	*mock.Call
+}
+
+func (_m NodeStateReader_GetClusterResourceState) Return(_a0 handler.ClusterResourceState) *NodeStateReader_GetClusterResourceState {
+	return &NodeStateReader_GetClusterResourceState{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *NodeStateReader) OnGetClusterResourceState() *NodeStateReader_GetClusterResourceState {
+	c_call := _m.On("GetClusterResourceState")
+	return &NodeStateReader_GetClusterResourceState{Call: c_call}
+}
+
+func (_m *NodeStateReader) OnGetClusterResourceStateMatch(matchers ...interface{}) *NodeStateReader_GetClusterResourceState {
+	c_call := _m.On("GetClusterResourceState", matchers...)
+	return &NodeStateReader_GetClusterResourceState{Call: c_call}
+}
+
+// GetClusterResourceState provides a mock function with given fields:
+func (_m *NodeStateReader) GetClusterResourceState() handler.ClusterResourceState {
+	ret := _m.Called()
+
+	var r0 handler.ClusterResourceState
+	if rf, ok := ret.Get(0).(func() handler.ClusterResourceState); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(handler.ClusterResourceState)
+	}
+
+	return r0
+}
+
 type NodeStateReader_GetDynamicNodeState struct {
 	*mock.Call
 }

@@ -20,6 +20,14 @@ type TaskNodeState struct {
 	BarrierClockTick   uint32
 	LastPhaseUpdatedAt time.Time
 }
+type ClusterResourceState struct {
+	PluginPhase        pluginCore.Phase
+	PluginPhaseVersion uint32
+	PluginState        []byte
+	PluginStateVersion uint32
+	BarrierClockTick   uint32
+	LastPhaseUpdatedAt time.Time
+}
 
 type BranchNodeState struct {
 	FinalizedNodeID *v1alpha1.NodeID
@@ -41,6 +49,7 @@ type WorkflowNodeState struct {
 
 type NodeStateWriter interface {
 	PutTaskNodeState(s TaskNodeState) error
+	PutClusterResourceState(s ClusterResourceState) error
 	PutBranchNode(s BranchNodeState) error
 	PutDynamicNodeState(s DynamicNodeState) error
 	PutWorkflowNodeState(s WorkflowNodeState) error
@@ -48,6 +57,7 @@ type NodeStateWriter interface {
 
 type NodeStateReader interface {
 	GetTaskNodeState() TaskNodeState
+	GetClusterResourceState() ClusterResourceState
 	GetBranchNode() BranchNodeState
 	GetDynamicNodeState() DynamicNodeState
 	GetWorkflowNodeState() WorkflowNodeState

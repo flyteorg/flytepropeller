@@ -12,6 +12,7 @@ import (
 type nodeStateManager struct {
 	nodeStatus v1alpha1.ExecutableNodeStatus
 	t          *handler.TaskNodeState
+	c          *handler.ClusterResourceState
 	b          *handler.BranchNodeState
 	d          *handler.DynamicNodeState
 	w          *handler.WorkflowNodeState
@@ -19,6 +20,11 @@ type nodeStateManager struct {
 
 func (n *nodeStateManager) PutTaskNodeState(s handler.TaskNodeState) error {
 	n.t = &s
+	return nil
+}
+
+func (n *nodeStateManager) PutClusterResourceState(s handler.ClusterResourceState) error {
+	n.c = &s
 	return nil
 }
 
@@ -50,6 +56,21 @@ func (n nodeStateManager) GetTaskNodeState() handler.TaskNodeState {
 		}
 	}
 	return handler.TaskNodeState{}
+}
+
+func (n nodeStateManager) GetClusterResourceState() handler.ClusterResourceState {
+	tn := n.nodeStatus.GetClusterResourceStatus()
+	if tn != nil {
+		return handler.ClusterResourceState{
+			PluginPhase:        pluginCore.Phase(tn.GetPhase()),
+			PluginPhaseVersion: tn.GetPhaseVersion(),
+			PluginStateVersion: tn.GetPluginStateVersion(),
+			PluginState:        tn.GetPluginState(),
+			BarrierClockTick:   tn.GetBarrierClockTick(),
+			LastPhaseUpdatedAt: tn.GetLastPhaseUpdatedAt(),
+		}
+	}
+	return handler.ClusterResourceState{}
 }
 
 func (n nodeStateManager) GetBranchNode() handler.BranchNodeState {

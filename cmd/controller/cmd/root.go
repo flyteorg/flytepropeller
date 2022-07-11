@@ -25,8 +25,6 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"k8s.io/klog"
-
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -66,7 +64,7 @@ func Execute() {
 
 func init() {
 	// allows `$ flytepropeller --logtostderr` to work
-	klog.InitFlags(flag.CommandLine)
+	// klog.InitFlags(flag.CommandLine)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	err := flag.CommandLine.Parse([]string{})
 	if err != nil {

@@ -83,14 +83,15 @@ func (t taskExecutionMetadata) GetPlatformResources() *v1.ResourceRequirements {
 
 type taskExecutionContext struct {
 	handler.NodeExecutionContext
-	tm  taskExecutionMetadata
-	rm  resourcemanager.TaskResourceManager
-	psm *pluginStateManager
-	tr  pluginCore.TaskReader
-	ow  *ioutils.BufferedOutputWriter
-	ber *bufferedEventRecorder
-	sm  pluginCore.SecretManager
-	c   pluginCatalog.AsyncClient
+	tm   taskExecutionMetadata
+	rm   resourcemanager.TaskResourceManager
+	psm  *pluginStateManager
+	rpsm *pluginStateManager
+	tr   pluginCore.TaskReader
+	ow   *ioutils.BufferedOutputWriter
+	ber  *bufferedEventRecorder
+	sm   pluginCore.SecretManager
+	c    pluginCatalog.AsyncClient
 }
 
 func (t *taskExecutionContext) TaskRefreshIndicator() pluginCore.SignalAsync {
@@ -121,6 +122,10 @@ func (t taskExecutionContext) PluginStateReader() pluginCore.PluginStateReader {
 	return t.psm
 }
 
+func (t taskExecutionContext) ResourcePluginStateReader() pluginCore.PluginStateReader {
+	return t.rpsm
+}
+
 func (t *taskExecutionContext) TaskReader() pluginCore.TaskReader {
 	return t.tr
 }
@@ -135,6 +140,10 @@ func (t *taskExecutionContext) OutputWriter() io.OutputWriter {
 
 func (t *taskExecutionContext) PluginStateWriter() pluginCore.PluginStateWriter {
 	return t.psm
+}
+
+func (t *taskExecutionContext) ResourcePluginStateWriter() pluginCore.PluginStateWriter {
+	return t.rpsm
 }
 
 func (t taskExecutionContext) SecretManager() pluginCore.SecretManager {
@@ -259,11 +268,21 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 
 	ow := ioutils.NewBufferedOutputWriter(ctx, ioutils.NewCheckpointRemoteFilePaths(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetOutputDir(), rawOutputPrefix, prevCheckpointPath))
 	ts := nCtx.NodeStateReader().GetTaskNodeState()
-	var b *bytes.Buffer
+	var tb *bytes.Buffer
 	if ts.PluginState != nil {
-		b = bytes.NewBuffer(ts.PluginState)
+		tb = bytes.NewBuffer(ts.PluginState)
 	}
-	psm, err := newPluginStateManager(ctx, GobCodecVersion, ts.PluginStateVersion, b)
+	psm, err := newPluginStateManager(ctx, GobCodecVersion, ts.PluginStateVersion, tb)
+	if err != nil {
+		return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to initialize plugin state manager")
+	}
+
+	crs := nCtx.NodeStateReader().GetClusterResourceState()
+	var cb *bytes.Buffer
+	if crs.PluginState != nil {
+		cb = bytes.NewBuffer(crs.PluginState)
+	}
+	rpsm, err := newPluginStateManager(ctx, GobCodecVersion, crs.PluginStateVersion, cb)
 	if err != nil {
 		return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to initialize plugin state manager")
 	}
@@ -290,11 +309,12 @@ func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.Node
 		},
 		rm: resourcemanager.GetTaskResourceManager(
 			t.resourceManager, resourceNamespacePrefix, id),
-		psm: psm,
-		tr:  ioutils.NewLazyUploadingTaskReader(nCtx.TaskReader(), taskTemplatePath, nCtx.DataStore()),
-		ow:  ow,
-		ber: newBufferedEventRecorder(),
-		c:   t.asyncCatalog,
-		sm:  t.secretManager,
+		psm:  psm,
+		rpsm: rpsm,
+		tr:   ioutils.NewLazyUploadingTaskReader(nCtx.TaskReader(), taskTemplatePath, nCtx.DataStore()),
+		ow:   ow,
+		ber:  newBufferedEventRecorder(),
+		c:    t.asyncCatalog,
+		sm:   t.secretManager,
 	}, nil
 }

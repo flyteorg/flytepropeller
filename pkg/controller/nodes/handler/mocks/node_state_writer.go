@@ -44,6 +44,38 @@ func (_m *NodeStateWriter) PutBranchNode(s handler.BranchNodeState) error {
 	return r0
 }
 
+type NodeStateWriter_PutClusterResourceState struct {
+	*mock.Call
+}
+
+func (_m NodeStateWriter_PutClusterResourceState) Return(_a0 error) *NodeStateWriter_PutClusterResourceState {
+	return &NodeStateWriter_PutClusterResourceState{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *NodeStateWriter) OnPutClusterResourceState(s handler.ClusterResourceState) *NodeStateWriter_PutClusterResourceState {
+	c_call := _m.On("PutClusterResourceState", s)
+	return &NodeStateWriter_PutClusterResourceState{Call: c_call}
+}
+
+func (_m *NodeStateWriter) OnPutClusterResourceStateMatch(matchers ...interface{}) *NodeStateWriter_PutClusterResourceState {
+	c_call := _m.On("PutClusterResourceState", matchers...)
+	return &NodeStateWriter_PutClusterResourceState{Call: c_call}
+}
+
+// PutClusterResourceState provides a mock function with given fields: s
+func (_m *NodeStateWriter) PutClusterResourceState(s handler.ClusterResourceState) error {
+	ret := _m.Called(s)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(handler.ClusterResourceState) error); ok {
+		r0 = rf(s)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 type NodeStateWriter_PutDynamicNodeState struct {
 	*mock.Call
 }
