@@ -3,7 +3,7 @@
 # 
 # TO OPT OUT OF UPDATES, SEE https://github.com/lyft/boilerplate/blob/master/Readme.rst
 
-FROM golang:1.18.0-alpine3.15 as builder
+FROM golang:1.18-alpine3.16 as builder
 RUN apk add git openssh-client make curl
 
 # COPY only the go mod files for efficient caching
