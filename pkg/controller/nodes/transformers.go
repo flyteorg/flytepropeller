@@ -230,12 +230,12 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 	// Update Cluster Status
 	if n.c != nil {
 		c := s.GetOrCreateClusterResourceStatus()
-		c.SetPhaseVersion(n.t.PluginPhaseVersion)
-		c.SetPhase(int(n.t.PluginPhase))
-		c.SetLastPhaseUpdatedAt(n.t.LastPhaseUpdatedAt)
-		c.SetPluginState(n.t.PluginState)
-		c.SetPluginStateVersion(n.t.PluginStateVersion)
-		c.SetBarrierClockTick(n.t.BarrierClockTick)
+		c.SetPhaseVersion(n.c.PluginPhaseVersion)
+		c.SetPhase(int(n.c.PluginPhase))
+		c.SetLastPhaseUpdatedAt(n.c.LastPhaseUpdatedAt)
+		c.SetPluginState(n.c.PluginState)
+		c.SetPluginStateVersion(n.c.PluginStateVersion)
+		c.SetBarrierClockTick(n.c.BarrierClockTick)
 	}
 
 	// Update dynamic node status

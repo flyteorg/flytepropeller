@@ -106,6 +106,7 @@ func (n nodeStateManager) GetWorkflowNodeState() handler.WorkflowNodeState {
 
 func (n *nodeStateManager) clearNodeStatus() {
 	n.t = nil
+	n.c = nil
 	n.b = nil
 	n.d = nil
 	n.w = nil
