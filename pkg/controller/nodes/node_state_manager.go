@@ -66,7 +66,6 @@ func (n nodeStateManager) GetClusterResourceState() handler.ClusterResourceState
 			PluginPhaseVersion: tn.GetPhaseVersion(),
 			PluginStateVersion: tn.GetPluginStateVersion(),
 			PluginState:        tn.GetPluginState(),
-			BarrierClockTick:   tn.GetBarrierClockTick(),
 			LastPhaseUpdatedAt: tn.GetLastPhaseUpdatedAt(),
 		}
 	}

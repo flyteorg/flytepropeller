@@ -4,8 +4,12 @@ package cmd
 import (
 	"context"
 	"flag"
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
+	"k8s.io/client-go/rest"
 	"os"
 	"runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller"
 	config2 "github.com/flyteorg/flytepropeller/pkg/controller/config"
@@ -122,7 +126,9 @@ func executeRootCmd(baseCtx context.Context, cfg *config2.Config) error {
 	options := manager.Options{
 		Namespace:  limitNamespace,
 		SyncPeriod: &cfg.DownstreamEval.Duration,
-		// ClientBuilder: executors.NewFallbackClientBuilder(propellerScope.NewSubScope("kube")),
+		NewClient: func(cache cache.Cache, config *rest.Config, options client.Options, uncachedObjects ...client.Object) (client.Client, error) {
+			return executors.NewFallbackClientBuilder(propellerScope.NewSubScope("kube")).Build(cache, config, options)
+		},
 	}
 
 	mgr, err := controller.CreateControllerManager(ctx, cfg, options)

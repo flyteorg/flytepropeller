@@ -844,17 +844,7 @@ type ClusterResourceStatus struct {
 	PhaseVersion       uint32    `json:"phaseVersion,omitempty"`
 	PluginState        []byte    `json:"pState,omitempty"`
 	PluginStateVersion uint32    `json:"psv,omitempty"`
-	BarrierClockTick   uint32    `json:"tick,omitempty"`
 	LastPhaseUpdatedAt time.Time `json:"updAt,omitempty"`
-}
-
-func (in *ClusterResourceStatus) GetBarrierClockTick() uint32 {
-	return in.BarrierClockTick
-}
-
-func (in *ClusterResourceStatus) SetBarrierClockTick(tick uint32) {
-	in.BarrierClockTick = tick
-	in.SetDirty()
 }
 
 func (in *ClusterResourceStatus) SetPluginState(s []byte) {
@@ -943,5 +933,5 @@ func (in *ClusterResourceStatus) Equals(other *ClusterResourceStatus) bool {
 	if in == nil || other == nil {
 		return false
 	}
-	return in.Phase == other.Phase && in.PhaseVersion == other.PhaseVersion && in.PluginStateVersion == other.PluginStateVersion && bytes.Equal(in.PluginState, other.PluginState) && in.BarrierClockTick == other.BarrierClockTick
+	return in.Phase == other.Phase && in.PhaseVersion == other.PhaseVersion && in.PluginStateVersion == other.PluginStateVersion && bytes.Equal(in.PluginState, other.PluginState)
 }

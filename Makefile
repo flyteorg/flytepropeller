@@ -11,23 +11,25 @@ update_boilerplate:
 
 .PHONY: linux_compile
 linux_compile:
+	# Starting with v1.26.0 of the google.golang.org/protobuf module, a hard error will be reported when a Go program starts up that has multiple conflicting protobuf names linked into it
+    # To work around conflict error, set conflict policy to warn. https://developers.google.com/protocol-buffers/docs/reference/go/faq#fix-namespace-conflict
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn" -o /artifacts/flytepropeller ./cmd/controller/main.go
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /artifacts/flytepropeller-manager ./cmd/manager/main.go
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /artifacts/kubectl-flyte ./cmd/kubectl-flyte/main.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn" -o /artifacts/flytepropeller-manager ./cmd/manager/main.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn" -o /artifacts/kubectl-flyte ./cmd/kubectl-flyte/main.go
 
 .PHONY: compile
 compile:
 	mkdir -p ./bin
-	go build -o bin/flytepropeller ./cmd/controller/main.go
-	go build -o bin/flytepropeller-manager ./cmd/manager/main.go
-	go build -o bin/kubectl-flyte ./cmd/kubectl-flyte/main.go && cp bin/kubectl-flyte ${GOPATH}/bin
+	go build -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn" -o bin/flytepropeller ./cmd/controller/main.go
+	go build -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn" -o bin/flytepropeller-manager ./cmd/manager/main.go
+	go build -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn" -o bin/kubectl-flyte ./cmd/kubectl-flyte/main.go && cp bin/kubectl-flyte ${GOPATH}/bin
 
 cross_compile:
 	@glide install
 	@mkdir -p ./bin/cross
-	GOOS=linux GOARCH=amd64 go build -o bin/cross/flytepropeller ./cmd/controller/main.go
-	GOOS=linux GOARCH=amd64 go build -o bin/cross/flytepropeller-manager ./cmd/manager/main.go
-	GOOS=linux GOARCH=amd64 go build -o bin/cross/kubectl-flyte ./cmd/kubectl-flyte/main.go
+	GOOS=linux GOARCH=amd64 go build -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn" -o bin/cross/flytepropeller ./cmd/controller/main.go
+	GOOS=linux GOARCH=amd64 go build -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn" -o bin/cross/flytepropeller-manager ./cmd/manager/main.go
+	GOOS=linux GOARCH=amd64 go build -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn" -o bin/cross/kubectl-flyte ./cmd/kubectl-flyte/main.go
 
 op_code_generate:
 	@RESOURCE_NAME=flyteworkflow OPERATOR_PKG=github.com/flyteorg/flytepropeller ./hack/update-codegen.sh

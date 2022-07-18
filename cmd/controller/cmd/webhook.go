@@ -4,9 +4,13 @@ import (
 	"context"
 	"github.com/flyteorg/flytepropeller/pkg/controller"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/signals"
 	"github.com/flyteorg/flytepropeller/pkg/webhook"
 	webhookConfig "github.com/flyteorg/flytepropeller/pkg/webhook/config"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -101,7 +105,9 @@ func runWebhook(origContext context.Context, propellerCfg *config.Config, cfg *w
 	options := manager.Options{
 		Namespace:  limitNamespace,
 		SyncPeriod: &propellerCfg.DownstreamEval.Duration,
-		// ClientBuilder: executors.NewFallbackClientBuilder(webhookScope),
+		NewClient: func(cache cache.Cache, config *rest.Config, options client.Options, uncachedObjects ...client.Object) (client.Client, error) {
+			return executors.NewFallbackClientBuilder(webhookScope).Build(cache, config, options)
+		},
 		CertDir: cfg.CertDir,
 		Port:    cfg.ListenPort,
 	}

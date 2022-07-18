@@ -603,17 +603,6 @@ func (t Handler) invokeResourcePlugin(ctx context.Context, p pluginCore.Plugin, 
 		}
 	}
 
-	if !pluginTrns.IsPreviouslyObserved() {
-		taskType := fmt.Sprintf("%v", ctx.Value(contextutils.TaskTypeKey))
-		taskMetric, err := t.fetchPluginTaskMetrics(p.GetID(), taskType)
-		if err != nil {
-			return nil, err
-		}
-		if pluginTrns.pInfo.Phase() == pluginCore.PhasePermanentFailure || pluginTrns.pInfo.Phase() == pluginCore.PhaseRetryableFailure {
-			taskMetric.taskFailed.Inc(ctx)
-		}
-	}
-
 	return pluginTrns, nil
 }
 
@@ -634,6 +623,11 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p)
 	if err != nil {
 		return handler.UnknownTransition, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
+	}
+
+	tmpl, err := nCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return handler.UnknownTransition, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to read task template")
 	}
 
 	ts := nCtx.NodeStateReader().GetTaskNodeState()
@@ -718,7 +712,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	}
 
 	barrierTick := uint32(0)
-	clusterStated := false
+	var clusterPluginTrns *pluginRequestedTransition
 	// STEP 2: If no cache-hit and not transitioning to PhaseWaitingForCache, then lets invoke the plugin and wait for a transition out of undefined
 	if pluginTrns.execInfo.TaskNodeInfo == nil || (pluginTrns.pInfo.Phase() != pluginCore.PhaseWaitingForCache &&
 		pluginTrns.execInfo.TaskNodeInfo.TaskNodeMetadata.CacheStatus != core.CatalogCacheStatus_CACHE_HIT) {
@@ -728,49 +722,29 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		// Lets check if this value in cache is less than or equal to one in the store
 		if barrierTick <= ts.BarrierClockTick {
 			// Start a cluster if needed
-			logger.Warnf(ctx, "Start to create a cluster.")
-			tmpl, err := nCtx.TaskReader().Read(ctx)
-			for _, resource := range tmpl.Resources {
-				var resourcePlugin pluginCore.Plugin
-				logger.Warnf(ctx, "resource.GetRay(). [%v]", resource.GetRay())
-				if resource.GetRay() != nil {
-					resourcePlugin, err = t.ResolveClusterResourcePlugin(ctx, ttype, "ray")
-					if err != nil {
-						return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
-					}
-				} else {
-					logger.Warnf(ctx, "continue.")
-					continue
-				}
-				logger.Warnf(ctx, "start to create a cluster [%v].", resourcePlugin)
-				clusterPluginTrns, err := t.invokeResourcePlugin(ctx, resourcePlugin, tCtx, nCtx.NodeStateReader().GetClusterResourceState())
+			if tmpl.Resources != nil {
+				clusterPluginTrns, err = t.StartResourcePlugin(ctx, nCtx, tCtx, tmpl.Resources)
 				if err != nil {
-					return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
+					return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
 				}
-				if clusterPluginTrns.pInfo.Phase() == pluginCore.PhaseClusterRunning {
-					clusterStated = true
-					logger.Warnf(ctx, "clusterStated")
-				} else {
-					logger.Warnf(ctx, "Creating cluster")
+				if clusterPluginTrns.pInfo.Phase() != pluginCore.PhaseClusterRunning {
 					err = nCtx.NodeStateWriter().PutClusterResourceState(handler.ClusterResourceState{
 						PluginState:        clusterPluginTrns.pluginState,
 						PluginStateVersion: clusterPluginTrns.pluginStateVersion,
 						PluginPhase:        clusterPluginTrns.pInfo.Phase(),
 						PluginPhaseVersion: clusterPluginTrns.pInfo.Version(),
-						BarrierClockTick:   barrierTick,
 						LastPhaseUpdatedAt: time.Now(),
 					})
 					if err != nil {
-						logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())
+						logger.Errorf(ctx, "Failed to store cluster state, err :%s", err.Error())
 						return handler.UnknownTransition, err
 					}
 					return clusterPluginTrns.FinalTransition(ctx)
 				}
 			}
 
-			if clusterStated == true {
+			if tmpl.Resources == nil || clusterPluginTrns.pInfo.Phase() == pluginCore.PhaseClusterRunning {
 				p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
-				// tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p)
 				if err != nil {
 					return handler.UnknownTransition, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
 				}
@@ -993,9 +967,23 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 	}()
 }
 
-func (t Handler) StartResourcePlugin(ctx context.Context, nCtx handler.NodeExecutionContext) (*pluginRequestedTransition, error) {
-	logger.Warnf(ctx, "StartResourcePlugin")
-	return nil, nil
+func (t Handler) StartResourcePlugin(ctx context.Context, nCtx handler.NodeExecutionContext, tCtx *taskExecutionContext, resources map[string]*core.Resource) (*pluginRequestedTransition, error) {
+	var resourcePlugin pluginCore.Plugin
+	var clusterPluginTrns *pluginRequestedTransition
+	var err error
+	for _, resource := range resources {
+		if resource.GetRay() != nil {
+			resourcePlugin, err = t.ResolveClusterResourcePlugin(ctx, nCtx.TaskReader().GetTaskType(), "ray")
+			if err != nil {
+				return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
+			}
+		}
+		clusterPluginTrns, err = t.invokeResourcePlugin(ctx, resourcePlugin, tCtx, nCtx.NodeStateReader().GetClusterResourceState())
+		if err != nil {
+			return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
+		}
+	}
+	return clusterPluginTrns, nil
 }
 
 func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, eventConfig *controllerConfig.EventConfig, clusterID string, scope promutils.Scope) (*Handler, error) {

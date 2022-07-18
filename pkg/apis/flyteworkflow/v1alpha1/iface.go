@@ -356,19 +356,17 @@ type ExecutableClusterResourceStatus interface {
 	GetPhaseVersion() uint32
 	GetPluginState() []byte
 	GetPluginStateVersion() uint32
-	GetBarrierClockTick() uint32
 	GetLastPhaseUpdatedAt() time.Time
 }
 
 type MutableClusterResourceStatus interface {
 	Mutable
-	ExecutableTaskNodeStatus
+	ExecutableClusterResourceStatus
 	SetPhase(phase int)
 	SetLastPhaseUpdatedAt(updatedAt time.Time)
 	SetPhaseVersion(version uint32)
 	SetPluginState([]byte)
 	SetPluginStateVersion(uint32)
-	SetBarrierClockTick(tick uint32)
 }
 
 // ExecutableWorkflowNode is an interface for a Child Workflow Node

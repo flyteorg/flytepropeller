@@ -239,11 +239,6 @@ func (_m *MutableClusterResourceStatus) IsDirty() bool {
 	return r0
 }
 
-// SetBarrierClockTick provides a mock function with given fields: tick
-func (_m *MutableClusterResourceStatus) SetBarrierClockTick(tick uint32) {
-	_m.Called(tick)
-}
-
 // SetLastPhaseUpdatedAt provides a mock function with given fields: updatedAt
 func (_m *MutableClusterResourceStatus) SetLastPhaseUpdatedAt(updatedAt time.Time) {
 	_m.Called(updatedAt)

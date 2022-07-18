@@ -102,8 +102,13 @@ func Test_task_setDefault(t *testing.T) {
 }
 
 type testPluginRegistry struct {
-	core []pluginCore.PluginEntry
-	k8s  []pluginK8s.PluginEntry
+	core            []pluginCore.PluginEntry
+	k8s             []pluginK8s.PluginEntry
+	clusterResource []pluginK8s.PluginEntry
+}
+
+func (t testPluginRegistry) GetClusterResourcePlugins() []pluginK8s.PluginEntry {
+	return t.clusterResource
 }
 
 func (t testPluginRegistry) GetCorePlugins() []pluginCore.PluginEntry {
@@ -361,6 +366,12 @@ func (f *fakeBufferedTaskEventRecorder) RecordTaskEvent(ctx context.Context, ev 
 
 type taskNodeStateHolder struct {
 	s handler.TaskNodeState
+	c handler.ClusterResourceState
+}
+
+func (t *taskNodeStateHolder) PutClusterResourceState(c handler.ClusterResourceState) error {
+	t.c = c
+	return nil
 }
 
 func (t *taskNodeStateHolder) PutTaskNodeState(s handler.TaskNodeState) error {
