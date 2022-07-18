@@ -863,6 +863,15 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		eCtx := nCtx.ExecutionContext()
 		logger.Infof(ctx, "Parallelism now set to [%d].", eCtx.IncrementParallelism())
 	}
+
+	if pluginTrns.pInfo.Phase().IsTerminal() {
+		err := t.StopResourcePlugin(ctx, nCtx, tCtx, tmpl.Resources)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to stop cluster, err :%s", err.Error())
+			return handler.UnknownTransition, err
+		}
+	}
+
 	return pluginTrns.FinalTransition(ctx)
 }
 
@@ -905,6 +914,16 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 		logger.Errorf(ctx, "Abort failed when calling plugin abort.")
 		return err
 	}
+
+	tmpl, err := nCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to read task template")
+	}
+	if err := t.StopResourcePlugin(ctx, nCtx, tCtx, tmpl.Resources); err != nil {
+		logger.Errorf(ctx, "Failed to stop cluster, err :%s", err.Error())
+		return err
+	}
+
 	taskExecID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	evRecorder := nCtx.EventsRecorder()
 	nodeExecutionID, err := getParentNodeExecIDForTask(&taskExecID, nCtx.ExecutionContext())
@@ -975,7 +994,7 @@ func (t Handler) StartResourcePlugin(ctx context.Context, nCtx handler.NodeExecu
 		if resource.GetRay() != nil {
 			resourcePlugin, err = t.ResolveClusterResourcePlugin(ctx, nCtx.TaskReader().GetTaskType(), "ray")
 			if err != nil {
-				return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during creating cluster")
+				return nil, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to resolve plugin")
 			}
 		}
 		clusterPluginTrns, err = t.invokeResourcePlugin(ctx, resourcePlugin, tCtx, nCtx.NodeStateReader().GetClusterResourceState())
@@ -984,6 +1003,39 @@ func (t Handler) StartResourcePlugin(ctx context.Context, nCtx handler.NodeExecu
 		}
 	}
 	return clusterPluginTrns, nil
+}
+
+func (t Handler) StopResourcePlugin(ctx context.Context, nCtx handler.NodeExecutionContext, tCtx *taskExecutionContext, resources map[string]*core.Resource) error {
+	var resourcePlugin pluginCore.Plugin
+	var err error
+	for _, resource := range resources {
+		if resource.GetRay() != nil {
+			resourcePlugin, err = t.ResolveClusterResourcePlugin(ctx, nCtx.TaskReader().GetTaskType(), "ray")
+			if err != nil {
+				return errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "unable to resolve plugin")
+			}
+		}
+		err = func() (err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.metrics.pluginPanics.Inc(ctx)
+					stack := debug.Stack()
+					logger.Errorf(ctx, "Panic in StopResourcePlugin for TaskType [%s]", nCtx.TaskReader().GetTaskType())
+					err = fmt.Errorf("panic when executing a plugin for TaskType [%s]. Stack: [%s]", nCtx.TaskReader().GetTaskType(), string(stack))
+				}
+			}()
+
+			childCtx := context.WithValue(ctx, pluginContextKey, resourcePlugin.GetID())
+			err = resourcePlugin.Abort(childCtx, tCtx)
+			return
+		}()
+
+		if err != nil {
+			logger.Errorf(ctx, "failed to stop cluster.")
+			return err
+		}
+	}
+	return nil
 }
 
 func New(ctx context.Context, kubeClient executors.Client, client catalog.Client, eventConfig *controllerConfig.EventConfig, clusterID string, scope promutils.Scope) (*Handler, error) {

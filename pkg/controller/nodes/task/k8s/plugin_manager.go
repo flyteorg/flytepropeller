@@ -216,6 +216,15 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 	if e.backOffController != nil && casted {
 		podRequestedResources := e.getPodEffectiveResourceLimits(ctx, pod)
 
+		if tmpl.Type == "ray" {
+			for i, _ := range pod.Spec.Containers {
+				pod.Spec.Containers[i].Env = append(pod.Spec.Containers[i].Env, v1.EnvVar{
+					Name:  "RAY_ADDRESS",
+					Value: "ray://" + k8sTaskCtxMetadata.GetTaskExecutionID().GetGeneratedName() + "-head-svc:10001",
+				})
+			}
+		}
+
 		cfg := nodeTaskConfig.GetConfig()
 		backOffHandler := e.backOffController.GetOrCreateHandler(ctx, key, cfg.BackOffConfig.BaseSecond, cfg.BackOffConfig.MaxDuration.Duration)
 
