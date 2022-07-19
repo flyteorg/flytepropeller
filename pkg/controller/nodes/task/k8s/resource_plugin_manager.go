@@ -233,7 +233,6 @@ func (e *ResourcePluginManager) CheckResourcePhase(ctx context.Context, tCtx plu
 		logger.Warnf(ctx, "failed to check status of resource in plugin [%s], with error: %s", e.GetID(), err.Error())
 		return pluginsCore.UnknownTransition, err
 	}
-	logger.Warnf(ctx, "kevin 123456 plugin.GetTaskPhase [%v]", p.Phase())
 
 	if p.Phase() == pluginsCore.PhaseSuccess {
 		var opReader io.OutputReader
@@ -284,7 +283,6 @@ func (e ResourcePluginManager) Handle(ctx context.Context, tCtx pluginsCore.Task
 		}
 		return t, err
 	}
-	logger.Warnf(ctx, "kevin 123456 CheckResourcePhase [%v]", ps.Phase)
 	return e.CheckResourcePhase(ctx, tCtx)
 }
 

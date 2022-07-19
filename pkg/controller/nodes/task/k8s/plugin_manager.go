@@ -50,21 +50,19 @@ import (
 
 const finalizer = "flyte/flytek8s"
 
-type PluginPhase uint8
-
-type PluginState struct {
-	Phase PluginPhase
-}
-
 const PluginStateVersion = 1
+
+type PluginPhase uint8
 
 const (
 	PluginPhaseNotStarted PluginPhase = iota
 	PluginPhaseAllocationTokenAcquired
 	PluginPhaseStarted
-	SecondPluginPhaseNotStarted
-	SecondPluginPhaseStarted
 )
+
+type PluginState struct {
+	Phase PluginPhase
+}
 
 type PluginMetrics struct {
 	Scope           promutils.Scope
@@ -293,7 +291,6 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 		logger.Warnf(ctx, "failed to check status of resource in plugin [%s], with error: %s", e.GetID(), err.Error())
 		return pluginsCore.UnknownTransition, err
 	}
-	logger.Warnf(ctx, "kevin 123456 plugin.GetTaskPhase [%v]", p.Phase())
 
 	if p.Phase() == pluginsCore.PhaseSuccess {
 		var opReader io.OutputReader
@@ -342,13 +339,8 @@ func (e PluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutio
 			}
 			logger.Warnf(ctx, "tCtx.psm.newState.Bytes() [%s].", ps.Phase)
 		}
-		// tCtx.PluginStateReader().Get(&ps)
-		logger.Warnf(ctx, "kevin test2 PluginState [%v]", t.Info().Phase())
-		logger.Warnf(ctx, "kevin test2 Get(&ps) [%v]", ps.Phase)
-		logger.Warnf(ctx, "kevin test2 t [%v] error [%v]", t, err == nil)
 		return t, err
 	}
-	logger.Warnf(ctx, "kevin 123456 CheckResourcePhase [%v]", ps.Phase)
 
 	return e.CheckResourcePhase(ctx, tCtx)
 }

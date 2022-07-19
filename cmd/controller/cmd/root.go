@@ -67,8 +67,6 @@ func Execute() {
 }
 
 func init() {
-	// allows `$ flytepropeller --logtostderr` to work
-	// klog.InitFlags(flag.CommandLine)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	err := flag.CommandLine.Parse([]string{})
 	if err != nil {
