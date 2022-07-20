@@ -352,11 +352,7 @@ type MutableTaskNodeStatus interface {
 }
 
 type ExecutableClusterResourceStatus interface {
-	GetPhase() int
-	GetPhaseVersion() uint32
-	GetPluginState() []byte
-	GetPluginStateVersion() uint32
-	GetLastPhaseUpdatedAt() time.Time
+	ExecutableTaskNodeStatus
 }
 
 type MutableClusterResourceStatus interface {

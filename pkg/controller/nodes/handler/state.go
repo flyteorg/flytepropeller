@@ -21,11 +21,7 @@ type TaskNodeState struct {
 	LastPhaseUpdatedAt time.Time
 }
 type ClusterResourceState struct {
-	PluginPhase        pluginCore.Phase
-	PluginPhaseVersion uint32
-	PluginState        []byte
-	PluginStateVersion uint32
-	LastPhaseUpdatedAt time.Time
+	TaskNodeState
 }
 
 type BranchNodeState struct {

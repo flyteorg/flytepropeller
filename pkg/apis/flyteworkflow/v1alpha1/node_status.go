@@ -417,7 +417,9 @@ func (in *NodeStatus) GetOrCreateClusterResourceStatus() MutableClusterResourceS
 	if in.ClusterResourceStatus == nil {
 		in.SetDirty()
 		in.ClusterResourceStatus = &ClusterResourceStatus{
-			MutableStruct: MutableStruct{},
+			TaskNodeStatus{
+				MutableStruct: MutableStruct{},
+			},
 		}
 	}
 
@@ -839,99 +841,5 @@ func (in *TaskNodeStatus) Equals(other *TaskNodeStatus) bool {
 }
 
 type ClusterResourceStatus struct {
-	MutableStruct
-	Phase              int       `json:"phase,omitempty"`
-	PhaseVersion       uint32    `json:"phaseVersion,omitempty"`
-	PluginState        []byte    `json:"pState,omitempty"`
-	PluginStateVersion uint32    `json:"psv,omitempty"`
-	LastPhaseUpdatedAt time.Time `json:"updAt,omitempty"`
-}
-
-func (in *ClusterResourceStatus) SetPluginState(s []byte) {
-	in.PluginState = s
-	in.SetDirty()
-}
-
-func (in *ClusterResourceStatus) SetLastPhaseUpdatedAt(updatedAt time.Time) {
-	in.LastPhaseUpdatedAt = updatedAt
-}
-
-func (in *ClusterResourceStatus) SetPluginStateVersion(v uint32) {
-	in.PluginStateVersion = v
-	in.SetDirty()
-}
-
-func (in *ClusterResourceStatus) GetPluginState() []byte {
-	return in.PluginState
-}
-
-func (in *ClusterResourceStatus) GetPluginStateVersion() uint32 {
-	return in.PluginStateVersion
-}
-
-func (in *ClusterResourceStatus) SetPhase(phase int) {
-	in.Phase = phase
-	in.SetDirty()
-}
-
-func (in *ClusterResourceStatus) SetPhaseVersion(version uint32) {
-	in.PhaseVersion = version
-	in.SetDirty()
-}
-
-func (in ClusterResourceStatus) GetPhase() int {
-	return in.Phase
-}
-
-func (in ClusterResourceStatus) GetLastPhaseUpdatedAt() time.Time {
-	return in.LastPhaseUpdatedAt
-}
-
-func (in ClusterResourceStatus) GetPhaseVersion() uint32 {
-	return in.PhaseVersion
-}
-
-func (in *ClusterResourceStatus) UpdatePhase(phase int, phaseVersion uint32) {
-	if in.Phase != phase || in.PhaseVersion != phaseVersion {
-		in.SetDirty()
-	}
-
-	in.Phase = phase
-	in.PhaseVersion = phaseVersion
-}
-
-func (in *ClusterResourceStatus) DeepCopyInto(out *ClusterResourceStatus) {
-	if in == nil {
-		return
-	}
-
-	raw, err := json.Marshal(in)
-	if err != nil {
-		return
-	}
-
-	err = json.Unmarshal(raw, out)
-	if err != nil {
-		return
-	}
-}
-
-func (in *ClusterResourceStatus) DeepCopy() *ClusterResourceStatus {
-	if in == nil {
-		return nil
-	}
-
-	out := &ClusterResourceStatus{}
-	in.DeepCopyInto(out)
-	return out
-}
-
-func (in *ClusterResourceStatus) Equals(other *ClusterResourceStatus) bool {
-	if in == nil && other == nil {
-		return true
-	}
-	if in == nil || other == nil {
-		return false
-	}
-	return in.Phase == other.Phase && in.PhaseVersion == other.PhaseVersion && in.PluginStateVersion == other.PluginStateVersion && bytes.Equal(in.PluginState, other.PluginState)
+	TaskNodeStatus
 }
