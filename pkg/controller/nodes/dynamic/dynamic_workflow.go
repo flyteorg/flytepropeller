@@ -101,13 +101,6 @@ func (d dynamicNodeTaskNodeHandler) buildDynamicWorkflowTemplate(ctx context.Con
 			if t.GetContainer() != nil && parentTask.GetContainer() != nil {
 				t.GetContainer().Config = append(t.GetContainer().Config, parentTask.GetContainer().Config...)
 			}
-
-			// TODO: This is a hack since array tasks' interfaces are malformed. Remove after
-			// FlyteKit version that generates the right interfaces is deployed.
-			if t.Type == "container_array" {
-				iface := t.GetInterface()
-				iface.Outputs = makeArrayInterface(iface.Outputs)
-			}
 		}
 	}
 
@@ -320,6 +313,7 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 					), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: "Failed to copy subworkflow outputs"},
 					nil
 			}
+
 			o = &handler.OutputInfo{OutputURI: destinationPath}
 		}
 

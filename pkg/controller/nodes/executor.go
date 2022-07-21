@@ -235,17 +235,32 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 	} else {
 		logger.Debugf(ctx, "No outputs found for recovered node [%+v]", nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 	}
+
 	outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
+	oi := &handler.OutputInfo{
+		OutputURI: outputFile,
+	}
+
+	deckFile := v1alpha1.GetDeckFile(nCtx.NodeStatus().GetOutputDir())
+	metadata, err := nCtx.DataStore().Head(ctx, deckFile)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to check the existence of deck file. Error: %v", err)
+		return handler.PhaseInfoUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to check the existence of deck file.")
+	}
+
+	if metadata.Exists() {
+		oi.DeckURI = &deckFile
+	}
+
 	if err := c.store.WriteProtobuf(ctx, outputFile, so, outputs); err != nil {
 		logger.Errorf(ctx, "Failed to write protobuf (metadata). Error [%v]", err)
 		return handler.PhaseInfoUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to store recovered node execution outputs")
 	}
 
 	info := &handler.ExecutionInfo{
-		OutputInfo: &handler.OutputInfo{
-			OutputURI: outputFile,
-		},
+		OutputInfo: oi,
 	}
+
 	if recovered.Closure.GetTaskNodeMetadata() != nil {
 		taskNodeInfo := &handler.TaskNodeInfo{
 			TaskNodeMetadata: &event.TaskNodeMetadata{
@@ -659,7 +674,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 
 	if currentPhase == v1alpha1.NodePhaseFailing {
 		logger.Debugf(ctx, "node failing")
-		if err := c.finalize(ctx, h, nCtx); err != nil {
+		if err := c.abort(ctx, h, nCtx, "node failing"); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), nodeStatus.GetMessage(), nodeStatus.GetExecutionError())
@@ -1057,7 +1072,7 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, execContext executors.E
 			},
 			ProducerId: c.clusterID,
 		})
-		if err != nil && !eventsErr.IsEventIncompatibleClusterError(err) {
+		if err != nil && !eventsErr.IsNotFound(err) && !eventsErr.IsEventIncompatibleClusterError(err) {
 			if errors2.IsCausedBy(err, errors.IllegalStateError) {
 				logger.Debugf(ctx, "Failed to record abort event due to illegal state transition. Ignoring the error. Error: %v", err)
 			} else {

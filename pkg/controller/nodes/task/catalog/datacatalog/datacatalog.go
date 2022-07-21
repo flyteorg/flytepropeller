@@ -11,7 +11,9 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcRetry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	grpcPrometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/pkg/errors"
 
 	"github.com/flyteorg/flytestdlib/logger"
@@ -136,11 +138,11 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (catalog.Entry
 	outputs, err := GenerateTaskOutputsFromArtifact(key.Identifier, key.TypedInterface, artifact)
 	if err != nil {
 		logger.Errorf(ctx, "DataCatalog failed to get outputs from artifact %+v, err: %+v", artifact.Id, err)
-		return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, md)), err
+		return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, md)), err
 	}
 
 	logger.Infof(ctx, "Retrieved %v outputs from artifact %v, tag: %v", len(outputs.Literals), artifact.Id, tag)
-	return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, md)), nil
+	return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, md)), nil
 }
 
 func (m *CatalogClient) CreateDataset(ctx context.Context, key catalog.Key, metadata *datacatalog.Metadata) (*datacatalog.DatasetID, error) {
@@ -351,7 +353,7 @@ func (m *CatalogClient) ReleaseReservation(ctx context.Context, key catalog.Key,
 }
 
 // Create a new Datacatalog client for task execution caching
-func NewDataCatalog(ctx context.Context, endpoint string, insecureConnection bool, maxCacheAge time.Duration, useAdminAuth bool, authOpt grpc.DialOption) (*CatalogClient, error) {
+func NewDataCatalog(ctx context.Context, endpoint string, insecureConnection bool, maxCacheAge time.Duration, useAdminAuth bool, defaultServiceConfig string, authOpt grpc.DialOption) (*CatalogClient, error) {
 	var opts []grpc.DialOption
 	if useAdminAuth && authOpt != nil {
 		opts = append(opts, authOpt)
@@ -377,9 +379,18 @@ func NewDataCatalog(ctx context.Context, endpoint string, insecureConnection boo
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	}
 
-	retryInterceptor := grpc.WithUnaryInterceptor(grpcRetry.UnaryClientInterceptor(grpcOptions...))
+	if defaultServiceConfig != "" {
+		opts = append(opts, grpc.WithDefaultServiceConfig(defaultServiceConfig))
+	}
 
-	opts = append(opts, retryInterceptor)
+	retryInterceptor := grpcRetry.UnaryClientInterceptor(grpcOptions...)
+
+	finalUnaryInterceptor := grpcMiddleware.ChainUnaryClient(
+		grpcPrometheus.UnaryClientInterceptor,
+		retryInterceptor,
+	)
+
+	opts = append(opts, grpc.WithUnaryInterceptor(finalUnaryInterceptor))
 	clientConn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return nil, err

@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/contextutils"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -105,6 +106,8 @@ var (
 		MetadataPrefix:      "metadata/propeller",
 		EnableAdminLauncher: true,
 		MetricsPrefix:       "flyte",
+		MetricKeys: []string{contextutils.ProjectKey.String(), contextutils.DomainKey.String(),
+			contextutils.WorkflowIDKey.String(), contextutils.TaskIDKey.String()},
 		EventConfig: EventConfig{
 			RawOutputPolicy: RawOutputPolicyReference,
 		},
@@ -128,6 +131,7 @@ type Config struct {
 	DefaultRawOutputPrefix   string               `json:"rawoutput-prefix" pflag:",a fully qualified storage path of the form s3://flyte/abc/..., where all data sandboxes should be stored."`
 	Queue                    CompositeQueueConfig `json:"queue,omitempty" pflag:",Workflow workqueue configuration, affects the way the work is consumed from the queue."`
 	MetricsPrefix            string               `json:"metrics-prefix" pflag:",An optional prefix for all published metrics."`
+	MetricKeys               []string             `json:"metrics-keys" pflag:",Metrics labels applied to prometheus metrics emitted by the service."`
 	EnableAdminLauncher      bool                 `json:"enable-admin-launcher" pflag:"Enable remote Workflow launcher to Admin"`
 	MaxWorkflowRetries       int                  `json:"max-workflow-retries" pflag:"Maximum number of retries per workflow"`
 	MaxTTLInHours            int                  `json:"max-ttl-hours" pflag:"Maximum number of hours a completed workflow should be retained. Number between 1-23 hours"`
@@ -206,9 +210,9 @@ type NodeConfig struct {
 
 // DefaultDeadlines contains default values for timeouts
 type DefaultDeadlines struct {
-	DefaultNodeExecutionDeadline  config.Duration `json:"node-execution-deadline" pflag:",Default value of node execution timeout"`
-	DefaultNodeActiveDeadline     config.Duration `json:"node-active-deadline" pflag:",Default value of node timeout"`
-	DefaultWorkflowActiveDeadline config.Duration `json:"workflow-active-deadline" pflag:",Default value of workflow timeout"`
+	DefaultNodeExecutionDeadline  config.Duration `json:"node-execution-deadline" pflag:",Default value of node execution timeout that includes the time spent to run the node/workflow"`
+	DefaultNodeActiveDeadline     config.Duration `json:"node-active-deadline" pflag:",Default value of node timeout that includes the time spent queued."`
+	DefaultWorkflowActiveDeadline config.Duration `json:"workflow-active-deadline" pflag:",Default value of workflow timeout that includes the time spent queued."`
 }
 
 // LeaderElectionConfig Contains leader election configuration.

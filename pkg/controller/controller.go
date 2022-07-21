@@ -48,6 +48,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/balancer/roundrobin" //nolint
 
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 
@@ -459,8 +460,9 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	return controller, nil
 }
 
-// SharedInformerOptions creates informer options to work with FlytePropeller Sharding
-func SharedInformerOptions(cfg *config.Config, defaultNamespace string) []informers.SharedInformerOption {
+// getShardedLabelSelectorRequirements computes the collection of LabelSelectorReuquirements to
+// satisfy sharding criteria.
+func getShardedLabelSelectorRequirements(cfg *config.Config) []v1.LabelSelectorRequirement {
 	selectors := []struct {
 		label     string
 		operation v1.LabelSelectorOperator
@@ -474,7 +476,7 @@ func SharedInformerOptions(cfg *config.Config, defaultNamespace string) []inform
 		{k8s.DomainLabel, v1.LabelSelectorOpNotIn, cfg.ExcludeDomainLabel},
 	}
 
-	labelSelector := IgnoreCompletedWorkflowsLabelSelector()
+	var labelSelectorRequirements []v1.LabelSelectorRequirement
 	for _, selector := range selectors {
 		if len(selector.values) > 0 {
 			labelSelectorRequirement := v1.LabelSelectorRequirement{
@@ -483,8 +485,20 @@ func SharedInformerOptions(cfg *config.Config, defaultNamespace string) []inform
 				Values:   selector.values,
 			}
 
-			labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, labelSelectorRequirement)
+			labelSelectorRequirements = append(labelSelectorRequirements, labelSelectorRequirement)
 		}
+	}
+
+	return labelSelectorRequirements
+}
+
+// SharedInformerOptions creates informer options to work with FlytePropeller Sharding
+func SharedInformerOptions(cfg *config.Config, defaultNamespace string) []informers.SharedInformerOption {
+	labelSelector := IgnoreCompletedWorkflowsLabelSelector()
+
+	shardedLabelSelectorRequirements := getShardedLabelSelectorRequirements(cfg)
+	if len(shardedLabelSelectorRequirements) != 0 {
+		labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, shardedLabelSelectorRequirements...)
 	}
 
 	opts := []informers.SharedInformerOption{
