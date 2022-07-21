@@ -65,13 +65,8 @@ type FlyteWorkflow struct {
 	// This field is here because it's easier to put it here than pipe through a new object through all of propeller.
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
 
-	// Location that contains the serialized json workflowSpec
-	WorkflowSpecDataReference DataReference `json:"workflowSpecDataReference,omitempty"`
-
-	// If set, the location will contain the serialized json subWorkflows
-	SubWorkflowsDataReference DataReference `json:"subWorkflowsDataReference,omitempty"`
-	// If set, the location will contain the serialised json tasks
-	TasksDataReference DataReference `json:"tasksDataReference,omitempty"`
+	// Location that contains the serialized crd parts
+	WorkflowStaticExecutionObj DataReference `json:"staticExecutionObj,omitempty"`
 }
 
 func (in *FlyteWorkflow) GetSecurityContext() core.SecurityContext {
