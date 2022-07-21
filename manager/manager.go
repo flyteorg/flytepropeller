@@ -23,6 +23,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"k8s.io/client-go/kubernetes"
@@ -57,6 +58,7 @@ func newManagerMetrics(scope promutils.Scope) *metrics {
 type Manager struct {
 	kubeClient               kubernetes.Interface
 	leaderElector            *leaderelection.LeaderElector
+	leaderNamespacedName     types.NamespacedName
 	metrics                  *metrics
 	ownerReferences          []metav1.OwnerReference
 	podApplication           string
@@ -92,13 +94,13 @@ func (m *Manager) createPods(ctx context.Context) error {
 		"app": m.podApplication,
 	}
 
-	// disable leader election on all managed pods
+	/*// disable leader election on all managed pods
 	container, err := utils.GetContainer(&podTemplate.Template.Spec, m.podTemplateContainerName)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve flytepropeller container from pod template [%v]", err)
 	}
 
-	container.Args = append(container.Args, "--propeller.leader-election.enabled=false")
+	container.Args = append(container.Args, "--propeller.leader-election.enabled=false")*/
 
 	// retrieve existing pods
 	listOptions := metav1.ListOptions{
@@ -191,6 +193,17 @@ func (m *Manager) createPods(ctx context.Context) error {
 				continue
 			}
 
+			if len(m.leaderNamespacedName.String()) != 0 {
+				// adopt configured leader election in managed flytepropeller instances
+				container, err := utils.GetContainer(&pod.Spec, m.podTemplateContainerName)
+				if err != nil {
+					return fmt.Errorf("failed to retrieve flytepropeller container from pod template [%v]", err)
+				}
+
+				injectLeaderNameArg := fmt.Sprintf("--propeller.leader-election.lock-config-map.Name=%s-%s", m.leaderNamespacedName.Name, i)
+				container.Args = append(container.Args, injectLeaderNameArg)
+			}
+
 			_, err = m.kubeClient.CoreV1().Pods(m.podNamespace).Create(ctx, pod, metav1.CreateOptions{})
 			if err != nil {
 				errs.Append(fmt.Errorf("failed to create pod '%s' [%v]", podName, err))
@@ -256,6 +269,7 @@ func New(ctx context.Context, propellerCfg *propellerConfig.Config, cfg *manager
 
 	manager := &Manager{
 		kubeClient:               kubeClient,
+		leaderNamespacedName:     propellerCfg.LeaderElection.LockConfigMap,
 		metrics:                  newManagerMetrics(scope),
 		ownerReferences:          ownerReferences,
 		podApplication:           cfg.PodApplication,
