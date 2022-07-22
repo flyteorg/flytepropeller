@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flytepropeller/pkg/controller/staticobjstore"
 	"reflect"
 	"runtime/debug"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/static"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
@@ -68,6 +70,7 @@ func RecordSystemError(w *v1alpha1.FlyteWorkflow, err error) *v1alpha1.FlyteWork
 // Core Propeller structure that houses the Reconciliation loop for Flytepropeller
 type Propeller struct {
 	wfStore          workflowstore.FlyteWorkflow
+	staticObjStore   staticobjstore.WorkflowStaticObjectStore
 	workflowExecutor executors.Workflow
 	metrics          *propellerMetrics
 	cfg              *config.Config
@@ -319,12 +322,13 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 }
 
 // NewPropellerHandler creates a new Propeller and initializes metrics
-func NewPropellerHandler(_ context.Context, cfg *config.Config, wfStore workflowstore.FlyteWorkflow, executor executors.Workflow, scope promutils.Scope) *Propeller {
+func NewPropellerHandler(_ context.Context, cfg *config.Config, wfStore workflowstore.FlyteWorkflow, staticObjStore staticobjstore.WorkflowStaticObjectStore, executor executors.Workflow, scope promutils.Scope) *Propeller {
 
 	metrics := newPropellerMetrics(scope)
 	return &Propeller{
 		metrics:          metrics,
 		wfStore:          wfStore,
+		staticObjStore:   staticObjStore,
 		workflowExecutor: executor,
 		cfg:              cfg,
 	}
