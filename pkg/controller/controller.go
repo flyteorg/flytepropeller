@@ -5,6 +5,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flytepropeller/pkg/controller/staticobjstore"
 	"os"
 	"runtime/pprof"
 	"time"
@@ -428,6 +429,8 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize workflow store")
 	}
 
+	staticObjStore := staticobjstore.NewInmemoryStaticObjStore(store)
+
 	controller.levelMonitor = NewResourceLevelMonitor(scope.NewSubScope("collector"), flyteworkflowInformer.Lister())
 
 	nodeExecutor, err := nodes.NewExecutor(ctx, cfg.NodeConfig, store, controller.enqueueWorkflowForNodeUpdates, eventSink,
@@ -442,7 +445,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, err
 	}
 
-	handler := NewPropellerHandler(ctx, cfg, controller.workflowStore, workflowExecutor, scope)
+	handler := NewPropellerHandler(ctx, cfg, controller.workflowStore, staticObjStore, workflowExecutor, scope)
 	controller.workerPool = NewWorkerPool(ctx, scope, workQ, handler)
 
 	logger.Info(ctx, "Setting up event handlers")
