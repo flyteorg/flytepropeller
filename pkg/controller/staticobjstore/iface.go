@@ -2,6 +2,7 @@ package staticobjstore
 
 import (
 	"context"
+
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/static"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )

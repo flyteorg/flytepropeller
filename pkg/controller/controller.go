@@ -5,10 +5,11 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flytepropeller/pkg/controller/staticobjstore"
 	"os"
 	"runtime/pprof"
 	"time"
+
+	"github.com/flyteorg/flytepropeller/pkg/controller/staticobjstore"
 
 	"github.com/flyteorg/flyteidl/clients/go/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
