@@ -190,6 +190,10 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 
 	if w.GetExecutionStatus().IsTerminated() {
 		if HasCompletedLabel(w) && !HasFinalizer(w) {
+			// clear blobs from cache for terminated workflows
+			if w.WorkflowStaticExecutionObj != "" {
+				p.staticObjStore.Remove(ctx, w)
+			}
 			logger.Debugf(ctx, "Workflow is terminated.")
 			// This workflow had previously completed, let us ignore it
 			return nil
