@@ -47,6 +47,11 @@ func (i *InmemoryWorkflowStore) Get(ctx context.Context, namespace, name string)
 func (i *InmemoryWorkflowStore) UpdateStatus(ctx context.Context, w *v1alpha1.FlyteWorkflow, priorityClass PriorityClass) (
 	newWF *v1alpha1.FlyteWorkflow, err error) {
 	if w != nil {
+		if w.WorkflowStaticExecutionObj != "" {
+			w.SubWorkflows = make(map[v1alpha1.WorkflowID]*v1alpha1.WorkflowSpec)
+			w.Tasks = make(map[v1alpha1.TaskID]*v1alpha1.TaskSpec)
+			w.WorkflowSpec = nil
+		}
 		if w.Name != "" && w.Namespace != "" {
 			if m, ok := i.store[w.Namespace]; ok {
 				if _, ok := m[w.Name]; ok {
