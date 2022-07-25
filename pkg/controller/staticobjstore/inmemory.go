@@ -54,9 +54,8 @@ func (i *InmemoryStaticObjStore) Get(ctx context.Context, wf *v1alpha1.FlyteWork
 	return wfStaticExecutionObj, nil
 }
 
-func (i *InmemoryStaticObjStore) Remove(ctx context.Context, wf *v1alpha1.FlyteWorkflow) error {
+func (i *InmemoryStaticObjStore) Remove(ctx context.Context, wf *v1alpha1.FlyteWorkflow) {
 	delete(i.store, wf.WorkflowStaticExecutionObj.String())
-	return nil
 }
 
 func NewInmemoryStaticObjStore(dataStore *storage.DataStore) *InmemoryStaticObjStore {

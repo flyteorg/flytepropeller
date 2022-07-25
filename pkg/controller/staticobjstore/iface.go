@@ -10,5 +10,5 @@ import (
 // FlyteWorkflow store interface provides an abstraction of accessing the actual FlyteWorkflow object.
 type WorkflowStaticObjectStore interface {
 	Get(ctx context.Context, wf *v1alpha1.FlyteWorkflow) (*static.WorkflowStaticExecutionObj, error)
-	Remove(ctx context.Context, wf *v1alpha1.FlyteWorkflow) error
+	Remove(ctx context.Context, wf *v1alpha1.FlyteWorkflow)
 }
