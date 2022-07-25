@@ -195,6 +195,17 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			return nil
 		}
 	}
+
+	if w.WorkflowStaticExecutionObj != "" {
+		blob, err := p.staticObjStore.Get(ctx, w)
+		if err != nil {
+			return err
+		}
+		w.SubWorkflows = blob.SubWorkflows
+		w.Tasks = blob.Tasks
+		w.WorkflowSpec = blob.WorkflowSpec
+	}
+
 	streak := 0
 	defer p.metrics.StreakLength.Add(ctx, float64(streak))
 

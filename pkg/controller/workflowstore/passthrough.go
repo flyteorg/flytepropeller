@@ -79,6 +79,11 @@ func (p *passthroughWorkflowStore) Update(ctx context.Context, workflow *v1alpha
 	// Something has changed. Lets save
 	logger.Debugf(ctx, "Observed FlyteWorkflow Update (maybe finalizer)")
 	t := p.metrics.workflowUpdateLatency.Start()
+	if workflow.WorkflowStaticExecutionObj != "" {
+		workflow.SubWorkflows = make(map[v1alpha1.WorkflowID]*v1alpha1.WorkflowSpec)
+		workflow.Tasks = make(map[v1alpha1.TaskID]*v1alpha1.TaskSpec)
+		workflow.WorkflowSpec = nil
+	}
 	newWF, err = p.wfClientSet.FlyteWorkflows(workflow.Namespace).Update(ctx, workflow, v1.UpdateOptions{})
 	if err != nil {
 		if kubeerrors.IsNotFound(err) {
