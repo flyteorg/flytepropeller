@@ -48,8 +48,8 @@ func (i *InmemoryWorkflowStore) UpdateStatus(ctx context.Context, w *v1alpha1.Fl
 	newWF *v1alpha1.FlyteWorkflow, err error) {
 	if w != nil {
 		if w.WorkflowStaticExecutionObj != "" {
-			w.SubWorkflows = make(map[v1alpha1.WorkflowID]*v1alpha1.WorkflowSpec)
-			w.Tasks = make(map[v1alpha1.TaskID]*v1alpha1.TaskSpec)
+			w.SubWorkflows = nil
+			w.Tasks = nil
 			w.WorkflowSpec = nil
 		}
 		if w.Name != "" && w.Namespace != "" {
