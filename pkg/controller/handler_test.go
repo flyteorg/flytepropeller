@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/static"
+	staticobjmock "github.com/flyteorg/flytepropeller/pkg/controller/staticobjstore/mocks"
+
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore/mocks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
@@ -819,5 +822,53 @@ func TestNewPropellerHandler_UpdateFailure(t *testing.T) {
 
 		err := p.Handle(ctx, namespace, name)
 		assert.NoError(t, err)
+	})
+}
+
+func TestPropellerHandler_OffloadedCrd(t *testing.T) {
+	scope := promutils.NewTestScope()
+	ctx := context.TODO()
+	s := workflowstore.NewInMemoryWorkflowStore()
+	exec := &mockExecutor{}
+	cfg := &config.Config{
+		MaxWorkflowRetries: 0,
+	}
+
+	staticObjMock := &staticobjmock.WorkflowStaticObjectStore{}
+	p := NewPropellerHandler(ctx, cfg, s, staticObjMock, exec, scope)
+
+	const namespace = "test"
+	const name = "123"
+
+	t.Run("happy offloaded spec", func(t *testing.T) {
+		assert.NoError(t, s.Create(ctx, &v1alpha1.FlyteWorkflow{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			WorkflowStaticExecutionObj: "some-file-location",
+		}))
+		exec.HandleCb = func(ctx context.Context, w *v1alpha1.FlyteWorkflow) error {
+			w.GetExecutionStatus().UpdatePhase(v1alpha1.WorkflowPhaseSucceeding, "done", nil)
+			return nil
+		}
+
+		staticObjMock.OnGetMatch(mock.Anything, mock.Anything).Return(&static.WorkflowStaticExecutionObj{
+			WorkflowSpec: &v1alpha1.WorkflowSpec{ID: "static-id"},
+			SubWorkflows: nil,
+			Tasks:        nil,
+		}, nil)
+
+		assert.NoError(t, p.Handle(ctx, namespace, name))
+
+		r, err := s.Get(ctx, namespace, name)
+		assert.NoError(t, err)
+		assert.Equal(t, v1alpha1.WorkflowPhaseSucceeding, r.GetExecutionStatus().GetPhase())
+		assert.Equal(t, 1, len(r.Finalizers))
+		assert.False(t, HasCompletedLabel(r))
+		assert.Equal(t, uint32(0), r.Status.FailedAttempts)
+		assert.Nil(t, r.WorkflowSpec)
+		assert.Nil(t, r.SubWorkflows)
+		assert.Nil(t, r.Tasks)
 	})
 }
