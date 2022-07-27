@@ -7,25 +7,21 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/static"
-
-	"github.com/flyteorg/flytepropeller/pkg/controller/staticobjstore"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
-	"github.com/flyteorg/flytestdlib/contextutils"
-	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
+	"github.com/flyteorg/flytepropeller/pkg/controller/crdoffloadstore"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 
+	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
-	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // TODO Lets move everything to use controller runtime
@@ -72,7 +68,7 @@ func RecordSystemError(w *v1alpha1.FlyteWorkflow, err error) *v1alpha1.FlyteWork
 // Core Propeller structure that houses the Reconciliation loop for Flytepropeller
 type Propeller struct {
 	wfStore          workflowstore.FlyteWorkflow
-	staticObjStore   staticobjstore.WorkflowStaticObjectStore
+	crdOffloadStore  crdoffloadstore.CRDOffloadStore
 	workflowExecutor executors.Workflow
 	metrics          *propellerMetrics
 	cfg              *config.Config
@@ -192,24 +188,12 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 
 	if w.GetExecutionStatus().IsTerminated() {
 		if HasCompletedLabel(w) && !HasFinalizer(w) {
-			// clear blobs from cache for terminated workflows
-			if w.WorkflowStaticExecutionObj != "" {
-				p.staticObjStore.Remove(ctx, w)
-			}
 			logger.Debugf(ctx, "Workflow is terminated.")
 			// This workflow had previously completed, let us ignore it
 			return nil
 		}
 	}
 
-	var blob *static.WorkflowStaticExecutionObj
-	var err error
-	if w.WorkflowStaticExecutionObj != "" {
-		blob, err = p.staticObjStore.Get(ctx, w)
-		if err != nil {
-			return err
-		}
-	}
 	streak := 0
 	defer p.metrics.StreakLength.Add(ctx, float64(streak))
 
@@ -221,14 +205,28 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	for streak = 0; streak < maxLength; streak++ {
 		// load the static blob every time the FlyteWorkflow is getting processed
 		// because the workflow is rewritten after the update at the end of the loop
-		if w.WorkflowStaticExecutionObj != "" {
-			w.SubWorkflows = blob.SubWorkflows
-			w.Tasks = blob.Tasks
-			w.WorkflowSpec = blob.WorkflowSpec
+		if len(w.OffloadDataReference) != 0 {
+			// TODO - should be move this outside of the loop?
+			staticWorkflowData, err := p.crdOffloadStore.Get(ctx, w.OffloadDataReference)
+			if err != nil {
+				logger.Errorf(ctx, "Failed to retrieve offloaded static workflow data from '%s' with error '%s'", w.OffloadDataReference, err)
+				return err
+			}
+
+			w.SubWorkflows = staticWorkflowData.SubWorkflows
+			w.Tasks = staticWorkflowData.Tasks
+			w.WorkflowSpec = staticWorkflowData.WorkflowSpec
 		}
 
 		t := p.metrics.RoundTime.Start(ctx)
 		mutatedWf, err := p.TryMutateWorkflow(ctx, w)
+
+		if len(w.OffloadDataReference) != 0 {
+			// strip offloaded data from CRD definitions
+			w.SubWorkflows, w.Tasks, w.WorkflowSpec = nil, nil, nil
+			mutatedWf.SubWorkflows, mutatedWf.Tasks, mutatedWf.WorkflowSpec = nil, nil, nil
+		}
+
 		if err != nil {
 			// NOTE We are overriding the deepcopy here, as we are essentially ingnoring all mutations
 			// We only want to increase failed attempts and discard any other partial changes to the CRD.
@@ -251,6 +249,13 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 				// We add a completed label so that we can avoid polling for this workflow
 				SetCompletedLabel(mutatedWf, time.Now())
 				ResetFinalizers(mutatedWf)
+
+				// clear CRDOffloadStore cache for completed workflows
+				if len(w.OffloadDataReference) != 0 {
+					if err := p.crdOffloadStore.Remove(ctx, w.OffloadDataReference); err != nil {
+						logger.Errorf(ctx, "failed to clear crd offload store cache for '%s' with err '%s'", w.OffloadDataReference, err)
+					}
+				}
 			}
 		}
 
@@ -345,13 +350,13 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 }
 
 // NewPropellerHandler creates a new Propeller and initializes metrics
-func NewPropellerHandler(_ context.Context, cfg *config.Config, wfStore workflowstore.FlyteWorkflow, staticObjStore staticobjstore.WorkflowStaticObjectStore, executor executors.Workflow, scope promutils.Scope) *Propeller {
+func NewPropellerHandler(_ context.Context, cfg *config.Config, wfStore workflowstore.FlyteWorkflow, crdOffloadStore crdoffloadstore.CRDOffloadStore, executor executors.Workflow, scope promutils.Scope) *Propeller {
 
 	metrics := newPropellerMetrics(scope)
 	return &Propeller{
 		metrics:          metrics,
 		wfStore:          wfStore,
-		staticObjStore:   staticObjStore,
+		crdOffloadStore:  crdOffloadStore,
 		workflowExecutor: executor,
 		cfg:              cfg,
 	}
