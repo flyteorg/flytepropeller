@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/static"
 	"reflect"
 	"runtime/debug"
 	"time"
@@ -200,16 +201,14 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		}
 	}
 
+	var blob *static.WorkflowStaticExecutionObj
+	var err error
 	if w.WorkflowStaticExecutionObj != "" {
-		blob, err := p.staticObjStore.Get(ctx, w)
+		blob, err = p.staticObjStore.Get(ctx, w)
 		if err != nil {
 			return err
 		}
-		w.SubWorkflows = blob.SubWorkflows
-		w.Tasks = blob.Tasks
-		w.WorkflowSpec = blob.WorkflowSpec
 	}
-
 	streak := 0
 	defer p.metrics.StreakLength.Add(ctx, float64(streak))
 
@@ -219,6 +218,14 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	}
 
 	for streak = 0; streak < maxLength; streak++ {
+		// load the static blob every time the FlyteWorkflow is getting processed
+		// because the workflow is rewritten after the update at the end of the loop
+		if w.WorkflowStaticExecutionObj != "" {
+			w.SubWorkflows = blob.SubWorkflows
+			w.Tasks = blob.Tasks
+			w.WorkflowSpec = blob.WorkflowSpec
+		}
+
 		t := p.metrics.RoundTime.Start(ctx)
 		mutatedWf, err := p.TryMutateWorkflow(ctx, w)
 		if err != nil {
