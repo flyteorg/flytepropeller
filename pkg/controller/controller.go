@@ -429,7 +429,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize workflow store")
 	}
 
-	crdOffloadStore, err := crdoffloadstore.NewCRDOffloadStore(store) // TODO - add configuration
+	crdOffloadStore, err := crdoffloadstore.NewCRDOffloadStore(ctx, crdoffloadstore.GetConfig(), store)
 	if err != nil {
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize CRD offload store")
 	}
