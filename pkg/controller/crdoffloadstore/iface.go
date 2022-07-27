@@ -2,6 +2,7 @@ package crdoffloadstore
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 
@@ -17,7 +18,15 @@ type CRDOffloadStore interface {
 	Remove(ctx context.Context, dataReference v1alpha1.DataReference) error
 }
 
-func NewCRDOffloadStore(dataStore *storage.DataStore) (CRDOffloadStore, error) {
-	return NewLRUCRDOffloadStore(NewPassthroughCRDOffloadStore(dataStore), 100)
-	//return nil, fmt.Errorf("unimplemented")
+func NewCRDOffloadStore(ctx context.Context, cfg *Config, dataStore *storage.DataStore) (CRDOffloadStore, error) {
+	switch cfg.Policy {
+	case PolicyInMemory:
+		return NewInmemoryCRDOffloadStore(NewPassthroughCRDOffloadStore(dataStore)), nil
+	case PolicyLRU:
+		return NewLRUCRDOffloadStore(NewPassthroughCRDOffloadStore(dataStore), cfg.Size)
+	case PolicyPassThrough:
+		return NewPassthroughCRDOffloadStore(dataStore), nil
+	}
+
+	return nil, fmt.Errorf("empty crd offload store config")
 }
