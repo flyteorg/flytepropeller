@@ -65,8 +65,10 @@ type FlyteWorkflow struct {
 	// This field is here because it's easier to put it here than pipe through a new object through all of propeller.
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
 
-	// Location that contains the serialized crd parts
-	WorkflowStaticExecutionObj DataReference `json:"staticExecutionObj,omitempty"`
+	// OffloadDataReference is the location containing an offloaded StaticWorkflowData. This is used to offload portions of
+	// the CRD to an external data store to reduce CRD size. If this exists, FlytePropeller must retrieve and parse the
+	// static data prior to processing.
+	OffloadDataReference DataReference `json:"offloadDataReference,omitempty"`
 }
 
 func (in *FlyteWorkflow) GetSecurityContext() core.SecurityContext {
@@ -347,6 +349,12 @@ func (in *WorkflowSpec) GetNodes() []NodeID {
 		nodeIds = append(nodeIds, id)
 	}
 	return nodeIds
+}
+
+type StaticWorkflowData struct {
+	*WorkflowSpec `json:"spec"`
+	SubWorkflows           map[WorkflowID]*WorkflowSpec `json:"subWorkflows,omitempty"`
+	Tasks                  map[TaskID]*TaskSpec         `json:"tasks"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
