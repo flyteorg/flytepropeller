@@ -3,10 +3,11 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/static"
 	"reflect"
 	"runtime/debug"
 	"time"
+
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/static"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/staticobjstore"
 
