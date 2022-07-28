@@ -353,8 +353,8 @@ func (in *WorkflowSpec) GetNodes() []NodeID {
 
 type StaticWorkflowData struct {
 	*WorkflowSpec `json:"spec"`
-	SubWorkflows           map[WorkflowID]*WorkflowSpec `json:"subWorkflows,omitempty"`
-	Tasks                  map[TaskID]*TaskSpec         `json:"tasks"`
+	SubWorkflows  map[WorkflowID]*WorkflowSpec `json:"subWorkflows,omitempty"`
+	Tasks         map[TaskID]*TaskSpec         `json:"tasks"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

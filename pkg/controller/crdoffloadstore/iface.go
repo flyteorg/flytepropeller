@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/flyteorg/flytestdlib/promutils"
+
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 
 	"github.com/flyteorg/flytestdlib/storage"
@@ -18,12 +20,12 @@ type CRDOffloadStore interface {
 	Remove(ctx context.Context, dataReference v1alpha1.DataReference) error
 }
 
-func NewCRDOffloadStore(ctx context.Context, cfg *Config, dataStore *storage.DataStore) (CRDOffloadStore, error) {
+func NewCRDOffloadStore(ctx context.Context, cfg *Config, dataStore *storage.DataStore, scope promutils.Scope) (CRDOffloadStore, error) {
 	switch cfg.Policy {
 	case PolicyInMemory:
-		return NewInmemoryCRDOffloadStore(NewPassthroughCRDOffloadStore(dataStore)), nil
+		return NewInmemoryCRDOffloadStore(NewPassthroughCRDOffloadStore(dataStore), scope), nil
 	case PolicyLRU:
-		return NewLRUCRDOffloadStore(NewPassthroughCRDOffloadStore(dataStore), cfg.Size)
+		return NewLRUCRDOffloadStore(NewPassthroughCRDOffloadStore(dataStore), cfg.Size, scope)
 	case PolicyPassThrough:
 		return NewPassthroughCRDOffloadStore(dataStore), nil
 	}

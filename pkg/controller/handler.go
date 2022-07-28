@@ -12,8 +12,8 @@ import (
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/crdoffloadstore"
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
