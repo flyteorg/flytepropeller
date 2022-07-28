@@ -9,8 +9,6 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/flyteorg/flytepropeller/pkg/controller/staticobjstore"
-
 	"github.com/flyteorg/flyteidl/clients/go/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
@@ -31,6 +29,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
+	"github.com/flyteorg/flytepropeller/pkg/controller/crdoffloadstore"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflow"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 	leader "github.com/flyteorg/flytepropeller/pkg/leaderelection"
@@ -430,7 +429,10 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize workflow store")
 	}
 
-	staticObjStore := staticobjstore.NewInmemoryStaticObjStore(store)
+	crdOffloadStore, err := crdoffloadstore.NewCRDOffloadStore(ctx, crdoffloadstore.GetConfig(), store)
+	if err != nil {
+		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize CRD offload store")
+	}
 
 	controller.levelMonitor = NewResourceLevelMonitor(scope.NewSubScope("collector"), flyteworkflowInformer.Lister())
 
@@ -446,7 +448,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, err
 	}
 
-	handler := NewPropellerHandler(ctx, cfg, controller.workflowStore, staticObjStore, workflowExecutor, scope)
+	handler := NewPropellerHandler(ctx, cfg, controller.workflowStore, crdOffloadStore, workflowExecutor, scope)
 	controller.workerPool = NewWorkerPool(ctx, scope, workQ, handler)
 
 	logger.Info(ctx, "Setting up event handlers")
