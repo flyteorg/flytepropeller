@@ -6,8 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/static"
-	staticobjmock "github.com/flyteorg/flytepropeller/pkg/controller/staticobjstore/mocks"
+	crdoffloadstoremock "github.com/flyteorg/flytepropeller/pkg/controller/crdoffloadstore/mocks"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore/mocks"
 	"github.com/pkg/errors"
@@ -834,8 +833,8 @@ func TestPropellerHandler_OffloadedCrd(t *testing.T) {
 		MaxWorkflowRetries: 0,
 	}
 
-	staticObjMock := &staticobjmock.WorkflowStaticObjectStore{}
-	p := NewPropellerHandler(ctx, cfg, s, staticObjMock, exec, scope)
+	offloadmock := &crdoffloadstoremock.CRDOffloadStore{}
+	p := NewPropellerHandler(ctx, cfg, s, offloadmock, exec, scope)
 
 	const namespace = "test"
 	const name = "123"
@@ -846,14 +845,14 @@ func TestPropellerHandler_OffloadedCrd(t *testing.T) {
 				Name:      name,
 				Namespace: namespace,
 			},
-			WorkflowStaticExecutionObj: "some-file-location",
+			OffloadDataReference: "some-file-location",
 		}))
 		exec.HandleCb = func(ctx context.Context, w *v1alpha1.FlyteWorkflow) error {
 			w.GetExecutionStatus().UpdatePhase(v1alpha1.WorkflowPhaseSucceeding, "done", nil)
 			return nil
 		}
 
-		staticObjMock.OnGetMatch(mock.Anything, mock.Anything).Return(&static.WorkflowStaticExecutionObj{
+		offloadmock.OnGetMatch(mock.Anything, mock.Anything).Return(&v1alpha1.StaticWorkflowData{
 			WorkflowSpec: &v1alpha1.WorkflowSpec{ID: "static-id"},
 			SubWorkflows: nil,
 			Tasks:        nil,

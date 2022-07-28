@@ -23,13 +23,13 @@ import (
 	lister "github.com/flyteorg/flytepropeller/pkg/client/listers/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+	"github.com/flyteorg/flytepropeller/pkg/controller/crdoffloadstore"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes"
 	errors3 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
-	"github.com/flyteorg/flytepropeller/pkg/controller/crdoffloadstore"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflow"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 	leader "github.com/flyteorg/flytepropeller/pkg/leaderelection"
@@ -430,7 +430,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize workflow store")
 	}
 
-	crdOffloadStore, err := crdoffloadstore.NewCRDOffloadStore(ctx, crdoffloadstore.GetConfig(), store)
+	crdOffloadStore, err := crdoffloadstore.NewCRDOffloadStore(ctx, crdoffloadstore.GetConfig(), store, scope.NewSubScope("crdoffload"))
 	if err != nil {
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize CRD offload store")
 	}
