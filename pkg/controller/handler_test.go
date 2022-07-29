@@ -825,32 +825,35 @@ func TestNewPropellerHandler_UpdateFailure(t *testing.T) {
 }
 
 func TestPropellerHandler_OffloadedCrd(t *testing.T) {
-	scope := promutils.NewTestScope()
 	ctx := context.TODO()
+
+	const name = "123"
+	const namespace = "test"
+
 	s := workflowstore.NewInMemoryWorkflowStore()
+	assert.NoError(t, s.Create(ctx, &v1alpha1.FlyteWorkflow{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		OffloadDataReference: "some-file-location",
+	}))
+
 	exec := &mockExecutor{}
+	exec.HandleCb = func(ctx context.Context, w *v1alpha1.FlyteWorkflow) error {
+		w.GetExecutionStatus().UpdatePhase(v1alpha1.WorkflowPhaseSucceeding, "done", nil)
+		return nil
+	}
+
 	cfg := &config.Config{
 		MaxWorkflowRetries: 0,
 	}
 
-	offloadmock := &crdoffloadstoremock.CRDOffloadStore{}
-	p := NewPropellerHandler(ctx, cfg, s, offloadmock, exec, scope)
+	t.Run("Happy", func(t *testing.T) {
+		scope := promutils.NewTestScope()
 
-	const namespace = "test"
-	const name = "123"
-
-	t.Run("happy offloaded spec", func(t *testing.T) {
-		assert.NoError(t, s.Create(ctx, &v1alpha1.FlyteWorkflow{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-			},
-			OffloadDataReference: "some-file-location",
-		}))
-		exec.HandleCb = func(ctx context.Context, w *v1alpha1.FlyteWorkflow) error {
-			w.GetExecutionStatus().UpdatePhase(v1alpha1.WorkflowPhaseSucceeding, "done", nil)
-			return nil
-		}
+		offloadmock := &crdoffloadstoremock.CRDOffloadStore{}
+		p := NewPropellerHandler(ctx, cfg, s, offloadmock, exec, scope)
 
 		offloadmock.OnGetMatch(mock.Anything, mock.Anything).Return(&v1alpha1.StaticWorkflowData{
 			WorkflowSpec: &v1alpha1.WorkflowSpec{ID: "static-id"},
@@ -869,5 +872,16 @@ func TestPropellerHandler_OffloadedCrd(t *testing.T) {
 		assert.Nil(t, r.WorkflowSpec)
 		assert.Nil(t, r.SubWorkflows)
 		assert.Nil(t, r.Tasks)
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		scope := promutils.NewTestScope()
+
+		offloadmock := &crdoffloadstoremock.CRDOffloadStore{}
+		p := NewPropellerHandler(ctx, cfg, s, offloadmock, exec, scope)
+
+		offloadmock.OnGetMatch(mock.Anything, mock.Anything).Return(nil, fmt.Errorf("foo"))
+		err := p.Handle(ctx, namespace, name)
+		assert.Error(t, err)
 	})
 }
