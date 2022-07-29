@@ -22,8 +22,8 @@ type CRDOffloadStore interface {
 
 func NewCRDOffloadStore(ctx context.Context, cfg *Config, dataStore *storage.DataStore, scope promutils.Scope) (CRDOffloadStore, error) {
 	switch cfg.Policy {
-	case PolicyInMemory:
-		return NewInmemoryCRDOffloadStore(NewPassthroughCRDOffloadStore(dataStore), scope), nil
+	case PolicyActive:
+		return NewActiveCRDOffloadStore(NewPassthroughCRDOffloadStore(dataStore), scope), nil
 	case PolicyLRU:
 		return NewLRUCRDOffloadStore(NewPassthroughCRDOffloadStore(dataStore), cfg.Size, scope)
 	case PolicyPassThrough:

@@ -9,7 +9,7 @@ import (
 type Policy = string
 
 const (
-	PolicyInMemory    = "InMemory" // TODO - we need to change this name
+	PolicyActive      = "Active"
 	PolicyLRU         = "LRU"
 	PolicyPassThrough = "PassThrough"
 )
