@@ -35,19 +35,21 @@ func (l *lruCRDOffloadStore) Get(ctx context.Context, dataReference v1alpha1.Dat
 			l.metrics.CacheReadError.Inc()
 			return nil, fmt.Errorf("cached item in crd offload store is not expected type '*v1alpha1.StaticWorkflowData'")
 		}
+
 		l.metrics.CacheHit.Inc()
 		return staticWorkflowData, nil
 	}
 
-	timer := l.metrics.FetchLatency.Start()
+	l.metrics.CacheMiss.Inc()
+
 	// retrieve StaticWorkflowData from underlying CRDOffloadStore
+	timer := l.metrics.FetchLatency.Start()
 	staticWorkflowData, err := l.crdOffloadStore.Get(ctx, dataReference)
 	timer.Stop()
 	if err != nil {
 		return nil, err
 	}
 
-	l.metrics.CacheMiss.Inc()
 	// add StaticWorkflowData to cache and return
 	l.cache.Add(dataReference, staticWorkflowData)
 	return staticWorkflowData, nil
@@ -76,6 +78,7 @@ func NewLRUCRDOffloadStore(crdOffloadStore CRDOffloadStore, size int, scope prom
 		CacheMiss:      lruScope.MustNewCounter("cache_miss", "Number of times object was not found in lru cache"),
 		CacheReadError: lruScope.MustNewCounter("cache_read_error", "Failed to read from lru cache"),
 	}
+
 	return &lruCRDOffloadStore{
 		cache:           cache,
 		crdOffloadStore: crdOffloadStore,
