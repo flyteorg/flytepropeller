@@ -17,6 +17,7 @@ type inmemoryCRDOffloadMetrics struct {
 	ReadError    prometheus.Counter
 	FetchLatency promutils.StopWatch
 }
+
 type inmemoryCRDOffloadStore struct {
 	crdOffloadStore CRDOffloadStore
 	store           map[string]*v1alpha1.StaticWorkflowData
@@ -29,6 +30,8 @@ func (i *inmemoryCRDOffloadStore) Get(ctx context.Context, dataReference v1alpha
 		i.metrics.CacheHit.Inc()
 		return m, nil
 	}
+
+	l.metrics.CacheMiss.Inc()
 
 	timer := i.metrics.FetchLatency.Start()
 	staticWorkflowData, err := i.crdOffloadStore.Get(ctx, dataReference)
@@ -63,6 +66,7 @@ func NewInmemoryCRDOffloadStore(crdOffloadStore CRDOffloadStore, scope promutils
 		CacheMiss:    inmemoryScope.MustNewCounter("cache_miss", "Number of times object was not found in inmemory cache"),
 		ReadError:    inmemoryScope.MustNewCounter("cache_read_error", "Failed to read from underlying storage"),
 	}
+
 	return &inmemoryCRDOffloadStore{
 		crdOffloadStore: crdOffloadStore,
 		store:           map[string]*v1alpha1.StaticWorkflowData{},
