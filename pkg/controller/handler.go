@@ -194,6 +194,18 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		}
 	}
 
+	// load the staticWorkflowData once outside the streak loop
+	// to avoid a misconfigured cache causing reloading between the streak iterations
+	var staticWorkflowData *v1alpha1.StaticWorkflowData
+	var err error
+	if len(w.OffloadDataReference) != 0 {
+		staticWorkflowData, err = p.crdOffloadStore.Get(ctx, w.OffloadDataReference)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to retrieve offloaded static workflow data from '%s' with error '%s'", w.OffloadDataReference, err)
+			return err
+		}
+	}
+
 	streak := 0
 	defer p.metrics.StreakLength.Add(ctx, float64(streak))
 
@@ -206,13 +218,6 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		// load the static blob every time the FlyteWorkflow is getting processed
 		// because the workflow is rewritten after the update at the end of the loop
 		if len(w.OffloadDataReference) != 0 {
-			// TODO - should be move this outside of the loop?
-			staticWorkflowData, err := p.crdOffloadStore.Get(ctx, w.OffloadDataReference)
-			if err != nil {
-				logger.Errorf(ctx, "Failed to retrieve offloaded static workflow data from '%s' with error '%s'", w.OffloadDataReference, err)
-				return err
-			}
-
 			w.SubWorkflows = staticWorkflowData.SubWorkflows
 			w.Tasks = staticWorkflowData.Tasks
 			w.WorkflowSpec = staticWorkflowData.WorkflowSpec
