@@ -19,8 +19,8 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/backoff"
 	nodeTaskConfig "github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/config"
 
-	stdErrors "github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/contextutils"
+	stdErrors "github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
@@ -35,9 +35,9 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
 
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -538,7 +538,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 					if exists {
 						logger.Debugf(ctx, "Enqueueing owner for updated object [%v/%v]", evt.ObjectNew.GetNamespace(), evt.ObjectNew.GetName())
 						namespacedName := k8stypes.NamespacedName{
-							Name: workflowID,
+							Name:      workflowID,
 							Namespace: evt.ObjectNew.GetNamespace(),
 						}
 
@@ -562,9 +562,8 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		},
 		// Queue - configured for high throughput so we very infrequently rate limit node updates
 		workqueue.NewNamedRateLimitingQueue(&workqueue.BucketRateLimiter{
-				Limiter: rate.NewLimiter(rate.Limit(10000), 10000),
-			},
-			entry.ResourceToWatch.GetObjectKind().GroupVersionKind().Kind),
+			Limiter: rate.NewLimiter(rate.Limit(10000), 10000),
+		}, entry.ResourceToWatch.GetObjectKind().GroupVersionKind().Kind),
 		// Predicates
 		predicate.Funcs{
 			CreateFunc: func(createEvent event.CreateEvent) bool {
