@@ -1,4 +1,4 @@
-package crdoffloadstore
+package workflowclosurestore
 
 import "fmt"
 

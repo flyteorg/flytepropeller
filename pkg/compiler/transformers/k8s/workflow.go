@@ -262,6 +262,41 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 	return obj, nil
 }
 
+func MergeWorkflowClosure(flyteWf *v1alpha1.FlyteWorkflow, wfClosure *core.CompiledWorkflowClosure) error {
+	errs := errors.NewCompileErrors()
+	if wfClosure == nil {
+		errs.Collect(errors.NewValueRequiredErr("root", "wfClosure"))
+		return errs
+	}
+
+	primarySpec, err := buildFlyteWorkflowSpec(wfClosure.Primary, wfClosure.Tasks, errs.NewScope())
+	if err != nil {
+		errs.Collect(errors.NewWorkflowBuildError(err))
+		return errs
+	}
+
+	subwfs := make(map[v1alpha1.WorkflowID]*v1alpha1.WorkflowSpec, len(wfClosure.SubWorkflows))
+	for _, subWf := range wfClosure.SubWorkflows {
+		spec, err := buildFlyteWorkflowSpec(subWf, wfClosure.Tasks, errs.NewScope())
+		if err != nil {
+			errs.Collect(errors.NewWorkflowBuildError(err))
+		} else {
+			subwfs[subWf.Template.Id.String()] = spec
+		}
+	}
+
+	if errs.HasErrors() {
+		return errs
+	}
+
+	tasks := buildTasks(wfClosure.Tasks, errs.NewScope())
+
+	flyteWf.WorkflowSpec = primarySpec
+	flyteWf.SubWorkflows = subwfs
+	flyteWf.Tasks = tasks
+	return nil
+}
+
 func toMapOfLists(connections map[string]*core.ConnectionSet_IdList) map[string][]string {
 	res := make(map[string][]string, len(connections))
 	for key, val := range connections {

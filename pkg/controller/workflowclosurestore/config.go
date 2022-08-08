@@ -1,4 +1,4 @@
-package crdoffloadstore
+package workflowclosurestore
 
 import (
 	ctrlConfig "github.com/flyteorg/flytepropeller/pkg/controller/config"
@@ -20,11 +20,11 @@ var (
 		Size:   1000,
 	}
 
-	configSection = ctrlConfig.MustRegisterSubSection("crdOffloadStore", defaultConfig)
+	configSection = ctrlConfig.MustRegisterSubSection("wfClosureStore", defaultConfig)
 )
 
 type Config struct {
-	Policy Policy `json:"policy" pflag:",CRD Offload Store Policy to initialize"`
+	Policy Policy `json:"policy" pflag:",WorkflowClosure Offload Store Policy to initialize"`
 	Size   int    `json:"size" pflag:",The maximum size of the LRU cache"`
 }
 

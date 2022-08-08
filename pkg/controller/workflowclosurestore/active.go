@@ -1,8 +1,10 @@
-package crdoffloadstore
+package workflowclosurestore
 
 import (
 	"context"
 	"time"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
@@ -10,7 +12,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
-type activeCRDOffloadMetrics struct {
+type activeWorkflowClosureMetrics struct {
 	TotalItems   prometheus.Gauge
 	CacheHit     prometheus.Counter
 	CacheMiss    prometheus.Counter
@@ -18,13 +20,13 @@ type activeCRDOffloadMetrics struct {
 	FetchLatency promutils.StopWatch
 }
 
-type activeCRDOffloadStore struct {
-	crdOffloadStore CRDOffloadStore
-	metrics         *activeCRDOffloadMetrics
-	store           map[string]*v1alpha1.StaticWorkflowData
+type activeWorkflowClosureStore struct {
+	workflowClosureStore WorkflowClosureStore
+	metrics              *activeWorkflowClosureMetrics
+	store                map[string]*core.CompiledWorkflowClosure
 }
 
-func (a *activeCRDOffloadStore) Get(ctx context.Context, dataReference v1alpha1.DataReference) (*v1alpha1.StaticWorkflowData, error) {
+func (a *activeWorkflowClosureStore) Get(ctx context.Context, dataReference v1alpha1.DataReference) (*core.CompiledWorkflowClosure, error) {
 	location := dataReference.String()
 	if m, ok := a.store[location]; ok {
 		a.metrics.CacheHit.Inc()
@@ -34,7 +36,7 @@ func (a *activeCRDOffloadStore) Get(ctx context.Context, dataReference v1alpha1.
 	a.metrics.CacheMiss.Inc()
 
 	timer := a.metrics.FetchLatency.Start()
-	staticWorkflowData, err := a.crdOffloadStore.Get(ctx, dataReference)
+	workflowClosure, err := a.workflowClosureStore.Get(ctx, dataReference)
 	timer.Stop()
 	if err != nil {
 		a.metrics.ReadError.Inc()
@@ -42,12 +44,12 @@ func (a *activeCRDOffloadStore) Get(ctx context.Context, dataReference v1alpha1.
 	}
 
 	a.metrics.TotalItems.Inc()
-	a.store[location] = staticWorkflowData
-	return staticWorkflowData, nil
+	a.store[location] = workflowClosure
+	return workflowClosure, nil
 }
 
-func (a *activeCRDOffloadStore) Remove(ctx context.Context, dataReference v1alpha1.DataReference) error {
-	if err := a.crdOffloadStore.Remove(ctx, dataReference); err != nil {
+func (a *activeWorkflowClosureStore) Remove(ctx context.Context, dataReference v1alpha1.DataReference) error {
+	if err := a.workflowClosureStore.Remove(ctx, dataReference); err != nil {
 		return err
 	}
 
@@ -57,9 +59,9 @@ func (a *activeCRDOffloadStore) Remove(ctx context.Context, dataReference v1alph
 	return nil
 }
 
-func NewActiveCRDOffloadStore(crdOffloadStore CRDOffloadStore, scope promutils.Scope) CRDOffloadStore {
+func NewActiveWorkflowClosureStore(workflowClosureStore WorkflowClosureStore, scope promutils.Scope) WorkflowClosureStore {
 	activeScope := scope.NewSubScope("active")
-	metrics := &activeCRDOffloadMetrics{
+	metrics := &activeWorkflowClosureMetrics{
 		TotalItems:   activeScope.MustNewGauge("total_items", "Total Items in cache"),
 		FetchLatency: activeScope.MustNewStopWatch("fetch", "Total Time to read from underlying datastorage", time.Millisecond),
 		CacheHit:     activeScope.MustNewCounter("cache_hit", "Number of times object was found in active cache"),
@@ -67,9 +69,9 @@ func NewActiveCRDOffloadStore(crdOffloadStore CRDOffloadStore, scope promutils.S
 		ReadError:    activeScope.MustNewCounter("cache_read_error", "Failed to read from underlying storage"),
 	}
 
-	return &activeCRDOffloadStore{
-		crdOffloadStore: crdOffloadStore,
-		metrics:         metrics,
-		store:           map[string]*v1alpha1.StaticWorkflowData{},
+	return &activeWorkflowClosureStore{
+		workflowClosureStore: workflowClosureStore,
+		metrics:              metrics,
+		store:                map[string]*core.CompiledWorkflowClosure{},
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	crdoffloadstoremock "github.com/flyteorg/flytepropeller/pkg/controller/crdoffloadstore/mocks"
+	wfclosurestoremock "github.com/flyteorg/flytepropeller/pkg/controller/workflowclosurestore/mocks"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore/mocks"
 	"github.com/pkg/errors"
@@ -824,7 +824,7 @@ func TestNewPropellerHandler_UpdateFailure(t *testing.T) {
 	})
 }
 
-func TestPropellerHandler_OffloadedCrd(t *testing.T) {
+func TestPropellerHandler_OffloadedWorkflowClosure(t *testing.T) {
 	ctx := context.TODO()
 
 	const name = "123"
@@ -836,7 +836,7 @@ func TestPropellerHandler_OffloadedCrd(t *testing.T) {
 			Name:      name,
 			Namespace: namespace,
 		},
-		OffloadDataReference: "some-file-location",
+		WorkflowClosureDataReference: "some-file-location",
 	}))
 
 	exec := &mockExecutor{}
@@ -852,11 +852,11 @@ func TestPropellerHandler_OffloadedCrd(t *testing.T) {
 	t.Run("Happy", func(t *testing.T) {
 		scope := promutils.NewTestScope()
 
-		offloadmock := &crdoffloadstoremock.CRDOffloadStore{}
-		p := NewPropellerHandler(ctx, cfg, s, offloadmock, exec, scope)
+		wfClosureStoreMock := &wfclosurestoremock.WorkflowClosureStore{}
+		p := NewPropellerHandler(ctx, cfg, s, wfClosureStoreMock, exec, scope)
 
-		offloadmock.OnGetMatch(mock.Anything, mock.Anything).Return(&v1alpha1.StaticWorkflowData{
-			WorkflowSpec: &v1alpha1.WorkflowSpec{ID: "static-id"},
+		wfClosureStoreMock.OnGetMatch(mock.Anything, mock.Anything).Return(&core.CompiledWorkflowClosure{
+			Primary:      &core.CompiledWorkflow{Template: &core.WorkflowTemplate{Id: &core.Identifier{Name: "static-id"}}},
 			SubWorkflows: nil,
 			Tasks:        nil,
 		}, nil)
@@ -877,10 +877,10 @@ func TestPropellerHandler_OffloadedCrd(t *testing.T) {
 	t.Run("Error", func(t *testing.T) {
 		scope := promutils.NewTestScope()
 
-		offloadmock := &crdoffloadstoremock.CRDOffloadStore{}
-		p := NewPropellerHandler(ctx, cfg, s, offloadmock, exec, scope)
+		wfClosureStoreMock := &wfclosurestoremock.WorkflowClosureStore{}
+		p := NewPropellerHandler(ctx, cfg, s, wfClosureStoreMock, exec, scope)
 
-		offloadmock.OnGetMatch(mock.Anything, mock.Anything).Return(nil, fmt.Errorf("foo"))
+		wfClosureStoreMock.OnGetMatch(mock.Anything, mock.Anything).Return(nil, fmt.Errorf("foo"))
 		err := p.Handle(ctx, namespace, name)
 		assert.Error(t, err)
 	})
