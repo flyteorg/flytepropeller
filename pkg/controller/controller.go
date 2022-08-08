@@ -23,7 +23,6 @@ import (
 	lister "github.com/flyteorg/flytepropeller/pkg/client/listers/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-	"github.com/flyteorg/flytepropeller/pkg/controller/crdoffloadstore"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes"
 	errors3 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
@@ -31,6 +30,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflow"
+	"github.com/flyteorg/flytepropeller/pkg/controller/workflowclosurestore"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 	leader "github.com/flyteorg/flytepropeller/pkg/leaderelection"
 	"github.com/flyteorg/flytepropeller/pkg/utils"
@@ -430,9 +430,9 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize workflow store")
 	}
 
-	crdOffloadStore, err := crdoffloadstore.NewCRDOffloadStore(ctx, crdoffloadstore.GetConfig(), store, scope.NewSubScope("crdoffload"))
+	workflowClosureStore, err := workflowclosurestore.NewWorkflowClosureStore(ctx, workflowclosurestore.GetConfig(), store, scope.NewSubScope("wfclosuire"))
 	if err != nil {
-		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize CRD offload store")
+		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize Workflow Closure store")
 	}
 
 	controller.levelMonitor = NewResourceLevelMonitor(scope.NewSubScope("collector"), flyteworkflowInformer.Lister())
@@ -449,7 +449,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, err
 	}
 
-	handler := NewPropellerHandler(ctx, cfg, controller.workflowStore, crdOffloadStore, workflowExecutor, scope)
+	handler := NewPropellerHandler(ctx, cfg, controller.workflowStore, workflowClosureStore, workflowExecutor, scope)
 	controller.workerPool = NewWorkerPool(ctx, scope, workQ, handler)
 
 	if cfg.EnableGrpcLatencyMetrics {
