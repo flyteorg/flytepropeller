@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"context"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
@@ -101,11 +104,13 @@ func runWebhook(origContext context.Context, propellerCfg *config.Config, cfg *w
 		limitNamespace = propellerCfg.LimitNamespace
 	}
 	options := manager.Options{
-		Namespace:     limitNamespace,
-		SyncPeriod:    &propellerCfg.DownstreamEval.Duration,
-		ClientBuilder: executors.NewFallbackClientBuilder(webhookScope),
-		CertDir:       cfg.CertDir,
-		Port:          cfg.ListenPort,
+		Namespace:  limitNamespace,
+		SyncPeriod: &propellerCfg.DownstreamEval.Duration,
+		NewClient: func(cache cache.Cache, config *rest.Config, options client.Options, uncachedObjects ...client.Object) (client.Client, error) {
+			return executors.NewFallbackClientBuilder(webhookScope).Build(cache, config, options)
+		},
+		CertDir: cfg.CertDir,
+		Port:    cfg.ListenPort,
 	}
 
 	mgr, err := controller.CreateControllerManager(ctx, propellerCfg, options)

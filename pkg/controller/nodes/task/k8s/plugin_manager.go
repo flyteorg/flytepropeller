@@ -43,7 +43,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
-
 	nodeTaskConfig "github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/config"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
