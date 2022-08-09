@@ -1,4 +1,4 @@
-package workflowclosurestore
+package wfcrdfieldsstore
 
 import "fmt"
 

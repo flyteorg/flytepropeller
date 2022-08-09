@@ -262,41 +262,6 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 	return obj, nil
 }
 
-func MergeWorkflowClosure(flyteWf *v1alpha1.FlyteWorkflow, wfClosure *core.CompiledWorkflowClosure) error {
-	errs := errors.NewCompileErrors()
-	if wfClosure == nil {
-		errs.Collect(errors.NewValueRequiredErr("root", "wfClosure"))
-		return errs
-	}
-
-	primarySpec, err := buildFlyteWorkflowSpec(wfClosure.Primary, wfClosure.Tasks, errs.NewScope())
-	if err != nil {
-		errs.Collect(errors.NewWorkflowBuildError(err))
-		return errs
-	}
-
-	subwfs := make(map[v1alpha1.WorkflowID]*v1alpha1.WorkflowSpec, len(wfClosure.SubWorkflows))
-	for _, subWf := range wfClosure.SubWorkflows {
-		spec, err := buildFlyteWorkflowSpec(subWf, wfClosure.Tasks, errs.NewScope())
-		if err != nil {
-			errs.Collect(errors.NewWorkflowBuildError(err))
-		} else {
-			subwfs[subWf.Template.Id.String()] = spec
-		}
-	}
-
-	if errs.HasErrors() {
-		return errs
-	}
-
-	tasks := buildTasks(wfClosure.Tasks, errs.NewScope())
-
-	flyteWf.WorkflowSpec = primarySpec
-	flyteWf.SubWorkflows = subwfs
-	flyteWf.Tasks = tasks
-	return nil
-}
-
 func toMapOfLists(connections map[string]*core.ConnectionSet_IdList) map[string][]string {
 	res := make(map[string][]string, len(connections))
 	for key, val := range connections {
@@ -311,4 +276,46 @@ func buildConnections(w *core.CompiledWorkflow) v1alpha1.Connections {
 	res.Downstream = toMapOfLists(w.GetConnections().GetDownstream())
 	res.Upstream = toMapOfLists(w.GetConnections().GetUpstream())
 	return res
+}
+
+type WfClosureCrdFields struct {
+	*v1alpha1.WorkflowSpec `json:"spec"`
+	SubWorkflows           map[v1alpha1.WorkflowID]*v1alpha1.WorkflowSpec `json:"subWorkflows,omitempty"`
+	Tasks                  map[v1alpha1.TaskID]*v1alpha1.TaskSpec         `json:"tasks"`
+}
+
+func BuildWfClosureCrdFields(wfClosure *core.CompiledWorkflowClosure) (*WfClosureCrdFields, error) {
+	errs := errors.NewCompileErrors()
+	if wfClosure == nil {
+		errs.Collect(errors.NewValueRequiredErr("root", "wfClosure"))
+		return nil, errs
+	}
+
+	primarySpec, err := buildFlyteWorkflowSpec(wfClosure.Primary, wfClosure.Tasks, errs.NewScope())
+	if err != nil {
+		errs.Collect(errors.NewWorkflowBuildError(err))
+		return nil, errs
+	}
+
+	for _, t := range wfClosure.Tasks {
+		t.Template.Interface = StripInterfaceTypeMetadata(t.Template.Interface)
+	}
+	tasks := buildTasks(wfClosure.Tasks, errs.NewScope())
+
+	subwfs := make(map[v1alpha1.WorkflowID]*v1alpha1.WorkflowSpec, len(wfClosure.SubWorkflows))
+	for _, subWf := range wfClosure.SubWorkflows {
+		spec, err := buildFlyteWorkflowSpec(subWf, wfClosure.Tasks, errs.NewScope())
+		if err != nil {
+			errs.Collect(errors.NewWorkflowBuildError(err))
+		} else {
+			subwfs[subWf.Template.Id.String()] = spec
+		}
+	}
+
+	wfClosureCrdFields := &WfClosureCrdFields{
+		WorkflowSpec: primarySpec,
+		SubWorkflows: subwfs,
+		Tasks:        tasks,
+	}
+	return wfClosureCrdFields, nil
 }

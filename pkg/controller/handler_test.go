@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
-	wfclosurestoremock "github.com/flyteorg/flytepropeller/pkg/controller/workflowclosurestore/mocks"
+	"github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
+
+	crdfieldsstoremock "github.com/flyteorg/flytepropeller/pkg/controller/wfcrdfieldsstore/mocks"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore/mocks"
 	"github.com/pkg/errors"
@@ -852,13 +854,11 @@ func TestPropellerHandler_OffloadedWorkflowClosure(t *testing.T) {
 	t.Run("Happy", func(t *testing.T) {
 		scope := promutils.NewTestScope()
 
-		wfClosureStoreMock := &wfclosurestoremock.WorkflowClosureStore{}
+		wfClosureStoreMock := &crdfieldsstoremock.WfClosureCrdFieldsStore{}
 		p := NewPropellerHandler(ctx, cfg, s, wfClosureStoreMock, exec, scope)
 
-		wfClosureStoreMock.OnGetMatch(mock.Anything, mock.Anything).Return(&core.CompiledWorkflowClosure{
-			Primary:      &core.CompiledWorkflow{Template: &core.WorkflowTemplate{Id: &core.Identifier{Name: "static-id"}}},
-			SubWorkflows: nil,
-			Tasks:        nil,
+		wfClosureStoreMock.OnGetMatch(mock.Anything, mock.Anything).Return(&k8s.WfClosureCrdFields{
+			WorkflowSpec: &v1alpha1.WorkflowSpec{ID: "static-id"},
 		}, nil)
 
 		assert.NoError(t, p.Handle(ctx, namespace, name))
@@ -877,7 +877,7 @@ func TestPropellerHandler_OffloadedWorkflowClosure(t *testing.T) {
 	t.Run("Error", func(t *testing.T) {
 		scope := promutils.NewTestScope()
 
-		wfClosureStoreMock := &wfclosurestoremock.WorkflowClosureStore{}
+		wfClosureStoreMock := &crdfieldsstoremock.WfClosureCrdFieldsStore{}
 		p := NewPropellerHandler(ctx, cfg, s, wfClosureStoreMock, exec, scope)
 
 		wfClosureStoreMock.OnGetMatch(mock.Anything, mock.Anything).Return(nil, fmt.Errorf("foo"))

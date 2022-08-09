@@ -1,18 +1,16 @@
-package workflowclosurestore
+package wfcrdfieldsstore
 
 import (
 	"context"
 	"time"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
 
-type activeWorkflowClosureMetrics struct {
+type activeCrdFieldsMetrics struct {
 	TotalItems   prometheus.Gauge
 	CacheHit     prometheus.Counter
 	CacheMiss    prometheus.Counter
@@ -20,13 +18,13 @@ type activeWorkflowClosureMetrics struct {
 	FetchLatency promutils.StopWatch
 }
 
-type activeWorkflowClosureStore struct {
-	workflowClosureStore WorkflowClosureStore
-	metrics              *activeWorkflowClosureMetrics
-	store                map[string]*core.CompiledWorkflowClosure
+type activeWfClosureCrdFieldsStore struct {
+	wfClosureCrdFieldsStore WfClosureCrdFieldsStore
+	metrics                 *activeCrdFieldsMetrics
+	store                   map[string]*k8s.WfClosureCrdFields
 }
 
-func (a *activeWorkflowClosureStore) Get(ctx context.Context, dataReference v1alpha1.DataReference) (*core.CompiledWorkflowClosure, error) {
+func (a *activeWfClosureCrdFieldsStore) Get(ctx context.Context, dataReference v1alpha1.DataReference) (*k8s.WfClosureCrdFields, error) {
 	location := dataReference.String()
 	if m, ok := a.store[location]; ok {
 		a.metrics.CacheHit.Inc()
@@ -36,7 +34,7 @@ func (a *activeWorkflowClosureStore) Get(ctx context.Context, dataReference v1al
 	a.metrics.CacheMiss.Inc()
 
 	timer := a.metrics.FetchLatency.Start()
-	workflowClosure, err := a.workflowClosureStore.Get(ctx, dataReference)
+	wfClosureCrdFields, err := a.wfClosureCrdFieldsStore.Get(ctx, dataReference)
 	timer.Stop()
 	if err != nil {
 		a.metrics.ReadError.Inc()
@@ -44,12 +42,12 @@ func (a *activeWorkflowClosureStore) Get(ctx context.Context, dataReference v1al
 	}
 
 	a.metrics.TotalItems.Inc()
-	a.store[location] = workflowClosure
-	return workflowClosure, nil
+	a.store[location] = wfClosureCrdFields
+	return wfClosureCrdFields, nil
 }
 
-func (a *activeWorkflowClosureStore) Remove(ctx context.Context, dataReference v1alpha1.DataReference) error {
-	if err := a.workflowClosureStore.Remove(ctx, dataReference); err != nil {
+func (a *activeWfClosureCrdFieldsStore) Remove(ctx context.Context, dataReference v1alpha1.DataReference) error {
+	if err := a.wfClosureCrdFieldsStore.Remove(ctx, dataReference); err != nil {
 		return err
 	}
 
@@ -59,9 +57,9 @@ func (a *activeWorkflowClosureStore) Remove(ctx context.Context, dataReference v
 	return nil
 }
 
-func NewActiveWorkflowClosureStore(workflowClosureStore WorkflowClosureStore, scope promutils.Scope) WorkflowClosureStore {
+func NewActiveWfClosureCrdFieldsStore(wfClosureCrdFieldsStore WfClosureCrdFieldsStore, scope promutils.Scope) WfClosureCrdFieldsStore {
 	activeScope := scope.NewSubScope("active")
-	metrics := &activeWorkflowClosureMetrics{
+	metrics := &activeCrdFieldsMetrics{
 		TotalItems:   activeScope.MustNewGauge("total_items", "Total Items in cache"),
 		FetchLatency: activeScope.MustNewStopWatch("fetch", "Total Time to read from underlying datastorage", time.Millisecond),
 		CacheHit:     activeScope.MustNewCounter("cache_hit", "Number of times object was found in active cache"),
@@ -69,9 +67,9 @@ func NewActiveWorkflowClosureStore(workflowClosureStore WorkflowClosureStore, sc
 		ReadError:    activeScope.MustNewCounter("cache_read_error", "Failed to read from underlying storage"),
 	}
 
-	return &activeWorkflowClosureStore{
-		workflowClosureStore: workflowClosureStore,
-		metrics:              metrics,
-		store:                map[string]*core.CompiledWorkflowClosure{},
+	return &activeWfClosureCrdFieldsStore{
+		wfClosureCrdFieldsStore: wfClosureCrdFieldsStore,
+		metrics:                 metrics,
+		store:                   map[string]*k8s.WfClosureCrdFields{},
 	}
 }
