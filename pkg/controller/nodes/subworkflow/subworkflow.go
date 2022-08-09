@@ -202,10 +202,10 @@ func (s *subworkflowHandler) HandleFailingSubWorkflow(ctx context.Context, nCtx 
 		if state.Error != nil {
 			return handler.DoTransition(handler.TransitionTypeEphemeral,
 				handler.PhaseInfoFailureErr(state.Error, nil)), nil
-		} else {
-			return handler.DoTransition(handler.TransitionTypeEphemeral,
-				handler.PhaseInfoFailure(core.ExecutionError_UNKNOWN, "SubworkflowNodeFailing", "", nil)), nil
 		}
+
+		return handler.DoTransition(handler.TransitionTypeEphemeral,
+			handler.PhaseInfoFailure(core.ExecutionError_UNKNOWN, "SubworkflowNodeFailing", "", nil)), nil
 	}
 
 	status := nCtx.NodeStatus()
