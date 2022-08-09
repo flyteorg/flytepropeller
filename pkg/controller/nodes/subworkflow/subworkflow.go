@@ -196,14 +196,19 @@ func (s *subworkflowHandler) HandleFailingSubWorkflow(ctx context.Context, nCtx 
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoUndefined), err
 	}
 
-	status := nCtx.NodeStatus()
-	status.GetWorkflowNodeStatus()
 	if subWorkflow.GetOnFailureNode() == nil {
 		logger.Infof(ctx, "Subworkflow has no failure nodes, failing immediately.")
-		return handler.DoTransition(handler.TransitionTypeEphemeral,
-			handler.PhaseInfoFailureErr(nCtx.NodeStateReader().GetWorkflowNodeState().Error, nil)), err
+		state := nCtx.NodeStateReader().GetWorkflowNodeState()
+		if state.Error != nil {
+			return handler.DoTransition(handler.TransitionTypeEphemeral,
+				handler.PhaseInfoFailureErr(state.Error, nil)), nil
+		} else {
+			return handler.DoTransition(handler.TransitionTypeEphemeral,
+				handler.PhaseInfoFailure(core.ExecutionError_UNKNOWN, "SubworkflowNodeFailing", "", nil)), nil
+		}
 	}
 
+	status := nCtx.NodeStatus()
 	nodeLookup := executors.NewNodeLookup(subWorkflow, status)
 	return s.HandleFailureNodeOfSubWorkflow(ctx, nCtx, subWorkflow, nodeLookup)
 }
