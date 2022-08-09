@@ -83,12 +83,12 @@ func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler
 		}
 
 		err = nCtx.NodeStateWriter().PutWorkflowNodeState(workflowNodeState)
-		/*if subworkflow.GetOnFailureNode() != nil {
-			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailingErr(state.Err, nil)), err
+		if err != nil {
+			logger.Warnf(ctx, "failed to store failing subworkflow state with err '%s'", err)
+			return handler.UnknownTransition, err
 		}
 
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailureErr(state.Err, nil)), err*/
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailingErr(state.Err, nil)), err
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)), nil
 	}
 
 	if state.IsComplete() {
@@ -191,7 +191,7 @@ func (s *subworkflowHandler) HandleFailingSubWorkflow(ctx context.Context, nCtx 
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.SubWorkflowExecutionFailed, err.Error(), nil)), nil
 	}
 
-	if err := s.HandleAbort(ctx, nCtx, "subworkflow node failed"); err != nil {
+	if err := s.HandleAbort(ctx, nCtx, "subworkflow failed"); err != nil {
 		logger.Warnf(ctx, "failed to abort failing subworkflow with err '%v'", err)
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoUndefined), err
 	}
