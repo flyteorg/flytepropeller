@@ -29,8 +29,8 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
+	"github.com/flyteorg/flytepropeller/pkg/controller/wfcrdfieldsstore"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflow"
-	"github.com/flyteorg/flytepropeller/pkg/controller/workflowclosurestore"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 	leader "github.com/flyteorg/flytepropeller/pkg/leaderelection"
 	"github.com/flyteorg/flytepropeller/pkg/utils"
@@ -430,7 +430,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize workflow store")
 	}
 
-	workflowClosureStore, err := workflowclosurestore.NewWorkflowClosureStore(ctx, workflowclosurestore.GetConfig(), store, scope.NewSubScope("wfclosuire"))
+	workflowClosureStore, err := wfcrdfieldsstore.NewWfClosureCrdFieldsStore(ctx, wfcrdfieldsstore.GetConfig(), store, scope.NewSubScope("wfclosuire"))
 	if err != nil {
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize Workflow Closure store")
 	}
