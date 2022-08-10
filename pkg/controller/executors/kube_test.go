@@ -37,9 +37,9 @@ func TestIdFromObject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace:   tt.args.ns,
-					Name:        tt.args.name,
-					ClusterName: tt.args.cluster,
+					Namespace:                 tt.args.ns,
+					Name:                      tt.args.name,
+					ZZZ_DeprecatedClusterName: tt.args.cluster,
 				},
 				TypeMeta: metav1.TypeMeta{
 					Kind:       tt.args.kind,
@@ -83,9 +83,9 @@ func TestWriteThroughCachingWriter_Create(t *testing.T) {
 
 	p := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   "ns",
-			Name:        "name",
-			ClusterName: "cluster",
+			Namespace:                 "ns",
+			Name:                      "name",
+			ZZZ_DeprecatedClusterName: "cluster",
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "pod",
@@ -110,9 +110,9 @@ func TestWriteThroughCachingWriter_Delete(t *testing.T) {
 
 	p := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   "ns",
-			Name:        "name",
-			ClusterName: "cluster",
+			Namespace:                 "ns",
+			Name:                      "name",
+			ZZZ_DeprecatedClusterName: "cluster",
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "pod",
