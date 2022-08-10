@@ -4,9 +4,10 @@ package cmd
 import (
 	"context"
 	"flag"
-	"k8s.io/client-go/rest"
 	"os"
 	"runtime"
+
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
