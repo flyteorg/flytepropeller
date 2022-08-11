@@ -10,6 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllertest"
 )
 
+// FakeInformers is a fake implementation of Informers.
 type FakeInformers struct {
 }
 
