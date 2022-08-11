@@ -430,7 +430,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize workflow store")
 	}
 
-	workflowClosureStore, err := wfcrdfieldsstore.NewWfClosureCrdFieldsStore(ctx, wfcrdfieldsstore.GetConfig(), store, scope.NewSubScope("wfclosuire"))
+	workflowClosureStore, err := wfcrdfieldsstore.NewWfClosureCrdFieldsStore(ctx, wfcrdfieldsstore.GetConfig(), store, scope.NewSubScope("wfclosure"))
 	if err != nil {
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize Workflow Closure store")
 	}
