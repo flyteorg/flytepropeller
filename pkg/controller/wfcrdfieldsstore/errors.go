@@ -1,5 +1,0 @@
-package wfcrdfieldsstore
-
-import "fmt"
-
-var ErrLocationEmpty = fmt.Errorf("filename location empty error")

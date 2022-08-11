@@ -7,6 +7,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
@@ -14,13 +15,13 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/wfcrdfieldsstore"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -68,11 +69,11 @@ func RecordSystemError(w *v1alpha1.FlyteWorkflow, err error) *v1alpha1.FlyteWork
 
 // Core Propeller structure that houses the Reconciliation loop for Flytepropeller
 type Propeller struct {
-	wfStore                 workflowstore.FlyteWorkflow
-	wfClosureCrdFieldsStore wfcrdfieldsstore.WfClosureCrdFieldsStore
-	workflowExecutor        executors.Workflow
-	metrics                 *propellerMetrics
-	cfg                     *config.Config
+	store            *storage.DataStore
+	wfStore          workflowstore.FlyteWorkflow
+	workflowExecutor executors.Workflow
+	metrics          *propellerMetrics
+	cfg              *config.Config
 }
 
 // Initializes all downstream executors
@@ -195,14 +196,23 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		}
 	}
 
-	// load the Offloaded W once outside the streak loop
+	// TODO @hamersaw - comment better
+	// load the offloaded WorkflowClosure once outside the streak loop
 	// to avoid a misconfigured cache causing reloading between the streak iterations
 	var wfClosureCrdFields *k8s.WfClosureCrdFields
-	var err error
-	if len(w.WorkflowClosureDataReference) != 0 {
-		wfClosureCrdFields, err = p.wfClosureCrdFieldsStore.Get(ctx, w.WorkflowClosureDataReference)
+	if len(w.WorkflowClosureReference) > 0 {
+		//t := p.metrics.RoundTime.Start(ctx) TODO @hamersaw add metric
+
+		wfClosure := &admin.WorkflowClosure{}
+		err := p.store.ReadProtobuf(ctx, w.WorkflowClosureReference, wfClosure)
 		if err != nil {
-			logger.Errorf(ctx, "Failed to retrieve workflow closure data from '%s' with error '%s'", w.WorkflowClosureDataReference, err)
+			logger.Errorf(ctx, "Failed to retrieve workflow closure data from '%s' with error '%s'", w.WorkflowClosureReference, err)
+			return err
+		}
+
+		wfClosureCrdFields, err = k8s.BuildWfClosureCrdFields(wfClosure.CompiledWorkflow)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to parse workflow closure data from '%s' with error '%s'", w.WorkflowClosureReference, err)
 			return err
 		}
 	}
@@ -216,9 +226,10 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	}
 
 	for streak = 0; streak < maxLength; streak++ {
+		// TODO @hamersaw - comment better
 		// load the static blob every time the FlyteWorkflow is getting processed
 		// because the workflow is rewritten after the update at the end of the loop
-		if len(w.WorkflowClosureDataReference) != 0 {
+		if wfClosureCrdFields != nil {
 			w.WorkflowSpec = wfClosureCrdFields.WorkflowSpec
 			w.Tasks = wfClosureCrdFields.Tasks
 			w.SubWorkflows = wfClosureCrdFields.SubWorkflows
@@ -227,7 +238,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		t := p.metrics.RoundTime.Start(ctx)
 		mutatedWf, err := p.TryMutateWorkflow(ctx, w)
 
-		if len(w.WorkflowClosureDataReference) != 0 {
+		if wfClosureCrdFields != nil {
 			// strip data populated from WorkflowClosureReference
 			w.SubWorkflows, w.Tasks, w.WorkflowSpec = nil, nil, nil
 			mutatedWf.SubWorkflows, mutatedWf.Tasks, mutatedWf.WorkflowSpec = nil, nil, nil
@@ -255,13 +266,6 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 				// We add a completed label so that we can avoid polling for this workflow
 				SetCompletedLabel(mutatedWf, time.Now())
 				ResetFinalizers(mutatedWf)
-
-				// clear WfClosureCrdFieldsStore cache for completed workflows
-				if len(w.WorkflowClosureDataReference) != 0 {
-					if err := p.wfClosureCrdFieldsStore.Remove(ctx, w.WorkflowClosureDataReference); err != nil {
-						logger.Errorf(ctx, "failed to clear workflow closure offload store cache for '%s' with err '%s'", w.WorkflowClosureDataReference, err)
-					}
-				}
 			}
 		}
 
@@ -356,14 +360,14 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 }
 
 // NewPropellerHandler creates a new Propeller and initializes metrics
-func NewPropellerHandler(_ context.Context, cfg *config.Config, wfStore workflowstore.FlyteWorkflow, wfClosureCrdFieldsStore wfcrdfieldsstore.WfClosureCrdFieldsStore, executor executors.Workflow, scope promutils.Scope) *Propeller {
+func NewPropellerHandler(_ context.Context, cfg *config.Config, store *storage.DataStore, wfStore workflowstore.FlyteWorkflow, executor executors.Workflow, scope promutils.Scope) *Propeller {
 
 	metrics := newPropellerMetrics(scope)
 	return &Propeller{
-		metrics:                 metrics,
-		wfStore:                 wfStore,
-		wfClosureCrdFieldsStore: wfClosureCrdFieldsStore,
-		workflowExecutor:        executor,
-		cfg:                     cfg,
+		metrics:          metrics,
+		store:            store,
+		wfStore:          wfStore,
+		workflowExecutor: executor,
+		cfg:              cfg,
 	}
 }

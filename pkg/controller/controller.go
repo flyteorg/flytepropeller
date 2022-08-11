@@ -29,7 +29,6 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
-	"github.com/flyteorg/flytepropeller/pkg/controller/wfcrdfieldsstore"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflow"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 	leader "github.com/flyteorg/flytepropeller/pkg/leaderelection"
@@ -430,11 +429,6 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize workflow store")
 	}
 
-	workflowClosureStore, err := wfcrdfieldsstore.NewWfClosureCrdFieldsStore(ctx, wfcrdfieldsstore.GetConfig(), store, scope.NewSubScope("wfclosure"))
-	if err != nil {
-		return nil, stdErrs.Wrapf(errors3.CausedByError, err, "failed to initialize Workflow Closure store")
-	}
-
 	controller.levelMonitor = NewResourceLevelMonitor(scope.NewSubScope("collector"), flyteworkflowInformer.Lister())
 
 	nodeExecutor, err := nodes.NewExecutor(ctx, cfg.NodeConfig, store, controller.enqueueWorkflowForNodeUpdates, eventSink,
@@ -449,7 +443,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		return nil, err
 	}
 
-	handler := NewPropellerHandler(ctx, cfg, controller.workflowStore, workflowClosureStore, workflowExecutor, scope)
+	handler := NewPropellerHandler(ctx, cfg, store, controller.workflowStore, workflowExecutor, scope)
 	controller.workerPool = NewWorkerPool(ctx, scope, workQ, handler)
 
 	if cfg.EnableGrpcLatencyMetrics {
