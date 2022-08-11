@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
+
 	"k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
@@ -19,7 +21,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/cache/informertest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -36,8 +37,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 )
 
 type extendedFakeClient struct {
@@ -238,7 +237,7 @@ func dummySetupContext(fakeClient client.Client) pluginsCore.SetupContext {
 
 	kubeClient := &pluginsCoreMock.KubeClient{}
 	kubeClient.On("GetClient").Return(fakeClient)
-	kubeClient.On("GetCache").Return(&informertest.FakeInformers{})
+	kubeClient.On("GetCache").Return(&mocks.FakeInformers{})
 	setupContext.On("KubeClient").Return(kubeClient)
 
 	setupContext.On("OwnerKind").Return("x")
