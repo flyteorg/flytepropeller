@@ -11,6 +11,7 @@ import (
 )
 
 // FakeInformers is a fake implementation of Informers.
+// Implement a fake informer cache to avoid race condition in informertest.FakeInformers
 type FakeInformers struct {
 }
 
