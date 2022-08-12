@@ -7,10 +7,6 @@ import (
 	"os"
 	"runtime"
 
-	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/flyteorg/flytepropeller/pkg/controller"
 	config2 "github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
@@ -30,8 +26,11 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"k8s.io/client-go/rest"
 	"k8s.io/klog"
 
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 

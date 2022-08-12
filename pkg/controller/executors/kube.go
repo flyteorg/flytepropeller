@@ -104,7 +104,7 @@ type writeThroughCachingWriter struct {
 }
 
 func IDFromObject(obj client.Object, op string) []byte {
-	return []byte(fmt.Sprintf("%s:%s:%s:%s:%s", obj.GetZZZ_DeprecatedClusterName(), obj.GetObjectKind().GroupVersionKind().String(), obj.GetNamespace(), obj.GetName(), op))
+	return []byte(fmt.Sprintf("%s:%s:%s:%s", obj.GetObjectKind().GroupVersionKind().String(), obj.GetNamespace(), obj.GetName(), op))
 }
 
 // Create first checks the local cache if the object with id was previously successfully saved, if not then

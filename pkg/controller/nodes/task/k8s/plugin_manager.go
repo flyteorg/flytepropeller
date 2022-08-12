@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
@@ -16,6 +17,7 @@ import (
 
 	compiler "github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/backoff"
+	nodeTaskConfig "github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/config"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 	stdErrors "github.com/flyteorg/flytestdlib/errors"
@@ -33,8 +35,6 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/errors"
-	nodeTaskConfig "github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/config"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"

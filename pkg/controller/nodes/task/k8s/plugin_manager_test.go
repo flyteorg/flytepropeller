@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
-
 	"k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
@@ -37,6 +35,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 )
 
 type extendedFakeClient struct {
