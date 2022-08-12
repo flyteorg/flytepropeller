@@ -28,10 +28,10 @@ func TestIdFromObject(t *testing.T) {
 		args args
 		want string
 	}{
-		{"default", args{"default", "name", "", "pod", "c"}, ":/v1, Kind=pod:default:name:c"},
-		{"no-cluster", args{"my-ns", "name", "", "pod", "c"}, ":/v1, Kind=pod:my-ns:name:c"},
-		{"differ-oper", args{"default", "name", "", "pod", "d"}, ":/v1, Kind=pod:default:name:d"},
-		{"withcluster", args{"default", "name", "cluster", "pod", "d"}, "cluster:/v1, Kind=pod:default:name:d"},
+		{"default", args{"default", "name", "", "pod", "c"}, "/v1, Kind=pod:default:name:c"},
+		{"no-cluster", args{"my-ns", "name", "", "pod", "c"}, "/v1, Kind=pod:my-ns:name:c"},
+		{"differ-oper", args{"default", "name", "", "pod", "d"}, "/v1, Kind=pod:default:name:d"},
+		{"withcluster", args{"default", "name", "cluster", "pod", "d"}, "/v1, Kind=pod:default:name:d"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
