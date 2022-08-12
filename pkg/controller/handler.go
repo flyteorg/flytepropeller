@@ -37,6 +37,7 @@ type propellerMetrics struct {
 	PanicObserved            labeled.Counter
 	RoundSkipped             prometheus.Counter
 	WorkflowNotFound         prometheus.Counter
+	WorkflowClosureReadTime  labeled.StopWatch
 	StreakLength             labeled.Counter
 	RoundTime                labeled.StopWatch
 }
@@ -52,6 +53,7 @@ func newPropellerMetrics(scope promutils.Scope) *propellerMetrics {
 		PanicObserved:            labeled.NewCounter("panic", "Panic during handling or aborting workflow", roundScope, labeled.EmitUnlabeledMetric),
 		RoundSkipped:             roundScope.MustNewCounter("skipped", "Round Skipped because of stale workflow"),
 		WorkflowNotFound:         roundScope.MustNewCounter("not_found", "workflow not found in the cache"),
+		WorkflowClosureReadTime:  labeled.NewStopWatch("closure_read", "Total time taken to read and parse the offloaded WorkflowClosure", time.Millisecond, roundScope, labeled.EmitUnlabeledMetric)
 		StreakLength:             labeled.NewCounter("streak_length", "Number of consecutive rounds used in fast follow mode", roundScope, labeled.EmitUnlabeledMetric),
 		RoundTime:                labeled.NewStopWatch("round_time", "Total time taken by one round traversing, copying and storing a workflow", time.Millisecond, roundScope, labeled.EmitUnlabeledMetric),
 	}
@@ -201,20 +203,24 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	// to avoid a misconfigured cache causing reloading between the streak iterations
 	var wfClosureCrdFields *k8s.WfClosureCrdFields
 	if len(w.WorkflowClosureReference) > 0 {
-		//t := p.metrics.RoundTime.Start(ctx) TODO @hamersaw add metric
+		t := p.metrics.WorkflowClosureReadTime.Start(ctx)
 
 		wfClosure := &admin.WorkflowClosure{}
 		err := p.store.ReadProtobuf(ctx, w.WorkflowClosureReference, wfClosure)
 		if err != nil {
+			t.Stop()
 			logger.Errorf(ctx, "Failed to retrieve workflow closure data from '%s' with error '%s'", w.WorkflowClosureReference, err)
 			return err
 		}
 
 		wfClosureCrdFields, err = k8s.BuildWfClosureCrdFields(wfClosure.CompiledWorkflow)
 		if err != nil {
+			t.Stop()
 			logger.Errorf(ctx, "Failed to parse workflow closure data from '%s' with error '%s'", w.WorkflowClosureReference, err)
 			return err
 		}
+
+		t.Stop()
 	}
 
 	streak := 0
