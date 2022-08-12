@@ -198,9 +198,9 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		}
 	}
 
-	// TODO @hamersaw - comment better
-	// load the offloaded WorkflowClosure once outside the streak loop
-	// to avoid a misconfigured cache causing reloading between the streak iterations
+	// if the FlyteWorkflow CRD has the WorkflowClosureReference set then we have offloaded the
+	// static fields to the blobstore to reduce CRD size. we must read and parse the workflow
+	// closure so that these fields may be temporarily repopulated.
 	var wfClosureCrdFields *k8s.WfClosureCrdFields
 	if len(w.WorkflowClosureReference) > 0 {
 		t := p.metrics.WorkflowClosureReadTime.Start(ctx)
@@ -232,9 +232,10 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	}
 
 	for streak = 0; streak < maxLength; streak++ {
-		// TODO @hamersaw - comment better
-		// load the static blob every time the FlyteWorkflow is getting processed
-		// because the workflow is rewritten after the update at the end of the loop
+		// if the wfClosureCrdFields struct is not nil then it contains static workflow data which
+		// has been offloaded to the blobstore. we must set these fields so they're available
+		// during workflow processing and immediately remove them afterwards so they do not
+		// accidently get written to the workflow store once the new state is stored.
 		if wfClosureCrdFields != nil {
 			w.WorkflowSpec = wfClosureCrdFields.WorkflowSpec
 			w.Tasks = wfClosureCrdFields.Tasks
