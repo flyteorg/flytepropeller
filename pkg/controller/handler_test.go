@@ -6,26 +6,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
-
-	crdfieldsstoremock "github.com/flyteorg/flytepropeller/pkg/controller/wfcrdfieldsstore/mocks"
-
-	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore/mocks"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/mock"
-
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	eventErrors "github.com/flyteorg/flytepropeller/events/errors"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	workflowErrors "github.com/flyteorg/flytepropeller/pkg/controller/workflow/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
+	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore/mocks"
 
 	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/stretchr/testify/assert"
+	"github.com/flyteorg/flytestdlib/storage"
+	storagemocks "github.com/flyteorg/flytestdlib/storage/mocks"
 
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type mockExecutor struct {
@@ -54,7 +53,7 @@ func TestPropeller_Handle(t *testing.T) {
 		MaxWorkflowRetries: 0,
 	}
 
-	p := NewPropellerHandler(ctx, cfg, s, nil, exec, scope)
+	p := NewPropellerHandler(ctx, cfg, nil, s, exec, scope)
 
 	const namespace = "test"
 	const name = "123"
@@ -66,7 +65,7 @@ func TestPropeller_Handle(t *testing.T) {
 		scope := promutils.NewTestScope()
 		s := &mocks.FlyteWorkflow{}
 		exec := &mockExecutor{}
-		p := NewPropellerHandler(ctx, cfg, s, nil, exec, scope)
+		p := NewPropellerHandler(ctx, cfg, nil, s, exec, scope)
 		s.OnGetMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.Wrap(workflowstore.ErrStaleWorkflowError, "stale")).Once()
 		assert.NoError(t, p.Handle(ctx, namespace, name))
 	})
@@ -541,7 +540,7 @@ func TestPropeller_Handle_TurboMode(t *testing.T) {
 	const namespace = "test"
 	const name = "123"
 
-	p := NewPropellerHandler(ctx, cfg, s, nil, exec, scope)
+	p := NewPropellerHandler(ctx, cfg, nil, s, exec, scope)
 
 	t.Run("error", func(t *testing.T) {
 		assert.NoError(t, s.Create(ctx, &v1alpha1.FlyteWorkflow{
@@ -743,7 +742,7 @@ func TestPropellerHandler_Initialize(t *testing.T) {
 		MaxWorkflowRetries: 0,
 	}
 
-	p := NewPropellerHandler(ctx, cfg, s, nil, exec, scope)
+	p := NewPropellerHandler(ctx, cfg, nil, s, exec, scope)
 
 	assert.NoError(t, p.Initialize(ctx))
 }
@@ -761,7 +760,7 @@ func TestNewPropellerHandler_UpdateFailure(t *testing.T) {
 		scope := promutils.NewTestScope()
 		s := &mocks.FlyteWorkflow{}
 		exec := &mockExecutor{}
-		p := NewPropellerHandler(ctx, cfg, s, nil, exec, scope)
+		p := NewPropellerHandler(ctx, cfg, nil, s, exec, scope)
 		wf := &v1alpha1.FlyteWorkflow{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      name,
@@ -782,7 +781,7 @@ func TestNewPropellerHandler_UpdateFailure(t *testing.T) {
 		scope := promutils.NewTestScope()
 		s := &mocks.FlyteWorkflow{}
 		exec := &mockExecutor{}
-		p := NewPropellerHandler(ctx, cfg, s, nil, exec, scope)
+		p := NewPropellerHandler(ctx, cfg, nil, s, exec, scope)
 		wf := &v1alpha1.FlyteWorkflow{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      name,
@@ -803,7 +802,7 @@ func TestNewPropellerHandler_UpdateFailure(t *testing.T) {
 		scope := promutils.NewTestScope()
 		s := &mocks.FlyteWorkflow{}
 		exec := &mockExecutor{}
-		p := NewPropellerHandler(ctx, cfg, s, nil, exec, scope)
+		p := NewPropellerHandler(ctx, cfg, nil, s, exec, scope)
 		wf := &v1alpha1.FlyteWorkflow{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      name,
@@ -838,7 +837,7 @@ func TestPropellerHandler_OffloadedWorkflowClosure(t *testing.T) {
 			Name:      name,
 			Namespace: namespace,
 		},
-		WorkflowClosureDataReference: "some-file-location",
+		WorkflowClosureReference: "some-file-location",
 	}))
 
 	exec := &mockExecutor{}
@@ -854,12 +853,22 @@ func TestPropellerHandler_OffloadedWorkflowClosure(t *testing.T) {
 	t.Run("Happy", func(t *testing.T) {
 		scope := promutils.NewTestScope()
 
-		wfClosureStoreMock := &crdfieldsstoremock.WfClosureCrdFieldsStore{}
-		p := NewPropellerHandler(ctx, cfg, s, wfClosureStoreMock, exec, scope)
-
-		wfClosureStoreMock.OnGetMatch(mock.Anything, mock.Anything).Return(&k8s.WfClosureCrdFields{
-			WorkflowSpec: &v1alpha1.WorkflowSpec{ID: "static-id"},
-		}, nil)
+		protoStore := &storagemocks.ComposedProtobufStore{}
+		protoStore.OnReadProtobufMatch(mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			// populate mock CompiledWorkflowClosure that satisfies just enough to compile
+			wfClosure := args.Get(2)
+			assert.NotNil(t, wfClosure)
+			casted := wfClosure.(*admin.WorkflowClosure)
+			casted.CompiledWorkflow = &core.CompiledWorkflowClosure{
+				Primary: &core.CompiledWorkflow{
+					Template: &core.WorkflowTemplate{
+						Id: &core.Identifier{},
+					},
+				},
+			}
+		}).Return(nil)
+		dataStore := storage.NewCompositeDataStore(storage.URLPathConstructor{}, protoStore)
+		p := NewPropellerHandler(ctx, cfg, dataStore, s, exec, scope)
 
 		assert.NoError(t, p.Handle(ctx, namespace, name))
 
@@ -877,10 +886,11 @@ func TestPropellerHandler_OffloadedWorkflowClosure(t *testing.T) {
 	t.Run("Error", func(t *testing.T) {
 		scope := promutils.NewTestScope()
 
-		wfClosureStoreMock := &crdfieldsstoremock.WfClosureCrdFieldsStore{}
-		p := NewPropellerHandler(ctx, cfg, s, wfClosureStoreMock, exec, scope)
+		protoStore := &storagemocks.ComposedProtobufStore{}
+		protoStore.OnReadProtobufMatch(mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("foo"))
+		dataStore := storage.NewCompositeDataStore(storage.URLPathConstructor{}, protoStore)
+		p := NewPropellerHandler(ctx, cfg, dataStore, s, exec, scope)
 
-		wfClosureStoreMock.OnGetMatch(mock.Anything, mock.Anything).Return(nil, fmt.Errorf("foo"))
 		err := p.Handle(ctx, namespace, name)
 		assert.Error(t, err)
 	})

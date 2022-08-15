@@ -53,7 +53,7 @@ func newPropellerMetrics(scope promutils.Scope) *propellerMetrics {
 		PanicObserved:            labeled.NewCounter("panic", "Panic during handling or aborting workflow", roundScope, labeled.EmitUnlabeledMetric),
 		RoundSkipped:             roundScope.MustNewCounter("skipped", "Round Skipped because of stale workflow"),
 		WorkflowNotFound:         roundScope.MustNewCounter("not_found", "workflow not found in the cache"),
-		WorkflowClosureReadTime:  labeled.NewStopWatch("closure_read", "Total time taken to read and parse the offloaded WorkflowClosure", time.Millisecond, roundScope, labeled.EmitUnlabeledMetric)
+		WorkflowClosureReadTime:  labeled.NewStopWatch("closure_read", "Total time taken to read and parse the offloaded WorkflowClosure", time.Millisecond, roundScope, labeled.EmitUnlabeledMetric),
 		StreakLength:             labeled.NewCounter("streak_length", "Number of consecutive rounds used in fast follow mode", roundScope, labeled.EmitUnlabeledMetric),
 		RoundTime:                labeled.NewStopWatch("round_time", "Total time taken by one round traversing, copying and storing a workflow", time.Millisecond, roundScope, labeled.EmitUnlabeledMetric),
 	}
