@@ -235,7 +235,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		// if the wfClosureCrdFields struct is not nil then it contains static workflow data which
 		// has been offloaded to the blobstore. we must set these fields so they're available
 		// during workflow processing and immediately remove them afterwards so they do not
-		// accidently get written to the workflow store once the new state is stored.
+		// accidentally get written to the workflow store once the new state is stored.
 		if wfClosureCrdFields != nil {
 			w.WorkflowSpec = wfClosureCrdFields.WorkflowSpec
 			w.Tasks = wfClosureCrdFields.Tasks
