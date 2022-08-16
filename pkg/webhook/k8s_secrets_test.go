@@ -32,7 +32,7 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 							Name: "_FSEC_GROUP_HELLO",
 							ValueFrom: &corev1.EnvVarSource{
 								SecretKeyRef: &corev1.SecretKeySelector{
-									Key: "hello",
+									Key: "HELLO",
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: "group",
 									},
@@ -59,7 +59,7 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 							SecretName: "group",
 							Items: []corev1.KeyToPath{
 								{
-									Key:  "hello",
+									Key:  "HELLO",
 									Path: "hello",
 								},
 							},
@@ -102,7 +102,7 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 							SecretName: "group",
 							Items: []corev1.KeyToPath{
 								{
-									Key:  "hello",
+									Key:  "HELLO",
 									Path: "hello",
 								},
 								{
@@ -187,11 +187,11 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 		want    *corev1.Pod
 		wantErr bool
 	}{
-		{name: "require group", args: args{secret: &coreIdl.Secret{Key: "hello", MountRequirement: coreIdl.Secret_ENV_VAR}, p: &corev1.Pod{}},
+		{name: "require group", args: args{secret: &coreIdl.Secret{Key: "HELLO", MountRequirement: coreIdl.Secret_ENV_VAR}, p: &corev1.Pod{}},
 			want: &corev1.Pod{}, wantErr: true},
-		{name: "simple", args: args{secret: &coreIdl.Secret{Group: "group", Key: "hello", MountRequirement: coreIdl.Secret_ENV_VAR}, p: inputPod.DeepCopy()},
+		{name: "simple", args: args{secret: &coreIdl.Secret{Group: "group", Key: "HELLO", MountRequirement: coreIdl.Secret_ENV_VAR}, p: inputPod.DeepCopy()},
 			want: &successPodEnv, wantErr: false},
-		{name: "require file single", args: args{secret: &coreIdl.Secret{Group: "group", Key: "hello", MountRequirement: coreIdl.Secret_FILE},
+		{name: "require file single", args: args{secret: &coreIdl.Secret{Group: "group", Key: "HELLO", MountRequirement: coreIdl.Secret_FILE},
 			p: inputPod.DeepCopy()},
 			want: &successPodFile, wantErr: false},
 		{name: "require file multiple from same secret group", args: args{secret: &coreIdl.Secret{Group: "group", Key: "world", MountRequirement: coreIdl.Secret_FILE},
