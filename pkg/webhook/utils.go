@@ -48,7 +48,7 @@ func CreateVolumeForSecret(secret *core.Secret) corev1.Volume {
 				Items: []corev1.KeyToPath{
 					{
 						Key:  secret.Key,
-						Path: secret.Key,
+						Path: strings.ToLower(secret.Key),
 					},
 				},
 			},
