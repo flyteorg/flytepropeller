@@ -17,18 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type VersionedStruct struct {
-	version uint32
-}
-
-func (in *VersionedStruct) SetVersion(version uint32) {
-	in.version = version
-}
-
-func (in VersionedStruct) GetVersion() uint32 {
-	return in.version
-}
-
 type MutableStruct struct {
 	isDirty bool
 }
@@ -170,7 +158,6 @@ const (
 
 type WorkflowNodeStatus struct {
 	MutableStruct
-	VersionedStruct
 	Phase          WorkflowNodePhase    `json:"phase,omitempty"`
 	ExecutionError *core.ExecutionError `json:"executionError,omitempty"`
 }
