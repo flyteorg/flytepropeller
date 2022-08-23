@@ -443,6 +443,7 @@ type Meta interface {
 	GetSecurityContext() core.SecurityContext
 	IsInterruptible() bool
 	GetEventVersion() EventVersion
+	GetDefinitionVersion() WorkflowDefinitionVersion
 	GetRawOutputDataConfig() RawOutputDataConfig
 }
 

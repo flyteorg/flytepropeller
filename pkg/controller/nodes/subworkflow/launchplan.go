@@ -116,14 +116,13 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{
 		WorkflowNodeInfo: &handler.WorkflowNodeInfo{
 			LaunchedWorkflowID: childID,
-			Version:            uint32(NodeStatusVersion2),
 		},
 	})), nil
 }
 
 func GetChildWorkflowExecutionForExecution(parentNodeExecID *core.NodeExecutionIdentifier, nCtx handler.NodeExecutionContext) (*core.WorkflowExecutionIdentifier, error) {
 	// Handle launch plan
-	if nCtx.NodeStateReader().GetWorkflowNodeState().Version == uint32(NodeStatusVersion2) {
+	if nCtx.ExecutionContext().GetDefinitionVersion() == v1alpha1.WorkflowDefinitionVersion1 {
 		return GetChildWorkflowExecutionIDV2(
 			parentNodeExecID,
 			nCtx.CurrentAttempt(),

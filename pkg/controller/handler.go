@@ -83,6 +83,16 @@ func (p *Propeller) Initialize(ctx context.Context) error {
 	return p.workflowExecutor.Initialize(ctx)
 }
 
+func SetDefinitionVersionIfEmpty(wf *v1alpha1.FlyteWorkflow, version v1alpha1.WorkflowDefinitionVersion) {
+	if wf.WorkflowMeta == nil {
+		wf.WorkflowMeta = &v1alpha1.WorkflowMeta{}
+	}
+
+	if wf.WorkflowMeta.DefinitionVersion == nil {
+		wf.WorkflowMeta.DefinitionVersion = &version
+	}
+}
+
 // TryMutateWorkflow will try to mutate the workflow by traversing it and reconciling the desired and actual state.
 // The desired state here is the entire workflow is completed, actual state is each nodes current execution state.
 func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.FlyteWorkflow) (*v1alpha1.FlyteWorkflow, error) {
@@ -120,6 +130,7 @@ func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.F
 	if !mutableW.GetExecutionStatus().IsTerminated() {
 		var err error
 		SetFinalizerIfEmpty(mutableW, FinalizerKey)
+		SetDefinitionVersionIfEmpty(mutableW, v1alpha1.LatestWorkflowDefinitionVersion)
 
 		func() {
 			t := p.metrics.RawWorkflowTraversalTime.Start(ctx)
