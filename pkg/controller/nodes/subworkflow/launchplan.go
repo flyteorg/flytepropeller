@@ -22,13 +22,6 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 )
 
-type NodeStatusVersion uint32
-
-const (
-	NodeStatusVersion1 NodeStatusVersion = iota
-	NodeStatusVersion2
-)
-
 type launchPlanHandler struct {
 	launchPlan     launchplan.Executor
 	recoveryClient recovery.Client
@@ -63,9 +56,10 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 	if err != nil {
 		return handler.UnknownTransition, err
 	}
-	childID, err := GetChildWorkflowExecutionIDV2(
+
+	childID, err := GetChildWorkflowExecutionIDForExecution(
 		parentNodeExecutionID,
-		nCtx.CurrentAttempt(),
+		nCtx,
 	)
 
 	if err != nil {
@@ -114,22 +108,20 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 	}
 
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{
-		WorkflowNodeInfo: &handler.WorkflowNodeInfo{
-			LaunchedWorkflowID: childID,
-		},
+		WorkflowNodeInfo: &handler.WorkflowNodeInfo{LaunchedWorkflowID: childID},
 	})), nil
 }
 
-func GetChildWorkflowExecutionForExecution(parentNodeExecID *core.NodeExecutionIdentifier, nCtx handler.NodeExecutionContext) (*core.WorkflowExecutionIdentifier, error) {
+func GetChildWorkflowExecutionIDForExecution(parentNodeExecID *core.NodeExecutionIdentifier, nCtx handler.NodeExecutionContext) (*core.WorkflowExecutionIdentifier, error) {
 	// Handle launch plan
-	if nCtx.ExecutionContext().GetDefinitionVersion() == v1alpha1.WorkflowDefinitionVersion1 {
-		return GetChildWorkflowExecutionIDV2(
+	if nCtx.ExecutionContext().GetDefinitionVersion() == v1alpha1.WorkflowDefinitionVersion0 {
+		return GetChildWorkflowExecutionID(
 			parentNodeExecID,
 			nCtx.CurrentAttempt(),
 		)
 	}
 
-	return GetChildWorkflowExecutionID(
+	return GetChildWorkflowExecutionIDV2(
 		parentNodeExecID,
 		nCtx.CurrentAttempt(),
 	)
@@ -142,7 +134,7 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 	}
 
 	// Handle launch plan
-	childID, err := GetChildWorkflowExecutionForExecution(
+	childID, err := GetChildWorkflowExecutionIDForExecution(
 		parentNodeExecutionID,
 		nCtx,
 	)
@@ -229,7 +221,7 @@ func (l *launchPlanHandler) HandleAbort(ctx context.Context, nCtx handler.NodeEx
 	if err != nil {
 		return err
 	}
-	childID, err := GetChildWorkflowExecutionForExecution(
+	childID, err := GetChildWorkflowExecutionIDForExecution(
 		parentNodeExecutionID,
 		nCtx,
 	)
