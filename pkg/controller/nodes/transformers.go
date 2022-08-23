@@ -252,5 +252,6 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 		t := s.GetOrCreateWorkflowStatus()
 		t.SetWorkflowNodePhase(n.w.Phase)
 		t.SetExecutionError(n.w.Error)
+		t.SetExecutionIDAlgorithm(p.GetInfo().WorkflowNodeInfo.IDAlgo)
 	}
 }

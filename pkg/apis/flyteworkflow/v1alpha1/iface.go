@@ -248,6 +248,7 @@ type ExecutableBranchNode interface {
 type ExecutableWorkflowNodeStatus interface {
 	GetWorkflowNodePhase() WorkflowNodePhase
 	GetExecutionError() *core.ExecutionError
+	GetExecutionIDAlgorithm() ExecutionIDAlgorithm
 }
 
 type MutableWorkflowNodeStatus interface {
@@ -255,6 +256,7 @@ type MutableWorkflowNodeStatus interface {
 	ExecutableWorkflowNodeStatus
 	SetWorkflowNodePhase(phase WorkflowNodePhase)
 	SetExecutionError(executionError *core.ExecutionError)
+	SetExecutionIDAlgorithm(algo ExecutionIDAlgorithm)
 }
 
 type Mutable interface {

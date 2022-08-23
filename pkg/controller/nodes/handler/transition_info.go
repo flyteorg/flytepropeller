@@ -3,6 +3,8 @@ package handler
 import (
 	"time"
 
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flytestdlib/storage"
@@ -39,6 +41,7 @@ type DynamicNodeInfo struct {
 
 type WorkflowNodeInfo struct {
 	LaunchedWorkflowID *core.WorkflowExecutionIdentifier
+	IDAlgo             v1alpha1.ExecutionIDAlgorithm
 }
 
 type BranchNodeInfo struct {

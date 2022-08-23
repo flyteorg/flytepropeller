@@ -17,6 +17,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type ExecutionIDAlgorithm uint32
+
+const (
+	ExecutionIDAlgorithm32 ExecutionIDAlgorithm = iota
+	ExecutionIDAlgorithm64
+)
+
 type MutableStruct struct {
 	isDirty bool
 }
@@ -158,8 +165,16 @@ const (
 
 type WorkflowNodeStatus struct {
 	MutableStruct
-	Phase          WorkflowNodePhase    `json:"phase,omitempty"`
-	ExecutionError *core.ExecutionError `json:"executionError,omitempty"`
+	Phase                WorkflowNodePhase    `json:"phase,omitempty"`
+	ExecutionError       *core.ExecutionError `json:"executionError,omitempty"`
+	ExecutionIDAlgorithm ExecutionIDAlgorithm `json:"idAlg,omitempty"`
+}
+
+func (in *WorkflowNodeStatus) SetExecutionIDAlgorithm(algo ExecutionIDAlgorithm) {
+	if in.ExecutionIDAlgorithm != algo {
+		in.SetDirty()
+		in.ExecutionIDAlgorithm = algo
+	}
 }
 
 func (in *WorkflowNodeStatus) SetExecutionError(executionError *core.ExecutionError) {
@@ -167,6 +182,10 @@ func (in *WorkflowNodeStatus) SetExecutionError(executionError *core.ExecutionEr
 		in.SetDirty()
 		in.ExecutionError = executionError
 	}
+}
+
+func (in *WorkflowNodeStatus) GetExecutionIDAlgorithm() ExecutionIDAlgorithm {
+	return in.ExecutionIDAlgorithm
 }
 
 func (in *WorkflowNodeStatus) GetExecutionError() *core.ExecutionError {

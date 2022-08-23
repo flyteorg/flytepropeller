@@ -10,8 +10,9 @@ import (
 
 const maxLengthForSubWorkflow = 20
 
-func GetChildWorkflowExecutionID(nodeExecID *core.NodeExecutionIdentifier, attempt uint32) (*core.WorkflowExecutionIdentifier, error) {
-	name, err := encoding.FixedLengthUniqueIDForParts(maxLengthForSubWorkflow, nodeExecID.ExecutionId.Name, nodeExecID.NodeId, strconv.Itoa(int(attempt)))
+func GetChildWorkflowExecutionID(nodeExecID *core.NodeExecutionIdentifier, attempt uint32, algo encoding.Algorithm) (*core.WorkflowExecutionIdentifier, error) {
+	name, err := encoding.FixedLengthUniqueIDForParts(maxLengthForSubWorkflow,
+		[]string{nodeExecID.ExecutionId.Name, nodeExecID.NodeId, strconv.Itoa(int(attempt))}, encoding.NewAlgorithmOption(algo))
 	if err != nil {
 		return nil, err
 	}
