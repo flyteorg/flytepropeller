@@ -236,8 +236,8 @@ type MutableDynamicNodeStatus interface {
 	SetExecutionError(executionError *core.ExecutionError)
 }
 
-// Interface for Branch node. All the methods are purely read only except for the GetExecutionStatus.
-// p returns ExecutableBranchNodeStatus, which permits some mutations
+// ExecutableBranchNode is an interface for Branch node. All the methods are purely read only except for the
+// GetExecutionStatus. p returns ExecutableBranchNodeStatus, which permits some mutations
 type ExecutableBranchNode interface {
 	GetIf() ExecutableIfBlock
 	GetElse() *NodeID
@@ -246,6 +246,7 @@ type ExecutableBranchNode interface {
 }
 
 type ExecutableWorkflowNodeStatus interface {
+	Versioned
 	GetWorkflowNodePhase() WorkflowNodePhase
 	GetExecutionError() *core.ExecutionError
 }
@@ -253,12 +254,21 @@ type ExecutableWorkflowNodeStatus interface {
 type MutableWorkflowNodeStatus interface {
 	Mutable
 	ExecutableWorkflowNodeStatus
+	MutableVersioned
 	SetWorkflowNodePhase(phase WorkflowNodePhase)
 	SetExecutionError(executionError *core.ExecutionError)
 }
 
 type Mutable interface {
 	IsDirty() bool
+}
+
+type Versioned interface {
+	GetVersion() uint32
+}
+
+type MutableVersioned interface {
+	SetVersion(version uint32)
 }
 
 type MutableNodeStatus interface {

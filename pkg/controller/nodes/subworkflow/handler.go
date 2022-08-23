@@ -58,7 +58,12 @@ func (w *workflowNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecu
 			return transition, err
 		}
 
-		workflowNodeState := handler.WorkflowNodeState{Phase: newPhase}
+		version := uint32(0)
+		if info := transition.Info().GetInfo(); info != nil && info.WorkflowNodeInfo != nil {
+			version = info.WorkflowNodeInfo.Version
+		}
+
+		workflowNodeState := handler.WorkflowNodeState{Phase: newPhase, Version: version}
 		err = nCtx.NodeStateWriter().PutWorkflowNodeState(workflowNodeState)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to store WorkflowNodeState, err :%s", err.Error())

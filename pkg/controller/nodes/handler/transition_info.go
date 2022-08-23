@@ -39,6 +39,7 @@ type DynamicNodeInfo struct {
 
 type WorkflowNodeInfo struct {
 	LaunchedWorkflowID *core.WorkflowExecutionIdentifier
+	Version            uint32
 }
 
 type BranchNodeInfo struct {
