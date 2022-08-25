@@ -245,7 +245,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		t := p.metrics.RoundTime.Start(ctx)
 		mutatedWf, err := p.TryMutateWorkflow(ctx, w)
 
-		if wfClosureCrdFields != nil  {
+		if wfClosureCrdFields != nil {
 			// strip data populated from WorkflowClosureReference
 			w.SubWorkflows, w.Tasks, w.WorkflowSpec = nil, nil, nil
 			if mutatedWf != nil {
