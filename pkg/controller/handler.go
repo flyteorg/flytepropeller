@@ -78,18 +78,14 @@ type Propeller struct {
 	cfg              *config.Config
 }
 
-// Initializes all downstream executors
+// Initialize initializes all downstream executors
 func (p *Propeller) Initialize(ctx context.Context) error {
 	return p.workflowExecutor.Initialize(ctx)
 }
 
 func SetDefinitionVersionIfEmpty(wf *v1alpha1.FlyteWorkflow, version v1alpha1.WorkflowDefinitionVersion) {
-	if wf.WorkflowMeta == nil {
-		wf.WorkflowMeta = &v1alpha1.WorkflowMeta{}
-	}
-
-	if wf.WorkflowMeta.DefinitionVersion == nil {
-		wf.WorkflowMeta.DefinitionVersion = &version
+	if wf.Status.DefinitionVersion == nil {
+		wf.Status.DefinitionVersion = &version
 	}
 }
 

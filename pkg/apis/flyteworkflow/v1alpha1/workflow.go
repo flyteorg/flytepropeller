@@ -92,8 +92,8 @@ func (in *FlyteWorkflow) GetEventVersion() EventVersion {
 }
 
 func (in *FlyteWorkflow) GetDefinitionVersion() WorkflowDefinitionVersion {
-	if meta := in.WorkflowMeta; meta != nil && meta.DefinitionVersion != nil {
-		return *meta.DefinitionVersion
+	if in.Status.DefinitionVersion != nil {
+		return *in.Status.DefinitionVersion
 	}
 
 	return WorkflowDefinitionVersion0
@@ -105,11 +105,6 @@ func (in *FlyteWorkflow) GetExecutionConfig() ExecutionConfig {
 
 type WorkflowMeta struct {
 	EventVersion EventVersion `json:"eventVersion,omitempty"`
-	// DefinitionVersion allows propeller code that populates the CRD to evolve (in backward incompatible ways) without
-	// affecting in-flight executions. Once an execution starts, propeller will populate this field with the current or
-	// latest version. If a newer propeller version is deployed midway that comes with a newer version, code that relies
-	// on the latest version should be gated behind this.
-	DefinitionVersion *WorkflowDefinitionVersion `json:"defVersion,omitempty"`
 }
 
 type EventVersion int
