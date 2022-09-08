@@ -236,8 +236,8 @@ type MutableDynamicNodeStatus interface {
 	SetExecutionError(executionError *core.ExecutionError)
 }
 
-// Interface for Branch node. All the methods are purely read only except for the GetExecutionStatus.
-// p returns ExecutableBranchNodeStatus, which permits some mutations
+// ExecutableBranchNode is an interface for Branch node. All the methods are purely read only except for the
+// GetExecutionStatus. p returns ExecutableBranchNodeStatus, which permits some mutations
 type ExecutableBranchNode interface {
 	GetIf() ExecutableIfBlock
 	GetElse() *NodeID
