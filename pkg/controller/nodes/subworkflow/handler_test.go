@@ -156,7 +156,6 @@ func TestWorkflowNodeHandler_StartNode_Launchplan(t *testing.T) {
 	recoveryClient := &mocks5.Client{}
 
 	t.Run("happy v0", func(t *testing.T) {
-
 		mockLPExec := &mocks.Executor{}
 		h := New(nil, mockLPExec, recoveryClient, eventConfig, promutils.NewTestScope())
 		mockLPExec.OnLaunchMatch(
@@ -173,10 +172,11 @@ func TestWorkflowNodeHandler_StartNode_Launchplan(t *testing.T) {
 		).Return(nil)
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseUndefined, mockNode, mockNodeStatus)
+		c := nCtx.ExecutionContext().(*execMocks.ExecutionContext)
+		c.OnGetDefinitionVersion().Return(v1alpha1.WorkflowDefinitionVersion1)
 		s, err := h.Handle(ctx, nCtx)
 		assert.NoError(t, err)
 		assert.Equal(t, handler.EPhaseRunning, s.Info().GetPhase())
-		c := nCtx.ExecutionContext().(*execMocks.ExecutionContext)
 		c.AssertCalled(t, "IncrementParallelism")
 	})
 
@@ -198,10 +198,11 @@ func TestWorkflowNodeHandler_StartNode_Launchplan(t *testing.T) {
 		).Return(nil)
 
 		nCtx := createNodeContextV1(v1alpha1.WorkflowNodePhaseUndefined, mockNode, mockNodeStatus)
+		c := nCtx.ExecutionContext().(*execMocks.ExecutionContext)
+		c.OnGetDefinitionVersion().Return(v1alpha1.WorkflowDefinitionVersion1)
 		s, err := h.Handle(ctx, nCtx)
 		assert.NoError(t, err)
 		assert.Equal(t, handler.EPhaseRunning, s.Info().GetPhase())
-		c := nCtx.ExecutionContext().(*execMocks.ExecutionContext)
 		c.AssertCalled(t, "IncrementParallelism")
 	})
 }
