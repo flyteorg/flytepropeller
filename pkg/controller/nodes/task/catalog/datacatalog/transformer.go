@@ -56,6 +56,8 @@ func GenerateTaskOutputsFromArtifact(id core.Identifier, taskInterface core.Type
 
 		expectedVarType := outputVariables[artifactData.Name].GetType()
 		inputType := validators.LiteralTypeForLiteral(artifactData.Value)
+		fmt.Printf("inputType [%v]", inputType)
+		fmt.Printf("expectedVarType [%v]", expectedVarType)
 		if !validators.AreTypesCastable(inputType, expectedVarType) {
 			return nil, fmt.Errorf("unexpected artifactData: [%v] type: [%v] does not match any task output type: [%v]", artifactData.Name, inputType, expectedVarType)
 		}
