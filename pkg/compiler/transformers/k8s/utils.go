@@ -98,6 +98,7 @@ func StripTypeMetadata(t *core.LiteralType) *core.LiteralType {
 
 	c := *t
 	c.Metadata = nil
+	c.Structure = nil
 	c.Annotation = nil
 
 	switch underlyingType := c.Type.(type) {
