@@ -97,13 +97,12 @@ type schemaTypeChecker struct {
 // Schemas are more complex types in the Flyte ecosystem. A schema is considered castable in the following
 // cases.
 //
-//    1. The downstream schema has no column types specified.  In such a case, it accepts all schema input since it is
-//       generic.
+//  1. The downstream schema has no column types specified.  In such a case, it accepts all schema input since it is
+//     generic.
 //
-//    2. The downstream schema has a subset of the upstream columns and they match perfectly.
+//  2. The downstream schema has a subset of the upstream columns and they match perfectly.
 //
-//    3. The upstream type can be Schema type or structured dataset type
-//
+//  3. The upstream type can be Schema type or structured dataset type
 func (t schemaTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	schemaType := upstreamType.GetSchema()
 	structuredDatasetType := upstreamType.GetStructuredDatasetType()
@@ -130,13 +129,12 @@ type structuredDatasetChecker struct {
 // CastsFrom for Structured dataset are more complex types in the Flyte ecosystem. A structured dataset is considered
 // castable in the following cases:
 //
-//    1. The downstream structured dataset has no column types specified.  In such a case, it accepts all structured dataset input since it is
-//       generic.
+//  1. The downstream structured dataset has no column types specified.  In such a case, it accepts all structured dataset input since it is
+//     generic.
 //
-//    2. The downstream structured dataset has a subset of the upstream structured dataset columns and they match perfectly.
+//  2. The downstream structured dataset has a subset of the upstream structured dataset columns and they match perfectly.
 //
-//    3. The upstream type can be Schema type or structured dataset type
-//
+//  3. The upstream type can be Schema type or structured dataset type
 func (t structuredDatasetChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	// structured datasets are nullable
 	if isNoneType(upstreamType) {
