@@ -152,8 +152,8 @@ func (t structuredDatasetChecker) CastsFrom(upstreamType *flyte.LiteralType) boo
 		}
 		return structuredDatasetCastFromSchema(schemaType, t.literalType.GetStructuredDatasetType())
 	}
-	// When running the BigQuery task, the input format is empty, but the expected type is Parquet.
-	// So Ignore the format check here
+	// The expected format (t.literalType.GetStructuredDatasetType().Format) could be empty. e.g. def t1() -> structuredDataset:
+	// Therefore, Ignore the format check here when expected format is empty
 	if len(t.literalType.GetStructuredDatasetType().Format) != 0 && !strings.EqualFold(structuredDatasetType.Format, t.literalType.GetStructuredDatasetType().Format) {
 		return false
 	}
