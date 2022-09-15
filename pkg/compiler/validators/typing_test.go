@@ -827,9 +827,14 @@ func TestStructuredDatasetCasting(t *testing.T) {
 		assert.False(t, castable, "StructuredDataset(a=Float) should not be castable to StructuredDataset(a=Integer, b=Collection)")
 	})
 
-	t.Run("EmptyFormatToGeneric", func(t *testing.T) {
+	t.Run("GenericToEmptyFormat", func(t *testing.T) {
 		castable := AreTypesCastable(genericStructuredDataset, emptyStructuredDataset)
 		assert.True(t, castable, "StructuredDataset(format='Parquet') should be castable to StructuredDataset()")
+	})
+
+	t.Run("EmptyFormatToGeneric", func(t *testing.T) {
+		castable := AreTypesCastable(genericStructuredDataset, emptyStructuredDataset)
+		assert.True(t, castable, "StructuredDataset() should be castable to StructuredDataset(format='Parquet')")
 	})
 
 	t.Run("StructuredDatasetsAreNullable", func(t *testing.T) {

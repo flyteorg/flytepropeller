@@ -152,9 +152,8 @@ func (t structuredDatasetChecker) CastsFrom(upstreamType *flyte.LiteralType) boo
 		}
 		return structuredDatasetCastFromSchema(schemaType, t.literalType.GetStructuredDatasetType())
 	}
-	// The expected format (t.literalType.GetStructuredDatasetType().Format) could be empty. e.g. def t1() -> structuredDataset:
-	// Therefore, Skip the format check here when expected format is empty
-	if len(t.literalType.GetStructuredDatasetType().Format) != 0 && !strings.EqualFold(structuredDatasetType.Format, t.literalType.GetStructuredDatasetType().Format) {
+	// Skip the format check here when format is empty. https://github.com/flyteorg/flyte/issues/2864
+	if len(structuredDatasetType.Format) != 0 && len(t.literalType.GetStructuredDatasetType().Format) != 0 && !strings.EqualFold(structuredDatasetType.Format, t.literalType.GetStructuredDatasetType().Format) {
 		return false
 	}
 	return structuredDatasetCastFromStructuredDataset(structuredDatasetType, t.literalType.GetStructuredDatasetType())
