@@ -23,6 +23,15 @@ const ShardKeyspaceSize = 32
 const StartNodeID = "start-node"
 const EndNodeID = "end-node"
 
+type WorkflowDefinitionVersion uint32
+
+var LatestWorkflowDefinitionVersion = WorkflowDefinitionVersion1
+
+const (
+	WorkflowDefinitionVersion0 WorkflowDefinitionVersion = iota
+	WorkflowDefinitionVersion1
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -64,6 +73,11 @@ type FlyteWorkflow struct {
 	// so that it can be used downstream without any confusion.
 	// This field is here because it's easier to put it here than pipe through a new object through all of propeller.
 	DataReferenceConstructor storage.ReferenceConstructor `json:"-"`
+
+	// WorkflowClosureReference is the location containing an offloaded WorkflowClosure. This is used to offload
+	// portions of the CRD to an external data store to reduce CRD size. If this exists, FlytePropeller must retrieve
+	// and parse the static data prior to processing.
+	WorkflowClosureReference DataReference `json:"workflowClosureReference,omitempty"`
 }
 
 func (in *FlyteWorkflow) GetSecurityContext() core.SecurityContext {
@@ -75,6 +89,14 @@ func (in *FlyteWorkflow) GetEventVersion() EventVersion {
 		return in.WorkflowMeta.EventVersion
 	}
 	return EventVersion0
+}
+
+func (in *FlyteWorkflow) GetDefinitionVersion() WorkflowDefinitionVersion {
+	if in.Status.DefinitionVersion != nil {
+		return *in.Status.DefinitionVersion
+	}
+
+	return WorkflowDefinitionVersion0
 }
 
 func (in *FlyteWorkflow) GetExecutionConfig() ExecutionConfig {
