@@ -152,10 +152,6 @@ func (t structuredDatasetChecker) CastsFrom(upstreamType *flyte.LiteralType) boo
 		}
 		return structuredDatasetCastFromSchema(schemaType, t.literalType.GetStructuredDatasetType())
 	}
-	// Skip the format check here when format is empty. https://github.com/flyteorg/flyte/issues/2864
-	if len(structuredDatasetType.Format) != 0 && len(t.literalType.GetStructuredDatasetType().Format) != 0 && !strings.EqualFold(structuredDatasetType.Format, t.literalType.GetStructuredDatasetType().Format) {
-		return false
-	}
 	return structuredDatasetCastFromStructuredDataset(structuredDatasetType, t.literalType.GetStructuredDatasetType())
 }
 
@@ -225,6 +221,11 @@ func (t unionTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 
 // Upstream (structuredDatasetType) -> downstream (structuredDatasetType)
 func structuredDatasetCastFromStructuredDataset(upstream *flyte.StructuredDatasetType, downstream *flyte.StructuredDatasetType) bool {
+	// Skip the format check here when format is empty. https://github.com/flyteorg/flyte/issues/2864
+	if len(upstream.Format) != 0 && len(downstream.Format) != 0 && !strings.EqualFold(upstream.Format, downstream.Format) {
+		return false
+	}
+
 	if len(upstream.Columns) == 0 || len(downstream.Columns) == 0 {
 		return true
 	}
