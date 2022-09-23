@@ -33,7 +33,7 @@ import (
 const dynamicNodeID = "dynamic-node"
 
 type TaskNodeHandler interface {
-	handler.Node
+	handler.CacheableNode
 	ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader,
 		r io.OutputReader, outputCommitter io.OutputWriter, executionConfig v1alpha1.ExecutionConfig,
 		tr ioutils.SimpleTaskReader, m catalog.Metadata) (catalog.Status, *io.ExecutionError, error)

@@ -2,26 +2,110 @@ package task
 
 import (
 	"context"
-	"time"
+	//"time"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
-	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	//pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/pkg/errors"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	//"github.com/pkg/errors"
+	//"google.golang.org/grpc/codes"
+	//"google.golang.org/grpc/status"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	errors2 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 )
 
 var cacheDisabled = catalog.NewStatus(core.CatalogCacheStatus_CACHE_DISABLED, nil)
 
-func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReader, inputReader io.InputReader, outputWriter io.OutputWriter) (catalog.Entry, error) {
+func (t *Handler) GetCatalogKey(ctx context.Context, nCtx handler.NodeExecutionContext) (catalog.Key, error) {
+	// read task template
+	taskTemplatePath, err := ioutils.GetTaskTemplatePath(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetDataDir())
+	if err != nil {
+		return catalog.Key{}, err
+	}
+
+	taskReader := ioutils.NewLazyUploadingTaskReader(nCtx.TaskReader(), taskTemplatePath, nCtx.DataStore())
+	taskTemplate, err := taskReader.Read(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "failed to read TaskTemplate, error :%s", err.Error())
+		return catalog.Key{}, err
+	}
+
+	return catalog.Key{
+		Identifier:     *taskTemplate.Id,
+		CacheVersion:   taskTemplate.Metadata.DiscoveryVersion,
+		TypedInterface: *taskTemplate.Interface,
+		InputReader:    nCtx.InputReader(),
+	}, nil
+}
+
+func (t *Handler) IsCacheable(ctx context.Context, nCtx handler.NodeExecutionContext) (bool, error) {
+	// check if plugin has caching disabled
+	ttype := nCtx.TaskReader().GetTaskType()
+	ctx = contextutils.WithTaskType(ctx, ttype)
+	p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
+	if err != nil {
+		return false, errors2.Wrapf(errors2.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
+	}
+
+	checkCatalog := !p.GetProperties().DisableNodeLevelCaching
+	if !checkCatalog {
+		logger.Infof(ctx, "Node level caching is disabled. Skipping catalog read.")
+	}
+
+	// read task template
+	taskTemplatePath, err := ioutils.GetTaskTemplatePath(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetDataDir())
+	if err != nil {
+		return false, err
+	}
+
+	taskReader := ioutils.NewLazyUploadingTaskReader(nCtx.TaskReader(), taskTemplatePath, nCtx.DataStore())
+	taskTemplate, err := taskReader.Read(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "failed to read TaskTemplate, error :%s", err.Error())
+		return false, err
+	}
+
+	return taskTemplate.Metadata.Discoverable, nil
+}
+
+func (t *Handler) IsCacheSerializable(ctx context.Context, nCtx handler.NodeExecutionContext) (bool, error) {
+	// check if plugin has caching disabled
+	ttype := nCtx.TaskReader().GetTaskType()
+	ctx = contextutils.WithTaskType(ctx, ttype)
+	p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
+	if err != nil {
+		return false, errors2.Wrapf(errors2.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
+	}
+
+	checkCatalog := !p.GetProperties().DisableNodeLevelCaching
+	if !checkCatalog {
+		logger.Infof(ctx, "Node level caching is disabled. Skipping catalog read.")
+	}
+
+	// read task template
+	taskTemplatePath, err := ioutils.GetTaskTemplatePath(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetDataDir())
+	if err != nil {
+		return false, err
+	}
+
+	taskReader := ioutils.NewLazyUploadingTaskReader(nCtx.TaskReader(), taskTemplatePath, nCtx.DataStore())
+	taskTemplate, err := taskReader.Read(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "failed to read TaskTemplate, error :%s", err.Error())
+		return false, err
+	}
+
+	return taskTemplate.Metadata.Discoverable && taskTemplate.Metadata.CacheSerializable, nil
+}
+
+/*func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReader, inputReader io.InputReader, outputWriter io.OutputWriter) (catalog.Entry, error) {
 	tk, err := tr.Read(ctx)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
@@ -113,7 +197,7 @@ func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID str
 	}
 	logger.Infof(ctx, "Catalog CacheSerializeDisabled: for Task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
 	return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), nil
-}
+}*/
 
 func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader,
 	r io.OutputReader, outputCommitter io.OutputWriter, executionConfig v1alpha1.ExecutionConfig,
@@ -224,16 +308,16 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 	// ignores discovery write failures
 	s, err2 := t.catalog.Put(ctx, key, r, m)
 	if err2 != nil {
-		t.metrics.catalogPutFailureCount.Inc(ctx)
+		//t.metrics.catalogPutFailureCount.Inc(ctx)
 		logger.Errorf(ctx, "Failed to write results to catalog for Task [%v]. Error: %v", tk.GetId(), err2)
 		return catalog.NewStatus(core.CatalogCacheStatus_CACHE_PUT_FAILURE, s.GetMetadata()), nil, nil
 	}
-	t.metrics.catalogPutSuccessCount.Inc(ctx)
+	//t.metrics.catalogPutSuccessCount.Inc(ctx)
 	logger.Infof(ctx, "Successfully cached results to catalog - Task [%v]", tk.GetId())
 	return s, nil, nil
 }
 
-// ReleaseCatalogReservation attempts to release an artifact reservation if the task is cachable
+/*// ReleaseCatalogReservation attempts to release an artifact reservation if the task is cachable
 // and cache serializable. If the reservation does not exist for this owner (e.x. it never existed
 // or has been acquired by another owner) this call is still successful.
 func (t *Handler) ReleaseCatalogReservation(ctx context.Context, ownerID string, tr pluginCore.TaskReader, inputReader io.InputReader) (catalog.ReservationEntry, error) {
@@ -264,4 +348,4 @@ func (t *Handler) ReleaseCatalogReservation(ctx context.Context, ownerID string,
 	}
 	logger.Infof(ctx, "Catalog CacheSerializeDisabled: for Task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
 	return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), nil
-}
+}*/

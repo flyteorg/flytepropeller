@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 )
 
 //go:generate mockery -all -case=underscore
@@ -23,4 +25,12 @@ type Node interface {
 	// This method is always called before completing the node, if FinalizeRequired returns true.
 	// It is guaranteed that Handle -> (happens before) -> Finalize. Abort -> finalize may be repeated multiple times
 	Finalize(ctx context.Context, executionContext NodeExecutionContext) error
+}
+
+// TODO @hamersaw document
+type CacheableNode interface {
+	Node
+	GetCatalogKey(ctx context.Context, executionContext NodeExecutionContext) (catalog.Key, error)
+	IsCacheable(ctx context.Context, executionContext NodeExecutionContext) (bool, error)
+	IsCacheSerializable(ctx context.Context, executionContext NodeExecutionContext) (bool, error)
 }

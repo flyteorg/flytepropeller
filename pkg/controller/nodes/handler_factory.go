@@ -58,7 +58,7 @@ func NewHandlerFactory(ctx context.Context, executor executors.Node, workflowLau
 	launchPlanReader launchplan.Reader, kubeClient executors.Client, client catalog.Client, recoveryClient recovery.Client,
 	eventConfig *config.EventConfig, clusterID string, scope promutils.Scope) (HandlerFactory, error) {
 
-	t, err := task.New(ctx, kubeClient, client, eventConfig, clusterID, scope)
+	t, err := task.New(ctx, kubeClient, client ,eventConfig, clusterID, scope)
 	if err != nil {
 		return nil, err
 	}

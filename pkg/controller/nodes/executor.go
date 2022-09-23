@@ -102,6 +102,8 @@ type nodeExecutor struct {
 	recoveryClient                  recovery.Client
 	eventConfig                     *config.EventConfig
 	clusterID                       string
+	catalog                         catalog.Client
+	asyncCatalog                    catalog.AsyncClient
 }
 
 func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, dag executors.DAGStructure, nl executors.NodeLookup, node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus) {
@@ -453,7 +455,9 @@ func (c *nodeExecutor) finalize(ctx context.Context, h handler.Node, nCtx handle
 	return h.Finalize(ctx, nCtx)
 }
 
-func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executors.DAGStructure, nCtx *nodeExecContext, _ handler.Node) (executors.NodeStatus, error) {
+func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executors.DAGStructure, nCtx *nodeExecContext, h handler.Node) (executors.NodeStatus, error) {
+	nodeStatus := nCtx.NodeStatus()
+
 	logger.Debugf(ctx, "Node not yet started, running pre-execute")
 	defer logger.Debugf(ctx, "Node pre-execute completed")
 	p, err := c.preExecute(ctx, dag, nCtx)
@@ -470,12 +474,88 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		return executors.NodeStatusPending, nil
 	}
 
+	// TODO @hamersaw
+	if cacheHandler, ok := h.(handler.CacheableNode); ok {
+		cacheable, err := cacheHandler.IsCacheable(ctx, nCtx)
+		if err != nil {
+			logger.Errorf(ctx, "failed to determine if node is cacheable with err '%s'", err.Error())
+			return executors.NodeStatusUndefined, err
+		}
+
+		if cacheable {
+			cacheCatalogKey, err := cacheHandler.GetCatalogKey(ctx, nCtx)
+			if err != nil {
+				// TODO @hamersaw fail
+				return executors.NodeStatusUndefined, err
+			}
+
+			entry, err := c.CheckCacheCatalog(ctx, cacheCatalogKey)
+			if err != nil {
+				// TODO @hamersaw fail
+				return executors.NodeStatusUndefined, err
+			}
+
+			// TODO @hamersaw - figure out
+			if entry.GetStatus().GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
+				// copy cached outputs to node outputs
+				o, ee, err := entry.GetOutputs().Read(ctx)
+				if err != nil {
+					logger.Errorf(ctx, "failed to read from catalog, err: %s", err.Error())
+					return executors.NodeStatusUndefined, err
+				}
+
+				if ee != nil {
+					logger.Errorf(ctx, "got execution error from catalog output reader? This should not happen, err: %s", ee.String())
+					return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
+				}
+
+				outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
+				if err := nCtx.DataStore().WriteProtobuf(ctx, outputFile, storage.Options{}, o); err != nil {
+					logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
+					return executors.NodeStatusUndefined, err
+				}
+
+				// update NodeStatus to Success
+				nodeStatus.ClearSubNodeStatus()
+				nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully", nil)
+
+				// TODO send events? (with cache hit) - for some reason this is not showing up as CACHE_HIT in UI
+				phaseInfo := handler.PhaseInfoSuccess(&handler.ExecutionInfo{
+					OutputInfo: &handler.OutputInfo {
+						OutputURI: outputFile,
+					},
+					TaskNodeInfo: &handler.TaskNodeInfo {
+						TaskNodeMetadata: &event.TaskNodeMetadata{
+							CacheStatus: entry.GetStatus().GetCacheStatus(),
+							CatalogKey:  entry.GetStatus().GetMetadata(),
+						},
+					},
+				})
+
+				nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
+					phaseInfo, nCtx.InputReader().GetInputPath().String(), nodeStatus, nCtx.ExecutionContext().GetEventVersion(),
+					nCtx.ExecutionContext().GetParentInfo(), nCtx.node, c.clusterID, nCtx.NodeStateReader().GetDynamicNodeState().Phase)
+				if err != nil {
+					return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "could not convert phase info to event")
+				}
+				err = c.IdempotentRecordEvent(ctx, nev)
+				if err != nil {
+					logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
+					return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
+				}
+
+				// TODO return handleDownstream()
+				return executors.NodeStatusSuccess, nil
+				//return c.handleDownstream(ctx, execContext, dag, nl, currentNode)
+			}
+		}
+	}
+
 	np, err := ToNodePhase(p.GetPhase())
 	if err != nil {
 		return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "failed to move from queued")
 	}
 
-	nodeStatus := nCtx.NodeStatus()
 	if np != nodeStatus.GetPhase() {
 		// assert np == Queued!
 		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s]", nodeStatus.GetPhase().String(), np.String())
@@ -1141,6 +1221,15 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		return nil, err
 	}
 
+	async, err := catalog.NewAsyncClient(catalogClient, *catalog.GetConfig(), scope.NewSubScope("async_catalog"))
+	if err != nil {
+		return nil, err
+	}
+
+	if err = async.Start(ctx); err != nil {
+		return nil, err
+	}
+
 	nodeScope := scope.NewSubScope("node")
 	exec := &nodeExecutor{
 		store:               store,
@@ -1180,6 +1269,8 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		recoveryClient:                  recoveryClient,
 		eventConfig:                     eventConfig,
 		clusterID:                       clusterID,
+		catalog:                         catalogClient,
+		asyncCatalog:                    async,
 	}
 	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, recoveryClient, eventConfig, clusterID, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory
