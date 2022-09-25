@@ -743,7 +743,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		PluginPhaseVersion:                 pluginTrns.pInfo.Version(),
 		BarrierClockTick:                   barrierTick,
 		LastPhaseUpdatedAt:                 time.Now(),
-		PreviousNodeExecutionCheckpointUri: ts.PreviousNodeExecutionCheckpointUri,
+		PreviousNodeExecutionCheckpointURI: ts.PreviousNodeExecutionCheckpointURI,
 	})
 	if err != nil {
 		logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())

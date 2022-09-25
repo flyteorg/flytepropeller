@@ -20,7 +20,7 @@ type TaskNodeState struct {
 	PluginStateVersion                 uint32
 	BarrierClockTick                   uint32
 	LastPhaseUpdatedAt                 time.Time
-	PreviousNodeExecutionCheckpointUri storage.DataReference
+	PreviousNodeExecutionCheckpointURI storage.DataReference
 }
 
 type BranchNodeState struct {

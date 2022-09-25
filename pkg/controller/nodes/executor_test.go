@@ -2300,7 +2300,7 @@ func TestRecover(t *testing.T) {
 		writer := &nodeHandlerMocks.NodeStateWriter{}
 		writer.OnPutTaskNodeStateMatch(mock.Anything).Run(func(args mock.Arguments) {
 			state := args.Get(0).(handler.TaskNodeState)
-			assert.Equal(t, state.PreviousNodeExecutionCheckpointUri.String(), "prev path")
+			assert.Equal(t, state.PreviousNodeExecutionCheckpointURI.String(), "prev path")
 		}).Return(nil)
 		nCtx.OnNodeStateWriter().Return(writer)
 

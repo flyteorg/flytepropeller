@@ -221,7 +221,7 @@ func ComputeRawOutputPrefix(ctx context.Context, length int, nCtx handler.NodeEx
 func ComputePreviousCheckpointPath(ctx context.Context, length int, nCtx handler.NodeExecutionContext, currentNodeUniqueID v1alpha1.NodeID, currentAttempt uint32) (storage.DataReference, error) {
 	// If first attempt for this node execution, look for a checkpoint path in a prior execution
 	if currentAttempt == 0 {
-		return nCtx.NodeStateReader().GetTaskNodeState().PreviousNodeExecutionCheckpointUri, nil
+		return nCtx.NodeStateReader().GetTaskNodeState().PreviousNodeExecutionCheckpointURI, nil
 	}
 	// Otherwise derive previous checkpoint path from the prior attempt
 	prevAttempt := currentAttempt - 1

@@ -465,7 +465,7 @@ func TestComputePreviousCheckpointPath_Recovery(t *testing.T) {
 	nCtx.OnNodeExecutionMetadata().Return(nm)
 	reader := &nodeMocks.NodeStateReader{}
 	reader.OnGetTaskNodeState().Return(handler.TaskNodeState{
-		PreviousNodeExecutionCheckpointUri: storage.DataReference("s3://sandbox/x/prevname-n1-0/_flytecheckpoints"),
+		PreviousNodeExecutionCheckpointURI: storage.DataReference("s3://sandbox/x/prevname-n1-0/_flytecheckpoints"),
 	})
 	nCtx.OnNodeStateReader().Return(reader)
 

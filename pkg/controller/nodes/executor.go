@@ -195,7 +195,7 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		// uri in the task node state to pass to the task handler later on.
 		if metadata, ok := recovered.Closure.TargetMetadata.(*admin.NodeExecutionClosure_TaskNodeMetadata); ok {
 			state := nCtx.NodeStateReader().GetTaskNodeState()
-			state.PreviousNodeExecutionCheckpointUri = storage.DataReference(metadata.TaskNodeMetadata.CheckpointUri)
+			state.PreviousNodeExecutionCheckpointURI = storage.DataReference(metadata.TaskNodeMetadata.CheckpointUri)
 			err = nCtx.NodeStateWriter().PutTaskNodeState(state)
 			if err != nil {
 				logger.Warn(ctx, "failed to save recoverd checkpoint uri for [%+v]: [%+v]",
@@ -415,7 +415,6 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeEx
 		}
 		if isTimeoutExpired(nodeStatus.GetQueuedAt(), activeDeadline) {
 			logger.Infof(ctx, "Node has timed out; timeout configured: %v", activeDeadline)
-			// TODO: return CheckpointUri on timeout?
 			return handler.PhaseInfoTimedOut(nil, fmt.Sprintf("task active timeout [%s] expired", activeDeadline.String())), nil
 		}
 
