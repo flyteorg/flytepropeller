@@ -474,7 +474,7 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		return executors.NodeStatusPending, nil
 	}
 
-	// TODO @hamersaw
+	// TODO @hamersaw - complete
 	if cacheHandler, ok := h.(handler.CacheableNode); ok {
 		cacheable, err := cacheHandler.IsCacheable(ctx, nCtx)
 		if err != nil {
@@ -519,7 +519,7 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 				nodeStatus.ClearSubNodeStatus()
 				nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully", nil)
 
-				// TODO send events? (with cache hit) - for some reason this is not showing up as CACHE_HIT in UI
+				// send execution events - TODO @hamersaw UI is not showing CACHE_HIT, do we need a TaskExecutionEvent?
 				phaseInfo := handler.PhaseInfoSuccess(&handler.ExecutionInfo{
 					OutputInfo: &handler.OutputInfo {
 						OutputURI: outputFile,
@@ -544,9 +544,8 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 					return executors.NodeStatusUndefined, errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
 				}
 
-				// TODO return handleDownstream()
-				return executors.NodeStatusSuccess, nil
-				//return c.handleDownstream(ctx, execContext, dag, nl, currentNode)
+				// process downstream nodes
+				return c.handleDownstream(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nCtx.Node())
 			}
 		}
 	}
