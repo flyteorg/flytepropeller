@@ -283,6 +283,34 @@ func TestValidateUnderlyingInterface(t *testing.T) {
 	})
 
 	t.Run("GateNode", func(t *testing.T) {
+		t.Run("Approve", func(t *testing.T) {
+			wfBuilder := mocks.WorkflowBuilder{}
+
+			gateNode := &core.GateNode{
+				Condition: &core.GateNode_Approve{
+					Approve: &core.ApproveCondition{
+						SignalId: "foo",
+					},
+				},
+			}
+
+			nodeBuilder := mocks.NodeBuilder{}
+			nodeBuilder.On("GetCoreNode").Return(&core.Node{
+				Target: &core.Node_GateNode{
+					GateNode: gateNode,
+				},
+			})
+			nodeBuilder.OnGetInterface().Return(nil)
+
+			nodeBuilder.On("GetGateNode").Return(gateNode)
+			nodeBuilder.On("GetId").Return("node_1")
+			nodeBuilder.On("SetInterface", mock.Anything).Return()
+
+			errs := errors.NewCompileErrors()
+			iface, ifaceOk := ValidateUnderlyingInterface(&wfBuilder, &nodeBuilder, errs.NewScope())
+			assertNonEmptyInterface(t, iface, ifaceOk, errs)
+		})
+
 		t.Run("Signal", func(t *testing.T) {
 			wfBuilder := mocks.WorkflowBuilder{}
 

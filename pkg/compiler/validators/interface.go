@@ -121,15 +121,10 @@ func ValidateUnderlyingInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs e
 	case *core.Node_GateNode:
 		gateNode := node.GetGateNode()
 		if approve := gateNode.GetApprove(); approve != nil {
-			// TODO @hamersaw - figure this out
-			/*iface = &core.TypedInterface{
-				Inputs: &core.VariableMap{Variables: map[string]*core.Variable{}},
-				Outputs: &core.VariableMap{Variables: map[string]*core.Variable{
-					signal.GetOutputVariableName(): &core.Variable{
-						Type: signal.GetType(),
-					},
-				}},
-			}*/
+			iface = &core.TypedInterface{
+				Inputs:  &core.VariableMap{Variables: map[string]*core.Variable{}},
+				Outputs: &core.VariableMap{Variables: map[string]*core.Variable{}},
+			}
 		} else if signal := gateNode.GetSignal(); signal != nil {
 			if signal.GetType() == nil {
 				errs.Collect(errors.NewValueRequiredErr(node.GetId(), "GateNode.Signal.Type"))
