@@ -9,6 +9,8 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
+	ioMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	flyteMocks "github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
@@ -35,6 +37,15 @@ var (
 		RawOutputPolicy: config.RawOutputPolicyReference,
 	}
 
+	approveGateNode = &v1alpha1.GateNodeSpec{
+		Kind: v1alpha1.ConditionKindApprove,
+		Approve: &v1alpha1.ApproveCondition{
+			ApproveCondition: &core.ApproveCondition{
+				SignalId: "foo",
+			},
+		},
+	}
+
 	signalGateNode = &v1alpha1.GateNodeSpec{
 		Kind: v1alpha1.ConditionKindSignal,
 		Signal: &v1alpha1.SignalCondition{
@@ -45,6 +56,7 @@ var (
 						Simple: core.SimpleType_BOOLEAN,
 					},
 				},
+				OutputVariableName: "bar",
 			},
 		},
 	}
@@ -94,6 +106,8 @@ func createNodeExecutionContext(gateNode *v1alpha1.GateNodeSpec) *nodeMocks.Node
 	t := v1.NewTime(time.Now())
 	ns.OnGetLastAttemptStartedAt().Return(&t)
 
+	inputReader := &ioMocks.InputReader{}
+	inputReader.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
 	dataStore, _ := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 
 	eCtx := &executormocks.ExecutionContext{}
@@ -105,6 +119,7 @@ func createNodeExecutionContext(gateNode *v1alpha1.GateNodeSpec) *nodeMocks.Node
 	nCtx.OnNodeStatus().Return(ns)
 	nCtx.OnDataStore().Return(dataStore)
 	nCtx.OnExecutionContext().Return(eCtx)
+	nCtx.OnInputReader().Return(inputReader)
 
 	r := &nodeMocks.NodeStateReader{}
 	r.OnGetGateNodeState().Return(handler.GateNodeState{})
@@ -139,6 +154,82 @@ func TestFinalize(t *testing.T) {
 func TestHandle(t *testing.T) {
 	ctx := context.TODO()
 	scope := promutils.NewTestScope()
+
+	t.Run("ApproveCheck", func(t *testing.T) {
+		nCtx := createNodeExecutionContext(approveGateNode)
+		signalClient := mocks.SignalServiceClient{}
+		signalClient.OnGetOrCreateSignalMatch(mock.Anything, mock.Anything).Return(&admin.Signal{}, nil)
+
+		gateNodeHandler := New(eventConfig, &signalClient, scope)
+
+		transition, err := gateNodeHandler.Handle(ctx, nCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, handler.EPhaseRunning, transition.Info().GetPhase())
+	})
+
+	t.Run("ApproveComplete", func(t *testing.T) {
+		nCtx := createNodeExecutionContext(approveGateNode)
+		signalClient := mocks.SignalServiceClient{}
+		signalClient.OnGetOrCreateSignalMatch(mock.Anything, mock.Anything).Return(&admin.Signal{
+			Value: &core.Literal{
+				Value: &core.Literal_Scalar{
+					Scalar: &core.Scalar{
+						Value: &core.Scalar_Primitive{
+							Primitive: &core.Primitive{
+								Value: &core.Primitive_Boolean{
+									Boolean: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		}, nil)
+
+		gateNodeHandler := New(eventConfig, &signalClient, scope)
+
+		transition, err := gateNodeHandler.Handle(ctx, nCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, handler.EPhaseSuccess, transition.Info().GetPhase())
+	})
+
+	t.Run("ApproveRejected", func(t *testing.T) {
+		nCtx := createNodeExecutionContext(approveGateNode)
+		signalClient := mocks.SignalServiceClient{}
+		signalClient.OnGetOrCreateSignalMatch(mock.Anything, mock.Anything).Return(&admin.Signal{
+			Value: &core.Literal{
+				Value: &core.Literal_Scalar{
+					Scalar: &core.Scalar{
+						Value: &core.Scalar_Primitive{
+							Primitive: &core.Primitive{
+								Value: &core.Primitive_Boolean{
+									Boolean: false,
+								},
+							},
+						},
+					},
+				},
+			},
+		}, nil)
+
+		gateNodeHandler := New(eventConfig, &signalClient, scope)
+
+		transition, err := gateNodeHandler.Handle(ctx, nCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, handler.EPhaseFailed, transition.Info().GetPhase())
+	})
+
+	t.Run("ApproveError", func(t *testing.T) {
+		nCtx := createNodeExecutionContext(approveGateNode)
+		signalClient := mocks.SignalServiceClient{}
+		signalClient.OnGetOrCreateSignalMatch(mock.Anything, mock.Anything).Return(&admin.Signal{}, errors.New("foo"))
+
+		gateNodeHandler := New(eventConfig, &signalClient, scope)
+
+		transition, err := gateNodeHandler.Handle(ctx, nCtx)
+		assert.Error(t, err)
+		assert.Equal(t, handler.EPhaseUndefined, transition.Info().GetPhase())
+	})
 
 	t.Run("SignalCheck", func(t *testing.T) {
 		nCtx := createNodeExecutionContext(signalGateNode)

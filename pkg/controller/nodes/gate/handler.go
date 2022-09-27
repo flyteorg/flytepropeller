@@ -73,7 +73,6 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 
 	switch gateNode.GetKind() {
 	case v1alpha1.ConditionKindApprove:
-		fmt.Printf("HAMERSAW - approve\n")
 		// retrieve approve condition
 		approveCondition := gateNode.GetApprove()
 		if approveCondition == nil {
@@ -81,8 +80,6 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM,
 				errors.BadSpecificationError, errMsg, nil)), nil
 		}
-
-		fmt.Printf("HAMERSAW - approve condition %+v\n", approveCondition)
 
 		// use admin client to query for signal
 		request := &admin.SignalGetOrCreateRequest{
@@ -97,14 +94,10 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 			},
 		}
 
-		fmt.Printf("HAMERSAW - request %+v\n", request)
-
 		signal, err := g.signalClient.GetOrCreateSignal(ctx, request)
 		if err != nil {
 			return handler.UnknownTransition, err
 		}
-
-		fmt.Printf("HAMERSAW - signal %+v\n", signal)
 
 		// if signal has value then check for approval
 		if signal.Value != nil && signal.Value.Value != nil {
