@@ -72,8 +72,74 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 	}
 
 	switch gateNode.GetKind() {
+	case v1alpha1.ConditionKindApprove:
+		fmt.Printf("HAMERSAW - approve\n")
+		// retrieve approve condition
+		approveCondition := gateNode.GetApprove()
+		if approveCondition == nil {
+			errMsg := "gateNode approve condition is nil"
+			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM,
+				errors.BadSpecificationError, errMsg, nil)), nil
+		}
+
+		fmt.Printf("HAMERSAW - approve condition %+v\n", approveCondition)
+
+		// use admin client to query for signal
+		request := &admin.SignalGetOrCreateRequest{
+			Id: &core.SignalIdentifier{
+				ExecutionId: nCtx.ExecutionContext().GetExecutionID().WorkflowExecutionIdentifier,
+				SignalId:    approveCondition.SignalId,
+			},
+			Type: &core.LiteralType {
+				Type: &core.LiteralType_Simple {
+					Simple: core.SimpleType_BOOLEAN,
+				},
+			},
+		}
+
+		fmt.Printf("HAMERSAW - request %+v\n", request)
+
+		signal, err := g.signalClient.GetOrCreateSignal(ctx, request)
+		if err != nil {
+			return handler.UnknownTransition, err
+		}
+
+		fmt.Printf("HAMERSAW - signal %+v\n", signal)
+
+		// if signal has value then check for approval
+		if signal.Value != nil && signal.Value.Value != nil {
+			approved, ok := getBoolean(signal.Value)
+			if !ok {
+				errMsg := fmt.Sprintf("received a non-boolean approve signal value [%v]", signal.Value)
+				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_UNKNOWN,
+					errors.RuntimeExecutionError, errMsg, nil)), nil
+			}
+
+			if !approved {
+				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_USER,
+					"ReceivedRejectSignal", "received a reject signal to disapprove the node input values", nil)), nil
+			}
+
+			// copy input values to outputs
+			inputs, err := nCtx.InputReader().Get(ctx)
+			if err != nil {
+				errMsg := fmt.Sprintf("failed to read input with error [%s]", err)
+				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.RuntimeExecutionError, errMsg, nil)), nil
+			}
+
+			outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
+			if err := nCtx.DataStore().WriteProtobuf(ctx, outputFile, storage.Options{}, inputs); err != nil {
+				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, "WriteOutputsFailed",
+					fmt.Sprintf("failed to write signal value to [%v] with error [%s]", outputFile, err.Error()), nil)), nil
+			}
+
+			o := &handler.OutputInfo{OutputURI: outputFile}
+			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{
+				OutputInfo: o,
+			})), nil
+		}
 	case v1alpha1.ConditionKindSignal:
-		// retrieve signal duration
+		// retrieve signal condition
 		signalCondition := gateNode.GetSignal()
 		if signalCondition == nil {
 			errMsg := "gateNode signal condition is nil"
@@ -104,12 +170,9 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 			}
 
 			outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
-
-			so := storage.Options{}
-			if err := nCtx.DataStore().WriteProtobuf(ctx, outputFile, so, outputs); err != nil {
-				logger.Errorf(ctx, "Failed to write signal outputs. Error [%v]", err)
+			if err := nCtx.DataStore().WriteProtobuf(ctx, outputFile, storage.Options{}, outputs); err != nil {
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, "WriteOutputsFailed",
-					fmt.Sprintf("Failed to write signal value to [%v]. Error: %s", outputFile, err.Error()), nil)), nil
+					fmt.Sprintf("failed to write signal value to [%v] with error: %s", outputFile, err.Error()), nil)), nil
 			}
 
 			o := &handler.OutputInfo{OutputURI: outputFile}
@@ -141,7 +204,7 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 
 	// update gate node status
 	if err := nCtx.NodeStateWriter().PutGateNodeState(gateNodeState); err != nil {
-		logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())
+		logger.Errorf(ctx, "failed to store TaskNode state with err [%s]", err.Error())
 		return handler.UnknownTransition, err
 	}
 
@@ -160,4 +223,16 @@ func New(eventConfig *config.EventConfig, signalClient service.SignalServiceClie
 		signalClient: signalClient,
 		metrics:      newMetrics(gateScope),
 	}
+}
+
+func getBoolean(literal *core.Literal) (bool, bool) {
+	if scalarValue, ok := literal.Value.(*core.Literal_Scalar); ok {
+		if primitiveValue, ok := scalarValue.Scalar.Value.(*core.Scalar_Primitive); ok {
+			if booleanValue, ok := primitiveValue.Primitive.Value.(*core.Primitive_Boolean); ok {
+				return booleanValue.Boolean, true
+			}
+		}
+	}
+
+	return false, false
 }

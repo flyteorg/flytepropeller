@@ -132,6 +132,13 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		nodeSpec.Kind = v1alpha1.NodeKindGate
 		gateNode := n.GetGateNode()
 		switch gateNode.Condition.(type) {
+		case *core.GateNode_Approve:
+			nodeSpec.GateNode = &v1alpha1.GateNodeSpec{
+				Kind: v1alpha1.ConditionKindApprove,
+				Approve: &v1alpha1.ApproveCondition{
+					ApproveCondition: gateNode.GetApprove(),
+				},
+			}
 		case *core.GateNode_Signal:
 			nodeSpec.GateNode = &v1alpha1.GateNodeSpec{
 				Kind: v1alpha1.ConditionKindSignal,

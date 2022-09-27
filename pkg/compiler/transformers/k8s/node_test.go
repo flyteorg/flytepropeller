@@ -213,6 +213,20 @@ func TestBuildNodeSpec(t *testing.T) {
 		mustBuild(t, n, 2, errs.NewScope())
 	})
 
+	t.Run("GateNodeApprove", func(t *testing.T) {
+		n.Node.Target = &core.Node_GateNode{
+			GateNode: &core.GateNode{
+				Condition: &core.GateNode_Approve{
+					Approve: &core.ApproveCondition{
+						SignalId: "foo",
+					},
+				},
+			},
+		}
+
+		mustBuild(t, n, 1, errs.NewScope())
+	})
+
 	t.Run("GateNodeSignal", func(t *testing.T) {
 		n.Node.Target = &core.Node_GateNode{
 			GateNode: &core.GateNode{

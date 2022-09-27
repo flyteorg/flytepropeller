@@ -1,6 +1,8 @@
 workflow:
   id:
     name: workflow-id-123
+    domain: development
+    project: flytesnacks
   interface:
     inputs:
       variables: {}

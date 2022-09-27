@@ -248,6 +248,7 @@ type ExecutableBranchNode interface {
 
 type ExecutableGateNode interface {
 	GetKind() ConditionKind
+	GetApprove() *core.ApproveCondition
 	GetSignal() *core.SignalCondition
 	GetSleep() *core.SleepCondition
 }
