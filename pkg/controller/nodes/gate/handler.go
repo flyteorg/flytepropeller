@@ -87,8 +87,8 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 				ExecutionId: nCtx.ExecutionContext().GetExecutionID().WorkflowExecutionIdentifier,
 				SignalId:    approveCondition.SignalId,
 			},
-			Type: &core.LiteralType {
-				Type: &core.LiteralType_Simple {
+			Type: &core.LiteralType{
+				Type: &core.LiteralType_Simple{
 					Simple: core.SimpleType_BOOLEAN,
 				},
 			},

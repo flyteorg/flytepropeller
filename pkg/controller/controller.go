@@ -305,7 +305,7 @@ func newControllerMetrics(scope promutils.Scope) *metrics {
 	}
 }
 
-func getAdminClient(ctx context.Context) (client service.AdminServiceClient, signalClient service.SignalServiceClient, opt grpc.DialOption, err error) {
+func getAdminClient(ctx context.Context) (client service.AdminServiceClient, signalClient service.SignalServiceClient, opt []grpc.DialOption, err error) {
 	cfg := admin.GetConfig(ctx)
 	clients, err := admin.NewClientsetBuilder().WithConfig(cfg).Build(ctx)
 	if err != nil {
