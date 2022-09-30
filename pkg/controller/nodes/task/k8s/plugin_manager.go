@@ -223,7 +223,8 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 
 	if err != nil && !k8serrors.IsAlreadyExists(err) {
 		if backoff.IsResourceQuotaExceeded(err) && !backoff.IsResourceRequestsEligible(err) {
-			// if task requested resources exceed resource quota limits then fail the task because it will never succeed
+			// if task resources exceed resource quotas then permanently fail because the task will
+			// be stuck waiting for resources until the `node-active-deadline` terminates the node.
 			logger.Errorf(ctx, "task resource requests exceed k8s resource limits. err: %v", err)
 			return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("ResourceRequestsExceedLimits",
 				fmt.Sprintf("requested resources exceed limits: %v", err.Error()), nil)), nil
