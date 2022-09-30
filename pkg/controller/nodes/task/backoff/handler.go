@@ -17,8 +17,10 @@ import (
 )
 
 var (
-	limitedRegexp = regexp.MustCompile(`limited: (limits.[a-zA-Z]+=[a-zA-Z0-9]+[,]*)+`)
-	reqRegexp = regexp.MustCompile(`requested: (limits.[a-zA-Z]+=[a-zA-Z0-9]+[,]*)+`)
+	limitedLimitsRegexp = regexp.MustCompile(`limited: (limits.[a-zA-Z]+=[a-zA-Z0-9]+[,]*)+`)
+	limitedRequestsRegexp = regexp.MustCompile(`limited: (requests.[a-zA-Z]+=[a-zA-Z0-9]+[,]*)+`)
+	requestedLimitsRegexp = regexp.MustCompile(`requested: (limits.[a-zA-Z]+=[a-zA-Z0-9]+[,]*)+`)
+	requestedRequestsRegexp = regexp.MustCompile(`requested: (requests.[a-zA-Z]+=[a-zA-Z0-9]+[,]*)+`)
 )
 
 // SimpleBackOffBlocker is a simple exponential back-off timer that keeps track of the back-off period
@@ -171,7 +173,7 @@ func (h *ComputeResourceAwareBackOffHandler) Handle(ctx context.Context, operati
 				// It is necessary to parse the error message to get the actual constraints
 				// in this case, if the error message indicates constraints on memory only, then we shouldn't be used to lower the CPU ceiling
 				// even if CPU appears in requestedResourceList
-				newCeiling := GetComputeResourceAndQuantity(err, reqRegexp)
+				newCeiling := GetComputeResourceAndQuantity(err, requestedLimitsRegexp)
 				h.ComputeResourceCeilings.updateAll(&newCeiling)
 			}
 
@@ -231,15 +233,23 @@ func GetComputeResourceAndQuantity(err error, resourceRegex *regexp.Regexp) v1.R
 	return computeResources
 }
 
-func IsResourceRequestsExceedLimits(err error) bool {
-	requestedResourceList := GetComputeResourceAndQuantity(err, reqRegexp)
-	limitedResourceList := GetComputeResourceAndQuantity(err, limitedRegexp)
-	for reqResource, reqQuantity := range requestedResourceList {
-		val, found := limitedResourceList[reqResource]
-		if found && reqQuantity.Cmp(val) >= 0 {
-			return true
+func IsResourceRequestsEligible(err error) bool {
+	limitedLimitsResourceList := GetComputeResourceAndQuantity(err, limitedLimitsRegexp)
+	limitedRequestsResourceList := GetComputeResourceAndQuantity(err, limitedRequestsRegexp)
+	requestedLimitsResourceList := GetComputeResourceAndQuantity(err, requestedLimitsRegexp)
+	requestedRequestsResourceList := GetComputeResourceAndQuantity(err, requestedRequestsRegexp)
+
+	return isEligible(requestedLimitsResourceList, limitedLimitsResourceList) &&
+		isEligible(requestedRequestsResourceList, limitedRequestsResourceList)
+}
+
+func isEligible(requestedResourceList, quotaResourceList v1.ResourceList) (eligibility bool) {
+	for resource, requestedQuantity := range requestedResourceList {
+		quotaQuantity, exists := quotaResourceList[resource]
+		if exists && requestedQuantity.Cmp(quotaQuantity) >= 0 {
+			return false
 		}
 	}
 
-	return false
+	return true
 }
