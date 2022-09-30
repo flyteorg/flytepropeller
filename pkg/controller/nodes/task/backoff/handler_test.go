@@ -356,62 +356,62 @@ func TestGetComputeResourceAndQuantityRequested(t *testing.T) {
 		{name: "Limited memory limits", args: args{err: apiErrors.NewForbidden(
 			schema.GroupResource{}, "", errors.New("is forbidden: "+
 				"exceeded quota: project-quota, requested: limits.memory=3Gi, used: limits.memory=7976Gi, limited: limits.memory=8000Gi")),
-				regexp: limitedLimitsRegexp},
+			regexp: limitedLimitsRegexp},
 			want: v1.ResourceList{v1.ResourceMemory: resource.MustParse("8000Gi")}},
 		{name: "Limited CPU limits", args: args{err: apiErrors.NewForbidden(
 			schema.GroupResource{}, "", errors.New("is forbidden: "+
 				"exceeded quota: project-quota, requested: limits.cpu=3640m, used: limits.cpu=6000m, limited: limits.cpu=8000m")),
-				regexp: limitedLimitsRegexp},
+			regexp: limitedLimitsRegexp},
 			want: v1.ResourceList{v1.ResourceCPU: resource.MustParse("8000m")}},
 		{name: "Limited multiple limits ", args: args{err: apiErrors.NewForbidden(
 			schema.GroupResource{}, "", errors.New("is forbidden: "+
 				"exceeded quota: project-quota, requested: limits.cpu=7,limits.memory=64Gi, used: limits.cpu=249,limits.memory=2012730Mi, limited: limits.cpu=250,limits.memory=2000Gi")),
-				regexp: limitedLimitsRegexp},
+			regexp: limitedLimitsRegexp},
 			want: v1.ResourceList{v1.ResourceCPU: resource.MustParse("250"), v1.ResourceMemory: resource.MustParse("2000Gi")}},
 		{name: "Limited memory requests", args: args{err: apiErrors.NewForbidden(
 			schema.GroupResource{}, "", errors.New("is forbidden: "+
 				"exceeded quota: project-quota, requested: requests.memory=3Gi, used: requests.memory=7976Gi, limited: requests.memory=8000Gi")),
-				regexp: limitedRequestsRegexp},
+			regexp: limitedRequestsRegexp},
 			want: v1.ResourceList{v1.ResourceMemory: resource.MustParse("8000Gi")}},
 		{name: "Limited CPU requests", args: args{err: apiErrors.NewForbidden(
 			schema.GroupResource{}, "", errors.New("is forbidden: "+
 				"exceeded quota: project-quota, requested: requests.cpu=3640m, used: requests.cpu=6000m, limited: requests.cpu=8000m")),
-				regexp: limitedRequestsRegexp},
+			regexp: limitedRequestsRegexp},
 			want: v1.ResourceList{v1.ResourceCPU: resource.MustParse("8000m")}},
 		{name: "Limited multiple requests ", args: args{err: apiErrors.NewForbidden(
 			schema.GroupResource{}, "", errors.New("is forbidden: "+
 				"exceeded quota: project-quota, requested: requests.cpu=7,requests.memory=64Gi, used: requests.cpu=249,requests.memory=2012730Mi, limited: requests.cpu=250,requests.memory=2000Gi")),
-				regexp: limitedRequestsRegexp},
+			regexp: limitedRequestsRegexp},
 			want: v1.ResourceList{v1.ResourceCPU: resource.MustParse("250"), v1.ResourceMemory: resource.MustParse("2000Gi")}},
 		{name: "Requested memory limits", args: args{err: apiErrors.NewForbidden(
 			schema.GroupResource{}, "", errors.New("is forbidden: "+
 				"exceeded quota: project-quota, requested: limits.memory=3Gi, used: limits.memory=7976Gi, limited: limits.memory=8000Gi")),
-				regexp: requestedLimitsRegexp},
+			regexp: requestedLimitsRegexp},
 			want: v1.ResourceList{v1.ResourceMemory: resource.MustParse("3Gi")}},
 		{name: "Requested CPU limits", args: args{err: apiErrors.NewForbidden(
 			schema.GroupResource{}, "", errors.New("is forbidden: "+
 				"exceeded quota: project-quota, requested: limits.cpu=3640m, used: limits.cpu=6000m, limited: limits.cpu=8000m")),
-				regexp: requestedLimitsRegexp},
+			regexp: requestedLimitsRegexp},
 			want: v1.ResourceList{v1.ResourceCPU: resource.MustParse("3640m")}},
 		{name: "Requested multiple limits ", args: args{err: apiErrors.NewForbidden(
 			schema.GroupResource{}, "", errors.New("is forbidden: "+
 				"exceeded quota: project-quota, requested: limits.cpu=7,limits.memory=64Gi, used: limits.cpu=249,limits.memory=2012730Mi, limited: limits.cpu=250,limits.memory=2000Gi")),
-				regexp: requestedLimitsRegexp},
+			regexp: requestedLimitsRegexp},
 			want: v1.ResourceList{v1.ResourceCPU: resource.MustParse("7"), v1.ResourceMemory: resource.MustParse("64Gi")}},
 		{name: "Requested memory requests", args: args{err: apiErrors.NewForbidden(
 			schema.GroupResource{}, "", errors.New("is forbidden: "+
 				"exceeded quota: project-quota, requested: requests.memory=3Gi, used: requests.memory=7976Gi, limited: requests.memory=8000Gi")),
-				regexp: requestedRequestsRegexp},
+			regexp: requestedRequestsRegexp},
 			want: v1.ResourceList{v1.ResourceMemory: resource.MustParse("3Gi")}},
 		{name: "Requested CPU requests", args: args{err: apiErrors.NewForbidden(
 			schema.GroupResource{}, "", errors.New("is forbidden: "+
 				"exceeded quota: project-quota, requested: requests.cpu=3640m, used: requests.cpu=6000m, limited: requests.cpu=8000m")),
-				regexp: requestedRequestsRegexp},
+			regexp: requestedRequestsRegexp},
 			want: v1.ResourceList{v1.ResourceCPU: resource.MustParse("3640m")}},
 		{name: "Requested multiple requests ", args: args{err: apiErrors.NewForbidden(
 			schema.GroupResource{}, "", errors.New("is forbidden: "+
 				"exceeded quota: project-quota, requested: requests.cpu=7,requests.memory=64Gi, used: requests.cpu=249,requests.memory=2012730Mi, limited: requests.cpu=250,requests.memory=2000Gi")),
-				regexp: requestedRequestsRegexp},
+			regexp: requestedRequestsRegexp},
 			want: v1.ResourceList{v1.ResourceCPU: resource.MustParse("7"), v1.ResourceMemory: resource.MustParse("64Gi")}},
 	}
 	for _, tt := range tests {
@@ -617,32 +617,3 @@ func TestIsEligible(t *testing.T) {
 		})
 	}
 }
-/*isEligible
-func TestIsResourceQuotaExceeded(t *testing.T) {
-	type args struct {
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{name: "True ResourceQuotaExceeded error msg", args: args{err: apiErrors.NewForbidden(
-			schema.GroupResource{}, "", errors.New("is forbidden: "+
-				"exceeded quota: project-quota, requested: limits.memory=3Gi, "+
-				"used: limits.memory=7976Gi, limited: limits.memory=8000Gi"))},
-			want: true},
-		{name: "False ResourceQuotaExceeded error msg", args: args{err: apiErrors.NewForbidden(
-			schema.GroupResource{}, "", errors.New("is forbidden: "+
-				"exxxceed quota: project-quota, requested: limits.memory=3Gi, "+
-				"used: limits.memory=7976Gi, limited: limits.memory=8000Gi"))},
-			want: false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsResourceQuotaExceeded(tt.args.err); got != tt.want {
-				t.Errorf("IsResourceQuotaExceeded() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}*/
