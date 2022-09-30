@@ -225,7 +225,8 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 		if backoff.IsResourceQuotaExceeded(err) && backoff.IsResourceRequestsExceedLimits(err) {
 			// if task requested resources exceed resource quota limits then fail the task because it will never succeed
 			logger.Errorf(ctx, "task resource requests exceed k8s resource limits. err: %v", err)
-			return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("ResourceRequestsExceedLimits", err.Error(), nil)), nil
+			return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("ResourceRequestsExceedLimits",
+				fmt.Sprintf("requested resources exceed limits: %v", err.Error()), nil)), nil
 		} else if stdErrors.IsCausedBy(err, errors.BackOffError) {
 			logger.Warnf(ctx, "Failed to launch job, resource quota exceeded. err: %v", err)
 			return pluginsCore.DoTransition(pluginsCore.PhaseInfoWaitingForResourcesInfo(time.Now(), pluginsCore.DefaultPhaseVersion, fmt.Sprintf("Exceeded resourcequota: %s", err.Error()), nil)), nil

@@ -234,7 +234,6 @@ func GetComputeResourceAndQuantity(err error, resourceRegex *regexp.Regexp) v1.R
 func IsResourceRequestsExceedLimits(err error) bool {
 	requestedResourceList := GetComputeResourceAndQuantity(err, reqRegexp)
 	limitedResourceList := GetComputeResourceAndQuantity(err, limitedRegexp)
-
 	for reqResource, reqQuantity := range requestedResourceList {
 		val, found := limitedResourceList[reqResource]
 		if found && reqQuantity.Cmp(val) >= 0 {
@@ -244,7 +243,3 @@ func IsResourceRequestsExceedLimits(err error) bool {
 
 	return false
 }
-
-/*func IsBackoffError(err error) bool {
-	return stdErrors.IsCausedBy(err, errors.BackOffError)
-}*/
