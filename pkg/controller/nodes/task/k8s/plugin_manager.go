@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
@@ -223,14 +222,17 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 	}
 
 	if err != nil && !k8serrors.IsAlreadyExists(err) {
-		if backoff.IsBackoffError(err) {
+		if backoff.IsResourceQuotaExceeded(err) && backoff.IsResourceRequestsExceedLimits(err) {
+			// if task requested resources exceed resource quota limits then fail the task because it will never succeed
+			logger.Errorf(ctx, "task resource requests exceed k8s resource limits. err: %v", err)
+			return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("ResourceRequestsExceedLimits", err.Error(), nil)), nil
+		} else if stdErrors.IsCausedBy(err, errors.BackOffError) {
 			logger.Warnf(ctx, "Failed to launch job, resource quota exceeded. err: %v", err)
 			return pluginsCore.DoTransition(pluginsCore.PhaseInfoWaitingForResourcesInfo(time.Now(), pluginsCore.DefaultPhaseVersion, fmt.Sprintf("Exceeded resourcequota: %s", err.Error()), nil)), nil
+		} else if e.backOffController == nil && backoff.IsResourceQuotaExceeded(err) {
+			logger.Warnf(ctx, "Failed to launch job, resource quota exceeded and the operation is not guarded by back-off. err: %v", err)
+			return pluginsCore.DoTransition(pluginsCore.PhaseInfoWaitingForResourcesInfo(time.Now(), pluginsCore.DefaultPhaseVersion, fmt.Sprintf("Exceeded resourcequota: %s", err.Error()), nil)), nil
 		} else if k8serrors.IsForbidden(err) {
-			if e.backOffController == nil && strings.Contains(err.Error(), "exceeded quota") {
-				logger.Warnf(ctx, "Failed to launch job, resource quota exceeded and the operation is not guarded by back-off. err: %v", err)
-				return pluginsCore.DoTransition(pluginsCore.PhaseInfoWaitingForResourcesInfo(time.Now(), pluginsCore.DefaultPhaseVersion, fmt.Sprintf("Exceeded resourcequota: %s", err.Error()), nil)), nil
-			}
 			return pluginsCore.DoTransition(pluginsCore.PhaseInfoRetryableFailure("RuntimeFailure", err.Error(), nil)), nil
 		} else if k8serrors.IsBadRequest(err) || k8serrors.IsInvalid(err) {
 			logger.Errorf(ctx, "Badly formatted resource for plugin [%s], err %s", e.id, err)

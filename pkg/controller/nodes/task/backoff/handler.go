@@ -9,7 +9,6 @@ import (
 
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	stdAtomic "github.com/flyteorg/flytestdlib/atomic"
-	stdErrors "github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,6 +17,7 @@ import (
 )
 
 var (
+	limitedRegexp = regexp.MustCompile(`limited: (limits.[a-zA-Z]+=[a-zA-Z0-9]+[,]*)+`)
 	reqRegexp = regexp.MustCompile(`requested: (limits.[a-zA-Z]+=[a-zA-Z0-9]+[,]*)+`)
 )
 
@@ -171,7 +171,7 @@ func (h *ComputeResourceAwareBackOffHandler) Handle(ctx context.Context, operati
 				// It is necessary to parse the error message to get the actual constraints
 				// in this case, if the error message indicates constraints on memory only, then we shouldn't be used to lower the CPU ceiling
 				// even if CPU appears in requestedResourceList
-				newCeiling := GetComputeResourceAndQuantityRequested(err)
+				newCeiling := GetComputeResourceAndQuantity(err, reqRegexp)
 				h.ComputeResourceCeilings.updateAll(&newCeiling)
 			}
 
@@ -196,18 +196,18 @@ func IsBackOffError(err error) bool {
 	return IsResourceQuotaExceeded(err) || apiErrors.IsTooManyRequests(err) || apiErrors.IsServerTimeout(err)
 }
 
-func GetComputeResourceAndQuantityRequested(err error) v1.ResourceList {
+func GetComputeResourceAndQuantity(err error, resourceRegex *regexp.Regexp) v1.ResourceList {
 	// Playground: https://play.golang.org/p/oOr6CMmW7IE
 
 	// Sample message:
 	// "requested: limits.cpu=7,limits.memory=64Gi, used: limits.cpu=249,limits.memory=2012730Mi, limited: limits.cpu=250,limits.memory=2000Gi"
 
 	// Extracting "requested: limits.cpu=7,limits.memory=64Gi"
-	matches := reqRegexp.FindAllStringSubmatch(err.Error(), -1)
-	requestedComputeResources := v1.ResourceList{}
+	matches := resourceRegex.FindAllStringSubmatch(err.Error(), -1)
+	computeResources := v1.ResourceList{}
 
 	if len(matches) == 0 || len(matches[0]) == 0 {
-		return requestedComputeResources
+		return computeResources
 	}
 
 	// Extracting "limits.cpu=7,limits.memory=64Gi"
@@ -226,11 +226,25 @@ func GetComputeResourceAndQuantityRequested(err error) v1.ResourceList {
 		if len(tuple) < 2 {
 			continue
 		}
-		requestedComputeResources[v1.ResourceName(tuple[0])] = resource.MustParse(tuple[1])
+		computeResources[v1.ResourceName(tuple[0])] = resource.MustParse(tuple[1])
 	}
-	return requestedComputeResources
+	return computeResources
 }
 
-func IsBackoffError(err error) bool {
-	return stdErrors.IsCausedBy(err, errors.BackOffError)
+func IsResourceRequestsExceedLimits(err error) bool {
+	requestedResourceList := GetComputeResourceAndQuantity(err, reqRegexp)
+	limitedResourceList := GetComputeResourceAndQuantity(err, limitedRegexp)
+
+	for reqResource, reqQuantity := range requestedResourceList {
+		val, found := limitedResourceList[reqResource]
+		if found && reqQuantity.Cmp(val) >= 0 {
+			return true
+		}
+	}
+
+	return false
 }
+
+/*func IsBackoffError(err error) bool {
+	return stdErrors.IsCausedBy(err, errors.BackOffError)
+}*/
