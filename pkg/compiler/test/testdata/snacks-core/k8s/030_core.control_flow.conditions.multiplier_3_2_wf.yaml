@@ -3,6 +3,7 @@ executionConfig:
   Interruptible: null
   MaxParallelism: 0
   RecoveryExecution: {}
+  SkipCache: false
   TaskPluginImpls: null
   TaskResources:
     Limits:
