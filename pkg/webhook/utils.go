@@ -33,7 +33,7 @@ func CreateEnvVarForSecret(secret *core.Secret) corev1.EnvVar {
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: secret.Group,
 				},
-				Key: secret.Key,
+				Key:      secret.Key,
 				Optional: &optional,
 			},
 		},
