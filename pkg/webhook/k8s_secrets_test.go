@@ -152,7 +152,7 @@ func TestK8sSecretInjector_Inject(t *testing.T) {
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
 							SecretName: "hello",
-							Optional: &optional,
+							Optional:   &optional,
 						},
 					},
 				},
