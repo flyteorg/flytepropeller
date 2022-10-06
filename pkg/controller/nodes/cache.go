@@ -6,6 +6,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
 	"github.com/flyteorg/flytestdlib/logger"
 
@@ -63,4 +64,17 @@ func (n *nodeExecutor) CheckCacheCatalog(ctx context.Context, key catalog.Key) (
 	}*/
 	// SetCached.
 	return resp, nil
+}
+
+func (n *nodeExecutor) WriteCacheCatalog(ctx context.Context, key catalog.Key, outputReader io.OutputReader, metadata catalog.Metadata) (catalog.Status, error) {
+	//logger.Infof(ctx, "Catalog CacheEnabled. recording execution [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
+	// ignores discovery write failures
+	status, err := n.catalog.Put(ctx, key, outputReader, metadata)
+	if err != nil {
+		//t.metrics.catalogPutFailureCount.Inc(ctx)
+		//logger.Errorf(ctx, "Failed to write results to catalog for Task [%v]. Error: %v", tk.GetId(), err2)
+		return catalog.NewStatus(core.CatalogCacheStatus_CACHE_PUT_FAILURE, status.GetMetadata()), nil
+	}
+
+	return status, nil
 }

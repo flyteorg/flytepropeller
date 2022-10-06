@@ -54,6 +54,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task"
 )
 
 type nodeMetrics struct {
@@ -445,6 +446,56 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeEx
 
 		// Retrying to clearing all status
 		nCtx.nsm.clearNodeStatus()
+	}
+
+	// TODO @hamersaw - complete
+	if phase.GetPhase() == handler.EPhaseSuccess {
+		if cacheHandler, ok := h.(handler.CacheableNode); ok {
+			cacheable, err := cacheHandler.IsCacheable(ctx, nCtx)
+			if err != nil {
+				logger.Errorf(ctx, "failed to determine if node is cacheable with err '%s'", err.Error())
+				return handler.PhaseInfoUndefined, err
+			}
+
+			if cacheable {
+				cacheCatalogKey, err := cacheHandler.GetCatalogKey(ctx, nCtx)
+				if err != nil {
+					// TODO @hamersaw fail
+					return handler.PhaseInfoUndefined, err
+				}
+
+				outputPaths := ioutils.NewReadOnlyOutputFilePaths(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetOutputDir())
+				outputReader := ioutils.NewRemoteFileOutputReader(ctx, nCtx.DataStore(), outputPaths, nCtx.MaxDatasetSizeBytes())
+
+				// TODO @hamersaw - need to update this once we support caching of non-tasks
+				metadata := catalog.Metadata{
+					TaskExecutionIdentifier: task.GetTaskExecutionIdentifier(nCtx),
+				}
+
+				status, err := c.WriteCacheCatalog(ctx, cacheCatalogKey, outputReader, metadata)
+				if err != nil {
+					// TODO @hamersaw fail
+					return handler.PhaseInfoUndefined, err
+				}
+
+				// populate PhaseInfo with cache status
+				info := phase.GetInfo()
+				if info == nil {
+					info = &handler.ExecutionInfo{}
+				}
+
+				if info.TaskNodeInfo == nil {
+					info.TaskNodeInfo = &handler.TaskNodeInfo{}
+				}
+				if info.TaskNodeInfo.TaskNodeMetadata == nil {
+					info.TaskNodeInfo.TaskNodeMetadata = &event.TaskNodeMetadata{}
+				}
+
+				info.TaskNodeInfo.TaskNodeMetadata.CacheStatus = status.GetCacheStatus()
+				info.TaskNodeInfo.TaskNodeMetadata.CatalogKey = status.GetMetadata()
+				phase = phase.WithInfo(info)
+			}
+		}
 	}
 
 	return phase, nil

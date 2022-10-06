@@ -487,11 +487,13 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		// -------------------------------------
 		logger.Debugf(ctx, "Task success detected, calling on Task success")
 		outputCommitter := ioutils.NewRemoteFileOutputWriter(ctx, tCtx.DataStore(), tCtx.OutputWriter())
-		execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
+		/*execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 		cacheStatus, ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.NodeID(), tCtx.InputReader(), tCtx.ow.GetReader(),
 			outputCommitter, tCtx.ExecutionContext().GetExecutionConfig(), tCtx.tr, catalog.Metadata{
 				TaskExecutionIdentifier: &execID,
-			})
+			})*/
+		ee, err := t.ValidateOutput(ctx, tCtx.NodeID(), tCtx.InputReader(), tCtx.ow.GetReader(),
+			outputCommitter, tCtx.ExecutionContext().GetExecutionConfig(), tCtx.tr)
 		if err != nil {
 			return nil, err
 		}
@@ -515,8 +517,6 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 			}
 			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), deckURI,
 				&event.TaskNodeMetadata{
-					CacheStatus:   cacheStatus.GetCacheStatus(),
-					CatalogKey:    cacheStatus.GetMetadata(),
 					CheckpointUri: tCtx.ow.GetCheckpointPrefix().String(),
 				})
 		}
