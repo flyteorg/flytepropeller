@@ -22,21 +22,6 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	/*"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
-	//pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/flyteorg/flytestdlib/logger"
-	"github.com/pkg/errors"
-	//"google.golang.org/grpc/codes"
-	//"google.golang.org/grpc/status"
-
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
-	errors2 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"*/
 )
 
 func (n *nodeExecutor) CheckCatalogCache(ctx context.Context, nCtx *nodeExecContext, cacheHandler handler.CacheableNode) (catalog.Entry, error) {
@@ -129,44 +114,6 @@ func (n *nodeExecutor) GetOrExtendCatalogReservation(ctx context.Context, nCtx *
 	//t.metrics.reservationGetSuccessCount.Inc(ctx)
 	return catalog.NewReservationEntry(reservation.ExpiresAt.AsTime(),
 		reservation.HeartbeatInterval.AsDuration(), reservation.OwnerId, status), nil
-
-	/*tk, err := tr.Read(ctx)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
-		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
-	}
-
-	if tk.Metadata.Discoverable && tk.Metadata.CacheSerializable {
-		logger.Infof(ctx, "Catalog CacheSerializeEnabled: creating catalog reservation.")
-		key := catalog.Key{
-			Identifier:     *tk.Id,
-			CacheVersion:   tk.Metadata.DiscoveryVersion,
-			TypedInterface: *tk.Interface,
-			InputReader:    inputReader,
-		}
-
-		reservation, err := t.catalog.GetOrExtendReservation(ctx, key, ownerID, heartbeatInterval)
-		if err != nil {
-			t.metrics.reservationGetFailureCount.Inc(ctx)
-			logger.Errorf(ctx, "Catalog Failure: reservation get or extend failed. err: %v", err.Error())
-			return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
-		}
-
-		expiresAt := reservation.ExpiresAt.AsTime()
-		heartbeatInterval := reservation.HeartbeatInterval.AsDuration()
-
-		var status core.CatalogReservation_Status
-		if reservation.OwnerId == ownerID {
-			status = core.CatalogReservation_RESERVATION_ACQUIRED
-		} else {
-			status = core.CatalogReservation_RESERVATION_EXISTS
-		}
-
-		t.metrics.reservationGetSuccessCount.Inc(ctx)
-		return catalog.NewReservationEntry(expiresAt, heartbeatInterval, reservation.OwnerId, status), nil
-	}
-	logger.Infof(ctx, "Catalog CacheSerializeDisabled: for Task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
-	return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), nil*/
 }
 
 // ReleaseCatalogReservation attempts to release an artifact reservation if the task is cachable
@@ -212,11 +159,10 @@ func (n *nodeExecutor) WriteCatalogCache(ctx context.Context, nCtx *nodeExecCont
 		return catalog.NewStatus(core.CatalogCacheStatus_CACHE_DISABLED, nil), err
 	}
 
-	// TODO @hamersaw - is this right?
-	/*iface := catalogKey.TypedInterface
+	iface := catalogKey.TypedInterface
 	if iface.Outputs != nil && len(iface.Outputs.Variables) == 0 {
 		return catalog.NewStatus(core.CatalogCacheStatus_CACHE_DISABLED, nil), nil
-	}*/
+	}
 
 	outputPaths := ioutils.NewReadOnlyOutputFilePaths(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetOutputDir())
 	outputReader := ioutils.NewRemoteFileOutputReader(ctx, nCtx.DataStore(), outputPaths, nCtx.MaxDatasetSizeBytes())

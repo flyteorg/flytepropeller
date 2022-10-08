@@ -623,7 +623,8 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 	cacheStatus := core.CatalogCacheStatus_CACHE_DISABLED
 	catalogReservationStatus := core.CatalogReservation_RESERVATION_DISABLED
 	if cacheHandler, ok := h.(handler.CacheableNode); ok {
-		// TODO @hamersaw - we are checking cache twice when nodes start ... need to fix this!
+		// TODO @hamersaw - document since we already check cache in queued the first time we hit this we shouldn't check it
+		// could potentially use nodeStatus.GetMessage() check and update on RESERVATION_EXISTS
 		if currentPhase == v1alpha1.NodePhaseQueued {
 			cacheable, err := cacheHandler.IsCacheable(ctx, nCtx)
 			if err != nil {
@@ -690,12 +691,14 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 						pluginTrns.pInfo = pluginCore.PhaseInfoWaitingForCache(pluginCore.DefaultPhaseVersion, nil)
 					}*/
 
-					if currentPhase == v1alpha1.NodePhaseQueued {
+					/*if currentPhase == v1alpha1.NodePhaseQueued {
 					//if ts.PluginPhase == pluginCore.PhaseWaitingForCache {
 						logger.Debugf(ctx, "No state change for Task, previously observed same transition. Short circuiting.")
-						//return executors.NodeStatusQueued, nil // TODO @hamersaw - should probably fallthrough on this
-						p = handler.PhaseInfoQueued("TODO hamersaw")
-					}
+						p = handler.PhaseInfoQueued("waiting on serialized cache")
+						nodeStatus.UpdatePhase(v1alpha1.NodePhaseQueued, v1.Now(), "waiting on serialized cache", nil)
+					}*/
+
+					p = handler.PhaseInfoQueued("node queued")
 				}
 			}
 		}
@@ -833,12 +836,12 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 	}
 
 	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
-
 	if cacheStatus == core.CatalogCacheStatus_CACHE_HIT {
 		// process downstream nodes
 		return c.handleDownstream(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nCtx.Node())
 	}
 
+	logger.Infof(ctx, "HAMERSAW end - %v %v", currentPhase, nodeStatus.GetMessage())
 	return finalStatus, nil
 }
 
