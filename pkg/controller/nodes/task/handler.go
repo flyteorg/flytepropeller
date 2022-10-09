@@ -46,17 +46,8 @@ const pluginContextKey = contextutils.Key("plugin")
 type metrics struct {
 	pluginPanics                   labeled.Counter
 	unsupportedTaskType            labeled.Counter
-	/*catalogPutFailureCount         labeled.Counter
-	catalogGetFailureCount         labeled.Counter
-	catalogPutSuccessCount         labeled.Counter
-	catalogMissCount               labeled.Counter
-	catalogHitCount                labeled.Counter*/
 	pluginExecutionLatency         labeled.StopWatch
 	pluginQueueLatency             labeled.StopWatch
-	/*reservationGetSuccessCount     labeled.Counter
-	reservationGetFailureCount     labeled.Counter
-	reservationReleaseSuccessCount labeled.Counter
-	reservationReleaseFailureCount labeled.Counter*/
 
 	// TODO We should have a metric to capture custom state size
 	scope promutils.Scope
@@ -487,11 +478,6 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		// -------------------------------------
 		logger.Debugf(ctx, "Task success detected, calling on Task success")
 		outputCommitter := ioutils.NewRemoteFileOutputWriter(ctx, tCtx.DataStore(), tCtx.OutputWriter())
-		/*execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
-		cacheStatus, ee, err := t.ValidateOutputAndCacheAdd(ctx, tCtx.NodeID(), tCtx.InputReader(), tCtx.ow.GetReader(),
-			outputCommitter, tCtx.ExecutionContext().GetExecutionConfig(), tCtx.tr, catalog.Metadata{
-				TaskExecutionIdentifier: &execID,
-			})*/
 		ee, err := t.ValidateOutput(ctx, tCtx.NodeID(), tCtx.InputReader(), tCtx.ow.GetReader(),
 			outputCommitter, tCtx.ExecutionContext().GetExecutionConfig(), tCtx.tr)
 		if err != nil {
@@ -540,12 +526,6 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		return handler.UnknownTransition, errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
 	}
 
-	// TODO @hamersaw remove
-	/*checkCatalog := !p.GetProperties().DisableNodeLevelCaching
-	if !checkCatalog {
-		logger.Infof(ctx, "Node level caching is disabled. Skipping catalog read.")
-	}*/
-
 	tCtx, err := t.newTaskExecutionContext(ctx, nCtx, p)
 	if err != nil {
 		return handler.UnknownTransition, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "unable to create Handler execution context")
@@ -560,78 +540,6 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// NOTE: Ideally we should use a taskExecution state for this handler. But, doing that will make it completely backwards incompatible
 	// So now we will derive this from the plugin phase
 	// TODO @kumare re-evaluate this decision
-
-	// TODO @hamersaw remove
-	/*// STEP 1: Check Cache
-	if (ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache) && checkCatalog {
-		// This is assumed to be first time. we will check catalog and call handle
-		entry, err := t.CheckCatalogCache(ctx, tCtx.tr, nCtx.InputReader(), tCtx.ow)
-		if err != nil {
-			logger.Errorf(ctx, "failed to check catalog cache with error")
-			return handler.UnknownTransition, err
-		}
-
-		if entry.GetStatus().GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
-			r := tCtx.ow.GetReader()
-			if r == nil {
-				return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "failed to reader outputs from a CacheHIT. Unexpected!")
-			}
-
-			// TODO @kumare this can be optimized, if we have paths then the reader could be pipelined to a sink
-			o, ee, err := r.Read(ctx)
-			if err != nil {
-				logger.Errorf(ctx, "failed to read from catalog, err: %s", err.Error())
-				return handler.UnknownTransition, err
-			}
-
-			if ee != nil {
-				logger.Errorf(ctx, "got execution error from catalog output reader? This should not happen, err: %s", ee.String())
-				return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
-			}
-
-			if err := nCtx.DataStore().WriteProtobuf(ctx, tCtx.ow.GetOutputPath(), storage.Options{}, o); err != nil {
-				logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
-				return handler.UnknownTransition, err
-			}
-
-			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), nil, entry)
-		} else {
-			logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
-			pluginTrns.PopulateCacheInfo(entry)
-		}
-	}
-
-	// Check catalog for cache reservation and acquire if none exists
-	if checkCatalog && (pluginTrns.execInfo.TaskNodeInfo == nil || pluginTrns.execInfo.TaskNodeInfo.TaskNodeMetadata.CacheStatus != core.CatalogCacheStatus_CACHE_HIT) {
-		ownerID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-		reservation, err := t.GetOrExtendCatalogReservation(ctx, ownerID, controllerConfig.GetConfig().WorkflowReEval.Duration, tCtx.tr, nCtx.InputReader())
-		if err != nil {
-			logger.Errorf(ctx, "failed to get or extend catalog reservation with error")
-			return handler.UnknownTransition, err
-		}
-
-		pluginTrns.PopulateReservationInfo(reservation)
-
-		if reservation.GetStatus() == core.CatalogReservation_RESERVATION_ACQUIRED &&
-			(ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache) {
-			logger.Infof(ctx, "Acquired cache reservation")
-		}
-
-		// If we do not own the reservation then we transition to WaitingForCache phase. If we are
-		// already running (ie. in a phase other than PhaseUndefined or PhaseWaitingForCache) and
-		// somehow lost the reservation (ex. by expiration), continue to execute until completion.
-		if reservation.GetStatus() == core.CatalogReservation_RESERVATION_EXISTS {
-			if ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache {
-				pluginTrns.ttype = handler.TransitionTypeEphemeral
-				pluginTrns.pInfo = pluginCore.PhaseInfoWaitingForCache(pluginCore.DefaultPhaseVersion, nil)
-			}
-
-			if ts.PluginPhase == pluginCore.PhaseWaitingForCache {
-				logger.Debugf(ctx, "No state change for Task, previously observed same transition. Short circuiting.")
-				return pluginTrns.FinalTransition(ctx)
-			}
-		}
-	}*/
 
 	barrierTick := uint32(0)
 	// STEP 2: If no cache-hit and not transitioning to PhaseWaitingForCache, then lets invoke the plugin and wait for a transition out of undefined
@@ -847,13 +755,6 @@ func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext
 			}
 		}()
 
-		// release catalog reservation (if exists)
-		/*ownerID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-		_, err = t.ReleaseCatalogReservation(ctx, ownerID, tCtx.tr, tCtx.InputReader())
-		if err != nil {
-			return errors.Wrapf(errors.CatalogCallFailed, nCtx.NodeID(), err, "failed to release reservation")
-		}*/
-
 		childCtx := context.WithValue(ctx, pluginContextKey, p.GetID())
 		err = p.Finalize(childCtx, tCtx)
 		return
@@ -880,17 +781,8 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		metrics: &metrics{
 			pluginPanics:                   labeled.NewCounter("plugin_panic", "Task plugin paniced when trying to execute a Handler.", scope),
 			unsupportedTaskType:            labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),
-			/*catalogHitCount:                labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", scope),
-			catalogMissCount:               labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
-			catalogPutSuccessCount:         labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", scope),
-			catalogPutFailureCount:         labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
-			catalogGetFailureCount:         labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),*/
 			pluginExecutionLatency:         labeled.NewStopWatch("plugin_exec_latency", "Time taken to invoke plugin for one round", time.Microsecond, scope),
 			pluginQueueLatency:             labeled.NewStopWatch("plugin_queue_latency", "Time spent by plugin in queued phase", time.Microsecond, scope),
-			/*reservationGetFailureCount:     labeled.NewCounter("reservation_get_failure_count", "Reservation GetOrExtend failure count", scope),
-			reservationGetSuccessCount:     labeled.NewCounter("reservation_get_success_count", "Reservation GetOrExtend success count", scope),
-			reservationReleaseFailureCount: labeled.NewCounter("reservation_release_failure_count", "Reservation Release failure count", scope),
-			reservationReleaseSuccessCount: labeled.NewCounter("reservation_release_success_count", "Reservation Release success count", scope),*/
 			scope:                          scope,
 		},
 		pluginScope:     scope.NewSubScope("plugin"),
