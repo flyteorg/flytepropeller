@@ -24,6 +24,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+func computeCatalogReservationOwnerID(ctx context.Context, nCtx *nodeExecContext) (string, error) {
+	currentNodeUniqueID, err := common.GenerateUniqueID(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID())
+	if err != nil {
+		return "", err
+	}
+
+	_, ownerID, err := task.ComputeRawOutputPrefix(ctx, task.IDMaxLength, nCtx, currentNodeUniqueID, nCtx.CurrentAttempt())
+	if err != nil {
+		return "", err
+	}
+
+	return ownerID, nil
+}
+
 func (n *nodeExecutor) CheckCatalogCache(ctx context.Context, nCtx *nodeExecContext, cacheHandler handler.CacheableNode) (catalog.Entry, error) {
 	catalogKey, err := cacheHandler.GetCatalogKey(ctx, nCtx)
 	if err != nil {
@@ -84,14 +98,7 @@ func (n *nodeExecutor) GetOrExtendCatalogReservation(ctx context.Context, nCtx *
 		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), err
 	}
 
-	// compute ownerID
-	currentNodeUniqueID, err := common.GenerateUniqueID(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID())
-	if err != nil {
-		// TODO @hamersaw - fail
-		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), err
-	}
-
-	_, ownerID, err := task.ComputeRawOutputPrefix(ctx, task.IDMaxLength, nCtx, currentNodeUniqueID, nCtx.CurrentAttempt())
+	ownerID, err := computeCatalogReservationOwnerID(ctx, nCtx)
 	if err != nil {
 		// TODO @hamersaw - fail
 		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), err
@@ -128,14 +135,7 @@ func (n *nodeExecutor) ReleaseCatalogReservation(ctx context.Context, nCtx *node
 		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), err
 	}
 
-	// compute ownerID - TODO @hamersaw make separate function (duplicated code)
-	currentNodeUniqueID, err := common.GenerateUniqueID(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID())
-	if err != nil {
-		// TODO @hamersaw - fail
-		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), err
-	}
-
-	_, ownerID, err := task.ComputeRawOutputPrefix(ctx, task.IDMaxLength, nCtx, currentNodeUniqueID, nCtx.CurrentAttempt())
+	ownerID, err := computeCatalogReservationOwnerID(ctx, nCtx)
 	if err != nil {
 		// TODO @hamersaw - fail
 		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), err

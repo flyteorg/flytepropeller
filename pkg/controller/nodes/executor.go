@@ -638,9 +638,9 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 
 			cacheStatus = entry.GetStatus().GetCacheStatus()
 			if cacheStatus == core.CatalogCacheStatus_CACHE_HIT {
-				// update NodeStatus to Success
-				nodeStatus.ClearSubNodeStatus()
-				nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully", nil)
+				// update NodeStatus to Success // TODO @hamersaw - validate that we don't need to do
+				//nodeStatus.ClearSubNodeStatus()
+				//nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully", nil)
 
 				// set phaseInfo transition to include ... TODO @hamersaw
 				outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
@@ -691,7 +691,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 					nodeStatus.UpdatePhase(v1alpha1.NodePhaseQueued, v1.Now(), "waiting on serialized cache", nil)
 				}*/
 
-				p = handler.PhaseInfoQueued("node queued")
+				p = handler.PhaseInfoQueued("waiting on serialized cache")
 			}
 		}
 	}
@@ -701,6 +701,10 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 	lastAttemptStartTime := nodeStatus.GetLastAttemptStartedAt()
 
 	// TODO @hamersaw - document
+	// a few scenarios we need to cover
+	//  - cache hit
+	//  - waiting on cache serialize
+	//  - lost the cache reservation, but already running - should not happen. but should still progress
 	if currentPhase != v1alpha1.NodePhaseQueued || (cacheStatus != core.CatalogCacheStatus_CACHE_HIT && catalogReservationStatus != core.CatalogReservation_RESERVATION_EXISTS) {
 		var err error
 
