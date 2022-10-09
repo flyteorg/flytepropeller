@@ -24,6 +24,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// computeCatalogReservationOwnerID constructs a unique identifier which includes the nodes
+// parent information, node ID, and retry attempt number. This is used to uniquely identify a task
+// when the cache reservation API to serialize cached executions.
 func computeCatalogReservationOwnerID(ctx context.Context, nCtx *nodeExecContext) (string, error) {
 	currentNodeUniqueID, err := common.GenerateUniqueID(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID())
 	if err != nil {
@@ -38,11 +41,12 @@ func computeCatalogReservationOwnerID(ctx context.Context, nCtx *nodeExecContext
 	return ownerID, nil
 }
 
+// CheckCatalogCache uses the handler and contexts to check if cached outputs for the current node
+// exist. If the exist, this function also copies the outputs to this node.
 func (n *nodeExecutor) CheckCatalogCache(ctx context.Context, nCtx *nodeExecContext, cacheHandler handler.CacheableNode) (catalog.Entry, error) {
 	catalogKey, err := cacheHandler.GetCatalogKey(ctx, nCtx)
 	if err != nil {
-		// TODO @hamersaw fail
-		return catalog.Entry{}, err
+		return catalog.Entry{}, errors.Wrapf(err, "failed to initialize the catalogKey")
 	}
 
 	entry, err := n.catalog.Get(ctx, catalogKey)
@@ -65,7 +69,8 @@ func (n *nodeExecutor) CheckCatalogCache(ctx context.Context, nCtx *nodeExecCont
 		return entry, nil
 	}
 
-	//logger.Infof(ctx, "Catalog CacheHit: for task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
+	logger.Infof(ctx, "Catalog CacheHit: for task [%s/%s/%s/%s]", catalogKey.Identifier.Project,
+		catalogKey.Identifier.Domain, catalogKey.Identifier.Name, catalogKey.Identifier.Version)
 	n.metrics.catalogHitCount.Inc(ctx)
 
 	iface := catalogKey.TypedInterface
@@ -98,14 +103,14 @@ func (n *nodeExecutor) GetOrExtendCatalogReservation(ctx context.Context, nCtx *
 
 	catalogKey, err := cacheHandler.GetCatalogKey(ctx, nCtx)
 	if err != nil {
-		// TODO @hamersaw fail
-		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), err
+		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED),
+			errors.Wrapf(err, "failed to initialize the catalogKey")
 	}
 
 	ownerID, err := computeCatalogReservationOwnerID(ctx, nCtx)
 	if err != nil {
-		// TODO @hamersaw - fail
-		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), err
+		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED),
+			errors.Wrapf(err, "failed to initialize the cache reservation ownerID")
 	}
 
 	reservation, err := n.catalog.GetOrExtendReservation(ctx, catalogKey, ownerID, heartbeatInterval)
@@ -135,14 +140,14 @@ func (n *nodeExecutor) ReleaseCatalogReservation(ctx context.Context, nCtx *node
 
 	catalogKey, err := cacheHandler.GetCatalogKey(ctx, nCtx)
 	if err != nil {
-		// TODO @hamersaw fail
-		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), err
+		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED),
+			errors.Wrapf(err, "failed to initialize the catalogKey")
 	}
 
 	ownerID, err := computeCatalogReservationOwnerID(ctx, nCtx)
 	if err != nil {
-		// TODO @hamersaw - fail
-		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED), err
+		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED),
+			errors.Wrapf(err, "failed to initialize the cache reservation ownerID")
 	}
 
 	err = n.catalog.ReleaseReservation(ctx, catalogKey, ownerID)
@@ -156,11 +161,12 @@ func (n *nodeExecutor) ReleaseCatalogReservation(ctx context.Context, nCtx *node
 	return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_RELEASED), nil
 }
 
+// WriteCatalogCache relays the outputs of this node to the cache. This allows future executions
+// to reuse these data to avoid recomputation.
 func (n *nodeExecutor) WriteCatalogCache(ctx context.Context, nCtx *nodeExecContext, cacheHandler handler.CacheableNode) (catalog.Status, error) {
 	catalogKey, err := cacheHandler.GetCatalogKey(ctx, nCtx)
 	if err != nil {
-		// TODO @hamersaw fail
-		return catalog.NewStatus(core.CatalogCacheStatus_CACHE_DISABLED, nil), err
+		return catalog.NewStatus(core.CatalogCacheStatus_CACHE_DISABLED, nil), errors.Wrapf(err, "failed to initialize the catalogKey")
 	}
 
 	iface := catalogKey.TypedInterface
@@ -168,24 +174,24 @@ func (n *nodeExecutor) WriteCatalogCache(ctx context.Context, nCtx *nodeExecCont
 		return catalog.NewStatus(core.CatalogCacheStatus_CACHE_DISABLED, nil), nil
 	}
 
+	logger.Infof(ctx, "Catalog CacheEnabled. recording execution [%s/%s/%s/%s]", catalogKey.Identifier.Project,
+		catalogKey.Identifier.Domain, catalogKey.Identifier.Name, catalogKey.Identifier.Version)
+
 	outputPaths := ioutils.NewReadOnlyOutputFilePaths(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetOutputDir())
 	outputReader := ioutils.NewRemoteFileOutputReader(ctx, nCtx.DataStore(), outputPaths, nCtx.MaxDatasetSizeBytes())
-
-	// TODO @hamersaw - need to update this once we support caching of non-tasks
 	metadata := catalog.Metadata{
 		TaskExecutionIdentifier: task.GetTaskExecutionIdentifier(nCtx),
 	}
 
-	//logger.Infof(ctx, "Catalog CacheEnabled. recording execution [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
 	// ignores discovery write failures
 	status, err := n.catalog.Put(ctx, catalogKey, outputReader, metadata)
 	if err != nil {
 		n.metrics.catalogPutFailureCount.Inc(ctx)
-		//logger.Errorf(ctx, "Failed to write results to catalog for Task [%v]. Error: %v", tk.GetId(), err2)
+		logger.Errorf(ctx, "Failed to write results to catalog for Task [%v]. Error: %v", catalogKey.Identifier, err)
 		return catalog.NewStatus(core.CatalogCacheStatus_CACHE_PUT_FAILURE, status.GetMetadata()), nil
 	}
 
 	n.metrics.catalogPutSuccessCount.Inc(ctx)
-	//logger.Infof(ctx, "Successfully cached results to catalog - Task [%v]", tk.GetId())
+	logger.Infof(ctx, "Successfully cached results to catalog - Task [%v]", catalogKey.Identifier)
 	return status, nil
 }

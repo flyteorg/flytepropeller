@@ -44,10 +44,10 @@ import (
 const pluginContextKey = contextutils.Key("plugin")
 
 type metrics struct {
-	pluginPanics                   labeled.Counter
-	unsupportedTaskType            labeled.Counter
-	pluginExecutionLatency         labeled.StopWatch
-	pluginQueueLatency             labeled.StopWatch
+	pluginPanics           labeled.Counter
+	unsupportedTaskType    labeled.Counter
+	pluginExecutionLatency labeled.StopWatch
+	pluginQueueLatency     labeled.StopWatch
 
 	// TODO We should have a metric to capture custom state size
 	scope promutils.Scope
