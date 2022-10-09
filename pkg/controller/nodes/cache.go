@@ -45,24 +45,31 @@ func (n *nodeExecutor) CheckCatalogCache(ctx context.Context, nCtx *nodeExecCont
 		return catalog.Entry{}, err
 	}
 
-	//logger.Infof(ctx, "Catalog CacheEnabled: Looking up catalog Cache.")
 	entry, err := n.catalog.Get(ctx, catalogKey)
 	if err != nil {
 		causeErr := errors.Cause(err)
 		if taskStatus, ok := status.FromError(causeErr); ok && taskStatus.Code() == codes.NotFound {
-			//t.metrics.catalogMissCount.Inc(ctx)
+			n.metrics.catalogMissCount.Inc(ctx)
 			logger.Infof(ctx, "Catalog CacheMiss: Artifact not found in Catalog. Executing Task.")
 			return catalog.NewCatalogEntry(nil, catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, nil)), nil
 		}
 
-		//t.metrics.catalogGetFailureCount.Inc(ctx)
+		n.metrics.catalogGetFailureCount.Inc(ctx)
 		logger.Errorf(ctx, "Catalog Failure: memoization check failed. err: %v", err.Error())
 		return catalog.Entry{}, errors.Wrapf(err, "Failed to check Catalog for previous results")
 	}
 
-	// TODO @hamersaw - figure out
+	if entry.GetStatus().GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT {
+		logger.Errorf(ctx, "No CacheHIT and no Error received. Illegal state, Cache State: %s", entry.GetStatus().GetCacheStatus().String())
+		// TODO should this be an error?
+		return entry, nil
+	}
+
+	//logger.Infof(ctx, "Catalog CacheHit: for task [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
+	n.metrics.catalogHitCount.Inc(ctx)
+
 	iface := catalogKey.TypedInterface
-	if entry.GetStatus().GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT && iface.Outputs != nil && len(iface.Outputs.Variables) > 0 {
+	if iface.Outputs != nil && len(iface.Outputs.Variables) > 0 {
 		// copy cached outputs to node outputs
 		o, ee, err := entry.GetOutputs().Read(ctx)
 		if err != nil {
@@ -80,9 +87,6 @@ func (n *nodeExecutor) CheckCatalogCache(ctx context.Context, nCtx *nodeExecCont
 		}
 	}
 
-	// SetCached.
-	//logger.Errorf(ctx, "No CacheHIT and no Error received. Illegal state, Cache State: %s", entry.GetStatus().GetCacheStatus().String())
-	// TODO should this be an error?
 	return entry, nil
 }
 
@@ -106,7 +110,7 @@ func (n *nodeExecutor) GetOrExtendCatalogReservation(ctx context.Context, nCtx *
 
 	reservation, err := n.catalog.GetOrExtendReservation(ctx, catalogKey, ownerID, heartbeatInterval)
 	if err != nil {
-		//t.metrics.reservationGetFailureCount.Inc(ctx)
+		n.metrics.reservationGetFailureCount.Inc(ctx)
 		logger.Errorf(ctx, "Catalog Failure: reservation get or extend failed. err: %v", err.Error())
 		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
 	}
@@ -118,7 +122,7 @@ func (n *nodeExecutor) GetOrExtendCatalogReservation(ctx context.Context, nCtx *
 		status = core.CatalogReservation_RESERVATION_EXISTS
 	}
 
-	//t.metrics.reservationGetSuccessCount.Inc(ctx)
+	n.metrics.reservationGetSuccessCount.Inc(ctx)
 	return catalog.NewReservationEntry(reservation.ExpiresAt.AsTime(),
 		reservation.HeartbeatInterval.AsDuration(), reservation.OwnerId, status), nil
 }
@@ -143,12 +147,12 @@ func (n *nodeExecutor) ReleaseCatalogReservation(ctx context.Context, nCtx *node
 
 	err = n.catalog.ReleaseReservation(ctx, catalogKey, ownerID)
 	if err != nil {
-		//t.metrics.reservationReleaseFailureCount.Inc(ctx)
+		n.metrics.reservationReleaseFailureCount.Inc(ctx)
 		logger.Errorf(ctx, "Catalog Failure: release reservation failed. err: %v", err.Error())
 		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
 	}
 
-	//t.metrics.reservationReleaseSuccessCount.Inc(ctx)
+	n.metrics.reservationReleaseSuccessCount.Inc(ctx)
 	return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_RELEASED), nil
 }
 
@@ -176,10 +180,12 @@ func (n *nodeExecutor) WriteCatalogCache(ctx context.Context, nCtx *nodeExecCont
 	// ignores discovery write failures
 	status, err := n.catalog.Put(ctx, catalogKey, outputReader, metadata)
 	if err != nil {
-		//t.metrics.catalogPutFailureCount.Inc(ctx)
+		n.metrics.catalogPutFailureCount.Inc(ctx)
 		//logger.Errorf(ctx, "Failed to write results to catalog for Task [%v]. Error: %v", tk.GetId(), err2)
 		return catalog.NewStatus(core.CatalogCacheStatus_CACHE_PUT_FAILURE, status.GetMetadata()), nil
 	}
 
+	n.metrics.catalogPutSuccessCount.Inc(ctx)
+	//logger.Infof(ctx, "Successfully cached results to catalog - Task [%v]", tk.GetId())
 	return status, nil
 }
