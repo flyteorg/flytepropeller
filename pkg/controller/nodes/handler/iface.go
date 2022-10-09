@@ -27,9 +27,14 @@ type Node interface {
 	Finalize(ctx context.Context, executionContext NodeExecutionContext) error
 }
 
-// TODO @hamersaw document
+// CacheableNode is a node that supports caching
 type CacheableNode interface {
 	Node
+
+	// GetCatalogKey returns the unique key for the node represented by the NodeExecutionContext 
 	GetCatalogKey(ctx context.Context, executionContext NodeExecutionContext) (catalog.Key, error)
+
+	// IsCacheable returns two booleans representing if the node represented by the
+	// NodeExecutionContext is cacheable and cache serializable respectively.
 	IsCacheable(ctx context.Context, executionContext NodeExecutionContext) (bool, bool, error)
 }

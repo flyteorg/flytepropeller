@@ -7,7 +7,6 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	//"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/flyteorg/flytestdlib/logger"
