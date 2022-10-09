@@ -39,64 +39,35 @@ func (t *Handler) GetCatalogKey(ctx context.Context, nCtx handler.NodeExecutionC
 	}, nil
 }
 
-func (t *Handler) IsCacheable(ctx context.Context, nCtx handler.NodeExecutionContext) (bool, error) {
+func (t *Handler) IsCacheable(ctx context.Context, nCtx handler.NodeExecutionContext) (bool, bool, error) {
 	// check if plugin has caching disabled
 	ttype := nCtx.TaskReader().GetTaskType()
 	ctx = contextutils.WithTaskType(ctx, ttype)
 	p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
 	if err != nil {
-		return false, errors2.Wrapf(errors2.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
+		return false, false, errors2.Wrapf(errors2.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
 	}
 
 	checkCatalog := !p.GetProperties().DisableNodeLevelCaching
 	if !checkCatalog {
 		logger.Infof(ctx, "Node level caching is disabled. Skipping catalog read.")
+		return false, false, nil
 	}
 
 	// read task template
 	taskTemplatePath, err := ioutils.GetTaskTemplatePath(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetDataDir())
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	taskReader := ioutils.NewLazyUploadingTaskReader(nCtx.TaskReader(), taskTemplatePath, nCtx.DataStore())
 	taskTemplate, err := taskReader.Read(ctx)
 	if err != nil {
 		logger.Errorf(ctx, "failed to read TaskTemplate, error :%s", err.Error())
-		return false, err
+		return false, false, err
 	}
 
-	return taskTemplate.Metadata.Discoverable, nil
-}
-
-func (t *Handler) IsCacheSerializable(ctx context.Context, nCtx handler.NodeExecutionContext) (bool, error) {
-	// check if plugin has caching disabled
-	ttype := nCtx.TaskReader().GetTaskType()
-	ctx = contextutils.WithTaskType(ctx, ttype)
-	p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
-	if err != nil {
-		return false, errors2.Wrapf(errors2.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")
-	}
-
-	checkCatalog := !p.GetProperties().DisableNodeLevelCaching
-	if !checkCatalog {
-		logger.Infof(ctx, "Node level caching is disabled. Skipping catalog read.")
-	}
-
-	// read task template
-	taskTemplatePath, err := ioutils.GetTaskTemplatePath(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetDataDir())
-	if err != nil {
-		return false, err
-	}
-
-	taskReader := ioutils.NewLazyUploadingTaskReader(nCtx.TaskReader(), taskTemplatePath, nCtx.DataStore())
-	taskTemplate, err := taskReader.Read(ctx)
-	if err != nil {
-		logger.Errorf(ctx, "failed to read TaskTemplate, error :%s", err.Error())
-		return false, err
-	}
-
-	return taskTemplate.Metadata.Discoverable && taskTemplate.Metadata.CacheSerializable, nil
+	return taskTemplate.Metadata.Discoverable, taskTemplate.Metadata.Discoverable && taskTemplate.Metadata.CacheSerializable, nil
 }
 
 func (t *Handler) ValidateOutput(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader,

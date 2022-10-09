@@ -31,6 +31,5 @@ type Node interface {
 type CacheableNode interface {
 	Node
 	GetCatalogKey(ctx context.Context, executionContext NodeExecutionContext) (catalog.Key, error)
-	IsCacheable(ctx context.Context, executionContext NodeExecutionContext) (bool, error)
-	IsCacheSerializable(ctx context.Context, executionContext NodeExecutionContext) (bool, error)
+	IsCacheable(ctx context.Context, executionContext NodeExecutionContext) (bool, bool, error)
 }
