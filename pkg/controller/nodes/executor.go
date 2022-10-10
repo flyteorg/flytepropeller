@@ -664,17 +664,17 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 				return executors.NodeStatusUndefined, err
 			}
 
-			if cacheable {
+			if cacheable && (cacheStatus == nil || cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT) {
 				status, err := c.WriteCatalogCache(ctx, nCtx, cacheHandler)
 				if err != nil {
-					logger.Errorf(ctx, "failed to write to the catalog cache with err '%s'", err.Error())
-					return executors.NodeStatusUndefined, err
+					// ignore failure to write to catalog
+					logger.Warnf(ctx, "failed to write to the catalog cache with err '%s'", err.Error())
 				}
 
 				cacheStatus = &status
 			}
 
-			if cacheSerializable {
+			if cacheSerializable && (cacheStatus == nil || cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT) {
 				entry, err := c.ReleaseCatalogReservation(ctx, nCtx, cacheHandler)
 				if err != nil {
 					// ignore failure to release the catalog reservation
@@ -686,6 +686,10 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 			}
 		}
 	}
+
+	// update phase info with catalog cache and reservation information while maintaining all
+	// other metadata
+	p = updatePhaseCacheInfo(p, cacheStatus, catalogReservationStatus)
 
 	np, err := ToNodePhase(p.GetPhase())
 	if err != nil {
@@ -800,7 +804,6 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 	}
 
 
-	p = updatePhaseCacheInfo(p, cacheStatus, catalogReservationStatus)
 	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
 
 	if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {

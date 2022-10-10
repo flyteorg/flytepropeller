@@ -42,6 +42,8 @@ func computeCatalogReservationOwnerID(ctx context.Context, nCtx *nodeExecContext
 	return ownerID, nil
 }
 
+// updatePhaseCacheInfo adds the cache and catalog reservation metadata to the PhaseInfo. This
+// ensures this information is reported in events and available within FlyteAdmin.
 func updatePhaseCacheInfo(phaseInfo handler.PhaseInfo, cacheStatus *catalog.Status, reservationStatus *core.CatalogReservation_Status) handler.PhaseInfo {
 	if cacheStatus == nil && reservationStatus == nil {
 		return phaseInfo
