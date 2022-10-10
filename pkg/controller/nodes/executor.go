@@ -457,52 +457,6 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeEx
 		nCtx.nsm.clearNodeStatus()
 	}
 
-	// TODO @hamersaw - complete
-	if phase.GetPhase() == handler.EPhaseSuccess {
-		if cacheHandler, ok := h.(handler.CacheableNode); ok {
-			cacheable, cacheSerializable, err := cacheHandler.IsCacheable(ctx, nCtx)
-			if err != nil {
-				logger.Errorf(ctx, "failed to determine if node is cacheable with err '%s'", err.Error())
-				return handler.PhaseInfoUndefined, err
-			}
-
-			if cacheable {
-				status, err := c.WriteCatalogCache(ctx, nCtx, cacheHandler)
-				if err != nil {
-					// TODO @hamersaw fail
-					return handler.PhaseInfoUndefined, err
-				}
-
-				// TODO @hamersaw - does this need to be outside?
-				// populate PhaseInfo with cache status
-				info := phase.GetInfo()
-				if info == nil {
-					info = &handler.ExecutionInfo{}
-				}
-
-				if info.TaskNodeInfo == nil {
-					info.TaskNodeInfo = &handler.TaskNodeInfo{}
-				}
-
-				if info.TaskNodeInfo.TaskNodeMetadata == nil {
-					info.TaskNodeInfo.TaskNodeMetadata = &event.TaskNodeMetadata{}
-				}
-
-				info.TaskNodeInfo.TaskNodeMetadata.CacheStatus = status.GetCacheStatus()
-				info.TaskNodeInfo.TaskNodeMetadata.CatalogKey = status.GetMetadata()
-				phase = phase.WithInfo(info)
-			}
-
-			if cacheSerializable {
-				_, err := c.ReleaseCatalogReservation(ctx, nCtx, cacheHandler)
-				if err != nil {
-					// TODO @hamersaw fail
-					return handler.PhaseInfoUndefined, err
-				}
-			}
-		}
-	}
-
 	return phase, nil
 }
 
@@ -542,8 +496,7 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		return executors.NodeStatusPending, nil
 	}
 
-	// TODO @hamersaw - complete
-	cacheStatus := core.CatalogCacheStatus_CACHE_DISABLED
+	var cacheStatus *catalog.Status
 	if cacheHandler, ok := h.(handler.CacheableNode); ok {
 		cacheable, _, err := cacheHandler.IsCacheable(ctx, nCtx)
 		if err != nil {
@@ -552,17 +505,14 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		} else if cacheable {
 			entry, err := c.CheckCatalogCache(ctx, nCtx, cacheHandler)
 			if err != nil {
-				// TODO @hamersaw fail
+				logger.Errorf(ctx, "failed to check the catalog cache with err '%s'", err.Error())
 				return executors.NodeStatusUndefined, err
 			}
 
-			cacheStatus = entry.GetStatus().GetCacheStatus()
-			if cacheStatus == core.CatalogCacheStatus_CACHE_HIT {
-				// update NodeStatus to Success
-				nodeStatus.ClearSubNodeStatus()
-				nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully", nil)
-
-				// set phaseInfo transition to include ... TODO @hamersaw
+			status := entry.GetStatus()
+			cacheStatus = &status
+			if entry.GetStatus().GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
+				// if cache hit we immediately transition the node to successful 
 				outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
 				p = handler.PhaseInfoSuccess(&handler.ExecutionInfo{
 					OutputInfo: &handler.OutputInfo {
@@ -610,8 +560,8 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		return executors.NodeStatusQueued, nil
 	} else if np == v1alpha1.NodePhaseSkipped {
 		return executors.NodeStatusSuccess, nil
-	} else if cacheStatus == core.CatalogCacheStatus_CACHE_HIT {
-		// process downstream nodes
+	} else if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
+		// if cache hit then we immediately process downstream nodes
 		return c.handleDownstream(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nCtx.Node())
 	}
 
@@ -627,11 +577,10 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 	logger.Debugf(ctx, "node executing, current phase [%s]", currentPhase)
 	defer logger.Debugf(ctx, "node execution completed")
 
-	// TODO @hamersaw - check cache serialize
-	cacheStatus := core.CatalogCacheStatus_CACHE_DISABLED
-	catalogReservationStatus := core.CatalogReservation_RESERVATION_DISABLED
+	var cacheStatus *catalog.Status
+	var catalogReservationStatus *core.CatalogReservation_Status
 	if cacheHandler, ok := h.(handler.CacheableNode); ok {
-		cacheable, cacheSerializable, err := cacheHandler.IsCacheable(ctx, nCtx)
+		_, cacheSerializable, err := cacheHandler.IsCacheable(ctx, nCtx)
 		if err != nil {
 			logger.Errorf(ctx, "failed to determine if node is cacheable with err '%s'", err.Error())
 			return executors.NodeStatusUndefined, err
@@ -639,20 +588,17 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 
 		// TODO @hamersaw - document since we already check cache in queued the first time we hit this we shouldn't check it
 		// could potentially use nodeStatus.GetMessage() check and update on RESERVATION_EXISTS
-		if cacheable && currentPhase == v1alpha1.NodePhaseQueued {
+		if cacheSerializable && currentPhase == v1alpha1.NodePhaseQueued {
 			entry, err := c.CheckCatalogCache(ctx, nCtx, cacheHandler)
 			if err != nil {
-				// TODO @hamersaw fail
+				logger.Errorf(ctx, "failed to check the catalog cache with err '%s'", err.Error())
 				return executors.NodeStatusUndefined, err
 			}
 
-			cacheStatus = entry.GetStatus().GetCacheStatus()
-			if cacheStatus == core.CatalogCacheStatus_CACHE_HIT {
-				// update NodeStatus to Success // TODO @hamersaw - validate that we don't need to do
-				//nodeStatus.ClearSubNodeStatus()
-				//nodeStatus.UpdatePhase(v1alpha1.NodePhaseSucceeded, v1.Now(), "completed successfully", nil)
-
-				// set phaseInfo transition to include ... TODO @hamersaw
+			status := entry.GetStatus()
+			cacheStatus = &status
+			if entry.GetStatus().GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
+				// if cache hit we immediately transition the node to successful 
 				outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
 				p = handler.PhaseInfoSuccess(&handler.ExecutionInfo{
 					OutputInfo: &handler.OutputInfo {
@@ -668,39 +614,19 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 			}
 		}
 
-		if cacheSerializable && cacheStatus != core.CatalogCacheStatus_CACHE_HIT {
+		if cacheSerializable && (cacheStatus == nil || cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT) {
 			entry, err := c.GetOrExtendCatalogReservation(ctx, nCtx, cacheHandler, config.GetConfig().WorkflowReEval.Duration)
 			if err != nil {
-				// TODO @hamersaw fail
+				logger.Errorf(ctx, "failed to check for catalog reservation with err '%s'", err.Error())
 				return executors.NodeStatusUndefined, err
 			}
 
-			// TODO @hamersaw - update phase info with reservation info
-				//p.execInfo.TaskNodeInfo.TaskNodeMetadata.ReservationStatus = entry.GetStatus()
-			//pluginTrns.PopulateReservationInfo(reservation)
-
-			/*if reservation.GetStatus() == core.CatalogReservation_RESERVATION_ACQUIRED &&
-				(ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache) {
-				logger.Infof(ctx, "Acquired cache reservation")
-			}*/
-
-			// If we do not own the reservation then we transition to WaitingForCache phase. If we are
-			// already running (ie. in a phase other than PhaseUndefined or PhaseWaitingForCache) and
-			// somehow lost the reservation (ex. by expiration), continue to execute until completion.
-			catalogReservationStatus = entry.GetStatus()
-			if catalogReservationStatus == core.CatalogReservation_RESERVATION_EXISTS {
-				/*if ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache {
-					pluginTrns.ttype = handler.TransitionTypeEphemeral
-					pluginTrns.pInfo = pluginCore.PhaseInfoWaitingForCache(pluginCore.DefaultPhaseVersion, nil)
-				}*/
-
-				/*if currentPhase == v1alpha1.NodePhaseQueued {
-				//if ts.PluginPhase == pluginCore.PhaseWaitingForCache {
-					logger.Debugf(ctx, "No state change for Task, previously observed same transition. Short circuiting.")
-					p = handler.PhaseInfoQueued("waiting on serialized cache")
-					nodeStatus.UpdatePhase(v1alpha1.NodePhaseQueued, v1.Now(), "waiting on serialized cache", nil)
-				}*/
-
+			status := entry.GetStatus()
+			catalogReservationStatus = &status
+			if status == core.CatalogReservation_RESERVATION_ACQUIRED && currentPhase == v1alpha1.NodePhaseQueued {
+				logger.Infof(ctx, "acquired cache reservation")
+			} else if status == core.CatalogReservation_RESERVATION_EXISTS {
+				// if reservation is held by another owner we stay in the queued phase
 				p = handler.PhaseInfoQueued("waiting on serialized cache")
 			}
 		}
@@ -710,12 +636,12 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 	// across execute which is used to emit metrics
 	lastAttemptStartTime := nodeStatus.GetLastAttemptStartedAt()
 
-	// TODO @hamersaw - document
-	// a few scenarios we need to cover
-	//  - cache hit
-	//  - waiting on cache serialize
-	//  - lost the cache reservation, but already running - should not happen. but should still progress
-	if currentPhase != v1alpha1.NodePhaseQueued || (cacheStatus != core.CatalogCacheStatus_CACHE_HIT && catalogReservationStatus != core.CatalogReservation_RESERVATION_EXISTS) {
+	// we execute the node if:
+	//  (1) caching is disabled (ie. cacheStatus == nil)
+	//  (2) there was no cache hit and the cache is not blocked by a cache reservation
+	//  (3) the node is already running, this covers the scenario where the node held the cache
+	//      reservation, but it expired and was captured by a different node
+	if currentPhase != v1alpha1.NodePhaseQueued || ((cacheStatus == nil || cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT) && (catalogReservationStatus == nil || *catalogReservationStatus != core.CatalogReservation_RESERVATION_EXISTS)) {
 		var err error
 
 		p, err = c.execute(ctx, h, nCtx, nodeStatus)
@@ -727,6 +653,38 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 
 	if p.GetPhase() == handler.EPhaseUndefined {
 		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "received undefined phase.")
+	}
+
+	if p.GetPhase() == handler.EPhaseSuccess {
+		if cacheHandler, ok := h.(handler.CacheableNode); ok {
+			// if node is cacheable we attempt to write outputs to the cache and release catalog reservation
+			cacheable, cacheSerializable, err := cacheHandler.IsCacheable(ctx, nCtx)
+			if err != nil {
+				logger.Errorf(ctx, "failed to determine if node is cacheable with err '%s'", err.Error())
+				return executors.NodeStatusUndefined, err
+			}
+
+			if cacheable {
+				status, err := c.WriteCatalogCache(ctx, nCtx, cacheHandler)
+				if err != nil {
+					logger.Errorf(ctx, "failed to write to the catalog cache with err '%s'", err.Error())
+					return executors.NodeStatusUndefined, err
+				}
+
+				cacheStatus = &status
+			}
+
+			if cacheSerializable {
+				entry, err := c.ReleaseCatalogReservation(ctx, nCtx, cacheHandler)
+				if err != nil {
+					// ignore failure to release the catalog reservation
+					logger.Warnf(ctx, "failed to write to the catalog cache with err '%s'", err.Error())
+				} else {
+					status := entry.GetStatus()
+					catalogReservationStatus = &status
+				}
+			}
+		}
 	}
 
 	np, err := ToNodePhase(p.GetPhase())
@@ -841,13 +799,15 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 		}
 	}
 
+
+	p = updatePhaseCacheInfo(p, cacheStatus, catalogReservationStatus)
 	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
-	if cacheStatus == core.CatalogCacheStatus_CACHE_HIT {
+
+	if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
 		// process downstream nodes
 		return c.handleDownstream(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nCtx.Node())
 	}
 
-	logger.Infof(ctx, "HAMERSAW end - %v %v", currentPhase, nodeStatus.GetMessage())
 	return finalStatus, nil
 }
 

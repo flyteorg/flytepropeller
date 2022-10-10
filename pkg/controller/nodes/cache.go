@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
@@ -39,6 +40,36 @@ func computeCatalogReservationOwnerID(ctx context.Context, nCtx *nodeExecContext
 	}
 
 	return ownerID, nil
+}
+
+func updatePhaseCacheInfo(phaseInfo handler.PhaseInfo, cacheStatus *catalog.Status, reservationStatus *core.CatalogReservation_Status) handler.PhaseInfo {
+	if cacheStatus == nil && reservationStatus == nil {
+		return phaseInfo
+	}
+
+	info := phaseInfo.GetInfo()
+	if info == nil {
+		info = &handler.ExecutionInfo{}
+	}
+
+	if info.TaskNodeInfo == nil {
+		info.TaskNodeInfo = &handler.TaskNodeInfo{}
+	}
+
+	if info.TaskNodeInfo.TaskNodeMetadata == nil {
+		info.TaskNodeInfo.TaskNodeMetadata = &event.TaskNodeMetadata{}
+	}
+
+	if cacheStatus != nil {
+		info.TaskNodeInfo.TaskNodeMetadata.CacheStatus = cacheStatus.GetCacheStatus()
+		info.TaskNodeInfo.TaskNodeMetadata.CatalogKey = cacheStatus.GetMetadata()
+	}
+
+	if reservationStatus != nil {
+		info.TaskNodeInfo.TaskNodeMetadata.ReservationStatus = *reservationStatus
+	}
+
+	return phaseInfo.WithInfo(info)
 }
 
 // CheckCatalogCache uses the handler and contexts to check if cached outputs for the current node
