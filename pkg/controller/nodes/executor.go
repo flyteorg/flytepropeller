@@ -579,7 +579,10 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 
 	var cacheStatus *catalog.Status
 	var catalogReservationStatus *core.CatalogReservation_Status
-	if cacheHandler, ok := h.(handler.CacheableNode); ok {
+	cacheHandler, cacheHandlerOk := h.(handler.CacheableNode)
+	if cacheHandlerOk {
+		// if node is cacheable we attempt to check the cache if in queued phase or get / extend a
+		// catalog reservation
 		_, cacheSerializable, err := cacheHandler.IsCacheable(ctx, nCtx)
 		if err != nil {
 			logger.Errorf(ctx, "failed to determine if node is cacheable with err '%s'", err.Error())
@@ -641,9 +644,11 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 	//  (2) there was no cache hit and the cache is not blocked by a cache reservation
 	//  (3) the node is already running, this covers the scenario where the node held the cache
 	//      reservation, but it expired and was captured by a different node
-	if currentPhase != v1alpha1.NodePhaseQueued || ((cacheStatus == nil || cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT) && (catalogReservationStatus == nil || *catalogReservationStatus != core.CatalogReservation_RESERVATION_EXISTS)) {
-		var err error
+	if currentPhase != v1alpha1.NodePhaseQueued ||
+		((cacheStatus == nil || cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT) &&
+		(catalogReservationStatus == nil || *catalogReservationStatus != core.CatalogReservation_RESERVATION_EXISTS)) {
 
+		var err error
 		p, err = c.execute(ctx, h, nCtx, nodeStatus)
 		if err != nil {
 			logger.Errorf(ctx, "failed Execute for node. Error: %s", err.Error())
@@ -655,34 +660,32 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 		return executors.NodeStatusUndefined, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "received undefined phase.")
 	}
 
-	if p.GetPhase() == handler.EPhaseSuccess {
-		if cacheHandler, ok := h.(handler.CacheableNode); ok {
-			// if node is cacheable we attempt to write outputs to the cache and release catalog reservation
-			cacheable, cacheSerializable, err := cacheHandler.IsCacheable(ctx, nCtx)
+	if p.GetPhase() == handler.EPhaseSuccess && cacheHandlerOk {
+		// if node is cacheable we attempt to write outputs to the cache and release catalog reservation
+		cacheable, cacheSerializable, err := cacheHandler.IsCacheable(ctx, nCtx)
+		if err != nil {
+			logger.Errorf(ctx, "failed to determine if node is cacheable with err '%s'", err.Error())
+			return executors.NodeStatusUndefined, err
+		}
+
+		if cacheable && (cacheStatus == nil || cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT) {
+			status, err := c.WriteCatalogCache(ctx, nCtx, cacheHandler)
 			if err != nil {
-				logger.Errorf(ctx, "failed to determine if node is cacheable with err '%s'", err.Error())
-				return executors.NodeStatusUndefined, err
+				// ignore failure to write to catalog
+				logger.Warnf(ctx, "failed to write to the catalog cache with err '%s'", err.Error())
 			}
 
-			if cacheable && (cacheStatus == nil || cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT) {
-				status, err := c.WriteCatalogCache(ctx, nCtx, cacheHandler)
-				if err != nil {
-					// ignore failure to write to catalog
-					logger.Warnf(ctx, "failed to write to the catalog cache with err '%s'", err.Error())
-				}
+			cacheStatus = &status
+		}
 
-				cacheStatus = &status
-			}
-
-			if cacheSerializable && (cacheStatus == nil || cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT) {
-				entry, err := c.ReleaseCatalogReservation(ctx, nCtx, cacheHandler)
-				if err != nil {
-					// ignore failure to release the catalog reservation
-					logger.Warnf(ctx, "failed to write to the catalog cache with err '%s'", err.Error())
-				} else {
-					status := entry.GetStatus()
-					catalogReservationStatus = &status
-				}
+		if cacheSerializable && (cacheStatus == nil || cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT) {
+			entry, err := c.ReleaseCatalogReservation(ctx, nCtx, cacheHandler)
+			if err != nil {
+				// ignore failure to release the catalog reservation
+				logger.Warnf(ctx, "failed to write to the catalog cache with err '%s'", err.Error())
+			} else {
+				status := entry.GetStatus()
+				catalogReservationStatus = &status
 			}
 		}
 	}
