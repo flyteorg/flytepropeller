@@ -512,13 +512,13 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 			status := entry.GetStatus()
 			cacheStatus = &status
 			if entry.GetStatus().GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
-				// if cache hit we immediately transition the node to successful 
+				// if cache hit we immediately transition the node to successful
 				outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
 				p = handler.PhaseInfoSuccess(&handler.ExecutionInfo{
-					OutputInfo: &handler.OutputInfo {
+					OutputInfo: &handler.OutputInfo{
 						OutputURI: outputFile,
 					},
-					TaskNodeInfo: &handler.TaskNodeInfo {
+					TaskNodeInfo: &handler.TaskNodeInfo{
 						TaskNodeMetadata: &event.TaskNodeMetadata{
 							CacheStatus: entry.GetStatus().GetCacheStatus(),
 							CatalogKey:  entry.GetStatus().GetMetadata(),
@@ -601,13 +601,13 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 			status := entry.GetStatus()
 			cacheStatus = &status
 			if entry.GetStatus().GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
-				// if cache hit we immediately transition the node to successful 
+				// if cache hit we immediately transition the node to successful
 				outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
 				p = handler.PhaseInfoSuccess(&handler.ExecutionInfo{
-					OutputInfo: &handler.OutputInfo {
+					OutputInfo: &handler.OutputInfo{
 						OutputURI: outputFile,
 					},
-					TaskNodeInfo: &handler.TaskNodeInfo {
+					TaskNodeInfo: &handler.TaskNodeInfo{
 						TaskNodeMetadata: &event.TaskNodeMetadata{
 							CacheStatus: entry.GetStatus().GetCacheStatus(),
 							CatalogKey:  entry.GetStatus().GetMetadata(),
@@ -646,7 +646,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 	//      reservation, but it expired and was captured by a different node
 	if currentPhase != v1alpha1.NodePhaseQueued ||
 		((cacheStatus == nil || cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT) &&
-		(catalogReservationStatus == nil || *catalogReservationStatus != core.CatalogReservation_RESERVATION_EXISTS)) {
+			(catalogReservationStatus == nil || *catalogReservationStatus != core.CatalogReservation_RESERVATION_EXISTS)) {
 
 		var err error
 		p, err = c.execute(ctx, h, nCtx, nodeStatus)
@@ -805,7 +805,6 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 			}
 		}
 	}
-
 
 	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
 

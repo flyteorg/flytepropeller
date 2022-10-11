@@ -31,7 +31,7 @@ type Node interface {
 type CacheableNode interface {
 	Node
 
-	// GetCatalogKey returns the unique key for the node represented by the NodeExecutionContext 
+	// GetCatalogKey returns the unique key for the node represented by the NodeExecutionContext
 	GetCatalogKey(ctx context.Context, executionContext NodeExecutionContext) (catalog.Key, error)
 
 	// IsCacheable returns two booleans representing if the node represented by the
