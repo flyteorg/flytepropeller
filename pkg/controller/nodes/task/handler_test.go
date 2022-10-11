@@ -17,7 +17,6 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager"
@@ -26,7 +25,6 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginCatalogMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog/mocks"
@@ -732,442 +730,6 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 	}
 }
 
-func Test_task_Handle_Catalog(t *testing.T) {
-
-	createNodeContext := func(recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder) *nodeMocks.NodeExecutionContext {
-		wfExecID := &core.WorkflowExecutionIdentifier{
-			Project: "project",
-			Domain:  "domain",
-			Name:    "name",
-		}
-
-		nodeID := "n1"
-
-		nm := &nodeMocks.NodeExecutionMetadata{}
-		nm.OnGetAnnotations().Return(map[string]string{})
-		nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
-			NodeId:      nodeID,
-			ExecutionId: wfExecID,
-		})
-		nm.OnGetK8sServiceAccount().Return("service-account")
-		nm.OnGetLabels().Return(map[string]string{})
-		nm.OnGetNamespace().Return("namespace")
-		nm.OnGetOwnerID().Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
-		nm.OnGetOwnerReference().Return(v12.OwnerReference{
-			Kind: "sample",
-			Name: "name",
-		})
-		nm.OnIsInterruptible().Return(true)
-
-		taskID := &core.Identifier{}
-		tk := &core.TaskTemplate{
-			Id:   taskID,
-			Type: "test",
-			Metadata: &core.TaskMetadata{
-				Discoverable: true,
-			},
-			Interface: &core.TypedInterface{
-				Outputs: &core.VariableMap{
-					Variables: map[string]*core.Variable{
-						"x": {
-							Type: &core.LiteralType{
-								Type: &core.LiteralType_Simple{
-									Simple: core.SimpleType_BOOLEAN,
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-		tr := &nodeMocks.TaskReader{}
-		tr.OnGetTaskID().Return(taskID)
-		tr.OnGetTaskType().Return(ttype)
-		tr.OnReadMatch(mock.Anything).Return(tk, nil)
-
-		ns := &flyteMocks.ExecutableNodeStatus{}
-		ns.OnGetDataDir().Return(storage.DataReference("data-dir"))
-		ns.OnGetOutputDir().Return(storage.DataReference("output-dir"))
-
-		res := &v1.ResourceRequirements{}
-		n := &flyteMocks.ExecutableNode{}
-		ma := 5
-		n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
-		n.OnGetResources().Return(res)
-
-		ir := &ioMocks.InputReader{}
-		ir.OnGetInputPath().Return(storage.DataReference("input"))
-		nCtx := &nodeMocks.NodeExecutionContext{}
-		nCtx.OnNodeExecutionMetadata().Return(nm)
-		nCtx.OnNode().Return(n)
-		nCtx.OnInputReader().Return(ir)
-		ds, err := storage.NewDataStore(
-			&storage.Config{
-				Type: storage.TypeMemory,
-			},
-			promutils.NewTestScope(),
-		)
-		assert.NoError(t, err)
-		nCtx.OnDataStore().Return(ds)
-		nCtx.OnCurrentAttempt().Return(uint32(1))
-		nCtx.OnTaskReader().Return(tr)
-		nCtx.OnMaxDatasetSizeBytes().Return(int64(1))
-		nCtx.OnNodeStatus().Return(ns)
-		nCtx.OnNodeID().Return(nodeID)
-		nCtx.OnEventsRecorder().Return(recorder)
-		nCtx.OnEnqueueOwnerFunc().Return(nil)
-
-		executionContext := &mocks.ExecutionContext{}
-		executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
-		executionContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
-		executionContext.OnGetParentInfo().Return(nil)
-		nCtx.OnExecutionContext().Return(executionContext)
-
-		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
-		nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
-
-		st := bytes.NewBuffer([]byte{})
-		cod := codex.GobStateCodec{}
-		assert.NoError(t, cod.Encode(&fakeplugins.NextPhaseState{
-			Phase:        pluginCore.PhaseSuccess,
-			OutputExists: true,
-		}, st))
-		nr := &nodeMocks.NodeStateReader{}
-		nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
-			PluginState: st.Bytes(),
-		})
-		nCtx.OnNodeStateReader().Return(nr)
-		nCtx.OnNodeStateWriter().Return(s)
-		return nCtx
-	}
-
-	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())
-
-	type args struct {
-		catalogFetch      bool
-		catalogFetchError bool
-		catalogWriteError bool
-	}
-	type want struct {
-		handlerPhase handler.EPhase
-		wantErr      bool
-		eventPhase   core.TaskExecution_Phase
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{
-			"cache-hit",
-			args{
-				catalogFetch:      true,
-				catalogWriteError: true,
-			},
-			want{
-				handlerPhase: handler.EPhaseSuccess,
-				eventPhase:   core.TaskExecution_SUCCEEDED,
-			},
-		},
-		{
-			"cache-err",
-			args{
-				catalogFetchError: true,
-				catalogWriteError: true,
-			},
-			want{
-				handlerPhase: handler.EPhaseSuccess,
-				eventPhase:   core.TaskExecution_SUCCEEDED,
-			},
-		},
-		{
-			"cache-write",
-			args{},
-			want{
-				handlerPhase: handler.EPhaseSuccess,
-				eventPhase:   core.TaskExecution_SUCCEEDED,
-			},
-		},
-		{
-			"cache-write-err",
-			args{
-				catalogWriteError: true,
-			},
-			want{
-				handlerPhase: handler.EPhaseSuccess,
-				eventPhase:   core.TaskExecution_SUCCEEDED,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			state := &taskNodeStateHolder{}
-			ev := &fakeBufferedTaskEventRecorder{}
-			nCtx := createNodeContext(ev, "test", state)
-			c := &pluginCatalogMocks.Client{}
-			if tt.args.catalogFetch {
-				or := &ioMocks.OutputReader{}
-				or.OnDeckExistsMatch(mock.Anything).Return(true, nil)
-				or.OnReadMatch(mock.Anything).Return(&core.LiteralMap{}, nil, nil)
-				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewCatalogEntry(or, catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil)), nil)
-			} else {
-				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewFailedCatalogEntry(catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, nil)), nil)
-			}
-			if tt.args.catalogFetchError {
-				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.Entry{}, fmt.Errorf("failed to read from catalog"))
-			}
-			if tt.args.catalogWriteError {
-				c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.Status{}, fmt.Errorf("failed to write to catalog"))
-			} else {
-				c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
-			}
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, testClusterID, promutils.NewTestScope())
-			assert.NoError(t, err)
-			tk.defaultPlugins = map[pluginCore.TaskType]pluginCore.Plugin{
-				"test": fakeplugins.NewPhaseBasedPlugin(),
-			}
-			tk.catalog = c
-			tk.resourceManager = noopRm
-			got, err := tk.Handle(context.TODO(), nCtx)
-			if (err != nil) != tt.want.wantErr {
-				t.Errorf("Handler.Handle() error = %v, wantErr %v", err, tt.want.wantErr)
-				return
-			}
-			if err == nil {
-				assert.Equal(t, tt.want.handlerPhase.String(), got.Info().GetPhase().String())
-				if assert.Equal(t, 1, len(ev.evs)) {
-					e := ev.evs[0]
-					assert.Equal(t, tt.want.eventPhase.String(), e.Phase.String())
-				}
-				assert.Equal(t, pluginCore.PhaseSuccess.String(), state.s.PluginPhase.String())
-				assert.Equal(t, uint32(0), state.s.PluginPhaseVersion)
-				if tt.args.catalogFetch {
-					if assert.NotNil(t, got.Info().GetInfo().TaskNodeInfo) {
-						assert.NotNil(t, got.Info().GetInfo().TaskNodeInfo.TaskNodeMetadata)
-						assert.Equal(t, core.CatalogCacheStatus_CACHE_HIT, got.Info().GetInfo().TaskNodeInfo.TaskNodeMetadata.CacheStatus)
-					}
-					assert.NotNil(t, got.Info().GetInfo().OutputInfo)
-					s := storage.DataReference("/output-dir/outputs.pb")
-					assert.Equal(t, s, got.Info().GetInfo().OutputInfo.OutputURI)
-					r, err := nCtx.DataStore().Head(context.TODO(), s)
-					assert.NoError(t, err)
-					assert.True(t, r.Exists())
-				}
-			}
-		})
-	}
-}
-
-func Test_task_Handle_Reservation(t *testing.T) {
-
-	createNodeContext := func(recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder) *nodeMocks.NodeExecutionContext {
-		wfExecID := &core.WorkflowExecutionIdentifier{
-			Project: "project",
-			Domain:  "domain",
-			Name:    "name",
-		}
-
-		nodeID := "n1"
-
-		nm := &nodeMocks.NodeExecutionMetadata{}
-		nm.OnGetAnnotations().Return(map[string]string{})
-		nm.OnGetNodeExecutionID().Return(&core.NodeExecutionIdentifier{
-			NodeId:      nodeID,
-			ExecutionId: wfExecID,
-		})
-		nm.OnGetK8sServiceAccount().Return("service-account")
-		nm.OnGetLabels().Return(map[string]string{})
-		nm.OnGetNamespace().Return("namespace")
-		nm.OnGetOwnerID().Return(types.NamespacedName{Namespace: "namespace", Name: "name"})
-		nm.OnGetOwnerReference().Return(v12.OwnerReference{
-			Kind: "sample",
-			Name: "name",
-		})
-		nm.OnIsInterruptible().Return(true)
-
-		taskID := &core.Identifier{}
-		tk := &core.TaskTemplate{
-			Id:   taskID,
-			Type: "test",
-			Metadata: &core.TaskMetadata{
-				Discoverable:      true,
-				CacheSerializable: true,
-			},
-			Interface: &core.TypedInterface{
-				Outputs: &core.VariableMap{
-					Variables: map[string]*core.Variable{
-						"x": {
-							Type: &core.LiteralType{
-								Type: &core.LiteralType_Simple{
-									Simple: core.SimpleType_BOOLEAN,
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-		tr := &nodeMocks.TaskReader{}
-		tr.OnGetTaskID().Return(taskID)
-		tr.OnGetTaskType().Return(ttype)
-		tr.OnReadMatch(mock.Anything).Return(tk, nil)
-
-		ns := &flyteMocks.ExecutableNodeStatus{}
-		ns.OnGetDataDir().Return(storage.DataReference("data-dir"))
-		ns.OnGetOutputDir().Return(storage.DataReference("output-dir"))
-
-		res := &v1.ResourceRequirements{}
-		n := &flyteMocks.ExecutableNode{}
-		ma := 5
-		n.OnGetRetryStrategy().Return(&v1alpha1.RetryStrategy{MinAttempts: &ma})
-		n.OnGetResources().Return(res)
-
-		ir := &ioMocks.InputReader{}
-		ir.OnGetInputPath().Return(storage.DataReference("input"))
-		nCtx := &nodeMocks.NodeExecutionContext{}
-		nCtx.OnNodeExecutionMetadata().Return(nm)
-		nCtx.OnNode().Return(n)
-		nCtx.OnInputReader().Return(ir)
-		nCtx.OnInputReader().Return(ir)
-		ds, err := storage.NewDataStore(
-			&storage.Config{
-				Type: storage.TypeMemory,
-			},
-			promutils.NewTestScope(),
-		)
-		assert.NoError(t, err)
-		nCtx.OnDataStore().Return(ds)
-		nCtx.OnCurrentAttempt().Return(uint32(1))
-		nCtx.OnTaskReader().Return(tr)
-		nCtx.OnMaxDatasetSizeBytes().Return(int64(1))
-		nCtx.OnNodeStatus().Return(ns)
-		nCtx.OnNodeID().Return(nodeID)
-		nCtx.OnEventsRecorder().Return(recorder)
-		nCtx.OnEnqueueOwnerFunc().Return(nil)
-
-		executionContext := &mocks.ExecutionContext{}
-		executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{})
-		executionContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
-		executionContext.OnGetParentInfo().Return(nil)
-		executionContext.OnIncrementParallelism().Return(1)
-		nCtx.OnExecutionContext().Return(executionContext)
-
-		nCtx.OnRawOutputPrefix().Return("s3://sandbox/")
-		nCtx.OnOutputShardSelector().Return(ioutils.NewConstantShardSelector([]string{"x"}))
-
-		nCtx.OnNodeStateWriter().Return(s)
-		return nCtx
-	}
-
-	noopRm := CreateNoopResourceManager(context.TODO(), promutils.NewTestScope())
-
-	type args struct {
-		catalogFetch bool
-		pluginPhase  pluginCore.Phase
-		ownerID      string
-	}
-	type want struct {
-		pluginPhase  pluginCore.Phase
-		handlerPhase handler.EPhase
-		eventPhase   core.TaskExecution_Phase
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{
-			"reservation-create-or-update",
-			args{
-				catalogFetch: false,
-				pluginPhase:  pluginCore.PhaseUndefined,
-				ownerID:      "name-n1-1",
-			},
-			want{
-				pluginPhase:  pluginCore.PhaseSuccess,
-				handlerPhase: handler.EPhaseSuccess,
-				eventPhase:   core.TaskExecution_SUCCEEDED,
-			},
-		},
-		{
-			"reservation-exists",
-			args{
-				catalogFetch: false,
-				pluginPhase:  pluginCore.PhaseUndefined,
-				ownerID:      "nilOwner",
-			},
-			want{
-				pluginPhase:  pluginCore.PhaseWaitingForCache,
-				handlerPhase: handler.EPhaseRunning,
-				eventPhase:   core.TaskExecution_UNDEFINED,
-			},
-		},
-		{
-			"cache-hit",
-			args{
-				catalogFetch: true,
-				pluginPhase:  pluginCore.PhaseWaitingForCache,
-			},
-			want{
-				pluginPhase:  pluginCore.PhaseSuccess,
-				handlerPhase: handler.EPhaseSuccess,
-				eventPhase:   core.TaskExecution_SUCCEEDED,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			state := &taskNodeStateHolder{}
-			ev := &fakeBufferedTaskEventRecorder{}
-			nCtx := createNodeContext(ev, "test", state)
-			c := &pluginCatalogMocks.Client{}
-			nr := &nodeMocks.NodeStateReader{}
-			st := bytes.NewBuffer([]byte{})
-			cod := codex.GobStateCodec{}
-			assert.NoError(t, cod.Encode(&fakeplugins.NextPhaseState{
-				Phase:        pluginCore.PhaseSuccess,
-				OutputExists: true,
-			}, st))
-			nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
-				PluginPhase: tt.args.pluginPhase,
-				PluginState: st.Bytes(),
-			})
-			nCtx.OnNodeStateReader().Return(nr)
-			if tt.args.catalogFetch {
-				or := &ioMocks.OutputReader{}
-				or.OnDeckExistsMatch(mock.Anything).Return(true, nil)
-				or.OnReadMatch(mock.Anything).Return(&core.LiteralMap{}, nil, nil)
-				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewCatalogEntry(or, catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil)), nil)
-			} else {
-				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewFailedCatalogEntry(catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, nil)), nil)
-			}
-			c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
-			c.OnGetOrExtendReservationMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&datacatalog.Reservation{OwnerId: tt.args.ownerID}, nil)
-			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, testClusterID, promutils.NewTestScope())
-			assert.NoError(t, err)
-			tk.defaultPlugins = map[pluginCore.TaskType]pluginCore.Plugin{
-				"test": fakeplugins.NewPhaseBasedPlugin(),
-			}
-			tk.catalog = c
-			tk.resourceManager = noopRm
-			got, err := tk.Handle(context.TODO(), nCtx)
-			if err != nil {
-				t.Errorf("Handler.Handle() error = %v", err)
-				return
-			}
-			if err == nil {
-				assert.Equal(t, tt.want.handlerPhase.String(), got.Info().GetPhase().String())
-				if assert.Equal(t, 1, len(ev.evs)) {
-					e := ev.evs[0]
-					assert.Equal(t, tt.want.eventPhase.String(), e.Phase.String())
-				}
-				assert.Equal(t, tt.want.pluginPhase.String(), state.s.PluginPhase.String())
-				assert.Equal(t, uint32(0), state.s.PluginPhaseVersion)
-			}
-		})
-	}
-}
-
 func Test_task_Handle_Barrier(t *testing.T) {
 	// NOTE: Caching is disabled for this test
 
@@ -1797,7 +1359,7 @@ func Test_task_Abort_v1(t *testing.T) {
 
 func Test_task_Finalize(t *testing.T) {
 
-	createNodeContext := func(cacheSerializable bool) *nodeMocks.NodeExecutionContext {
+	createNodeContext := func() *nodeMocks.NodeExecutionContext {
 		wfExecID := &core.WorkflowExecutionIdentifier{
 			Project: "project",
 			Domain:  "domain",
@@ -1825,10 +1387,6 @@ func Test_task_Finalize(t *testing.T) {
 		tk := &core.TaskTemplate{
 			Id:   taskID,
 			Type: "test",
-			Metadata: &core.TaskMetadata{
-				CacheSerializable: cacheSerializable,
-				Discoverable:      cacheSerializable,
-			},
 			Interface: &core.TypedInterface{
 				Outputs: &core.VariableMap{
 					Variables: map[string]*core.Variable{
@@ -1907,61 +1465,35 @@ func Test_task_Finalize(t *testing.T) {
 	type fields struct {
 		defaultPluginCallback func() pluginCore.Plugin
 	}
-	type args struct {
-		releaseReservation      bool
-		releaseReservationError bool
-	}
 	tests := []struct {
 		name     string
 		fields   fields
-		args     args
 		wantErr  bool
 		finalize bool
 	}{
 		{"no-plugin", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			return nil
-		}}, args{}, true, false},
-
+		}}, true, false},
 		{"finalize-fails", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
 			p.On("GetID").Return("id")
 			p.OnGetProperties().Return(pluginCore.PluginProperties{})
 			p.On("Finalize", mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
 			return p
-		}}, args{}, true, true},
+		}}, true, true},
 		{"finalize-success", fields{defaultPluginCallback: func() pluginCore.Plugin {
 			p := &pluginCoreMocks.Plugin{}
 			p.On("GetID").Return("id")
 			p.OnGetProperties().Return(pluginCore.PluginProperties{})
 			p.On("Finalize", mock.Anything, mock.Anything).Return(nil)
 			return p
-		}}, args{}, false, true},
-		{"release-reservation", fields{defaultPluginCallback: func() pluginCore.Plugin {
-			p := &pluginCoreMocks.Plugin{}
-			p.On("GetID").Return("id")
-			p.OnGetProperties().Return(pluginCore.PluginProperties{})
-			p.On("Finalize", mock.Anything, mock.Anything).Return(nil)
-			return p
-		}}, args{releaseReservation: true}, false, true},
-		{"release-reservation-error", fields{defaultPluginCallback: func() pluginCore.Plugin {
-			p := &pluginCoreMocks.Plugin{}
-			p.On("GetID").Return("id")
-			p.OnGetProperties().Return(pluginCore.PluginProperties{})
-			p.On("Finalize", mock.Anything, mock.Anything).Return(nil)
-			return p
-		}}, args{releaseReservation: true, releaseReservationError: true}, true, false},
+		}}, false, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nCtx := createNodeContext(tt.args.releaseReservation)
+			nCtx := createNodeContext()
 
 			catalog := &pluginCatalogMocks.Client{}
-			if tt.args.releaseReservationError {
-				catalog.OnReleaseReservationMatch(mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("failed to release reservation"))
-			} else {
-				catalog.OnReleaseReservationMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
-			}
-
 			m := tt.fields.defaultPluginCallback()
 			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), catalog, eventConfig, testClusterID, promutils.NewTestScope())
 			assert.NoError(t, err)
