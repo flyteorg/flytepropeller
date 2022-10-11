@@ -561,7 +561,7 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 	} else if np == v1alpha1.NodePhaseSkipped {
 		return executors.NodeStatusSuccess, nil
 	} else if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
-		// if cache hit then we immediately process downstream nodes
+		// if cache hit then immediately process downstream nodes
 		return c.handleDownstream(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nCtx.Node())
 	}
 
@@ -809,7 +809,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
 
 	if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
-		// process downstream nodes
+		// if cache hit then immediately process downstream nodes
 		return c.handleDownstream(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nCtx.Node())
 	}
 
