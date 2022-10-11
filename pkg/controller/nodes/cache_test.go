@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
 
 	eventsmocks "github.com/flyteorg/flytepropeller/events/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -35,15 +37,25 @@ import (
 )
 
 var (
-	currentAttempt = uint32(0)
-	nodeID = "baz"
-	nodeOutputDir = storage.DataReference("output_directory")
-	parentUniqueID = "bar"
+	currentAttempt       = uint32(0)
+	nodeID               = "baz"
+	nodeOutputDir        = storage.DataReference("output_directory")
+	parentUniqueID       = "bar"
 	parentCurrentAttempt = uint32(1)
-	uniqueID = "foo"
+	uniqueID             = "foo"
 )
 
-func setupCacheableNodeExecutionContext(dataStore *storage.DataStore) *nodeExecContext {
+type mockTaskReader struct {
+	taskTemplate *core.TaskTemplate
+}
+
+func (t mockTaskReader) Read(ctx context.Context) (*core.TaskTemplate, error) {
+	return t.taskTemplate, nil
+}
+func (t mockTaskReader) GetTaskType() v1alpha1.TaskType { return "" }
+func (t mockTaskReader) GetTaskID() *core.Identifier    { return nil }
+
+func setupCacheableNodeExecutionContext(dataStore *storage.DataStore, taskTemplate *core.TaskTemplate) *nodeExecContext {
 	mockNode := &mocks.ExecutableNode{}
 	mockNode.OnGetIDMatch(mock.Anything).Return(nodeID)
 
@@ -64,6 +76,18 @@ func setupCacheableNodeExecutionContext(dataStore *storage.DataStore) *nodeExecC
 			Name: parentUniqueID,
 		},
 	)
+	mockNodeExecutionMetadata.OnGetNodeExecutionIDMatch().Return(
+		&core.NodeExecutionIdentifier{
+			NodeId: nodeID,
+		},
+	)
+
+	var taskReader handler.TaskReader
+	if taskTemplate != nil {
+		taskReader = mockTaskReader{
+			taskTemplate: taskTemplate,
+		}
+	}
 
 	return &nodeExecContext{
 		ic:         mockExecutionContext,
@@ -71,6 +95,7 @@ func setupCacheableNodeExecutionContext(dataStore *storage.DataStore) *nodeExecC
 		node:       mockNode,
 		nodeStatus: mockNodeStatus,
 		store:      dataStore,
+		tr:         taskReader,
 	}
 }
 
@@ -102,9 +127,9 @@ func setupCacheableNodeExecutor(t *testing.T, catalogClient catalog.Client, data
 }
 
 func TestComputeCatalogReservationOwnerID(t *testing.T) {
-	nCtx := setupCacheableNodeExecutionContext(nil)
+	nCtx := setupCacheableNodeExecutionContext(nil, nil)
 
-	ownerID, err := computeCatalogReservationOwnerID(context.TODO(), nCtx)
+	ownerID, err := computeCatalogReservationOwnerID(nCtx)
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s-%s-%d-%s-%d", parentUniqueID, uniqueID, parentCurrentAttempt, nodeID, currentAttempt), ownerID)
 }
@@ -146,176 +171,268 @@ func TestUpdatePhaseCacheInfo(t *testing.T) {
 }
 
 func TestCheckCatalogCache(t *testing.T) {
-	t.Run("CacheMiss", func(t *testing.T) {
-		testScope := promutils.NewTestScope()
-
-		cacheableHandler := &handlermocks.CacheableNode{}
-		cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(catalog.Key{}, nil)
-
-		catalogClient := &catalogmocks.Client{}
-		catalogClient.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.Entry{}, status.Error(codes.NotFound, ""))
-
-		dataStore, err := storage.NewDataStore(
-			&storage.Config{
-				Type: storage.TypeMemory,
-			},
-			testScope.NewSubScope("data_store"),
-		)
-		assert.NoError(t, err)
-
-		nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, dataStore, testScope)
-		nCtx := setupCacheableNodeExecutionContext(dataStore)
-
-		resultCacheEntry, err := nodeExecutor.CheckCatalogCache(context.TODO(), nCtx, cacheableHandler)
-		assert.NoError(t, err)
-
-		assert.Equal(t, core.CatalogCacheStatus_CACHE_MISS, resultCacheEntry.GetStatus().GetCacheStatus())
-	})
-
-	t.Run("CacheHitWithOutputs", func(t *testing.T) {
-		testScope := promutils.NewTestScope()
-		cacheEntry := catalog.NewCatalogEntry(
-			ioutils.NewInMemoryOutputReader(&core.LiteralMap{}, nil, nil),
-			catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil),
-		)
-		catalogKey := catalog.Key{
-			TypedInterface: core.TypedInterface{
-				Outputs: &core.VariableMap{
-					Variables: map[string]*core.Variable{
-						"foo": nil,
+	tests := []struct {
+		name                string
+		cacheEntry          catalog.Entry
+		cacheError          error
+		catalogKey          catalog.Key
+		expectedCacheStatus core.CatalogCacheStatus
+		preWriteOutputFile  bool
+		assertOutputFile    bool
+		outputFileExists    bool
+	}{
+		{
+			"CacheMiss",
+			catalog.Entry{},
+			status.Error(codes.NotFound, ""),
+			catalog.Key{},
+			core.CatalogCacheStatus_CACHE_MISS,
+			false,
+			false,
+			false,
+		},
+		{
+			"CacheHitWithOutputs",
+			catalog.NewCatalogEntry(
+				ioutils.NewInMemoryOutputReader(&core.LiteralMap{}, nil, nil),
+				catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil),
+			),
+			nil,
+			catalog.Key{
+				TypedInterface: core.TypedInterface{
+					Outputs: &core.VariableMap{
+						Variables: map[string]*core.Variable{
+							"foo": nil,
+						},
 					},
 				},
 			},
-		}
+			core.CatalogCacheStatus_CACHE_HIT,
+			false,
+			true,
+			true,
+		},
+		{
+			"CacheHitWithoutOutputs",
+			catalog.NewCatalogEntry(
+				nil,
+				catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil),
+			),
+			nil,
+			catalog.Key{},
+			core.CatalogCacheStatus_CACHE_HIT,
+			false,
+			true,
+			false,
+		},
+		{
+			"OutputsAlreadyExist",
+			catalog.Entry{},
+			nil,
+			catalog.Key{},
+			core.CatalogCacheStatus_CACHE_HIT,
+			true,
+			true,
+			true,
+		},
+	}
 
-		cacheableHandler := &handlermocks.CacheableNode{}
-		cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(catalogKey, nil)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testScope := promutils.NewTestScope()
 
-		catalogClient := &catalogmocks.Client{}
-		catalogClient.OnGetMatch(mock.Anything, mock.Anything).Return(cacheEntry, nil)
+			cacheableHandler := &handlermocks.CacheableNode{}
+			cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(test.catalogKey, nil)
 
-		dataStore, err := storage.NewDataStore(
-			&storage.Config{
-				Type: storage.TypeMemory,
-			},
-			testScope.NewSubScope("data_store"),
-		)
-		assert.NoError(t, err)
+			catalogClient := &catalogmocks.Client{}
+			catalogClient.OnGetMatch(mock.Anything, mock.Anything).Return(test.cacheEntry, test.cacheError)
 
-		nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, dataStore, testScope)
-		nCtx := setupCacheableNodeExecutionContext(dataStore)
+			dataStore, err := storage.NewDataStore(
+				&storage.Config{
+					Type: storage.TypeMemory,
+				},
+				testScope.NewSubScope("data_store"),
+			)
+			assert.NoError(t, err)
 
-		resultCacheEntry, err := nodeExecutor.CheckCatalogCache(context.TODO(), nCtx, cacheableHandler)
-		assert.NoError(t, err)
+			nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, dataStore, testScope)
+			nCtx := setupCacheableNodeExecutionContext(dataStore, nil)
 
-		assert.Equal(t, core.CatalogCacheStatus_CACHE_HIT, resultCacheEntry.GetStatus().GetCacheStatus())
+			if test.preWriteOutputFile {
+				// write mock data to outputs
+				outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
+				err = nCtx.DataStore().WriteProtobuf(context.TODO(), outputFile, storage.Options{}, &core.LiteralMap{})
+				assert.NoError(t, err)
+			}
 
-		// assert the outputs file exists
-		outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
-		metadata, err := nCtx.DataStore().Head(context.TODO(), outputFile)
-		assert.NoError(t, err)
-		assert.Equal(t, true, metadata.Exists())
-	})
+			// execute catalog cache check
+			cacheEntry, err := nodeExecutor.CheckCatalogCache(context.TODO(), nCtx, cacheableHandler)
+			assert.NoError(t, err)
 
-	t.Run("CacheHitWithoutOutputs", func(t *testing.T) {
-		testScope := promutils.NewTestScope()
-		cacheEntry := catalog.NewCatalogEntry(nil, catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil))
+			// validate the result cache entry status
+			assert.Equal(t, test.expectedCacheStatus, cacheEntry.GetStatus().GetCacheStatus())
 
-		cacheableHandler := &handlermocks.CacheableNode{}
-		cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(catalog.Key{}, nil)
-
-		catalogClient := &catalogmocks.Client{}
-		catalogClient.OnGetMatch(mock.Anything, mock.Anything).Return(cacheEntry, nil)
-
-		dataStore, err := storage.NewDataStore(
-			&storage.Config{
-				Type: storage.TypeMemory,
-			},
-			testScope.NewSubScope("data_store"),
-		)
-		assert.NoError(t, err)
-
-		nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, dataStore, testScope)
-		nCtx := setupCacheableNodeExecutionContext(dataStore)
-
-		resultCacheEntry, err := nodeExecutor.CheckCatalogCache(context.TODO(), nCtx, cacheableHandler)
-		assert.NoError(t, err)
-
-		assert.Equal(t, core.CatalogCacheStatus_CACHE_HIT, resultCacheEntry.GetStatus().GetCacheStatus())
-
-		// assert the outputs file does not exist
-		outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
-		metadata, err := nCtx.DataStore().Head(context.TODO(), outputFile)
-		assert.NoError(t, err)
-		assert.Equal(t, false, metadata.Exists())
-	})
-
-	t.Run("CacheLookupError", func(t *testing.T) {
-		testScope := promutils.NewTestScope()
-
-		cacheableHandler := &handlermocks.CacheableNode{}
-		cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(catalog.Key{}, nil)
-
-		catalogClient := &catalogmocks.Client{}
-		catalogClient.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.Entry{}, errors.New("foo"))
-
-		dataStore, err := storage.NewDataStore(
-			&storage.Config{
-				Type: storage.TypeMemory,
-			},
-			testScope.NewSubScope("data_store"),
-		)
-		assert.NoError(t, err)
-
-		nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, dataStore, testScope)
-		nCtx := setupCacheableNodeExecutionContext(dataStore)
-
-		_, err = nodeExecutor.CheckCatalogCache(context.TODO(), nCtx, cacheableHandler)
-		assert.Error(t, err)
-	})
-
-	t.Run("OutputsAlreadyExist", func(t *testing.T) {
-		testScope := promutils.NewTestScope()
-
-		cacheableHandler := &handlermocks.CacheableNode{}
-		cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(catalog.Key{}, nil)
-
-		catalogClient := &catalogmocks.Client{}
-		catalogClient.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.Entry{}, nil)
-
-		dataStore, err := storage.NewDataStore(
-			&storage.Config{
-				Type: storage.TypeMemory,
-			},
-			testScope.NewSubScope("data_store"),
-		)
-		assert.NoError(t, err)
-
-		nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, dataStore, testScope)
-		nCtx := setupCacheableNodeExecutionContext(dataStore)
-
-		// write mock data to outputs
-		outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
-		err = nCtx.DataStore().WriteProtobuf(context.TODO(), outputFile, storage.Options{}, &core.LiteralMap{})
-		assert.NoError(t, err)
-
-		resultCacheEntry, err := nodeExecutor.CheckCatalogCache(context.TODO(), nCtx, cacheableHandler)
-		assert.NoError(t, err)
-
-		assert.Equal(t, core.CatalogCacheStatus_CACHE_HIT, resultCacheEntry.GetStatus().GetCacheStatus())
-	})
+			if test.assertOutputFile {
+				// assert the outputs file exists
+				outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
+				metadata, err := nCtx.DataStore().Head(context.TODO(), outputFile)
+				assert.NoError(t, err)
+				assert.Equal(t, test.outputFileExists, metadata.Exists())
+			}
+		})
+	}
 }
 
 func TestGetOrExtendCatalogReservation(t *testing.T) {
-	//func (n *nodeExecutor) GetOrExtendCatalogReservation(ctx context.Context, nCtx *nodeExecContext,
-	//	cacheHandler handler.CacheableNode, heartbeatInterval time.Duration) (catalog.ReservationEntry, error) {
+	tests := []struct {
+		name                      string
+		reservationOwnerID        string
+		expectedReservationStatus core.CatalogReservation_Status
+	}{
+		{
+			"Acquired",
+			"bar-foo-1-baz-0",
+			core.CatalogReservation_RESERVATION_ACQUIRED,
+		},
+		{
+			"Exists",
+			"some-other-owner",
+			core.CatalogReservation_RESERVATION_EXISTS,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testScope := promutils.NewTestScope()
+
+			cacheableHandler := &handlermocks.CacheableNode{}
+			cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(catalog.Key{}, nil)
+
+			catalogClient := &catalogmocks.Client{}
+			catalogClient.OnGetOrExtendReservationMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+				&datacatalog.Reservation{
+					OwnerId: test.reservationOwnerID,
+				},
+				nil,
+			)
+
+			nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, nil, testScope)
+			nCtx := setupCacheableNodeExecutionContext(nil, &core.TaskTemplate{})
+
+			// execute catalog cache check
+			reservationEntry, err := nodeExecutor.GetOrExtendCatalogReservation(context.TODO(), nCtx, cacheableHandler, time.Second*30)
+			assert.NoError(t, err)
+
+			// validate the result cache entry status
+			assert.Equal(t, test.expectedReservationStatus, reservationEntry.GetStatus())
+		})
+	}
 }
 
 func TestReleaseCatalogReservation(t *testing.T) {
-	//func (n *nodeExecutor) ReleaseCatalogReservation(ctx context.Context, nCtx *nodeExecContext,
-	//	cacheHandler handler.CacheableNode) (catalog.ReservationEntry, error) {
+	tests := []struct {
+		name                      string
+		releaseError              error
+		expectedReservationStatus core.CatalogReservation_Status
+	}{
+		{
+			"Success",
+			nil,
+			core.CatalogReservation_RESERVATION_RELEASED,
+		},
+		{
+			"Failure",
+			errors.New("failed to release"),
+			core.CatalogReservation_RESERVATION_FAILURE,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testScope := promutils.NewTestScope()
+
+			cacheableHandler := &handlermocks.CacheableNode{}
+			cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(catalog.Key{}, nil)
+
+			catalogClient := &catalogmocks.Client{}
+			catalogClient.OnReleaseReservationMatch(mock.Anything, mock.Anything, mock.Anything).Return(test.releaseError)
+
+			nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, nil, testScope)
+			nCtx := setupCacheableNodeExecutionContext(nil, &core.TaskTemplate{})
+
+			// execute catalog cache check
+			reservationEntry, err := nodeExecutor.ReleaseCatalogReservation(context.TODO(), nCtx, cacheableHandler)
+			if test.releaseError == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+
+			// validate the result cache entry status
+			assert.Equal(t, test.expectedReservationStatus, reservationEntry.GetStatus())
+		})
+	}
 }
 
 func TestWriteCatalogCache(t *testing.T) {
-	//func (n *nodeExecutor) WriteCatalogCache(ctx context.Context, nCtx *nodeExecContext, cacheHandler handler.CacheableNode) (catalog.Status, error) {
+	tests := []struct {
+		name                string
+		cacheStatus         catalog.Status
+		cacheError          error
+		catalogKey          catalog.Key
+		expectedCacheStatus core.CatalogCacheStatus
+	}{
+		{
+			"NoOutputs",
+			catalog.NewStatus(core.CatalogCacheStatus_CACHE_DISABLED, nil),
+			nil,
+			catalog.Key{},
+			core.CatalogCacheStatus_CACHE_DISABLED,
+		},
+		{
+			"OutputsExist",
+			catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil),
+			nil,
+			catalog.Key{
+				TypedInterface: core.TypedInterface{
+					Outputs: &core.VariableMap{
+						Variables: map[string]*core.Variable{
+							"foo": nil,
+						},
+					},
+				},
+			},
+			core.CatalogCacheStatus_CACHE_POPULATED,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testScope := promutils.NewTestScope()
+
+			cacheableHandler := &handlermocks.CacheableNode{}
+			cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(test.catalogKey, nil)
+
+			catalogClient := &catalogmocks.Client{}
+			catalogClient.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.cacheStatus, nil)
+
+			dataStore, err := storage.NewDataStore(
+				&storage.Config{
+					Type: storage.TypeMemory,
+				},
+				testScope.NewSubScope("data_store"),
+			)
+			assert.NoError(t, err)
+
+			nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, dataStore, testScope)
+			nCtx := setupCacheableNodeExecutionContext(dataStore, &core.TaskTemplate{})
+
+			// execute catalog cache check
+			cacheStatus, err := nodeExecutor.WriteCatalogCache(context.TODO(), nCtx, cacheableHandler)
+			assert.NoError(t, err)
+
+			// validate the result cache entry status
+			assert.Equal(t, test.expectedCacheStatus, cacheStatus.GetCacheStatus())
+		})
+	}
 }

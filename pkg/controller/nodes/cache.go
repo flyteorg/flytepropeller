@@ -30,7 +30,7 @@ import (
 // computeCatalogReservationOwnerID constructs a unique identifier which includes the nodes
 // parent information, node ID, and retry attempt number. This is used to uniquely identify a task
 // when the cache reservation API to serialize cached executions.
-func computeCatalogReservationOwnerID(ctx context.Context, nCtx *nodeExecContext) (string, error) {
+func computeCatalogReservationOwnerID(nCtx *nodeExecContext) (string, error) {
 	currentNodeUniqueID, err := common.GenerateUniqueID(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID())
 	if err != nil {
 		return "", err
@@ -157,7 +157,7 @@ func (n *nodeExecutor) GetOrExtendCatalogReservation(ctx context.Context, nCtx *
 			errors.Wrapf(err, "failed to initialize the catalogKey")
 	}
 
-	ownerID, err := computeCatalogReservationOwnerID(ctx, nCtx)
+	ownerID, err := computeCatalogReservationOwnerID(nCtx)
 	if err != nil {
 		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED),
 			errors.Wrapf(err, "failed to initialize the cache reservation ownerID")
@@ -194,7 +194,7 @@ func (n *nodeExecutor) ReleaseCatalogReservation(ctx context.Context, nCtx *node
 			errors.Wrapf(err, "failed to initialize the catalogKey")
 	}
 
-	ownerID, err := computeCatalogReservationOwnerID(ctx, nCtx)
+	ownerID, err := computeCatalogReservationOwnerID(nCtx)
 	if err != nil {
 		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_DISABLED),
 			errors.Wrapf(err, "failed to initialize the cache reservation ownerID")
