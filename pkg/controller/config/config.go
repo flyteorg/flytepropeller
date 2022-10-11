@@ -91,9 +91,9 @@ var (
 		},
 		NodeConfig: NodeConfig{
 			DefaultDeadlines: DefaultDeadlines{
-				DefaultNodeExecutionDeadline:  config.Duration{Duration: time.Hour * 48},
-				DefaultNodeActiveDeadline:     config.Duration{Duration: time.Hour * 48},
-				DefaultWorkflowActiveDeadline: config.Duration{Duration: time.Hour * 72},
+				DefaultNodeExecutionDeadline:  config.Duration{Duration: time.Hour * 0},
+				DefaultNodeActiveDeadline:     config.Duration{Duration: time.Hour * 0},
+				DefaultWorkflowActiveDeadline: config.Duration{Duration: time.Hour * 0},
 			},
 			MaxNodeRetriesOnSystemFailures: 3,
 			InterruptibleFailureThreshold:  1,
