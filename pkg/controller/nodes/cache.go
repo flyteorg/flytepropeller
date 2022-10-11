@@ -2,12 +2,14 @@ package nodes
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/encoding"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -34,7 +36,8 @@ func computeCatalogReservationOwnerID(ctx context.Context, nCtx *nodeExecContext
 		return "", err
 	}
 
-	_, ownerID, err := task.ComputeRawOutputPrefix(ctx, task.IDMaxLength, nCtx, currentNodeUniqueID, nCtx.CurrentAttempt())
+	ownerID, err := encoding.FixedLengthUniqueIDForParts(task.IDMaxLength,
+		[]string{nCtx.NodeExecutionMetadata().GetOwnerID().Name, currentNodeUniqueID, strconv.Itoa(int(nCtx.CurrentAttempt()))})
 	if err != nil {
 		return "", err
 	}
