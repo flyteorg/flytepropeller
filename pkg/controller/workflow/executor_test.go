@@ -32,7 +32,7 @@ import (
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	eventMocks "github.com/flyteorg/flytepropeller/events/mocks"
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/catalog"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/fakeplugins"
 
 	wfErrors "github.com/flyteorg/flytepropeller/pkg/controller/workflow/errors"

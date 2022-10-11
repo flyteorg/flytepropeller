@@ -30,10 +30,10 @@ import (
 	eventMocks "github.com/flyteorg/flytepropeller/events/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	mocks4 "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/catalog"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	nodeHandlerMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/mocks"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/promutils"
