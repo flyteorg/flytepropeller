@@ -2099,6 +2099,7 @@ func TestRecover(t *testing.T) {
 					OutputResult: &admin.NodeExecutionClosure_OutputUri{
 						OutputUri: "outputuri.pb",
 					},
+					DeckUri: deckPath,
 				},
 			}, nil)
 
@@ -2154,6 +2155,7 @@ func TestRecover(t *testing.T) {
 							CacheStatus: core.CatalogCacheStatus_CACHE_HIT,
 						},
 					},
+					DeckUri: deckPath,
 				},
 			}, nil)
 
@@ -2237,6 +2239,7 @@ func TestRecover(t *testing.T) {
 							},
 						},
 					},
+					DeckUri: deckPath,
 				},
 			}, nil)
 
@@ -2304,6 +2307,7 @@ func TestRecover(t *testing.T) {
 					OutputResult: &admin.NodeExecutionClosure_OutputUri{
 						OutputUri: "outputuri.pb",
 					},
+					DeckUri: deckPath,
 				},
 			}, nil)
 
@@ -2349,6 +2353,7 @@ func TestRecover(t *testing.T) {
 					OutputResult: &admin.NodeExecutionClosure_OutputUri{
 						OutputUri: "outputuri.pb",
 					},
+					DeckUri: deckPath,
 				},
 			}, nil)
 
