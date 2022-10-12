@@ -592,8 +592,13 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 				logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
 				return handler.UnknownTransition, err
 			}
-			deckPath := storage.DataReference(tCtx.ow.GetReader().GetOutputMetadata(ctx)[datacatalog.DeckURIKey])
-			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), &deckPath, entry)
+			deckPathValue, ok := tCtx.ow.GetReader().GetOutputMetadata(ctx)[datacatalog.DeckURIKey]
+			if ok {
+				deckPath := storage.DataReference(deckPathValue)
+				pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), &deckPath, entry)
+			} else {
+				pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), nil, entry)
+			}
 		} else {
 			logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
 			pluginTrns.PopulateCacheInfo(entry)

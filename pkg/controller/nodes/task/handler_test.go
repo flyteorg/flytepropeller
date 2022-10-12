@@ -48,6 +48,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
+	datacatalogClient "github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog/datacatalog"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/codex"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/fakeplugins"
@@ -59,6 +60,7 @@ var eventConfig = &controllerConfig.EventConfig{
 }
 
 const testClusterID = "C1"
+const deckPath = "deck.html"
 
 func Test_task_setDefault(t *testing.T) {
 	type fields struct {
@@ -908,6 +910,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			if tt.args.catalogFetch {
 				or := &ioMocks.OutputReader{}
 				or.OnDeckExistsMatch(mock.Anything).Return(true, nil)
+				or.OnGetOutputMetadataMatch(mock.Anything).Return(map[string]string{datacatalogClient.DeckURIKey: deckPath})
 				or.OnReadMatch(mock.Anything).Return(&core.LiteralMap{}, nil, nil)
 				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewCatalogEntry(or, catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil)), nil)
 			} else {
@@ -935,6 +938,9 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			}
 			if err == nil {
 				assert.Equal(t, tt.want.handlerPhase.String(), got.Info().GetPhase().String())
+				if tt.name == "cache-hit" {
+					assert.Equal(t, deckPath, got.Info().GetInfo().OutputInfo.DeckURI.String())
+				}
 				if assert.Equal(t, 1, len(ev.evs)) {
 					e := ev.evs[0]
 					assert.Equal(t, tt.want.eventPhase.String(), e.Phase.String())
@@ -1136,6 +1142,7 @@ func Test_task_Handle_Reservation(t *testing.T) {
 			if tt.args.catalogFetch {
 				or := &ioMocks.OutputReader{}
 				or.OnDeckExistsMatch(mock.Anything).Return(true, nil)
+				or.OnGetOutputMetadataMatch(mock.Anything).Return(map[string]string{datacatalogClient.DeckURIKey: deckPath})
 				or.OnReadMatch(mock.Anything).Return(&core.LiteralMap{}, nil, nil)
 				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewCatalogEntry(or, catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil)), nil)
 			} else {
@@ -1157,6 +1164,9 @@ func Test_task_Handle_Reservation(t *testing.T) {
 			}
 			if err == nil {
 				assert.Equal(t, tt.want.handlerPhase.String(), got.Info().GetPhase().String())
+				if tt.name == "cache-hit" {
+					assert.Equal(t, deckPath, got.Info().GetInfo().OutputInfo.DeckURI.String())
+				}
 				if assert.Equal(t, 1, len(ev.evs)) {
 					e := ev.evs[0]
 					assert.Equal(t, tt.want.eventPhase.String(), e.Phase.String())
