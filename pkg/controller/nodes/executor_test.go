@@ -14,9 +14,9 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
-	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	pluginscatalog "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	catalogmocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog/mocks"
+	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 
 	"github.com/flyteorg/flytepropeller/events"
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
@@ -2485,26 +2485,6 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 	taskID := taskID
 
 	createMockWorkflow := func(currentNodePhase, downstreamNodePhase v1alpha1.NodePhase, dataStore *storage.DataStore) *v1alpha1.FlyteWorkflow {
-		currentNodeSpec := &v1alpha1.NodeSpec{
-			ID:      currentNodeID,
-			TaskRef: &taskID,
-			Kind:    v1alpha1.NodeKindTask,
-		}
-
-		currentNodeStatus := &v1alpha1.NodeStatus{
-			Phase:                currentNodePhase,
-		}
-
-		downstreamNodeSpec := &v1alpha1.NodeSpec{
-			ID:      downstreamNodeID,
-			TaskRef: &taskID,
-			Kind:    v1alpha1.NodeKindTask,
-		}
-
-		downstreamNodeStatus := &v1alpha1.NodeStatus{
-			Phase: downstreamNodePhase,
-		}
-
 		return &v1alpha1.FlyteWorkflow{
 			Tasks: map[v1alpha1.TaskID]*v1alpha1.TaskSpec{
 				taskID: {
@@ -2513,16 +2493,28 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			},
 			Status: v1alpha1.WorkflowStatus{
 				NodeStatus: map[v1alpha1.NodeID]*v1alpha1.NodeStatus{
-					currentNodeID:    currentNodeStatus,
-					downstreamNodeID: downstreamNodeStatus,
+					currentNodeID: &v1alpha1.NodeStatus{
+						Phase: currentNodePhase,
+					},
+					downstreamNodeID: &v1alpha1.NodeStatus{
+						Phase: downstreamNodePhase,
+					},
 				},
 				DataDir: "data",
 			},
 			WorkflowSpec: &v1alpha1.WorkflowSpec{
 				ID: "wf",
 				Nodes: map[v1alpha1.NodeID]*v1alpha1.NodeSpec{
-					currentNodeID: currentNodeSpec,
-					downstreamNodeID: downstreamNodeSpec,
+					currentNodeID: &v1alpha1.NodeSpec{
+						ID:      currentNodeID,
+						TaskRef: &taskID,
+						Kind:    v1alpha1.NodeKindTask,
+					},
+					downstreamNodeID: &v1alpha1.NodeSpec{
+						ID:      downstreamNodeID,
+						TaskRef: &taskID,
+						Kind:    v1alpha1.NodeKindTask,
+					},
 				},
 				Connections: v1alpha1.Connections{
 					Upstream: map[v1alpha1.NodeID][]v1alpha1.NodeID{
@@ -2678,13 +2670,13 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 
 			mockHandler := &nodeHandlerMocks.CacheableNode{}
 			mockHandler.OnIsCacheableMatch(
-					mock.Anything,
-					mock.MatchedBy(func(nCtx handler.NodeExecutionContext) bool { return nCtx.NodeID() == currentNodeID }),
-				).Return(test.cacheable, test.cacheSerializable, nil)
+				mock.Anything,
+				mock.MatchedBy(func(nCtx handler.NodeExecutionContext) bool { return nCtx.NodeID() == currentNodeID }),
+			).Return(test.cacheable, test.cacheSerializable, nil)
 			mockHandler.OnIsCacheableMatch(
-					mock.Anything,
-					mock.MatchedBy(func(nCtx handler.NodeExecutionContext) bool { return nCtx.NodeID() == downstreamNodeID }),
-				).Return(false, false, nil)
+				mock.Anything,
+				mock.MatchedBy(func(nCtx handler.NodeExecutionContext) bool { return nCtx.NodeID() == downstreamNodeID }),
+			).Return(false, false, nil)
 			mockHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).
 				Return(pluginscatalog.Key{Identifier: core.Identifier{Name: currentNodeID}}, nil)
 			mockHandler.OnHandleMatch(mock.Anything, mock.Anything).Return(handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)), nil)
