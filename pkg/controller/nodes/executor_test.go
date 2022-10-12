@@ -8,43 +8,45 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flyteorg/flytestdlib/contextutils"
-
-	"github.com/golang/protobuf/proto"
-
-	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-	storageMocks "github.com/flyteorg/flytestdlib/storage/mocks"
-
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	"github.com/flyteorg/flytestdlib/promutils/labeled"
-	"github.com/flyteorg/flytestdlib/storage"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/mock"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	pluginscatalog "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
+	catalogmocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog/mocks"
 
 	"github.com/flyteorg/flytepropeller/events"
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	eventMocks "github.com/flyteorg/flytepropeller/events/mocks"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	mocks4 "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/catalog"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	nodeHandlerMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/mocks"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	recoveryMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	flyteassert "github.com/flyteorg/flytepropeller/pkg/utils/assert"
+
+	"github.com/flyteorg/flytestdlib/contextutils"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/storage"
+	storageMocks "github.com/flyteorg/flytestdlib/storage/mocks"
+
+	"github.com/golang/protobuf/proto"
+
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var fakeKubeClient = mocks4.NewFakeKubeClient()
@@ -2474,4 +2476,233 @@ func (e existsMetadata) Exists() bool {
 
 func (e existsMetadata) Size() int64 {
 	return int64(1)
+}
+
+func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
+	currentNodeID := "node-0"
+	downstreamNodeID := "node-1"
+	taskID := taskID
+
+	createMockWorkflow := func(currentNodePhase, downstreamNodePhase v1alpha1.NodePhase, dataStore *storage.DataStore) *v1alpha1.FlyteWorkflow {
+		currentNodeSpec := &v1alpha1.NodeSpec{
+			ID:      currentNodeID,
+			TaskRef: &taskID,
+			Kind:    v1alpha1.NodeKindTask,
+		}
+
+		/*var err *v1alpha1.ExecutionError
+		if p == v1alpha1.NodePhaseFailing || p == v1alpha1.NodePhaseFailed {
+			err = &v1alpha1.ExecutionError{ExecutionError: &core.ExecutionError{Code: "test", Message: "test"}}
+		}*/
+		currentNodeStatus := &v1alpha1.NodeStatus{
+			Phase:                currentNodePhase,
+			//LastAttemptStartedAt: &v1.Time{},
+			//Error:                err,
+		}
+
+		downstreamNodeSpec := &v1alpha1.NodeSpec{
+			ID:      downstreamNodeID,
+			TaskRef: &taskID,
+			Kind:    v1alpha1.NodeKindTask,
+		}
+
+		downstreamNodeStatus := &v1alpha1.NodeStatus{
+			Phase: downstreamNodePhase,
+		}
+
+		return &v1alpha1.FlyteWorkflow{
+			Tasks: map[v1alpha1.TaskID]*v1alpha1.TaskSpec{
+				taskID: {
+					TaskTemplate: &core.TaskTemplate{},
+				},
+			},
+			Status: v1alpha1.WorkflowStatus{
+				NodeStatus: map[v1alpha1.NodeID]*v1alpha1.NodeStatus{
+					currentNodeID:    currentNodeStatus,
+					downstreamNodeID: downstreamNodeStatus,
+				},
+				DataDir: "data",
+			},
+			WorkflowSpec: &v1alpha1.WorkflowSpec{
+				ID: "wf",
+				Nodes: map[v1alpha1.NodeID]*v1alpha1.NodeSpec{
+					currentNodeID: currentNodeSpec,
+					downstreamNodeID: downstreamNodeSpec,
+				},
+				Connections: v1alpha1.Connections{
+					Upstream: map[v1alpha1.NodeID][]v1alpha1.NodeID{
+						downstreamNodeID: {currentNodeID},
+					},
+					Downstream: map[v1alpha1.NodeID][]v1alpha1.NodeID{
+						currentNodeID: {downstreamNodeID},
+					},
+				},
+			},
+			DataReferenceConstructor: dataStore,
+			RawOutputDataConfig: v1alpha1.RawOutputDataConfig{
+				RawOutputDataConfig: &admin.RawOutputDataConfig{OutputLocationPrefix: ""},
+			},
+		}
+	}
+
+	setupNodeExecutor := func(t *testing.T, catalogClient pluginscatalog.Client, dataStore *storage.DataStore, mockHandler handler.CacheableNode, testScope promutils.Scope) *nodeExecutor {
+		ctx := context.TODO()
+
+		// create mocks
+		adminClient := launchplan.NewFailFastLaunchPlanExecutor()
+		enqueueWorkflow := func(workflowID v1alpha1.WorkflowID) {}
+		eventConfig := &config.EventConfig{
+			RawOutputPolicy: config.RawOutputPolicyReference,
+		}
+		fakeKubeClient := mocks4.NewFakeKubeClient()
+		maxDatasetSize := int64(10)
+		mockEventSink := eventMocks.NewMockEventSink()
+		nodeConfig := config.GetConfig().NodeConfig
+		rawOutputPrefix := storage.DataReference("s3://bucket/")
+		recoveryClient := &recoveryMocks.Client{}
+		testClusterID := "cluster1"
+
+		// initialize node executor
+		nodeExecutorInterface, err := NewExecutor(ctx, nodeConfig, dataStore, enqueueWorkflow, mockEventSink,
+			adminClient, adminClient, maxDatasetSize, rawOutputPrefix, fakeKubeClient, catalogClient,
+			recoveryClient, eventConfig, testClusterID, testScope)
+		assert.NoError(t, err)
+
+		nodeExecutor, ok := nodeExecutorInterface.(*nodeExecutor)
+		assert.True(t, ok)
+
+		// setup node handler
+		mockHandlerFactory := &mocks2.HandlerFactory{}
+		mockHandlerFactory.OnGetHandler(v1alpha1.NodeKindTask).Return(mockHandler, nil)
+		nodeExecutor.nodeHandlerFactory = mockHandlerFactory
+
+		return nodeExecutor
+	}
+
+	tests := []struct {
+		name                       string
+		cacheable                  bool
+		cacheStatus                core.CatalogCacheStatus
+		cacheSerializable          bool
+		cacheSerializeStatus       core.CatalogReservation_Status
+		currentNodePhase           v1alpha1.NodePhase
+		nextNodePhase              v1alpha1.NodePhase
+		currentDownstreamNodePhase v1alpha1.NodePhase
+		nextDownstreamNodePhase    v1alpha1.NodePhase
+	}{
+		{
+			"NotYetStarted->CacheMiss->Queued",
+			true,
+			core.CatalogCacheStatus_CACHE_MISS,
+			false,
+			core.CatalogReservation_RESERVATION_DISABLED,
+			v1alpha1.NodePhaseNotYetStarted,
+			v1alpha1.NodePhaseQueued,
+			v1alpha1.NodePhaseNotYetStarted,
+			v1alpha1.NodePhaseNotYetStarted,
+		},
+		{
+			"NotYetStarted->CacheHit->Success",
+			true,
+			core.CatalogCacheStatus_CACHE_HIT,
+			false,
+			core.CatalogReservation_RESERVATION_DISABLED,
+			v1alpha1.NodePhaseNotYetStarted,
+			v1alpha1.NodePhaseSucceeded,
+			v1alpha1.NodePhaseNotYetStarted,
+			v1alpha1.NodePhaseQueued,
+		},
+		{
+			"Queued->CacheHit->Success",
+			true,
+			core.CatalogCacheStatus_CACHE_HIT,
+			true,
+			core.CatalogReservation_RESERVATION_EXISTS,
+			v1alpha1.NodePhaseQueued,
+			v1alpha1.NodePhaseSucceeded,
+			v1alpha1.NodePhaseNotYetStarted,
+			v1alpha1.NodePhaseQueued,
+		},
+		{
+			"Queued->CacheMiss->Queued",
+			true,
+			core.CatalogCacheStatus_CACHE_MISS,
+			true,
+			core.CatalogReservation_RESERVATION_EXISTS,
+			v1alpha1.NodePhaseQueued,
+			v1alpha1.NodePhaseQueued,
+			v1alpha1.NodePhaseNotYetStarted,
+			v1alpha1.NodePhaseNotYetStarted,
+		},
+		{
+			"Queued->ReservationAcquired->Running",
+			true,
+			core.CatalogCacheStatus_CACHE_MISS,
+			true,
+			core.CatalogReservation_RESERVATION_ACQUIRED,
+			v1alpha1.NodePhaseQueued,
+			v1alpha1.NodePhaseRunning,
+			v1alpha1.NodePhaseNotYetStarted,
+			v1alpha1.NodePhaseNotYetStarted,
+		},
+		{
+			"Running->ReservationExists->Running",
+			true,
+			core.CatalogCacheStatus_CACHE_MISS,
+			true,
+			core.CatalogReservation_RESERVATION_EXISTS,
+			v1alpha1.NodePhaseRunning,
+			v1alpha1.NodePhaseRunning,
+			v1alpha1.NodePhaseNotYetStarted,
+			v1alpha1.NodePhaseNotYetStarted,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testScope := promutils.NewTestScope()
+
+			dataStore := createInmemoryDataStore(t, testScope.NewSubScope("data_store"))
+			mockWorkflow := createMockWorkflow(test.currentNodePhase, test.currentDownstreamNodePhase, dataStore)
+
+			// retrieve current node references
+			currentNodeSpec, ok := mockWorkflow.WorkflowSpec.Nodes[currentNodeID]
+			assert.Equal(t, true, ok)
+
+			currentNodeStatus, ok := mockWorkflow.Status.NodeStatus[currentNodeID]
+			assert.Equal(t, true, ok)
+
+			downstreamNodeStatus, ok := mockWorkflow.Status.NodeStatus[downstreamNodeID]
+			assert.Equal(t, true, ok)
+
+			// initialize nodeExecutor
+			catalogClient := &catalogmocks.Client{}
+			catalogClient.OnGetMatch(mock.Anything, mock.Anything).
+				Return(pluginscatalog.NewCatalogEntry(nil, pluginscatalog.NewStatus(test.cacheStatus, nil)), nil)
+
+			mockHandler := &nodeHandlerMocks.CacheableNode{}
+			mockHandler.OnIsCacheableMatch(
+					mock.Anything,
+					mock.MatchedBy(func(nCtx handler.NodeExecutionContext) bool { return nCtx.NodeID() == currentNodeID }),
+				).Return(test.cacheable, test.cacheSerializable, nil)
+			mockHandler.OnIsCacheableMatch(
+					mock.Anything,
+					mock.MatchedBy(func(nCtx handler.NodeExecutionContext) bool { return nCtx.NodeID() == downstreamNodeID }),
+				).Return(false, false, nil)
+			mockHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).
+				Return(pluginscatalog.Key{Identifier: core.Identifier{Name: currentNodeID}}, nil)
+			mockHandler.OnFinalizeRequiredMatch(mock.Anything).Return(false)
+
+			nodeExecutor := setupNodeExecutor(t, catalogClient, dataStore, mockHandler, testScope.NewSubScope("node_executor"))
+
+			execContext := executors.NewExecutionContext(mockWorkflow, mockWorkflow, mockWorkflow, nil, executors.InitializeControlFlow())
+
+			// execute RecursiveNodeHandler
+			_, err := nodeExecutor.RecursiveNodeHandler(context.Background(), execContext, mockWorkflow, mockWorkflow, currentNodeSpec)
+			assert.NoError(t, err)
+
+			// validate node phase transitions
+			assert.Equal(t, test.nextNodePhase, currentNodeStatus.Phase)
+			assert.Equal(t, test.nextDownstreamNodePhase, downstreamNodeStatus.Phase)
+		})
+	}
 }
