@@ -11,6 +11,7 @@ import (
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
 	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
@@ -2490,14 +2491,8 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			Kind:    v1alpha1.NodeKindTask,
 		}
 
-		/*var err *v1alpha1.ExecutionError
-		if p == v1alpha1.NodePhaseFailing || p == v1alpha1.NodePhaseFailed {
-			err = &v1alpha1.ExecutionError{ExecutionError: &core.ExecutionError{Code: "test", Message: "test"}}
-		}*/
 		currentNodeStatus := &v1alpha1.NodeStatus{
 			Phase:                currentNodePhase,
-			//LastAttemptStartedAt: &v1.Time{},
-			//Error:                err,
 		}
 
 		downstreamNodeSpec := &v1alpha1.NodeSpec{
@@ -2584,7 +2579,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 		cacheable                  bool
 		cacheStatus                core.CatalogCacheStatus
 		cacheSerializable          bool
-		cacheSerializeStatus       core.CatalogReservation_Status
+		cacheReservationOwnerID    string
 		currentNodePhase           v1alpha1.NodePhase
 		nextNodePhase              v1alpha1.NodePhase
 		currentDownstreamNodePhase v1alpha1.NodePhase
@@ -2595,7 +2590,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			true,
 			core.CatalogCacheStatus_CACHE_MISS,
 			false,
-			core.CatalogReservation_RESERVATION_DISABLED,
+			"",
 			v1alpha1.NodePhaseNotYetStarted,
 			v1alpha1.NodePhaseQueued,
 			v1alpha1.NodePhaseNotYetStarted,
@@ -2606,7 +2601,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			true,
 			core.CatalogCacheStatus_CACHE_HIT,
 			false,
-			core.CatalogReservation_RESERVATION_DISABLED,
+			"",
 			v1alpha1.NodePhaseNotYetStarted,
 			v1alpha1.NodePhaseSucceeded,
 			v1alpha1.NodePhaseNotYetStarted,
@@ -2617,7 +2612,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			true,
 			core.CatalogCacheStatus_CACHE_HIT,
 			true,
-			core.CatalogReservation_RESERVATION_EXISTS,
+			"another-node",
 			v1alpha1.NodePhaseQueued,
 			v1alpha1.NodePhaseSucceeded,
 			v1alpha1.NodePhaseNotYetStarted,
@@ -2628,7 +2623,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			true,
 			core.CatalogCacheStatus_CACHE_MISS,
 			true,
-			core.CatalogReservation_RESERVATION_EXISTS,
+			"another-node",
 			v1alpha1.NodePhaseQueued,
 			v1alpha1.NodePhaseQueued,
 			v1alpha1.NodePhaseNotYetStarted,
@@ -2639,7 +2634,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			true,
 			core.CatalogCacheStatus_CACHE_MISS,
 			true,
-			core.CatalogReservation_RESERVATION_ACQUIRED,
+			fmt.Sprintf("%s-%d", currentNodeID, 0),
 			v1alpha1.NodePhaseQueued,
 			v1alpha1.NodePhaseRunning,
 			v1alpha1.NodePhaseNotYetStarted,
@@ -2650,7 +2645,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			true,
 			core.CatalogCacheStatus_CACHE_MISS,
 			true,
-			core.CatalogReservation_RESERVATION_EXISTS,
+			"another-node",
 			v1alpha1.NodePhaseRunning,
 			v1alpha1.NodePhaseRunning,
 			v1alpha1.NodePhaseNotYetStarted,
@@ -2678,6 +2673,8 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			catalogClient := &catalogmocks.Client{}
 			catalogClient.OnGetMatch(mock.Anything, mock.Anything).
 				Return(pluginscatalog.NewCatalogEntry(nil, pluginscatalog.NewStatus(test.cacheStatus, nil)), nil)
+			catalogClient.OnGetOrExtendReservationMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+				Return(&datacatalog.Reservation{OwnerId: test.cacheReservationOwnerID}, nil)
 
 			mockHandler := &nodeHandlerMocks.CacheableNode{}
 			mockHandler.OnIsCacheableMatch(
@@ -2690,6 +2687,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 				).Return(false, false, nil)
 			mockHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).
 				Return(pluginscatalog.Key{Identifier: core.Identifier{Name: currentNodeID}}, nil)
+			mockHandler.OnHandleMatch(mock.Anything, mock.Anything).Return(handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(nil)), nil)
 			mockHandler.OnFinalizeRequiredMatch(mock.Anything).Return(false)
 
 			nodeExecutor := setupNodeExecutor(t, catalogClient, dataStore, mockHandler, testScope.NewSubScope("node_executor"))
