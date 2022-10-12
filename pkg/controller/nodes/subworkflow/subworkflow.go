@@ -118,7 +118,8 @@ func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx handler
 				errMsg := fmt.Sprintf("Failed to copy subworkflow outputs from [%v] to [%v]", sourcePath, destinationPath)
 				return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.SubWorkflowExecutionFailed, errMsg, nil)), nil
 			}
-			oInfo = &handler.OutputInfo{OutputURI: destinationPath}
+			DeckURI := v1alpha1.GetDeckFile(endNodeStatus.GetOutputDir())
+			oInfo = &handler.OutputInfo{OutputURI: destinationPath, DeckURI: &DeckURI}
 		}
 
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{

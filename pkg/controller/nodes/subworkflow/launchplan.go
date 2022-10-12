@@ -213,8 +213,8 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 					return handler.UnknownTransition, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "failed to copy outputs for child workflow")
 				}
 			}
-
-			oInfo = &handler.OutputInfo{OutputURI: outputFile}
+			deckURI := v1alpha1.GetDeckFile(nCtx.NodeStatus().GetOutputDir())
+			oInfo = &handler.OutputInfo{OutputURI: outputFile, DeckURI: &deckURI}
 		}
 
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{

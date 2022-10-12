@@ -37,6 +37,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog/datacatalog"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
 )
@@ -591,8 +592,8 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 				logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
 				return handler.UnknownTransition, err
 			}
-
-			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), nil, entry)
+			deckPath := storage.DataReference(tCtx.ow.GetReader().GetOutputMetadata(ctx)[datacatalog.DeckURIKey])
+			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), &deckPath, entry)
 		} else {
 			logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
 			pluginTrns.PopulateCacheInfo(entry)

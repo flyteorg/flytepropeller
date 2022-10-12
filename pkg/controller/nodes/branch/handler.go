@@ -3,7 +3,6 @@ package branch
 import (
 	"context"
 	"fmt"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
@@ -148,8 +147,10 @@ func (b *branchHandler) recurseDownstream(ctx context.Context, nCtx handler.Node
 
 	if downstreamStatus.IsComplete() {
 		// For branch node we set the output node to be the same as the child nodes output
+		deckURI := v1alpha1.GetDeckFile(childNodeStatus.GetOutputDir())
 		phase := handler.PhaseInfoSuccess(&handler.ExecutionInfo{
-			OutputInfo: &handler.OutputInfo{OutputURI: v1alpha1.GetOutputsFile(childNodeStatus.GetOutputDir())},
+			OutputInfo: &handler.OutputInfo{OutputURI: v1alpha1.GetOutputsFile(childNodeStatus.GetOutputDir()),
+				DeckURI: &deckURI},
 		})
 
 		return handler.DoTransition(handler.TransitionTypeEphemeral, phase), nil

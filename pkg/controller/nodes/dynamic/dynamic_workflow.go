@@ -313,8 +313,8 @@ func (d dynamicNodeTaskNodeHandler) progressDynamicWorkflow(ctx context.Context,
 					), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: "Failed to copy subworkflow outputs"},
 					nil
 			}
-
-			o = &handler.OutputInfo{OutputURI: destinationPath}
+			deckURI := v1alpha1.GetDeckFile(endNodeStatus.GetOutputDir())
+			o = &handler.OutputInfo{OutputURI: destinationPath, DeckURI: &deckURI}
 		}
 
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{

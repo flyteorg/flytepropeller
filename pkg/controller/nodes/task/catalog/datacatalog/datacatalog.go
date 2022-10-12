@@ -137,7 +137,7 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (catalog.Entry
 	md := EventCatalogMetadata(dataset.GetId(), relevantTag, source)
 
 	outputs, err := GenerateTaskOutputsFromArtifact(key.Identifier, key.TypedInterface, artifact)
-	deckURI := storage.DataReference(artifact.GetMetadata().KeyMap[deckURIKey])
+	deckURI := storage.DataReference(artifact.GetMetadata().KeyMap[DeckURIKey])
 	if err != nil {
 		logger.Errorf(ctx, "DataCatalog failed to get outputs from artifact %+v, err: %+v", artifact.Id, err)
 		return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, &deckURI, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, md)), err

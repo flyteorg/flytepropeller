@@ -219,7 +219,7 @@ const (
 	execProjectKey     = "exec-project"
 	execNodeIDKey      = "exec-node"
 	execTaskAttemptKey = "exec-attempt"
-	deckURIKey         = "deck-uri"
+	DeckURIKey         = "deck-uri"
 )
 
 // Understanding Catalog Identifiers
