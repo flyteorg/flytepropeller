@@ -4,9 +4,10 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"time"
+
 	"github.com/flyteorg/flytestdlib/storage"
 	"golang.org/x/exp/maps"
-	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
@@ -137,14 +138,22 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (catalog.Entry
 	md := EventCatalogMetadata(dataset.GetId(), relevantTag, source)
 
 	outputs, err := GenerateTaskOutputsFromArtifact(key.Identifier, key.TypedInterface, artifact)
-	deckURI := storage.DataReference(artifact.GetMetadata().KeyMap[DeckURIKey])
+	var deckURI *storage.DataReference
+	if artifact.GetMetadata() != nil {
+		deckURIValue, ok := artifact.GetMetadata().KeyMap[DeckURIKey]
+		if ok {
+			reference := storage.DataReference(deckURIValue)
+			deckURI = &reference
+		}
+	}
+
 	if err != nil {
 		logger.Errorf(ctx, "DataCatalog failed to get outputs from artifact %+v, err: %+v", artifact.Id, err)
-		return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, &deckURI, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, md)), err
+		return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, deckURI, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, md)), err
 	}
 
 	logger.Infof(ctx, "Retrieved %v outputs from artifact %v, tag: %v", len(outputs.Literals), artifact.Id, tag)
-	return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, &deckURI, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, md)), nil
+	return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, deckURI, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, md)), nil
 }
 
 func (m *CatalogClient) CreateDataset(ctx context.Context, key catalog.Key, metadata *datacatalog.Metadata) (*datacatalog.DatasetID, error) {
