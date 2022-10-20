@@ -109,14 +109,6 @@ func (r *resourceVersionCaching) UpdateStatus(ctx context.Context, workflow *v1a
 
 func (r *resourceVersionCaching) Update(ctx context.Context, workflow *v1alpha1.FlyteWorkflow, priorityClass PriorityClass) (
 	newWF *v1alpha1.FlyteWorkflow, err error) {
-	// If the workflow has any managed fields setting the array to one empty ManagedField clears them in the CRD.
-	// FlyteWorkflow CRDs are only managed by a single FlytePropeller instance and therefore the managed fields paradigm
-	// does not add useful functionality. Clearing them reduces CRD size, improving etcd I/O performance.
-	if len(workflow.ObjectMeta.ManagedFields) > 0 {
-		workflow.ObjectMeta.ManagedFields = workflow.ObjectMeta.ManagedFields[:1]
-		workflow.ObjectMeta.ManagedFields[0] = metav1.ManagedFieldsEntry{}
-	}
-
 	newWF, err = r.w.Update(ctx, workflow, priorityClass)
 	if err != nil {
 		return nil, err
