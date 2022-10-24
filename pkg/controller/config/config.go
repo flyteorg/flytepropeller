@@ -67,7 +67,7 @@ var (
 			BatchSize: -1,
 			Queue: WorkqueueConfig{
 				Type:      WorkqueueTypeMaxOfRateLimiter,
-				BaseDelay: config.Duration{Duration: time.Second * 5},
+				BaseDelay: config.Duration{Duration: time.Second * 0},
 				MaxDelay:  config.Duration{Duration: time.Second * 60},
 				Rate:      100,
 				Capacity:  1000,
