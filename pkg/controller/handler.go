@@ -22,11 +22,10 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/flyteorg/flytestdlib/storage"
+	"github.com/flyteorg/flytestdlib/telemetryutils"
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"go.opentelemetry.io/otel"
-	//"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -182,14 +181,16 @@ func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.F
 // </pre>
 func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	var span trace.Span
-	ctx, span = otel.Tracer("github.com/flyteorg/flytepropeller").Start(ctx, "HandleWorkflow")
+	ctx, span = telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "HandleWorkflow")
 	defer span.End()
 
 	logger.Infof(ctx, "Processing Workflow.")
 	defer logger.Infof(ctx, "Completed processing workflow.")
 
 	// Get the FlyteWorkflow resource with this namespace/name
+	_, wfStoreGetSpan := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "WorkflowStoreGet")
 	w, fetchErr := p.wfStore.Get(ctx, namespace, name)
+	wfStoreGetSpan.End()
 	if fetchErr != nil {
 		if workflowstore.IsNotFound(fetchErr) {
 			p.metrics.WorkflowNotFound.Inc()
@@ -223,11 +224,13 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	// closure so that these fields may be temporarily repopulated.
 	var wfClosureCrdFields *k8s.WfClosureCrdFields
 	if len(w.WorkflowClosureReference) > 0 {
+		_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "PopulatingCRDOffload")
 		t := p.metrics.WorkflowClosureReadTime.Start(ctx)
 
 		wfClosure := &admin.WorkflowClosure{}
 		err := p.store.ReadProtobuf(ctx, w.WorkflowClosureReference, wfClosure)
 		if err != nil {
+			span.End()
 			t.Stop()
 			logger.Errorf(ctx, "Failed to retrieve workflow closure data from '%s' with error '%s'", w.WorkflowClosureReference, err)
 			return err
@@ -235,11 +238,13 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 
 		wfClosureCrdFields, err = k8s.BuildWfClosureCrdFields(wfClosure.CompiledWorkflow)
 		if err != nil {
+			span.End()
 			t.Stop()
 			logger.Errorf(ctx, "Failed to parse workflow closure data from '%s' with error '%s'", w.WorkflowClosureReference, err)
 			return err
 		}
 
+		span.End()
 		t.Stop()
 	}
 
@@ -252,7 +257,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	}
 
 	for streak = 0; streak < maxLength; streak++ {
-		_, span := otel.Tracer("github.com/flyteorg/flytepropeller").Start(ctx, "Streak")
+		ctx, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "Streak")
 
 		// if the wfClosureCrdFields struct is not nil then it contains static workflow data which
 		// has been offloaded to the blobstore. we must set these fields so they're available
@@ -350,7 +355,9 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		// update the GetExecutionStatus block of the FlyteWorkflow resource. UpdateStatus will not
 		// allow changes to the Spec of the resource, which is ideal for ensuring
 		// nothing other than resource status has been updated.
+		_, wfStoreUpdateSpan := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "WorkflowStoreUpdate")
 		newWf, updateErr := p.wfStore.Update(ctx, mutatedWf, workflowstore.PriorityClassCritical)
+		wfStoreUpdateSpan.End()
 		if updateErr != nil {
 			span.End()
 			t.Stop()

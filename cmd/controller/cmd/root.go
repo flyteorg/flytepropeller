@@ -24,12 +24,12 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	/*"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"*/
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 
 	"golang.org/x/sync/errgroup"
 
@@ -126,7 +126,7 @@ func executeRootCmd(baseCtx context.Context, cfg *config2.Config) error {
 		labeled.SetMetricKeys(keys...)
 	}
 
-	/*// TODO - add opentelemetry exporter
+	// TODO - add opentelemetry exporter
 	f, err := os.Create("traces.txt")
 	if err != nil {
 		return err
@@ -164,7 +164,7 @@ func executeRootCmd(baseCtx context.Context, cfg *config2.Config) error {
 		return nil
 	}()
 
-	otel.SetTracerProvider(tracerProvider)*/
+	otel.SetTracerProvider(tracerProvider)
 
 	// Add the propeller subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
 	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(cfg.LimitNamespace)

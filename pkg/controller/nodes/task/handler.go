@@ -28,6 +28,7 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/flyteorg/flytestdlib/storage"
+	"github.com/flyteorg/flytestdlib/telemetryutils"
 	"github.com/golang/protobuf/ptypes"
 	regErrors "github.com/pkg/errors"
 
@@ -535,6 +536,10 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
 	ttype := nCtx.TaskReader().GetTaskType()
 	ctx = contextutils.WithTaskType(ctx, ttype)
+
+	ctx, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "HandleTask")
+	defer span.End()
+
 	p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
 	if err != nil {
 		return handler.UnknownTransition, errors.Wrapf(errors.UnsupportedTaskTypeError, nCtx.NodeID(), err, "unable to resolve plugin")

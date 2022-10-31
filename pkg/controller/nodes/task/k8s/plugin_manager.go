@@ -24,6 +24,7 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/telemetryutils"
 
 	"golang.org/x/time/rate"
 
@@ -216,10 +217,14 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 		backOffHandler := e.backOffController.GetOrCreateHandler(ctx, key, cfg.BackOffConfig.BaseSecond, cfg.BackOffConfig.MaxDuration.Duration)
 
 		err = backOffHandler.Handle(ctx, func() error {
+			_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "K8sCreate")
+			defer span.End()
 			return e.kubeClient.GetClient().Create(ctx, o)
 		}, podRequestedResources)
 	} else {
+		_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "K8sCreate")
 		err = e.kubeClient.GetClient().Create(ctx, o)
+		span.End()
 	}
 
 	if err != nil && !k8serrors.IsAlreadyExists(err) {
@@ -258,7 +263,9 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 	e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())
 	nsName := k8stypes.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
 	// Attempt to get resource from informer cache, if not found, retrieve it from API server.
+	_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "K8sGet")
 	if err := e.kubeClient.GetClient().Get(ctx, nsName, o); err != nil {
+		span.End()
 		if IsK8sObjectNotExists(err) {
 			// This happens sometimes because a node gets removed and K8s deletes the pod. This will result in a
 			// Pod does not exist error. This should be retried using the retry policy
@@ -270,6 +277,7 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 		logger.Warningf(ctx, "Failed to retrieve Resource Details with name: %v. Error: %v", nsName, err)
 		return pluginsCore.UnknownTransition, err
 	}
+	span.End()
 	if o.GetDeletionTimestamp() != nil {
 		e.metrics.ResourceDeleted.Inc(ctx)
 	}
@@ -360,18 +368,26 @@ func (e PluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecution
 
 	if err != nil {
 	} else if deleteResource {
+		_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "K8sDelete")
 		err = e.kubeClient.GetClient().Delete(ctx, resourceToFinalize)
+		span.End()
 	} else {
 		if behavior.Patch != nil && behavior.Update == nil {
+			_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "K8sPatch")
 			err = e.kubeClient.GetClient().Patch(ctx, resourceToFinalize, behavior.Patch.Patch, behavior.Patch.Options...)
+			span.End()
 		} else if behavior.Patch == nil && behavior.Update != nil {
+			_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "K8sUpdate")
 			err = e.kubeClient.GetClient().Update(ctx, resourceToFinalize, behavior.Update.Options...)
+			span.End()
 		} else {
 			err = errors.Errorf(errors.RuntimeFailure, "AbortBehavior for resource %v must specify either a Patch and an Update operation if Delete is set to false. Only one can be supplied.", resourceToFinalize.GetName())
 		}
 		if behavior.DeleteOnErr && err != nil {
 			logger.Warningf(ctx, "Failed to apply AbortBehavior for resource %v with error %v. Will attempt to delete resource.", resourceToFinalize.GetName(), err)
+			_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "K8sDelete")
 			err = e.kubeClient.GetClient().Delete(ctx, resourceToFinalize)
+			span.End()
 		}
 	}
 
@@ -387,12 +403,15 @@ func (e PluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecution
 func (e *PluginManager) ClearFinalizers(ctx context.Context, o client.Object) error {
 	if len(o.GetFinalizers()) > 0 {
 		o.SetFinalizers([]string{})
+		_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "K8sUpdate")
 		err := e.kubeClient.GetClient().Update(ctx, o)
 		if err != nil && !IsK8sObjectNotExists(err) {
+			span.End()
 			logger.Warningf(ctx, "Failed to clear finalizers for Resource with name: %v/%v. Error: %v",
 				o.GetNamespace(), o.GetName(), err)
 			return err
 		}
+		span.End()
 	} else {
 		logger.Debugf(ctx, "Finalizers are already empty for Resource with name: %v/%v",
 			o.GetNamespace(), o.GetName())
@@ -419,7 +438,9 @@ func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecu
 	// Attempt to cleanup finalizers so that the object may be deleted/garbage collected. We try to clear them for all
 	// objects, regardless of whether or not InjectFinalizer is configured to handle all cases where InjectFinalizer is
 	// enabled/disabled during object execution.
+	_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "K8sGet")
 	if err := e.kubeClient.GetClient().Get(ctx, nsName, o); err != nil {
+		span.End()
 		if IsK8sObjectNotExists(err) {
 			return nil
 		}
@@ -428,6 +449,7 @@ func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecu
 		logger.Warningf(ctx, "Failed in finalizing get Resource with name: %v. Error: %v", nsName, err)
 		return err
 	}
+	span.End()
 
 	// This must happen after sending admin event. It's safe against partial failures because if the event failed, we will
 	// simply retry in the next round. If the event succeeded but this failed, we will try again the next round to send
@@ -440,7 +462,9 @@ func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecu
 	// If we should delete the resource when finalize is called, do a best effort delete.
 	if cfg.DeleteResourceOnFinalize && !e.plugin.GetProperties().DisableDeleteResourceOnFinalize {
 		// Attempt to delete resource, if not found, return success.
+		_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "K8sDelete")
 		if err := e.kubeClient.GetClient().Delete(ctx, o); err != nil {
+			span.End()
 			if IsK8sObjectNotExists(err) {
 				return errs.ErrorOrDefault()
 			}
@@ -450,6 +474,7 @@ func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecu
 			logger.Warningf(ctx, "Failed in finalizing. Failed to delete Resource with name: %v. Error: %v", nsName, err)
 			errs.Append(fmt.Errorf("finalize: failed to delete resource with name [%v]. Error: %w", nsName, err))
 		}
+		span.End()
 	}
 
 	return errs.ErrorOrDefault()
