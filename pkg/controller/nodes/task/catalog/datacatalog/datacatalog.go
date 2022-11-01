@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/flyteorg/flytestdlib/storage"
+	"golang.org/x/exp/maps"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
@@ -135,13 +138,22 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (catalog.Entry
 	md := EventCatalogMetadata(dataset.GetId(), relevantTag, source)
 
 	outputs, err := GenerateTaskOutputsFromArtifact(key.Identifier, key.TypedInterface, artifact)
+	var deckURI *storage.DataReference
+	if artifact.GetMetadata() != nil {
+		deckURIValue, ok := artifact.GetMetadata().KeyMap[DeckURIKey]
+		if ok {
+			reference := storage.DataReference(deckURIValue)
+			deckURI = &reference
+		}
+	}
+
 	if err != nil {
 		logger.Errorf(ctx, "DataCatalog failed to get outputs from artifact %+v, err: %+v", artifact.Id, err)
-		return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, md)), err
+		return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, deckURI, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, md)), err
 	}
 
 	logger.Infof(ctx, "Retrieved %v outputs from artifact %v, tag: %v", len(outputs.Literals), artifact.Id, tag)
-	return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, nil, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, md)), nil
+	return catalog.NewCatalogEntry(ioutils.NewInMemoryOutputReader(outputs, deckURI, nil), catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, md)), nil
 }
 
 func (m *CatalogClient) CreateDataset(ctx context.Context, key catalog.Key, metadata *datacatalog.Metadata) (*datacatalog.DatasetID, error) {
@@ -240,11 +252,12 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 	}
 
 	// Create the artifact for the execution that belongs in the task
-	cachedArtifact, err := m.CreateArtifact(ctx, datasetID, outputs, GetArtifactMetadataForSource(metadata.TaskExecutionIdentifier))
+	artifactMetadata := GetArtifactMetadataForSource(metadata.TaskExecutionIdentifier)
+	maps.Copy(artifactMetadata.KeyMap, reader.GetOutputMetadata(ctx))
+	cachedArtifact, err := m.CreateArtifact(ctx, datasetID, outputs, artifactMetadata)
 	if err != nil {
 		return catalog.Status{}, errors.Wrapf(err, "failed to create dataset for ID %s", key.Identifier.String())
 	}
-
 	// Tag the artifact since it is the cached artifact
 	tagName, err := GenerateArtifactTagName(ctx, inputs)
 	if err != nil {
