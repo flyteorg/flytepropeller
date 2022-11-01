@@ -178,6 +178,8 @@ func BuildFlyteWorkflow(wfClosure *core.CompiledWorkflowClosure, inputs *core.Li
 	} else if requiresInputs(wf) {
 		errs.Collect(errors.NewValueRequiredErr("root", "inputs"))
 		return nil, errs
+	} else {
+		inputs = &core.LiteralMap{}
 	}
 
 	for _, t := range tasks {
