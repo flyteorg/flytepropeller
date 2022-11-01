@@ -117,6 +117,7 @@ func TestBuildFlyteWorkflow(t *testing.T) {
 	assert.Nil(t, wf.WorkflowSpec.Nodes[common.StartNodeID].Interruptible)
 	assert.Equal(t, "wf-1", wf.Labels[WorkflowNameLabel])
 	assert.Equal(t, "4", wf.Labels[ShardKeyLabel])
+	assert.NotNil(t, wf.Inputs)
 	assert.NoError(t, err)
 	assert.NotNil(t, wf)
 	errors.SetConfig(errors.Config{})
