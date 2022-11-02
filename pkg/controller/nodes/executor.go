@@ -55,8 +55,8 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
+	//"go.opentelemetry.io/otel/attribute"
+	//"go.opentelemetry.io/otel/trace"
 )
 
 type nodeMetrics struct {
