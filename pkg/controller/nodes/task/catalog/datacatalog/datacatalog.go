@@ -326,7 +326,21 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 
 	// Overwrite existing artifact
 	if overwrite {
-		return m.UpdateArtifact(ctx, key, datasetID, inputs, outputs, metadata)
+		catalogStatus, err := m.UpdateArtifact(ctx, key, datasetID, inputs, outputs, metadata)
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				// No existing artifact found (e.g. initial execution of task with overwrite flag already set),
+				// silently ignore error and create artifact instead to make overwriting an idempotent operation.
+				logger.Debugf(ctx, "Artifact %+v for dataset %+v does not exist while updating, creating instead", key, datasetID)
+				return m.CreateArtifact(ctx, key, datasetID, inputs, outputs, metadata)
+			}
+
+			logger.Errorf(ctx, "Failed to update artifact %+v for dataset %+v: %v", key, datasetID, err)
+			return catalog.Status{}, err
+		}
+
+		logger.Debugf(ctx, "Successfully updated artifact %+v for dataset %+v", key, datasetID)
+		return catalogStatus, nil
 	}
 
 	// Artifact does not exist yet, create new one
