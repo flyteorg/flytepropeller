@@ -566,7 +566,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		// This is assumed to be first time. we will check catalog and call handle
 		// If the cache should be skipped (requested by user for the execution), do not check datacatalog for any cached
 		// data, but instead always perform calculations again and overwrite the stored data after successful execution.
-		if nCtx.ExecutionContext().GetExecutionConfig().SkipCache {
+		if nCtx.ExecutionContext().GetExecutionConfig().OverwriteCache {
 			logger.Info(ctx, "Execution config forced cache skip, not checking catalog")
 			pluginTrns.PopulateCacheInfo(catalog.NewCatalogEntry(nil, cacheSkipped))
 			t.metrics.catalogSkipCount.Inc(ctx)

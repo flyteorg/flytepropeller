@@ -2,19 +2,15 @@ module github.com/flyteorg/flytepropeller
 
 go 1.18
 
-replace (
-	github.com/flyteorg/flyteidl => github.com/blackshark-ai/flyteidl v0.24.22-0.20221005103053-1172311340ca
-	github.com/flyteorg/flyteplugins => github.com/blackshark-ai/flyteplugins v1.0.2-0.20220927114241-fb57ce261bb5
-	github.com/flyteorg/flytestdlib => github.com/blackshark-ai/flytestdlib v1.0.1-0.20220927112514-285faf0b16b4
-)
+replace github.com/flyteorg/flyteplugins => github.com/blackshark-ai/flyteplugins v1.0.2-0.20220927114241-fb57ce261bb5
 
 require (
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/fatih/color v1.13.0
-	github.com/flyteorg/flyteidl v1.1.19
+	github.com/flyteorg/flyteidl v1.2.3
 	github.com/flyteorg/flyteplugins v1.0.17
-	github.com/flyteorg/flytestdlib v1.0.5
+	github.com/flyteorg/flytestdlib v1.0.11
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/go-test/deep v1.0.7

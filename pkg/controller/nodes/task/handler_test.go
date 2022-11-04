@@ -734,7 +734,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 
 func Test_task_Handle_Catalog(t *testing.T) {
 
-	createNodeContext := func(recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder, skipCache bool) *nodeMocks.NodeExecutionContext {
+	createNodeContext := func(recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder, overwriteCache bool) *nodeMocks.NodeExecutionContext {
 		wfExecID := &core.WorkflowExecutionIdentifier{
 			Project: "project",
 			Domain:  "domain",
@@ -818,7 +818,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 		nCtx.OnEnqueueOwnerFunc().Return(nil)
 
 		executionContext := &mocks.ExecutionContext{}
-		executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{SkipCache: skipCache})
+		executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{OverwriteCache: overwriteCache})
 		executionContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
 		executionContext.OnGetParentInfo().Return(nil)
 		nCtx.OnExecutionContext().Return(executionContext)
@@ -990,7 +990,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 
 func Test_task_Handle_Reservation(t *testing.T) {
 
-	createNodeContext := func(recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder, skipCache bool) *nodeMocks.NodeExecutionContext {
+	createNodeContext := func(recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder, overwriteCache bool) *nodeMocks.NodeExecutionContext {
 		wfExecID := &core.WorkflowExecutionIdentifier{
 			Project: "project",
 			Domain:  "domain",
@@ -1076,7 +1076,7 @@ func Test_task_Handle_Reservation(t *testing.T) {
 		nCtx.OnEnqueueOwnerFunc().Return(nil)
 
 		executionContext := &mocks.ExecutionContext{}
-		executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{SkipCache: skipCache})
+		executionContext.OnGetExecutionConfig().Return(v1alpha1.ExecutionConfig{OverwriteCache: overwriteCache})
 		executionContext.OnGetEventVersion().Return(v1alpha1.EventVersion0)
 		executionContext.OnGetParentInfo().Return(nil)
 		executionContext.OnIncrementParallelism().Return(1)
