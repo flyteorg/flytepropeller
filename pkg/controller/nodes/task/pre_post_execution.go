@@ -221,10 +221,17 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 
 	logger.Infof(ctx, "Catalog CacheEnabled. recording execution [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
 	// ignores discovery write failures
-	s, err2 := t.catalog.Put(ctx, key, r, m, executionConfig.OverwriteCache)
-	if err2 != nil {
+	var s catalog.Status
+	if executionConfig.OverwriteCache {
+		// Overwrite existing artifact (will create instead of no existing data was found)
+		s, err = t.catalog.Update(ctx, key, r, m)
+	} else {
+		// Explicitly create new artifact
+		s, err = t.catalog.Put(ctx, key, r, m)
+	}
+	if err != nil {
 		t.metrics.catalogPutFailureCount.Inc(ctx)
-		logger.Errorf(ctx, "Failed to write results to catalog for Task [%v]. Error: %v", tk.GetId(), err2)
+		logger.Errorf(ctx, "Failed to write results to catalog for Task [%v]. Error: %v", tk.GetId(), err)
 		return catalog.NewStatus(core.CatalogCacheStatus_CACHE_PUT_FAILURE, s.GetMetadata()), nil, nil
 	}
 	t.metrics.catalogPutSuccessCount.Inc(ctx)

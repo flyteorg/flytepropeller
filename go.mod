@@ -2,7 +2,7 @@ module github.com/flyteorg/flytepropeller
 
 go 1.18
 
-replace github.com/flyteorg/flyteplugins => github.com/blackshark-ai/flyteplugins v1.0.2-0.20220927114241-fb57ce261bb5
+replace github.com/flyteorg/flyteplugins => github.com/blackshark-ai/flyteplugins v1.0.2-0.20221104131113-0171adc8b622
 
 require (
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295

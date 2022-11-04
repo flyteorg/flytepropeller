@@ -309,10 +309,8 @@ func (m *CatalogClient) UpdateArtifact(ctx context.Context, key catalog.Key, dat
 // the hash of the input values.
 // The CatalogClient will ensure a dataset exists for the Artifact to be created. A Dataset represents the
 // project/domain/name/version of the task executed.
-// If overwrite is set to true, Put will replace the ArtifactData of an existing Artifact with the new task execution
-// output.
-// Otherwise, CatalogClient will create an Artifact tagged with the input value hash and store the provided execution data.
-func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.OutputReader, metadata catalog.Metadata, overwrite bool) (catalog.Status, error) {
+// Lastly, CatalogClient will create an Artifact tagged with the input value hash and store the provided execution data.
+func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.OutputReader, metadata catalog.Metadata) (catalog.Status, error) {
 	// Ensure dataset exists, idempotent operations. Populate Metadata for later recovery
 	datasetID, err := m.CreateDataset(ctx, key, GetDatasetMetadataForSource(metadata.TaskExecutionIdentifier))
 	if err != nil {
@@ -324,27 +322,42 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 		return catalog.Status{}, err
 	}
 
-	// Overwrite existing artifact
-	if overwrite {
-		catalogStatus, err := m.UpdateArtifact(ctx, key, datasetID, inputs, outputs, metadata)
-		if err != nil {
-			if status.Code(err) == codes.NotFound {
-				// No existing artifact found (e.g. initial execution of task with overwrite flag already set),
-				// silently ignore error and create artifact instead to make overwriting an idempotent operation.
-				logger.Debugf(ctx, "Artifact %+v for dataset %+v does not exist while updating, creating instead", key, datasetID)
-				return m.CreateArtifact(ctx, key, datasetID, inputs, outputs, metadata)
-			}
+	return m.CreateArtifact(ctx, key, datasetID, inputs, outputs, metadata)
+}
 
-			logger.Errorf(ctx, "Failed to update artifact %+v for dataset %+v: %v", key, datasetID, err)
-			return catalog.Status{}, err
-		}
-
-		logger.Debugf(ctx, "Successfully updated artifact %+v for dataset %+v", key, datasetID)
-		return catalogStatus, nil
+// Update stores the result of a task execution as a cached Artifact, overwriting any already stored data from a previous
+// execution.
+// The CatalogClient will ensure the referenced dataset exists and will silently create a new Artifact if the referenced
+// key does not exist in datacatalog yet.
+// After the operation succeeds, an artifact with the given key and data will be stored in catalog and a tag with the
+// has of the input values will exist.
+func (m *CatalogClient) Update(ctx context.Context, key catalog.Key, reader io.OutputReader, metadata catalog.Metadata) (catalog.Status, error) {
+	// Ensure dataset exists, idempotent operations. Populate Metadata for later recovery
+	datasetID, err := m.CreateDataset(ctx, key, GetDatasetMetadataForSource(metadata.TaskExecutionIdentifier))
+	if err != nil {
+		return catalog.Status{}, err
 	}
 
-	// Artifact does not exist yet, create new one
-	return m.CreateArtifact(ctx, key, datasetID, inputs, outputs, metadata)
+	inputs, outputs, err := m.prepareInputsAndOutputs(ctx, key, reader)
+	if err != nil {
+		return catalog.Status{}, err
+	}
+
+	catalogStatus, err := m.UpdateArtifact(ctx, key, datasetID, inputs, outputs, metadata)
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			// No existing artifact found (e.g. initial execution of task with overwrite flag already set),
+			// silently ignore error and create artifact instead to make overwriting an idempotent operation.
+			logger.Debugf(ctx, "Artifact %+v for dataset %+v does not exist while updating, creating instead", key, datasetID)
+			return m.CreateArtifact(ctx, key, datasetID, inputs, outputs, metadata)
+		}
+
+		logger.Errorf(ctx, "Failed to update artifact %+v for dataset %+v: %v", key, datasetID, err)
+		return catalog.Status{}, err
+	}
+
+	logger.Debugf(ctx, "Successfully updated artifact %+v for dataset %+v", key, datasetID)
+	return catalogStatus, nil
 }
 
 // GetOrExtendReservation attempts to get a reservation for the cachable task. If you have

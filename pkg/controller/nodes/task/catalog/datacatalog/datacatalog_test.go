@@ -438,7 +438,7 @@ func TestCatalog_Put(t *testing.T) {
 				Name: "test",
 			},
 			TaskExecutionIdentifier: nil,
-		}, false)
+		})
 		assert.NoError(t, err)
 		assert.Equal(t, core.CatalogCacheStatus_CACHE_POPULATED, s.GetCacheStatus())
 		assert.NotNil(t, s.GetMetadata())
@@ -474,7 +474,7 @@ func TestCatalog_Put(t *testing.T) {
 				return true
 			}),
 		).Return(&datacatalog.AddTagResponse{}, nil)
-		s, err := catalogClient.Put(ctx, noInputOutputKey, &mocks2.OutputReader{}, catalog.Metadata{}, false)
+		s, err := catalogClient.Put(ctx, noInputOutputKey, &mocks2.OutputReader{}, catalog.Metadata{})
 		assert.NoError(t, err)
 		assert.Equal(t, core.CatalogCacheStatus_CACHE_POPULATED, s.GetCacheStatus())
 		assert.NotNil(t, s.GetMetadata())
@@ -529,7 +529,7 @@ func TestCatalog_Put(t *testing.T) {
 				Name: "test",
 			},
 			TaskExecutionIdentifier: nil,
-		}, false)
+		})
 		assert.NoError(t, err)
 		assert.True(t, createDatasetCalled)
 		assert.True(t, createArtifactCalled)
@@ -537,6 +537,10 @@ func TestCatalog_Put(t *testing.T) {
 		assert.Equal(t, core.CatalogCacheStatus_CACHE_POPULATED, s.GetCacheStatus())
 		assert.NotNil(t, s.GetMetadata())
 	})
+}
+
+func TestCatalog_Update(t *testing.T) {
+	ctx := context.Background()
 
 	t.Run("Overwrite existing cached execution", func(t *testing.T) {
 		ir := &mocks2.InputReader{}
@@ -587,7 +591,7 @@ func TestCatalog_Put(t *testing.T) {
 		newKey := sampleKey
 		newKey.InputReader = ir
 		or := ioutils.NewInMemoryOutputReader(sampleParameters, nil, nil)
-		s, err := discovery.Put(ctx, newKey, or, catalog.Metadata{
+		s, err := discovery.Update(ctx, newKey, or, catalog.Metadata{
 			WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{
 				Name:    taskID.NodeExecutionId.ExecutionId.Name,
 				Domain:  taskID.NodeExecutionId.ExecutionId.Domain,
@@ -598,7 +602,7 @@ func TestCatalog_Put(t *testing.T) {
 				NodeExecutionId: taskID.NodeExecutionId,
 				RetryAttempt:    0,
 			},
-		}, true)
+		})
 		assert.NoError(t, err)
 		assert.Equal(t, core.CatalogCacheStatus_CACHE_POPULATED, s.GetCacheStatus())
 		assert.NotNil(t, s.GetMetadata())
@@ -677,7 +681,7 @@ func TestCatalog_Put(t *testing.T) {
 		newKey := sampleKey
 		newKey.InputReader = ir
 		or := ioutils.NewInMemoryOutputReader(sampleParameters, nil, nil)
-		s, err := discovery.Put(ctx, newKey, or, catalog.Metadata{
+		s, err := discovery.Update(ctx, newKey, or, catalog.Metadata{
 			WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{
 				Name:    taskID.NodeExecutionId.ExecutionId.Name,
 				Domain:  taskID.NodeExecutionId.ExecutionId.Domain,
@@ -688,7 +692,7 @@ func TestCatalog_Put(t *testing.T) {
 				NodeExecutionId: taskID.NodeExecutionId,
 				RetryAttempt:    0,
 			},
-		}, true)
+		})
 		assert.NoError(t, err)
 		assert.Equal(t, core.CatalogCacheStatus_CACHE_POPULATED, s.GetCacheStatus())
 		assert.NotNil(t, s.GetMetadata())
@@ -723,12 +727,12 @@ func TestCatalog_Put(t *testing.T) {
 		newKey := sampleKey
 		newKey.InputReader = ir
 		or := ioutils.NewInMemoryOutputReader(sampleParameters, nil, nil)
-		s, err := discovery.Put(ctx, newKey, or, catalog.Metadata{
+		s, err := discovery.Update(ctx, newKey, or, catalog.Metadata{
 			WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{
 				Name: "test",
 			},
 			TaskExecutionIdentifier: nil,
-		}, true)
+		})
 		assert.Error(t, err)
 		assert.Equal(t, genericErr, err)
 		assert.Equal(t, core.CatalogCacheStatus_CACHE_DISABLED, s.GetCacheStatus())

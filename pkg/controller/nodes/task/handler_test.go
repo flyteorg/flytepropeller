@@ -940,9 +940,11 @@ func Test_task_Handle_Catalog(t *testing.T) {
 				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.Entry{}, fmt.Errorf("failed to read from catalog"))
 			}
 			if tt.args.catalogWriteError {
-				c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.Status{}, fmt.Errorf("failed to write to catalog"))
+				c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.Status{}, fmt.Errorf("failed to write to catalog"))
+				c.OnUpdateMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.Status{}, fmt.Errorf("failed to write to catalog"))
 			} else {
-				c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
+				c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
+				c.OnUpdateMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
 			}
 			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, testClusterID, promutils.NewTestScope())
 			assert.NoError(t, err)
@@ -981,7 +983,8 @@ func Test_task_Handle_Catalog(t *testing.T) {
 					assert.Equal(t, !tt.args.catalogSkip, r.Exists())
 				}
 				if tt.args.catalogSkip {
-					c.AssertCalled(t, "Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything, true)
+					c.AssertNotCalled(t, "Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+					c.AssertCalled(t, "Update", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 				}
 			}
 		})
@@ -1200,7 +1203,8 @@ func Test_task_Handle_Reservation(t *testing.T) {
 			} else {
 				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewFailedCatalogEntry(catalog.NewStatus(core.CatalogCacheStatus_CACHE_MISS, nil)), nil)
 			}
-			c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
+			c.OnPutMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
+			c.OnUpdateMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, nil), nil)
 			c.OnGetOrExtendReservationMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&datacatalog.Reservation{OwnerId: tt.args.ownerID}, nil)
 			tk, err := New(context.TODO(), mocks.NewFakeKubeClient(), c, eventConfig, testClusterID, promutils.NewTestScope())
 			assert.NoError(t, err)
@@ -1225,7 +1229,13 @@ func Test_task_Handle_Reservation(t *testing.T) {
 				// verify catalog.Put was called appropriately (overwrite param should be `true` if catalog cache is skipped)
 				// Put only gets called in the tests defined above that succeed and have an owner ID defined
 				if tt.want.pluginPhase == pluginCore.PhaseSuccess && len(tt.args.ownerID) > 0 {
-					c.AssertCalled(t, "Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything, tt.args.catalogSkip)
+					if tt.args.catalogSkip {
+						c.AssertNotCalled(t, "Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+						c.AssertCalled(t, "Update", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+					} else {
+						c.AssertCalled(t, "Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+						c.AssertNotCalled(t, "Update", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+					}
 				}
 			}
 		})
