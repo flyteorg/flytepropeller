@@ -181,14 +181,14 @@ func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.F
 // </pre>
 func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	var span trace.Span
-	ctx, span = telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "HandleWorkflow")
+	ctx, span = telemetryutils.NewSpan(ctx, "flytepropeller", "Propeller.Handle")
 	defer span.End()
 
 	logger.Infof(ctx, "Processing Workflow.")
 	defer logger.Infof(ctx, "Completed processing workflow.")
 
 	// Get the FlyteWorkflow resource with this namespace/name
-	_, wfStoreGetSpan := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "WorkflowStoreGet")
+	_, wfStoreGetSpan := telemetryutils.NewSpan(ctx, "flytepropeller", "WorkflowStore.Get")
 	w, fetchErr := p.wfStore.Get(ctx, namespace, name)
 	wfStoreGetSpan.End()
 	if fetchErr != nil {
@@ -224,7 +224,8 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	// closure so that these fields may be temporarily repopulated.
 	var wfClosureCrdFields *k8s.WfClosureCrdFields
 	if len(w.WorkflowClosureReference) > 0 {
-		_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "PopulatingCRDOffload")
+		// TODO @hamersaw - move streaks to their own function to 'defer' spans and metrics
+		_, span := telemetryutils.NewSpan(ctx, "flytepropeller", "Populating Offloaded CRD")
 		t := p.metrics.WorkflowClosureReadTime.Start(ctx)
 
 		wfClosure := &admin.WorkflowClosure{}
@@ -257,7 +258,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	}
 
 	for streak = 0; streak < maxLength; streak++ {
-		ctx, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "Streak")
+		ctx, span := telemetryutils.NewSpan(ctx, "flytepropeller", "Propeller.Streak")
 
 		// if the wfClosureCrdFields struct is not nil then it contains static workflow data which
 		// has been offloaded to the blobstore. we must set these fields so they're available
@@ -355,7 +356,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		// update the GetExecutionStatus block of the FlyteWorkflow resource. UpdateStatus will not
 		// allow changes to the Spec of the resource, which is ideal for ensuring
 		// nothing other than resource status has been updated.
-		_, wfStoreUpdateSpan := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "WorkflowStoreUpdate")
+		_, wfStoreUpdateSpan := telemetryutils.NewSpan(ctx, "flytepropeller", "WorkflowStore.Update")
 		newWf, updateErr := p.wfStore.Update(ctx, mutatedWf, workflowstore.PriorityClassCritical)
 		wfStoreUpdateSpan.End()
 		if updateErr != nil {
