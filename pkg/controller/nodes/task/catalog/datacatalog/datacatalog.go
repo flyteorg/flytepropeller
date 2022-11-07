@@ -272,6 +272,10 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 	return catalog.NewStatus(core.CatalogCacheStatus_CACHE_POPULATED, EventCatalogMetadata(datasetID, tag, nil)), nil
 }
 
+func (m *CatalogClient) Update(_ context.Context, _ catalog.Key, _ io.OutputReader, _ catalog.Metadata) (catalog.Status, error) {
+	return catalog.Status{}, nil
+}
+
 // GetOrExtendReservation attempts to get a reservation for the cachable task. If you have
 // previously acquired a reservation it will be extended. If another entity holds the reservation
 // that is returned.

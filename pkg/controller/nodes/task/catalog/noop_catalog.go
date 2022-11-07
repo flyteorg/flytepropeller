@@ -23,6 +23,10 @@ func (n NOOPCatalog) Put(_ context.Context, _ catalog.Key, _ io.OutputReader, _ 
 	return disabledStatus, nil
 }
 
+func (n NOOPCatalog) Update(_ context.Context, _ catalog.Key, _ io.OutputReader, _ catalog.Metadata) (catalog.Status, error) {
+	return disabledStatus, nil
+}
+
 func (n NOOPCatalog) GetOrExtendReservation(_ context.Context, _ catalog.Key, _ string, _ time.Duration) (*datacatalog.Reservation, error) {
 	return nil, nil
 }
