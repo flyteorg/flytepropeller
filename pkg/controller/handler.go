@@ -181,7 +181,7 @@ func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.F
 // </pre>
 func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	var span trace.Span
-	ctx, span = telemetryutils.NewSpan(ctx, "flytepropeller", "Propeller.Handle")
+	ctx, span = telemetryutils.NewSpan(ctx, "flytepropeller", "pkg.controller.Propeller/Handle")
 	defer span.End()
 
 	logger.Infof(ctx, "Processing Workflow.")

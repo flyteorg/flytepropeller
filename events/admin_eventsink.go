@@ -13,8 +13,13 @@ import (
 	"github.com/flyteorg/flytestdlib/fastcheck"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/telemetryutils"
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/time/rate"
+
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+
+	"google.golang.org/grpc"
 )
 
 type adminEventSink struct {
@@ -126,7 +131,13 @@ func IDFromMessage(message proto.Message) ([]byte, error) {
 
 func initializeAdminClientFromConfig(ctx context.Context) (client service.AdminServiceClient, err error) {
 	cfg := admin2.GetConfig(ctx)
-	clients, err := admin2.NewClientsetBuilder().WithConfig(cfg).Build(ctx)
+	tracerProvider := telemetryutils.GetTracerProvider("admin-client")
+	opt := grpc.WithUnaryInterceptor(
+		otelgrpc.UnaryClientInterceptor(
+			otelgrpc.WithTracerProvider(tracerProvider),
+		),
+	)
+	clients, err := admin2.NewClientsetBuilder().WithDialOptions(opt).WithConfig(cfg).Build(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize clientset. Error: %w", err)
 	}

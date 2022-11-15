@@ -10,7 +10,6 @@ import (
 	"github.com/flyteorg/flytepropeller/events/errors"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
-	"github.com/flyteorg/flytestdlib/telemetryutils"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -60,9 +59,6 @@ func (r *eventRecorder) sinkEvent(ctx context.Context, event proto.Message) erro
 }
 
 func (r *eventRecorder) RecordNodeEvent(ctx context.Context, e *event.NodeExecutionEvent) error {
-	_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "RecordNodeEvent")
-	defer span.End()
-
 	if err, ok := e.GetOutputResult().(*event.NodeExecutionEvent_Error); ok {
 		truncateErrorMessage(err.Error, maxErrorMessageLength)
 	}
@@ -71,9 +67,6 @@ func (r *eventRecorder) RecordNodeEvent(ctx context.Context, e *event.NodeExecut
 }
 
 func (r *eventRecorder) RecordTaskEvent(ctx context.Context, e *event.TaskExecutionEvent) error {
-	_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "RecordTaskEvent")
-	defer span.End()
-
 	if err, ok := e.GetOutputResult().(*event.TaskExecutionEvent_Error); ok {
 		truncateErrorMessage(err.Error, maxErrorMessageLength)
 	}
@@ -82,9 +75,6 @@ func (r *eventRecorder) RecordTaskEvent(ctx context.Context, e *event.TaskExecut
 }
 
 func (r *eventRecorder) RecordWorkflowEvent(ctx context.Context, e *event.WorkflowExecutionEvent) error {
-	_, span := telemetryutils.NewSpan(ctx, "github.com/flyteorg/flytepropeller", "RecordWorkflowEvent")
-	defer span.End()
-
 	if err, ok := e.GetOutputResult().(*event.WorkflowExecutionEvent_Error); ok {
 		truncateErrorMessage(err.Error, maxErrorMessageLength)
 	}
