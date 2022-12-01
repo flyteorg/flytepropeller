@@ -51,6 +51,7 @@ type metrics struct {
 	catalogPutSuccessCount         labeled.Counter
 	catalogMissCount               labeled.Counter
 	catalogHitCount                labeled.Counter
+	catalogSkipCount               labeled.Counter
 	pluginExecutionLatency         labeled.StopWatch
 	pluginQueueLatency             labeled.StopWatch
 	reservationGetSuccessCount     labeled.Counter
@@ -117,11 +118,25 @@ func (p *pluginRequestedTransition) ObservedTransitionAndState(trns pluginCore.T
 	p.pluginStateVersion = pluginStateVersion
 }
 
-func (p *pluginRequestedTransition) ObservedExecutionError(executionError *io.ExecutionError) {
+func (p *pluginRequestedTransition) ObservedExecutionError(executionError *io.ExecutionError, taskMetadata *event.TaskNodeMetadata) {
 	if executionError.IsRecoverable {
 		p.pInfo = pluginCore.PhaseInfoFailed(pluginCore.PhaseRetryableFailure, executionError.ExecutionError, p.pInfo.Info())
 	} else {
 		p.pInfo = pluginCore.PhaseInfoFailed(pluginCore.PhasePermanentFailure, executionError.ExecutionError, p.pInfo.Info())
+	}
+
+	if taskMetadata != nil {
+		p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
+			TaskNodeMetadata: taskMetadata,
+		}
+	}
+}
+
+func (p *pluginRequestedTransition) ObservedFailure(taskMetadata *event.TaskNodeMetadata) {
+	if taskMetadata != nil {
+		p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
+			TaskNodeMetadata: taskMetadata,
+		}
 	}
 }
 
@@ -159,10 +174,10 @@ func (p *pluginRequestedTransition) FinalTransition(ctx context.Context) (handle
 		return handler.DoTransition(p.ttype, handler.PhaseInfoSuccess(&p.execInfo)), nil
 	case pluginCore.PhaseRetryableFailure:
 		logger.Debugf(ctx, "Transitioning to RetryableFailure")
-		return handler.DoTransition(p.ttype, handler.PhaseInfoRetryableFailureErr(p.pInfo.Err(), nil)), nil
+		return handler.DoTransition(p.ttype, handler.PhaseInfoRetryableFailureErr(p.pInfo.Err(), &p.execInfo)), nil
 	case pluginCore.PhasePermanentFailure:
 		logger.Debugf(ctx, "Transitioning to Failure")
-		return handler.DoTransition(p.ttype, handler.PhaseInfoFailureErr(p.pInfo.Err(), nil)), nil
+		return handler.DoTransition(p.ttype, handler.PhaseInfoFailureErr(p.pInfo.Err(), &p.execInfo)), nil
 	case pluginCore.PhaseUndefined:
 		return handler.UnknownTransition, fmt.Errorf("error converting plugin phase, received [Undefined]")
 	}
@@ -429,7 +444,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 						pluginTrns.pInfo.Phase().String(), p.GetID(), pluginTrns.pInfo.Version(), t.cfg.MaxPluginPhaseVersions),
 				},
 				IsRecoverable: false,
-			})
+			}, nil)
 			return pluginTrns, nil
 		}
 	}
@@ -448,7 +463,8 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		}
 	}
 
-	if pluginTrns.pInfo.Phase() == pluginCore.PhaseSuccess {
+	switch pluginTrns.pInfo.Phase() {
+	case pluginCore.PhaseSuccess:
 		// -------------------------------------
 		// TODO: @kumare create Issue# Remove the code after we use closures to handle dynamic nodes
 		// This code only exists to support Dynamic tasks. Eventually dynamic tasks will use closure nodes to execute
@@ -480,8 +496,12 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		if err != nil {
 			return nil, err
 		}
+
 		if ee != nil {
-			pluginTrns.ObservedExecutionError(ee)
+			pluginTrns.ObservedExecutionError(ee,
+				&event.TaskNodeMetadata{
+					CheckpointUri: tCtx.ow.GetCheckpointPrefix().String(),
+				})
 		} else {
 			var deckURI *storage.DataReference
 			if tCtx.ow.GetReader() != nil {
@@ -496,10 +516,18 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 			}
 			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), deckURI,
 				&event.TaskNodeMetadata{
-					CacheStatus: cacheStatus.GetCacheStatus(),
-					CatalogKey:  cacheStatus.GetMetadata(),
+					CacheStatus:   cacheStatus.GetCacheStatus(),
+					CatalogKey:    cacheStatus.GetMetadata(),
+					CheckpointUri: tCtx.ow.GetCheckpointPrefix().String(),
 				})
 		}
+	case pluginCore.PhaseRetryableFailure:
+		fallthrough
+	case pluginCore.PhasePermanentFailure:
+		pluginTrns.ObservedFailure(
+			&event.TaskNodeMetadata{
+				CheckpointUri: tCtx.ow.GetCheckpointPrefix().String(),
+			})
 	}
 
 	return pluginTrns, nil
@@ -536,39 +564,47 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// STEP 1: Check Cache
 	if (ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache) && checkCatalog {
 		// This is assumed to be first time. we will check catalog and call handle
-		entry, err := t.CheckCatalogCache(ctx, tCtx.tr, nCtx.InputReader(), tCtx.ow)
-		if err != nil {
-			logger.Errorf(ctx, "failed to check catalog cache with error")
-			return handler.UnknownTransition, err
-		}
-
-		if entry.GetStatus().GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
-			r := tCtx.ow.GetReader()
-			if r == nil {
-				return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "failed to reader outputs from a CacheHIT. Unexpected!")
-			}
-
-			// TODO @kumare this can be optimized, if we have paths then the reader could be pipelined to a sink
-			o, ee, err := r.Read(ctx)
-			if err != nil {
-				logger.Errorf(ctx, "failed to read from catalog, err: %s", err.Error())
-				return handler.UnknownTransition, err
-			}
-
-			if ee != nil {
-				logger.Errorf(ctx, "got execution error from catalog output reader? This should not happen, err: %s", ee.String())
-				return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
-			}
-
-			if err := nCtx.DataStore().WriteProtobuf(ctx, tCtx.ow.GetOutputPath(), storage.Options{}, o); err != nil {
-				logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
-				return handler.UnknownTransition, err
-			}
-
-			pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), nil, entry)
+		// If the cache should be skipped (requested by user for the execution), do not check datacatalog for any cached
+		// data, but instead always perform calculations again and overwrite the stored data after successful execution.
+		if nCtx.ExecutionContext().GetExecutionConfig().OverwriteCache {
+			logger.Info(ctx, "Execution config forced cache skip, not checking catalog")
+			pluginTrns.PopulateCacheInfo(catalog.NewCatalogEntry(nil, cacheSkipped))
+			t.metrics.catalogSkipCount.Inc(ctx)
 		} else {
-			logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
-			pluginTrns.PopulateCacheInfo(entry)
+			entry, err := t.CheckCatalogCache(ctx, tCtx.tr, nCtx.InputReader(), tCtx.ow)
+			if err != nil {
+				logger.Errorf(ctx, "failed to check catalog cache with error")
+				return handler.UnknownTransition, err
+			}
+
+			if entry.GetStatus().GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
+				r := tCtx.ow.GetReader()
+				if r == nil {
+					return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "failed to reader outputs from a CacheHIT. Unexpected!")
+				}
+
+				// TODO @kumare this can be optimized, if we have paths then the reader could be pipelined to a sink
+				o, ee, err := r.Read(ctx)
+				if err != nil {
+					logger.Errorf(ctx, "failed to read from catalog, err: %s", err.Error())
+					return handler.UnknownTransition, err
+				}
+
+				if ee != nil {
+					logger.Errorf(ctx, "got execution error from catalog output reader? This should not happen, err: %s", ee.String())
+					return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
+				}
+
+				if err := nCtx.DataStore().WriteProtobuf(ctx, tCtx.ow.GetOutputPath(), storage.Options{}, o); err != nil {
+					logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
+					return handler.UnknownTransition, err
+				}
+
+				pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), nil, entry)
+			} else {
+				logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
+				pluginTrns.PopulateCacheInfo(entry)
+			}
 		}
 	}
 
@@ -710,12 +746,13 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 
 	// STEP 6: Persist the plugin state
 	err = nCtx.NodeStateWriter().PutTaskNodeState(handler.TaskNodeState{
-		PluginState:        pluginTrns.pluginState,
-		PluginStateVersion: pluginTrns.pluginStateVersion,
-		PluginPhase:        pluginTrns.pInfo.Phase(),
-		PluginPhaseVersion: pluginTrns.pInfo.Version(),
-		BarrierClockTick:   barrierTick,
-		LastPhaseUpdatedAt: time.Now(),
+		PluginState:                        pluginTrns.pluginState,
+		PluginStateVersion:                 pluginTrns.pluginStateVersion,
+		PluginPhase:                        pluginTrns.pInfo.Phase(),
+		PluginPhaseVersion:                 pluginTrns.pInfo.Version(),
+		BarrierClockTick:                   barrierTick,
+		LastPhaseUpdatedAt:                 time.Now(),
+		PreviousNodeExecutionCheckpointURI: ts.PreviousNodeExecutionCheckpointURI,
 	})
 	if err != nil {
 		logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())
@@ -852,6 +889,7 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 			unsupportedTaskType:            labeled.NewCounter("unsupported_tasktype", "No Handler plugin configured for Handler type", scope),
 			catalogHitCount:                labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", scope),
 			catalogMissCount:               labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
+			catalogSkipCount:               labeled.NewCounter("discovery_skip_count", "Task lookup skipped in Discovery", scope),
 			catalogPutSuccessCount:         labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", scope),
 			catalogPutFailureCount:         labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			catalogGetFailureCount:         labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),

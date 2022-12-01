@@ -30,6 +30,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	errors2 "github.com/flyteorg/flytestdlib/errors"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
@@ -191,6 +192,17 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 	case core.NodeExecution_SUCCEEDED:
 		logger.Debugf(ctx, "Node [%+v] can be recovered. Proceeding to copy inputs and outputs", nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 	default:
+		// The node execution may be partially recoverable through intra task checkpointing. Save the checkpoint
+		// uri in the task node state to pass to the task handler later on.
+		if metadata, ok := recovered.Closure.TargetMetadata.(*admin.NodeExecutionClosure_TaskNodeMetadata); ok {
+			state := nCtx.NodeStateReader().GetTaskNodeState()
+			state.PreviousNodeExecutionCheckpointURI = storage.DataReference(metadata.TaskNodeMetadata.CheckpointUri)
+			err = nCtx.NodeStateWriter().PutTaskNodeState(state)
+			if err != nil {
+				logger.Warn(ctx, "failed to save recovered checkpoint uri for [%+v]: [%+v]",
+					nCtx.NodeExecutionMetadata().GetNodeExecutionID(), err)
+			}
+		}
 		logger.Debugf(ctx, "Node [%+v] phase [%v] is not recoverable", nCtx.NodeExecutionMetadata().GetNodeExecutionID(), recovered.Closure.Phase)
 		return handler.PhaseInfoUndefined, nil
 	}
@@ -252,15 +264,17 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		OutputURI: outputFile,
 	}
 
-	deckFile := v1alpha1.GetDeckFile(nCtx.NodeStatus().GetOutputDir())
-	metadata, err := nCtx.DataStore().Head(ctx, deckFile)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to check the existence of deck file. Error: %v", err)
-		return handler.PhaseInfoUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to check the existence of deck file.")
-	}
+	deckFile := storage.DataReference(recovered.Closure.GetDeckUri())
+	if len(deckFile) > 0 {
+		metadata, err := nCtx.DataStore().Head(ctx, deckFile)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to check the existence of deck file. Error: %v", err)
+			return handler.PhaseInfoUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to check the existence of deck file.")
+		}
 
-	if metadata.Exists() {
-		oi.DeckURI = &deckFile
+		if metadata.Exists() {
+			oi.DeckURI = &deckFile
+		}
 	}
 
 	if err := c.store.WriteProtobuf(ctx, outputFile, so, outputs); err != nil {
@@ -595,6 +609,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 	if np != nodeStatus.GetPhase() && np != v1alpha1.NodePhaseRetryableFailure {
 		// assert np == skipped, succeeding, failing or recovered
 		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s], (handler phase [%s])", nodeStatus.GetPhase().String(), np.String(), p.GetPhase().String())
+
 		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
 			p, nCtx.InputReader().GetInputPath().String(), nCtx.NodeStatus(), nCtx.ExecutionContext().GetEventVersion(),
 			nCtx.ExecutionContext().GetParentInfo(), nCtx.node, c.clusterID, nCtx.NodeStateReader().GetDynamicNodeState().Phase)

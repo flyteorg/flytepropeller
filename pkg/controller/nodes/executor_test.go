@@ -2102,6 +2102,7 @@ func TestRecover(t *testing.T) {
 					OutputResult: &admin.NodeExecutionClosure_OutputUri{
 						OutputUri: "outputuri.pb",
 					},
+					DeckUri: deckPath,
 				},
 			}, nil)
 
@@ -2157,6 +2158,7 @@ func TestRecover(t *testing.T) {
 							CacheStatus: core.CatalogCacheStatus_CACHE_HIT,
 						},
 					},
+					DeckUri: deckPath,
 				},
 			}, nil)
 
@@ -2240,6 +2242,7 @@ func TestRecover(t *testing.T) {
 							},
 						},
 					},
+					DeckUri: deckPath,
 				},
 			}, nil)
 
@@ -2285,12 +2288,27 @@ func TestRecover(t *testing.T) {
 			&admin.NodeExecution{
 				Closure: &admin.NodeExecutionClosure{
 					Phase: core.NodeExecution_FAILED,
+					TargetMetadata: &admin.NodeExecutionClosure_TaskNodeMetadata{
+						TaskNodeMetadata: &admin.TaskNodeMetadata{
+							CheckpointUri: "prev path",
+						},
+					},
 				},
 			}, nil)
 
 		executor := nodeExecutor{
 			recoveryClient: recoveryClient,
 		}
+
+		reader := &nodeHandlerMocks.NodeStateReader{}
+		reader.OnGetTaskNodeState().Return(handler.TaskNodeState{})
+		nCtx.OnNodeStateReader().Return(reader)
+		writer := &nodeHandlerMocks.NodeStateWriter{}
+		writer.OnPutTaskNodeStateMatch(mock.Anything).Run(func(args mock.Arguments) {
+			state := args.Get(0).(handler.TaskNodeState)
+			assert.Equal(t, state.PreviousNodeExecutionCheckpointURI.String(), "prev path")
+		}).Return(nil)
+		nCtx.OnNodeStateWriter().Return(writer)
 
 		phaseInfo, err := executor.attemptRecovery(context.TODO(), nCtx)
 		assert.NoError(t, err)
@@ -2307,6 +2325,7 @@ func TestRecover(t *testing.T) {
 					OutputResult: &admin.NodeExecutionClosure_OutputUri{
 						OutputUri: "outputuri.pb",
 					},
+					DeckUri: deckPath,
 				},
 			}, nil)
 
@@ -2352,6 +2371,7 @@ func TestRecover(t *testing.T) {
 					OutputResult: &admin.NodeExecutionClosure_OutputUri{
 						OutputUri: "outputuri.pb",
 					},
+					DeckUri: deckPath,
 				},
 			}, nil)
 
