@@ -14,6 +14,40 @@ type ExecutableGateNode struct {
 	mock.Mock
 }
 
+type ExecutableGateNode_GetApprove struct {
+	*mock.Call
+}
+
+func (_m ExecutableGateNode_GetApprove) Return(_a0 *core.ApproveCondition) *ExecutableGateNode_GetApprove {
+	return &ExecutableGateNode_GetApprove{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableGateNode) OnGetApprove() *ExecutableGateNode_GetApprove {
+	c_call := _m.On("GetApprove")
+	return &ExecutableGateNode_GetApprove{Call: c_call}
+}
+
+func (_m *ExecutableGateNode) OnGetApproveMatch(matchers ...interface{}) *ExecutableGateNode_GetApprove {
+	c_call := _m.On("GetApprove", matchers...)
+	return &ExecutableGateNode_GetApprove{Call: c_call}
+}
+
+// GetApprove provides a mock function with given fields:
+func (_m *ExecutableGateNode) GetApprove() *core.ApproveCondition {
+	ret := _m.Called()
+
+	var r0 *core.ApproveCondition
+	if rf, ok := ret.Get(0).(func() *core.ApproveCondition); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*core.ApproveCondition)
+		}
+	}
+
+	return r0
+}
+
 type ExecutableGateNode_GetKind struct {
 	*mock.Call
 }
