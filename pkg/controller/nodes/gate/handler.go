@@ -186,7 +186,7 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 
 		// check duration of node sleep
 		lastAttemptStartedAt := nCtx.NodeStatus().GetLastAttemptStartedAt()
-		if lastAttemptStartedAt != nil && sleepDuration <= time.Now().Sub(lastAttemptStartedAt.Time) {
+		if lastAttemptStartedAt != nil && sleepDuration <= time.Since(lastAttemptStartedAt.Time) {
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{})), nil
 		}
 	default:
