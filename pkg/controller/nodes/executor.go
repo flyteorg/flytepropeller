@@ -33,6 +33,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	"github.com/flyteorg/flytepropeller/events"
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	"github.com/flyteorg/flytestdlib/contextutils"
@@ -267,15 +268,17 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		OutputURI: outputFile,
 	}
 
-	deckFile := v1alpha1.GetDeckFile(nCtx.NodeStatus().GetOutputDir())
-	metadata, err := nCtx.DataStore().Head(ctx, deckFile)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to check the existence of deck file. Error: %v", err)
-		return handler.PhaseInfoUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to check the existence of deck file.")
-	}
+	deckFile := storage.DataReference(recovered.Closure.GetDeckUri())
+	if len(deckFile) > 0 {
+		metadata, err := nCtx.DataStore().Head(ctx, deckFile)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to check the existence of deck file. Error: %v", err)
+			return handler.PhaseInfoUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to check the existence of deck file.")
+		}
 
-	if metadata.Exists() {
-		oi.DeckURI = &deckFile
+		if metadata.Exists() {
+			oi.DeckURI = &deckFile
+		}
 	}
 
 	if err := c.store.WriteProtobuf(ctx, outputFile, so, outputs); err != nil {
@@ -1153,7 +1156,7 @@ func (c *nodeExecutor) Initialize(ctx context.Context) error {
 func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink,
 	workflowLauncher launchplan.Executor, launchPlanReader launchplan.Reader, maxDatasetSize int64,
 	defaultRawOutputPrefix storage.DataReference, kubeClient executors.Client,
-	catalogClient catalog.Client, recoveryClient recovery.Client, eventConfig *config.EventConfig, clusterID string, scope promutils.Scope) (executors.Node, error) {
+	catalogClient catalog.Client, recoveryClient recovery.Client, eventConfig *config.EventConfig, clusterID string, signalClient service.SignalServiceClient, scope promutils.Scope) (executors.Node, error) {
 
 	// TODO we may want to make this configurable.
 	shardSelector, err := ioutils.NewBase36PrefixShardSelector(ctx)
@@ -1201,7 +1204,7 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		eventConfig:                     eventConfig,
 		clusterID:                       clusterID,
 	}
-	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, recoveryClient, eventConfig, clusterID, nodeScope)
+	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, recoveryClient, eventConfig, clusterID, signalClient, nodeScope)
 	exec.nodeHandlerFactory = nodeHandlerFactory
 	return exec, err
 }
