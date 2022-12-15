@@ -28,11 +28,11 @@ import (
 	errors3 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflow"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 	leader "github.com/flyteorg/flytepropeller/pkg/leaderelection"
 	"github.com/flyteorg/flytepropeller/pkg/utils"
+	"github.com/flyteorg/flytestdlib/catalog"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 	stdErrs "github.com/flyteorg/flytestdlib/errors"
@@ -419,7 +419,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	}
 
 	logger.Info(ctx, "Setting up Catalog client.")
-	catalogClient, err := catalog.NewCatalogClient(ctx, authOpts...)
+	catalogClient, err := catalog.NewClient(ctx, authOpts...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create datacatalog client")
 	}

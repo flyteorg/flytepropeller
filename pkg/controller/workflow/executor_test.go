@@ -32,8 +32,8 @@ import (
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	eventMocks "github.com/flyteorg/flytepropeller/events/mocks"
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/fakeplugins"
+	"github.com/flyteorg/flytestdlib/catalog"
 
 	wfErrors "github.com/flyteorg/flytepropeller/pkg/controller/workflow/errors"
 
@@ -240,7 +240,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Error(t *testing.T) {
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 
 	eventSink := eventMocks.NewMockEventSink()
-	catalogClient, err := catalog.NewCatalogClient(ctx, nil)
+	catalogClient, err := catalog.NewClient(ctx, nil)
 	assert.NoError(t, err)
 	recoveryClient := &recoveryMocks.Client{}
 
@@ -320,7 +320,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow(t *testing.T) {
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 
 	eventSink := eventMocks.NewMockEventSink()
-	catalogClient, err := catalog.NewCatalogClient(ctx, nil)
+	catalogClient, err := catalog.NewClient(ctx, nil)
 	assert.NoError(t, err)
 	recoveryClient := &recoveryMocks.Client{}
 
@@ -384,7 +384,7 @@ func BenchmarkWorkflowExecutor(b *testing.B) {
 	enqueueWorkflow := func(workflowId v1alpha1.WorkflowID) {}
 
 	eventSink := eventMocks.NewMockEventSink()
-	catalogClient, err := catalog.NewCatalogClient(ctx, nil)
+	catalogClient, err := catalog.NewClient(ctx, nil)
 	assert.NoError(b, err)
 	recoveryClient := &recoveryMocks.Client{}
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
@@ -485,7 +485,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Failing(t *testing.T) {
 		}
 		return nil
 	}
-	catalogClient, err := catalog.NewCatalogClient(ctx, nil)
+	catalogClient, err := catalog.NewClient(ctx, nil)
 	assert.NoError(t, err)
 	recoveryClient := &recoveryMocks.Client{}
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
@@ -581,7 +581,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_Events(t *testing.T) {
 		}
 		return nil
 	}
-	catalogClient, err := catalog.NewCatalogClient(ctx, nil)
+	catalogClient, err := catalog.NewClient(ctx, nil)
 	assert.NoError(t, err)
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 	recoveryClient := &recoveryMocks.Client{}
@@ -638,7 +638,7 @@ func TestWorkflowExecutor_HandleFlyteWorkflow_EventFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	nodeEventSink := eventMocks.NewMockEventSink()
-	catalogClient, err := catalog.NewCatalogClient(ctx, nil)
+	catalogClient, err := catalog.NewClient(ctx, nil)
 	assert.NoError(t, err)
 	recoveryClient := &recoveryMocks.Client{}
 
