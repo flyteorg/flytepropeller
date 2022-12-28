@@ -121,7 +121,8 @@ func ValidateUnderlyingInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs e
 	case *core.Node_GateNode:
 		gateNode := node.GetGateNode()
 		if approve := gateNode.GetApprove(); approve != nil {
-			iface = &core.TypedInterface{
+			fmt.Printf("HAMERSAW - %+v\n", node.GetInputs())
+			iface = &core.TypedInterface{ // TODO @hamersaw - fix this interface
 				Inputs:  &core.VariableMap{Variables: map[string]*core.Variable{}},
 				Outputs: &core.VariableMap{Variables: map[string]*core.Variable{}},
 			}
