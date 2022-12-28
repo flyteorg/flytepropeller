@@ -2,6 +2,7 @@ package validators
 
 import (
 	"reflect"
+	"fmt"
 
 	"github.com/flyteorg/flytepropeller/pkg/compiler/typing"
 
@@ -179,13 +180,19 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 func ValidateBindings(w c.WorkflowBuilder, node c.Node, bindings []*flyte.Binding, params *flyte.VariableMap,
 	validateParamTypes bool, edgeDirection c.EdgeDirection, errs errors.CompileErrors) (resolved *flyte.VariableMap, ok bool) {
 
+	fmt.Printf("HAMERSAW - BINDING FOR NODE %s\n", node.GetId())
+
 	resolved = &flyte.VariableMap{
 		Variables: make(map[string]*flyte.Variable, len(bindings)),
 	}
 
+	fmt.Printf("HAMERSAW - params %s (variables): %+v\n", node.GetId(), params.Variables)
+
 	providedBindings := sets.NewString()
 	for _, binding := range bindings {
+		fmt.Printf("HAMERSAW - binding: %s %+v\n", node.GetId(), binding)
 		if param, ok := findVariableByName(params, binding.GetVar()); !ok && validateParamTypes {
+			fmt.Printf("HAMERSAW - node %s param %+v\n", node.GetId(), param)
 			errs.Collect(errors.NewVariableNameNotFoundErr(node.GetId(), node.GetId(), binding.GetVar()))
 		} else if binding.GetBinding() == nil {
 			errs.Collect(errors.NewValueRequiredErr(node.GetId(), "Binding"))
