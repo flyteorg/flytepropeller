@@ -209,6 +209,7 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 	key := backoff.ComposeResourceKey(o)
 
 	pod, casted := o.(*v1.Pod)
+	k8sCreateTimestamp := time.Now()
 	if e.backOffController != nil && casted {
 		podRequestedResources := e.getPodEffectiveResourceLimits(ctx, pod)
 
@@ -244,7 +245,7 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 		return pluginsCore.UnknownTransition, errors.Wrapf(stdErrors.ErrorCode(reason), err, "failed to create resource")
 	}
 
-	return pluginsCore.DoTransition(pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "task submitted to K8s")), nil
+	return pluginsCore.DoTransition(pluginsCore.PhaseInfoQueued(k8sCreateTimestamp, pluginsCore.DefaultPhaseVersion, "task submitted to K8s")), nil
 }
 
 func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (pluginsCore.Transition, error) {

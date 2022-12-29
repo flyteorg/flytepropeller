@@ -475,6 +475,8 @@ func (c *nodeExecutor) finalize(ctx context.Context, h handler.Node, nCtx handle
 func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executors.DAGStructure, nCtx *nodeExecContext, _ handler.Node) (executors.NodeStatus, error) {
 	logger.Debugf(ctx, "Node not yet started, running pre-execute")
 	defer logger.Debugf(ctx, "Node pre-execute completed")
+
+	beginHandleTimestamp := time.Now()
 	p, err := c.preExecute(ctx, dag, nCtx)
 	if err != nil {
 		logger.Errorf(ctx, "failed preExecute for node. Error: %s", err.Error())
@@ -505,6 +507,11 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "could not convert phase info to event")
 		}
+		protoTimestamp, err := ptypes.TimestampProto(beginHandleTimestamp)
+		if err != nil {
+			return executors.NodeStatusUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "failed to convert timestamp to proto")
+		}
+		nev.OccurredAt = protoTimestamp
 		err = c.IdempotentRecordEvent(ctx, nev)
 		if err != nil {
 			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
