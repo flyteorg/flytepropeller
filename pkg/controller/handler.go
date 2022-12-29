@@ -22,8 +22,11 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/flyteorg/flytestdlib/storage"
+	"github.com/flyteorg/flytestdlib/telemetryutils"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 // TODO Lets move everything to use controller runtime
@@ -177,11 +180,17 @@ func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.F
 //                       +---------+        +---------------------+        +--------+
 // </pre>
 func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
+	var span trace.Span
+	ctx, span = telemetryutils.NewSpan(ctx, "flytepropeller", "pkg.controller.Propeller/Handle")
+	defer span.End()
+
 	logger.Infof(ctx, "Processing Workflow.")
 	defer logger.Infof(ctx, "Completed processing workflow.")
 
 	// Get the FlyteWorkflow resource with this namespace/name
+	_, wfStoreGetSpan := telemetryutils.NewSpan(ctx, "flytepropeller", "WorkflowStore.Get")
 	w, fetchErr := p.wfStore.Get(ctx, namespace, name)
+	wfStoreGetSpan.End()
 	if fetchErr != nil {
 		if workflowstore.IsNotFound(fetchErr) {
 			p.metrics.WorkflowNotFound.Inc()
@@ -215,11 +224,14 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	// closure so that these fields may be temporarily repopulated.
 	var wfClosureCrdFields *k8s.WfClosureCrdFields
 	if len(w.WorkflowClosureReference) > 0 {
+		// TODO @hamersaw - move streaks to their own function to 'defer' spans and metrics
+		_, span := telemetryutils.NewSpan(ctx, "flytepropeller", "Populating Offloaded CRD")
 		t := p.metrics.WorkflowClosureReadTime.Start(ctx)
 
 		wfClosure := &admin.WorkflowClosure{}
 		err := p.store.ReadProtobuf(ctx, w.WorkflowClosureReference, wfClosure)
 		if err != nil {
+			span.End()
 			t.Stop()
 			logger.Errorf(ctx, "Failed to retrieve workflow closure data from '%s' with error '%s'", w.WorkflowClosureReference, err)
 			return err
@@ -227,11 +239,13 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 
 		wfClosureCrdFields, err = k8s.BuildWfClosureCrdFields(wfClosure.CompiledWorkflow)
 		if err != nil {
+			span.End()
 			t.Stop()
 			logger.Errorf(ctx, "Failed to parse workflow closure data from '%s' with error '%s'", w.WorkflowClosureReference, err)
 			return err
 		}
 
+		span.End()
 		t.Stop()
 	}
 
@@ -244,6 +258,8 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	}
 
 	for streak = 0; streak < maxLength; streak++ {
+		ctx, span := telemetryutils.NewSpan(ctx, "flytepropeller", "Propeller.Streak")
+
 		// if the wfClosureCrdFields struct is not nil then it contains static workflow data which
 		// has been offloaded to the blobstore. we must set these fields so they're available
 		// during workflow processing and immediately remove them afterwards so they do not
@@ -278,6 +294,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 				// No updates in the status we detected, we will skip writing to KubeAPI
 				if mutatedWf.Status.Equals(&w.Status) {
 					logger.Info(ctx, "WF hasn't been updated in this round.")
+					span.End()
 					t.Stop()
 					return nil
 				}
@@ -294,6 +311,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		// a valid state unless we are experiencing a race condition where the workflow has not yet
 		// been inserted into the db (ie. workflow phase is WorkflowPhaseReady).
 		if err != nil && eventsErr.IsNotFound(err) && w.GetExecutionStatus().GetPhase() != v1alpha1.WorkflowPhaseReady {
+			span.End()
 			t.Stop()
 			logger.Errorf(ctx, "Failed to process workflow, failing: %s", err)
 
@@ -315,6 +333,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		// We should early abort in this case, since any events originating from this cluster for this execution will
 		// be rejected.
 		if err != nil && eventsErr.IsEventIncompatibleClusterError(err) {
+			span.End()
 			t.Stop()
 			logger.Errorf(ctx, "No longer designated to process workflow, failing: %s", err)
 
@@ -337,8 +356,11 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 		// update the GetExecutionStatus block of the FlyteWorkflow resource. UpdateStatus will not
 		// allow changes to the Spec of the resource, which is ideal for ensuring
 		// nothing other than resource status has been updated.
+		_, wfStoreUpdateSpan := telemetryutils.NewSpan(ctx, "flytepropeller", "WorkflowStore.Update")
 		newWf, updateErr := p.wfStore.Update(ctx, mutatedWf, workflowstore.PriorityClassCritical)
+		wfStoreUpdateSpan.End()
 		if updateErr != nil {
+			span.End()
 			t.Stop()
 			// The update has failed, lets check if this is because the size is too large. If so
 			if workflowstore.IsWorkflowTooLarge(updateErr) {
@@ -361,6 +383,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			return updateErr
 		}
 		if err != nil {
+			span.End()
 			t.Stop()
 			// An error was encountered during the round. Let us return, so that we can back-off gracefully
 			return err
@@ -369,11 +392,13 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 			// Workflow is terminated (no need to continue) or no status was changed, we can wait
 			logger.Infof(ctx, "Will not fast follow, Reason: Wf terminated? %v, Version matched? %v",
 				mutatedWf.GetExecutionStatus().IsTerminated(), newWf.ResourceVersion == mutatedWf.ResourceVersion)
+			span.End()
 			t.Stop()
 			return nil
 		}
 		logger.Infof(ctx, "FastFollow Enabled. Detected State change, we will try another round. StreakLength [%d]", streak)
 		w = newWf
+		span.End()
 		t.Stop()
 	}
 	logger.Infof(ctx, "Streak ended at [%d]/Max: [%d]", streak, maxLength)

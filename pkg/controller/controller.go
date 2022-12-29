@@ -549,6 +549,8 @@ func StartController(ctx context.Context, cfg *config.Config, defaultNamespace s
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// TODO @hamersaw wrap mgr in telemetryclient
+
 	kubeClient, kubecfg, err := utils.GetKubeConfig(ctx, cfg)
 	if err != nil {
 		return errors.Wrapf(err, "error building Kubernetes Clientset")
