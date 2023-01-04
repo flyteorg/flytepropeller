@@ -223,7 +223,7 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 	// ignores discovery write failures
 	var s catalog.Status
 	if executionConfig.OverwriteCache {
-		// Overwrite existing artifact (will create instead of no existing data was found)
+		// Overwrite existing artifact (will create instead if no existing data was found)
 		s, err = t.catalog.Update(ctx, key, r, m)
 	} else {
 		// Explicitly create new artifact

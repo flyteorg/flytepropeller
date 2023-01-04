@@ -31,8 +31,8 @@ import (
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/mocks"
 	recoveryMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
 	flyteassert "github.com/flyteorg/flytepropeller/pkg/utils/assert"
+	"github.com/flyteorg/flytestdlib/catalog"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
