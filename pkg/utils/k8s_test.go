@@ -8,7 +8,6 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -29,7 +28,6 @@ func TestToK8sEnvVar(t *testing.T) {
 	e = ToK8sEnvVar(nil)
 	assert.Empty(t, e)
 }
-
 
 func TestGetProtoTime(t *testing.T) {
 	assert.NotNil(t, GetProtoTime(nil))
