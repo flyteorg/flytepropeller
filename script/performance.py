@@ -8,7 +8,7 @@ import numpy as np
 import requests
 import yaml
 
-from datetime import timezone
+from datetime import datetime, timezone
 from dateutil.parser import parse
 
 from flytekit.remote import FlyteRemote
@@ -32,25 +32,24 @@ def cli(ctx, project, domain):
 @cli.group
 @click.pass_context
 def runtime(ctx):
-    pass
-
-@runtime.command
-@click.argument('execution_id')
-@click.pass_context
-def dump(ctx, execution_id):
     domain = ctx.obj['DOMAIN']
     project = ctx.obj['PROJECT']
 
     # initialize FlyteRemote with config, project, domain
-    remote = FlyteRemote(
+    ctx.obj['REMOTE'] = FlyteRemote(
         config=Config.auto(),
         default_project=project,
         default_domain=domain,
     )
 
+@runtime.command
+@click.argument('execution_id')
+@click.pass_context
+def dump(ctx, execution_id):
+    remote = ctx.obj['REMOTE']
     execution = remote.fetch_execution(name=execution_id)
     if not execution.is_done:
-        print('TODO - execution not yet complete')
+        print('execution not yet complete')
         return
 
     _, workflow_info = parse_workflow(remote, execution)
@@ -60,37 +59,28 @@ def dump(ctx, execution_id):
 
 @runtime.command
 @click.argument('execution_id')
-@click.argument('node_id')
+@click.argument('node_id', required=False)
 @click.pass_context
 def explain(ctx, execution_id, node_id):
-    # TODO @hamersaw - move this duplication up another layer
-    domain = ctx.obj['DOMAIN']
-    project = ctx.obj['PROJECT']
-
-    # initialize FlyteRemote with config, project, domain
-    remote = FlyteRemote(
-        config=Config.auto(),
-        default_project=project,
-        default_domain=domain,
-    )
-
+    remote = ctx.obj['REMOTE']
     execution = remote.fetch_execution(name=execution_id)
     if not execution.is_done:
-        print('TODO - execution not yet complete')
+        print('execution not yet complete')
         return
 
-    _, workflow_info = parse_workflow(remote, execution)
-    node = find_node(workflow_info, node_id)
-    if node == None:
-        print('TODO - node not found')
-        return
+    _, infos = parse_workflow(remote, execution)
+    if node_id != None:
+        infos = find_node(infos, node_id)
+        if infos == None:
+            print(f'node "{node_id}" not found')
+            return
 
-    print('{:21s} {:24s} {:24s} {:>9s}    {:s}'.format('category', 'start_timestamp', 'end_timestamp', 'duration', 'description'))
+    print('{:25s}{:25s}{:25s} {:>8s}    {:s}'.format('category', 'start_timestamp', 'end_timestamp', 'duration', 'description'))
     print('-'*140)
 
-    nodes = node['breakdown'].reports
+    nodes = infos['breakdown'].reports
     for report in sorted(nodes, key = lambda ele: ele[1]):
-        print('{:21s} {:24s} {:24s} {:8.2f}s    {:s}'.format(
+        print('{:25s}{:25s}{:25s} {:7.2f}s    {:s}'.format(
             report[0],
             report[1].strftime("%m-%d %H:%M:%S.%f"),
             report[2].strftime("%m-%d %H:%M:%S.%f"),
@@ -109,13 +99,11 @@ def find_node(node, node_id):
             if n != None:
                 return n
 
-    # TODO @hamersaw - search subworkflows
-
     return None
 
 EXECUTION_OVERHEAD = 'execution_overhead'
-K8S_ORCHESTRATION = 'k8s_orchestration'
-K8S_RUNTIME = 'k8s_runtime'
+PLUGIN_ORCHESTRATION = 'plugin_orchestration'
+PLUGIN_RUNTIME = 'plugin_runtime'
 NODE_TRANSITION = 'node_transition'
 
 class Breakdown(YamlObject2):
@@ -151,12 +139,67 @@ class Breakdown(YamlObject2):
 
         return result
 
+def get_latest_upstream_node(node_id, nodes, upstream_node_ids):
+    latest_upstream_node = None
+    for upstream_node_id in upstream_node_ids[node_id].ids:
+        upstream_node = nodes[upstream_node_id]
+        if latest_upstream_node == None or upstream_node.closure.updated_at > latest_upstream_node.closure.updated_at:
+            latest_upstream_node = upstream_node
+
+    return latest_upstream_node
+
+def parse_dynamic_node(remote, node):
+    nodes = {ele.metadata.spec_node_id : ele for ele in node.subworkflow_node_executions.values()}
+
+    node_execution_get_data_response = remote.client.get_node_execution_data(node.id)
+    upstream_node_ids = node_execution_get_data_response.dynamic_workflow.compiled_workflow.primary.connections.upstream
+
+    tasks = sorted(node.task_executions, key = lambda ele: ele.closure.created_at)
+
+    breakdown = Breakdown()
+
+    first_task = tasks[0]
+    breakdown.report(EXECUTION_OVERHEAD, node.closure.created_at, first_task.closure.created_at.replace(tzinfo=timezone.utc),
+        f'setting up node execution "{node.id.node_id}"')
+
+    last_task = tasks[len(tasks)-1]
+    breakdown.report(EXECUTION_OVERHEAD, last_task.closure.updated_at.replace(tzinfo=timezone.utc), nodes['start-node'].closure.updated_at,
+        f'TODO - dynamic transition from task to node')
+
+    latest_end_node_upstream = get_latest_upstream_node('end-node', nodes, upstream_node_ids)
+    breakdown.report(EXECUTION_OVERHEAD, latest_end_node_upstream.closure.updated_at, node.closure.updated_at,
+        f'finalizing node execution "{node.id.node_id}"')
+
+    task_breakdowns, task_infos = parse_tasks(tasks)
+    for task_breakdown in task_breakdowns:
+        breakdown.add(task_breakdown)
+
+    for i, task in enumerate(tasks[1:], start=1):
+        prev_task_closure = tasks[i-1].closure
+        breakdown.report(EXECUTION_OVERHEAD, (prev_task_closure.started_at + prev_task_closure.duration).replace(tzinfo=timezone.utc),
+            task.closure.created_at.replace(tzinfo=timezone.utc), f'overhead between task attempts {i-1} and {i}')
+
+    breakdowns, node_infos = parse_nodes(remote, nodes, upstream_node_ids)
+    for node_breakdown in breakdowns:
+        breakdown.add(node_breakdown)
+
+    return breakdown, {
+        'node_id': node.id.node_id,
+        'tasks': task_infos,
+        'nodes': node_infos,
+    }
+
 def parse_launchplan_node(remote, node):
+    node_id = node.id.node_id
+
     breakdown = Breakdown()
     workflow_infos = []
     for underlying_execution in node.workflow_executions:
-        breakdown.report(EXECUTION_OVERHEAD, node.closure.created_at, underlying_execution.closure.created_at, 'TODO')
-        breakdown.report(EXECUTION_OVERHEAD, underlying_execution.closure.updated_at, node.closure.updated_at, 'TODO')
+        execution_id = underlying_execution.id.name
+        breakdown.report(EXECUTION_OVERHEAD, node.closure.created_at, underlying_execution.closure.created_at,
+            f'setting up launchplan execution "{execution_id}" under node "{node_id}"')
+        breakdown.report(EXECUTION_OVERHEAD, underlying_execution.closure.updated_at, node.closure.updated_at,
+            f'finalizing launchplan execution "{execution_id}" under node "{node_id}"')
 
         workflow_breakdown, workflow_info = parse_workflow(remote, underlying_execution)
 
@@ -176,7 +219,6 @@ def parse_nodes(remote, nodes, upstream_node_ids):
         closure = node.closure
 
         if node_id == 'start-node' or node_id == 'end-node':
-            # TODO @hamersaw - need to explicitely add last dependency -> end-node.updated_at
             continue
 
         if not is_parent_node and len(node.task_executions) > 0:
@@ -185,9 +227,7 @@ def parse_nodes(remote, nodes, upstream_node_ids):
 
         elif is_parent_node and len(node.task_executions) > 0:
             # dynamic node
-            print("TODO @hamersaw - parse dynamic")
-            breakdown = Breakdown()
-            node_info = {}
+            breakdown, node_info = parse_dynamic_node(remote, node)
 
         elif not is_parent_node and closure.workflow_node_metadata:
             # launchplan node
@@ -203,12 +243,7 @@ def parse_nodes(remote, nodes, upstream_node_ids):
             node_info = {}
 
         # compute transition time from previous node
-        latest_upstream_node = None
-        for upstream_node_id in upstream_node_ids[node_id].ids:
-            upstream_node = nodes[upstream_node_id]
-            if latest_upstream_node == None or upstream_node.closure.updated_at > latest_upstream_node.closure.updated_at:
-                latest_upstream_node = upstream_node
-
+        latest_upstream_node = get_latest_upstream_node(node_id, nodes, upstream_node_ids)
         breakdown.report(NODE_TRANSITION, latest_upstream_node.closure.updated_at, node.closure.created_at,
             f'transition from node "{latest_upstream_node.id.node_id}" to node "{node.id.node_id}"')
 
@@ -225,21 +260,19 @@ def parse_subworkflow_node(remote, node):
     subworkflow = remote.fetch_workflow(name=subworkflow_ref.name, version=subworkflow_ref.version)
 
     nodes = {ele.metadata.spec_node_id : ele for ele in node.subworkflow_node_executions.values()}
+    upstream_node_ids = subworkflow._compiled_closure.primary.connections.upstream
+
+    # compute overhead
+    latest_end_node_upstream = get_latest_upstream_node('end-node', nodes, upstream_node_ids)
 
     breakdown = Breakdown()
+    breakdown.report(EXECUTION_OVERHEAD, node.closure.created_at, nodes['start-node'].closure.updated_at,
+        f'setting up subworkflow execution "{subworkflow_ref.name}"')
+    breakdown.report(EXECUTION_OVERHEAD, latest_end_node_upstream.closure.updated_at, node.closure.updated_at,
+        f'finalizing subworkflow execution "{subworkflow_ref.name}"')
 
-    start_node = None
-    end_node = None
-    for node_id, underlying_node in nodes.items():
-        if node_id == 'start-node':
-            start_node = underlying_node
-        if node_id == 'end-node':
-            end_node = underlying_node
-
-    breakdown.report(EXECUTION_OVERHEAD, node.closure.created_at, start_node.closure.updated_at, 'TODO')
-    breakdown.report(EXECUTION_OVERHEAD, end_node.closure.updated_at, node.closure.updated_at, 'TODO')
-
-    breakdowns, node_infos = parse_nodes(remote, nodes, subworkflow._compiled_closure.primary.connections.upstream)
+    # parse nodes
+    breakdowns, node_infos = parse_nodes(remote, nodes, upstream_node_ids)
     for node_breakdown in breakdowns:
         breakdown.add(node_breakdown)
 
@@ -254,31 +287,21 @@ def parse_task_node(node):
     breakdown = Breakdown()
 
     first_task = tasks[0]
-    breakdown.report(EXECUTION_OVERHEAD, node.closure.created_at, first_task.closure.created_at.replace(tzinfo=timezone.utc), f'setup node execution for "{node.id.node_id}"')
+    breakdown.report(EXECUTION_OVERHEAD, node.closure.created_at, first_task.closure.created_at.replace(tzinfo=timezone.utc),
+        f'setting up node execution "{node.id.node_id}"')
 
     last_task = tasks[len(tasks)-1]
-    breakdown.report(EXECUTION_OVERHEAD, last_task.closure.updated_at.replace(tzinfo=timezone.utc), node.closure.updated_at, f'finalizing node execution for "{node.id.node_id}"')
+    breakdown.report(EXECUTION_OVERHEAD, last_task.closure.updated_at.replace(tzinfo=timezone.utc), node.closure.updated_at,
+        f'finalizing node execution "{node.id.node_id}"')
 
     task_breakdowns, task_infos = parse_tasks(tasks)
     for task_breakdown in task_breakdowns:
         breakdown.add(task_breakdown)
 
-    for i, task in enumerate(tasks):
-        # if this is not the first task we capture flyte overhead between previous attempt completion
-        start_time = task.closure.created_at
-        if i != 0:
-            prev_task_closure = tasks[i-1].closure
-            start_time = prev_task_closure.started_at + prev_task_closure.duration
-
-        # if this is the last task we capture overhead between task completion and final update
-        end_time = task.closure.started_at + task.closure.duration
-        if i == len(node.task_executions)-1:
-           end_time = task.closure.updated_at
-
-        breakdown.report(EXECUTION_OVERHEAD, start_time.replace(tzinfo=timezone.utc),
+    for i, task in enumerate(tasks[1:], start=1):
+        prev_task_closure = tasks[i-1].closure
+        breakdown.report(EXECUTION_OVERHEAD, (prev_task_closure.started_at + prev_task_closure.duration).replace(tzinfo=timezone.utc),
             task.closure.created_at.replace(tzinfo=timezone.utc), f'overhead between task attempts {i-1} and {i}')
-        breakdown.report(EXECUTION_OVERHEAD, (task.closure.started_at + task.closure.duration).replace(tzinfo=timezone.utc),
-            end_time.replace(tzinfo=timezone.utc), 'completed processing tasks')
 
     return breakdown, {
         'node_id': node.id.node_id,
@@ -290,13 +313,18 @@ def parse_tasks(tasks):
     task_infos = []
 
     for i, task in enumerate(tasks):
-        # TODO @hamersaw - fix bug where task has not yet started (task.closure.started_at = 1970-01-01)
-
         breakdown = Breakdown()
-        breakdown.report(K8S_ORCHESTRATION, task.closure.created_at.replace(tzinfo=timezone.utc),
-            task.closure.started_at.replace(tzinfo=timezone.utc), f'setup for task attempt {task.id.retry_attempt}')
-        breakdown.report(K8S_RUNTIME, task.closure.started_at.replace(tzinfo=timezone.utc),
-            (task.closure.started_at + task.closure.duration).replace(tzinfo=timezone.utc), f'execution of task attempt {task.id.retry_attempt}')
+        if task.closure.started_at ==  datetime(1970, 1, 1, tzinfo=None):
+            # task did not start
+            breakdown.report(PLUGIN_ORCHESTRATION, task.closure.created_at.replace(tzinfo=timezone.utc),
+                task.closure.updated_at.replace(tzinfo=timezone.utc), f'orchestration of task attempt {task.id.retry_attempt}')
+        else: 
+            breakdown.report(PLUGIN_ORCHESTRATION, task.closure.created_at.replace(tzinfo=timezone.utc),
+                task.closure.started_at.replace(tzinfo=timezone.utc), f'setting up task attempt {task.id.retry_attempt}')
+            breakdown.report(PLUGIN_RUNTIME, task.closure.started_at.replace(tzinfo=timezone.utc),
+                (task.closure.started_at + task.closure.duration).replace(tzinfo=timezone.utc), f'execution of task attempt {task.id.retry_attempt}')
+            breakdown.report(PLUGIN_ORCHESTRATION, (task.closure.started_at + task.closure.duration).replace(tzinfo=timezone.utc),
+                task.closure.updated_at.replace(tzinfo=timezone.utc), f'finalizing task attempt {task.id.retry_attempt}')
 
         task_info = {
             'attempt': task.id.retry_attempt,
@@ -308,26 +336,22 @@ def parse_tasks(tasks):
 
     return breakdowns, task_infos
 
-def closure_to_timestamps(closure):
-    return {
-        'created_at': closure.created_at,
-        'duration': closure.duration.total_seconds(),
-        'started_at': closure.started_at,
-        'updated_at': closure.updated_at,
-    }
-
 def parse_workflow(remote, execution):
-    # TODO - how can we sync node executions from `fetch_execution`
     execution = remote.sync_execution(execution=execution, sync_nodes=True)
     nodes = execution.node_executions
+    upstream_node_ids = execution.flyte_workflow._compiled_closure.primary.connections.upstream
 
     # compute overhead
+    latest_end_node_upstream = get_latest_upstream_node('end-node', nodes, upstream_node_ids)
+
     breakdown = Breakdown()
-    breakdown.report(EXECUTION_OVERHEAD, execution.closure.created_at, nodes['start-node'].closure.updated_at, 'TODO')
-    breakdown.report(EXECUTION_OVERHEAD, nodes['end-node'].closure.updated_at,execution.closure.updated_at, 'TODO')
+    breakdown.report(EXECUTION_OVERHEAD, execution.closure.created_at, nodes['start-node'].closure.updated_at,
+        f'setting up workflow execution "{execution.spec.launch_plan.name}"')
+    breakdown.report(EXECUTION_OVERHEAD, latest_end_node_upstream.closure.updated_at,execution.closure.updated_at,
+        f'finalizing workflow execution "{execution.spec.launch_plan.name}"')
 
     # parse nodes
-    node_breakdowns, node_infos = parse_nodes(remote, nodes, execution.flyte_workflow._compiled_closure.primary.connections.upstream)
+    node_breakdowns, node_infos = parse_nodes(remote, nodes, upstream_node_ids)
     for node_breakdown in node_breakdowns:
         breakdown.add(node_breakdown)
 

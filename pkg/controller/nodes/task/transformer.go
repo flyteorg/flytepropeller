@@ -1,6 +1,8 @@
 package task
 
 import (
+	"time"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -75,15 +77,27 @@ type ToTaskExecutionEventInputs struct {
 	PluginID              string
 	ResourcePoolInfo      []*event.ResourcePoolInfo
 	ClusterID             string
+	OccurredAt            time.Time
 }
 
 func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutionEvent, error) {
 	// Transitions to a new phase
 
-	tm := ptypes.TimestampNow()
-	var err error
+	occurredAt, err := ptypes.TimestampProto(input.OccurredAt)
+	if err != nil {
+		return nil, err
+	}
+
 	if i := input.Info.Info(); i != nil && i.OccurredAt != nil {
-		tm, err = ptypes.TimestampProto(*i.OccurredAt)
+		occurredAt, err = ptypes.TimestampProto(*i.OccurredAt)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	reportedAt := ptypes.TimestampNow()
+	if i := input.Info.Info(); i != nil && i.ReportedAt != nil {
+		reportedAt, err = ptypes.TimestampProto(*i.ReportedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -124,12 +138,13 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		Phase:                 ToTaskEventPhase(input.Info.Phase()),
 		PhaseVersion:          input.Info.Version(),
 		ProducerId:            input.ClusterID,
-		OccurredAt:            tm,
+		OccurredAt:            occurredAt,
 		InputUri:              input.InputReader.GetInputPath().String(),
 		TaskType:              input.TaskType,
 		Reason:                input.Info.Reason(),
 		Metadata:              metadata,
 		EventVersion:          taskExecutionEventVersion,
+		ReportedAt:            reportedAt,
 	}
 
 	if input.Info.Phase().IsSuccess() && input.OutputWriter != nil {
