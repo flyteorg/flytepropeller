@@ -7,7 +7,7 @@ require (
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/fatih/color v1.13.0
 	github.com/flyteorg/flyteidl v1.3.2
-	github.com/flyteorg/flyteplugins v1.0.26
+	github.com/flyteorg/flyteplugins v1.0.28
 	github.com/flyteorg/flytestdlib v1.0.11
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-redis/redis v6.15.7+incompatible
@@ -68,6 +68,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.0.0 // indirect
 	github.com/aws/smithy-go v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bstadlbauer/dask-k8s-operator-go-client v0.1.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/coocood/freecache v1.1.1 // indirect
