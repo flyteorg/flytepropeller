@@ -406,7 +406,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		podNamespace = podDefaultNamespace
 	}
 
-	flytek8s.DefaultPodTemplateStore.SetDefaultNamespace(podNamespace)
+	flytek8s.DefaultPodTemplateStore.SetDefaults(podNamespace, flyteK8sConfig.GetK8sPluginConfig().DefaultPodTemplateName)
 
 	sCfg := storage.GetConfig()
 	if sCfg == nil {
@@ -460,7 +460,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	// Set up an event handler for when FlyteWorkflow resources change
 	flyteworkflowInformer.Informer().AddEventHandler(controller.getWorkflowUpdatesHandler())
 
-	updateHandler := flytek8s.GetPodTemplateUpdatesHandler(&flytek8s.DefaultPodTemplateStore, flyteK8sConfig.GetK8sPluginConfig().DefaultPodTemplateName)
+	updateHandler := flytek8s.GetPodTemplateUpdatesHandler(&flytek8s.DefaultPodTemplateStore)
 	podTemplateInformer.Informer().AddEventHandler(updateHandler)
 	return controller, nil
 }
