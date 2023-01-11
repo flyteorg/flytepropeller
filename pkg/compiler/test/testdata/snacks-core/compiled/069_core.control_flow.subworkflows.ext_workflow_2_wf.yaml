@@ -75,6 +75,7 @@ primary:
       var: o0
 tasks:
 - template:
+    PodTemplate: null
     Target:
       Container:
         args:

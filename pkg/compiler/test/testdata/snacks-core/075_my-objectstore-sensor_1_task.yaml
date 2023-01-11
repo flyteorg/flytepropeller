@@ -1,4 +1,5 @@
 template:
+  PodTemplate: null
   Target: null
   id:
     name: my-objectstore-sensor

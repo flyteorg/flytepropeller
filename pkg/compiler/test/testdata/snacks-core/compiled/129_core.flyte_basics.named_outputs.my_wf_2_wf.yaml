@@ -99,6 +99,7 @@ primary:
       var: greet2
 tasks:
 - template:
+    PodTemplate: null
     Target:
       Container:
         args:

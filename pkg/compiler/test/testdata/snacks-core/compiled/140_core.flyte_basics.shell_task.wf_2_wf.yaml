@@ -167,6 +167,7 @@ primary:
       var: o0
 tasks:
 - template:
+    PodTemplate: null
     Target:
       Container:
         args:
@@ -224,6 +225,7 @@ tasks:
         version: 0.32.6
     type: python-task
 - template:
+    PodTemplate: null
     Target:
       Container:
         args:
@@ -281,6 +283,7 @@ tasks:
         version: 0.32.6
     type: python-task
 - template:
+    PodTemplate: null
     Target:
       Container:
         args:
@@ -344,6 +347,7 @@ tasks:
         version: 0.32.6
     type: python-task
 - template:
+    PodTemplate: null
     Target:
       Container:
         args:

@@ -1,4 +1,5 @@
 template:
+  PodTemplate: null
   Target:
     Container:
       command:

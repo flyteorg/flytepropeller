@@ -6,7 +6,7 @@ require (
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/fatih/color v1.13.0
-	github.com/flyteorg/flyteidl v1.3.1
+	github.com/flyteorg/flyteidl v1.3.2
 	github.com/flyteorg/flyteplugins v1.0.26
 	github.com/flyteorg/flytestdlib v1.0.11
 	github.com/ghodss/yaml v1.0.0
@@ -72,7 +72,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/coocood/freecache v1.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
+	github.com/emicklei/go-restful/v3 v3.8.0 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/flyteorg/stow v0.3.6 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
@@ -137,12 +137,16 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/component-base v0.24.1 // indirect
-	k8s.io/klog/v2 v2.60.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42 // indirect
-	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
-	sigs.k8s.io/json v0.0.0-20220525155127-227cbc7cc124 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
+	k8s.io/klog/v2 v2.70.1 // indirect
+	k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1 // indirect
+	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
+	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
+
+replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.3.4-0.20230111114442-9acc7e96a2a1
+
+replace github.com/flyteorg/flyteplugins => github.com/flyteorg/flyteplugins v1.0.30-0.20230111114950-ff69656813c0
