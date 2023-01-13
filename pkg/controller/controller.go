@@ -406,7 +406,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		podNamespace = podDefaultNamespace
 	}
 
-	flytek8s.DefaultPodTemplateStore.SetDefaults(podNamespace, flyteK8sConfig.GetK8sPluginConfig().DefaultPodTemplateName)
+	flytek8s.DefaultPodTemplateStore.SetDefaultNamespace(podNamespace)
 
 	sCfg := storage.GetConfig()
 	if sCfg == nil {
