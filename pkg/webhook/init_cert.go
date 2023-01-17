@@ -39,6 +39,7 @@ const (
 	ServerCertPrivateKey = "tls.key"
 	podDefaultNamespace  = "flyte"
 	permission           = 0644
+	folderPerm           = 0755
 )
 
 func InitCerts(ctx context.Context, propellerCfg *config.Config, cfg *webhookConfig.Config) error {
@@ -48,7 +49,7 @@ func InitCerts(ctx context.Context, propellerCfg *config.Config, cfg *webhookCon
 	}
 
 	logger.Infof(ctx, "Issuing certs")
-	certs, err := createCerts(podNamespace)
+	certs, err := createCerts(cfg.ServiceName, podNamespace)
 	if err != nil {
 		return err
 	}
@@ -77,7 +78,7 @@ func createWebhookSecret(ctx context.Context, namespace string, cfg *webhookConf
 
 	if cfg.LocalCert {
 		if _, err := os.Stat(cfg.CertDir); os.IsNotExist(err) {
-			if err := os.Mkdir(cfg.CertDir, permission); err != nil {
+			if err := os.Mkdir(cfg.CertDir, folderPerm); err != nil {
 				return err
 			}
 		}
@@ -153,7 +154,7 @@ func createWebhookSecret(ctx context.Context, namespace string, cfg *webhookConf
 	return err
 }
 
-func createCerts(serviceNamespace string) (certs webhookCerts, err error) {
+func createCerts(serviceName string, serviceNamespace string) (certs webhookCerts, err error) {
 	// CA config
 	caRequest := &x509.Certificate{
 		SerialNumber: big.NewInt(2021),
@@ -190,9 +191,9 @@ func createCerts(serviceNamespace string) (certs webhookCerts, err error) {
 		return webhookCerts{}, err
 	}
 
-	dnsNames := []string{"flyte-pod-webhook",
-		"flyte-pod-webhook." + serviceNamespace, "flyte-pod-webhook." + serviceNamespace + ".svc"}
-	commonName := "flyte-pod-webhook." + serviceNamespace + ".svc"
+	dnsNames := []string{serviceName,
+		serviceName + "." + serviceNamespace, serviceName + "." + serviceNamespace + ".svc"}
+	commonName := serviceName + "." + serviceNamespace + ".svc"
 
 	// server cert config
 	certRequest := &x509.Certificate{

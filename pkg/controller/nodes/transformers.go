@@ -225,6 +225,7 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 		t.SetPluginState(n.t.PluginState)
 		t.SetPluginStateVersion(n.t.PluginStateVersion)
 		t.SetBarrierClockTick(n.t.BarrierClockTick)
+		t.SetPreviousNodeExecutionCheckpointPath(n.t.PreviousNodeExecutionCheckpointURI)
 	}
 
 	// Update dynamic node status
@@ -252,5 +253,11 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 		t := s.GetOrCreateWorkflowStatus()
 		t.SetWorkflowNodePhase(n.w.Phase)
 		t.SetExecutionError(n.w.Error)
+	}
+
+	// Update gate node status
+	if n.g != nil {
+		t := s.GetOrCreateGateNodeStatus()
+		t.SetGateNodePhase(n.g.Phase)
 	}
 }

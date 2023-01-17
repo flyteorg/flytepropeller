@@ -5,6 +5,7 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 )
@@ -13,12 +14,13 @@ import (
 // TODO eventually we could just convert this to be binary node state encoded into the node status
 
 type TaskNodeState struct {
-	PluginPhase        pluginCore.Phase
-	PluginPhaseVersion uint32
-	PluginState        []byte
-	PluginStateVersion uint32
-	BarrierClockTick   uint32
-	LastPhaseUpdatedAt time.Time
+	PluginPhase                        pluginCore.Phase
+	PluginPhaseVersion                 uint32
+	PluginState                        []byte
+	PluginStateVersion                 uint32
+	BarrierClockTick                   uint32
+	LastPhaseUpdatedAt                 time.Time
+	PreviousNodeExecutionCheckpointURI storage.DataReference
 }
 
 type BranchNodeState struct {
@@ -39,11 +41,17 @@ type WorkflowNodeState struct {
 	Error *core.ExecutionError
 }
 
+type GateNodeState struct {
+	Phase     v1alpha1.GateNodePhase
+	StartedAt time.Time
+}
+
 type NodeStateWriter interface {
 	PutTaskNodeState(s TaskNodeState) error
 	PutBranchNode(s BranchNodeState) error
 	PutDynamicNodeState(s DynamicNodeState) error
 	PutWorkflowNodeState(s WorkflowNodeState) error
+	PutGateNodeState(s GateNodeState) error
 }
 
 type NodeStateReader interface {
@@ -51,4 +59,5 @@ type NodeStateReader interface {
 	GetBranchNode() BranchNodeState
 	GetDynamicNodeState() DynamicNodeState
 	GetWorkflowNodeState() WorkflowNodeState
+	GetGateNodeState() GateNodeState
 }

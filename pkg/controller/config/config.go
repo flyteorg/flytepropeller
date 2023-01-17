@@ -17,12 +17,12 @@
 //       type: batch
 //       queue:
 //         type: bucket
-//         rate: 20
-//         capacity: 100
+//         rate: 1000
+//         capacity: 10000
 //       sub-queue:
 //         type: bucket
-//         rate: 100
-//         capacity: 1000
+//         rate: 1000
+//         capacity: 10000
 //     # This config assumes using `make start` in flytesnacks repo to startup a DinD k3s container
 //     kube-config: "$HOME/kubeconfig/k3s/k3s.yaml"
 //     publish-k8s-events: true
@@ -67,15 +67,15 @@ var (
 			BatchSize: -1,
 			Queue: WorkqueueConfig{
 				Type:      WorkqueueTypeMaxOfRateLimiter,
-				BaseDelay: config.Duration{Duration: time.Second * 5},
+				BaseDelay: config.Duration{Duration: time.Second * 0},
 				MaxDelay:  config.Duration{Duration: time.Second * 60},
-				Rate:      100,
-				Capacity:  1000,
+				Rate:      1000,
+				Capacity:  10000,
 			},
 			Sub: WorkqueueConfig{
 				Type:     WorkqueueTypeBucketRateLimiter,
-				Rate:     100,
-				Capacity: 1000,
+				Rate:     1000,
+				Capacity: 10000,
 			},
 		},
 		KubeConfig: KubeClientConfig{
@@ -90,11 +90,6 @@ var (
 			RetryPeriod:   config.Duration{Duration: time.Second * 2},
 		},
 		NodeConfig: NodeConfig{
-			DefaultDeadlines: DefaultDeadlines{
-				DefaultNodeExecutionDeadline:  config.Duration{Duration: time.Hour * 48},
-				DefaultNodeActiveDeadline:     config.Duration{Duration: time.Hour * 48},
-				DefaultWorkflowActiveDeadline: config.Duration{Duration: time.Hour * 72},
-			},
 			MaxNodeRetriesOnSystemFailures: 3,
 			InterruptibleFailureThreshold:  1,
 		},

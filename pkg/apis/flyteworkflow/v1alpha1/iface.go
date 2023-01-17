@@ -44,6 +44,7 @@ const (
 	NodeKindTask     NodeKind = "task"
 	NodeKindBranch   NodeKind = "branch"   // A Branch node with conditions
 	NodeKindWorkflow NodeKind = "workflow" // Either an inline workflow or a remote workflow definition
+	NodeKindGate     NodeKind = "gate"     // A Gate node with a condition
 	NodeKindStart    NodeKind = "start"    // Start node is a special node
 	NodeKindEnd      NodeKind = "end"
 )
@@ -245,6 +246,13 @@ type ExecutableBranchNode interface {
 	GetElseFail() *core.Error
 }
 
+type ExecutableGateNode interface {
+	GetKind() ConditionKind
+	GetApprove() *core.ApproveCondition
+	GetSignal() *core.SignalCondition
+	GetSleep() *core.SleepCondition
+}
+
 type ExecutableWorkflowNodeStatus interface {
 	GetWorkflowNodePhase() WorkflowNodePhase
 	GetExecutionError() *core.ExecutionError
@@ -255,6 +263,16 @@ type MutableWorkflowNodeStatus interface {
 	ExecutableWorkflowNodeStatus
 	SetWorkflowNodePhase(phase WorkflowNodePhase)
 	SetExecutionError(executionError *core.ExecutionError)
+}
+
+type ExecutableGateNodeStatus interface {
+	GetGateNodePhase() GateNodePhase
+}
+
+type MutableGateNodeStatus interface {
+	Mutable
+	ExecutableGateNodeStatus
+	SetGateNodePhase(phase GateNodePhase)
 }
 
 type Mutable interface {
@@ -288,6 +306,10 @@ type MutableNodeStatus interface {
 	ClearDynamicNodeStatus()
 	ClearLastAttemptStartedAt()
 	ClearSubNodeStatus()
+
+	GetGateNodeStatus() MutableGateNodeStatus
+	GetOrCreateGateNodeStatus() MutableGateNodeStatus
+	ClearGateNodeStatus()
 }
 
 type ExecutionTimeInfo interface {
@@ -336,6 +358,7 @@ type ExecutableTaskNodeStatus interface {
 	GetPluginStateVersion() uint32
 	GetBarrierClockTick() uint32
 	GetLastPhaseUpdatedAt() time.Time
+	GetPreviousNodeExecutionCheckpointPath() DataReference
 }
 
 type MutableTaskNodeStatus interface {
@@ -347,6 +370,7 @@ type MutableTaskNodeStatus interface {
 	SetPluginState([]byte)
 	SetPluginStateVersion(uint32)
 	SetBarrierClockTick(tick uint32)
+	SetPreviousNodeExecutionCheckpointPath(DataReference)
 }
 
 // ExecutableWorkflowNode is an interface for a Child Workflow Node
@@ -368,6 +392,7 @@ type ExecutableNode interface {
 	GetTaskID() *TaskID
 	GetBranchNode() ExecutableBranchNode
 	GetWorkflowNode() ExecutableWorkflowNode
+	GetGateNode() ExecutableGateNode
 	GetOutputAlias() []Alias
 	GetInputBindings() []*Binding
 	GetResources() *v1.ResourceRequirements

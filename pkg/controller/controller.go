@@ -305,14 +305,20 @@ func newControllerMetrics(scope promutils.Scope) *metrics {
 	}
 }
 
-func getAdminClient(ctx context.Context) (client service.AdminServiceClient, opt grpc.DialOption, err error) {
+func getAdminClient(ctx context.Context) (client service.AdminServiceClient, signalClient service.SignalServiceClient, opt []grpc.DialOption, err error) {
 	cfg := admin.GetConfig(ctx)
 	clients, err := admin.NewClientsetBuilder().WithConfig(cfg).Build(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize clientset. Error: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialize clientset. Error: %w", err)
 	}
 
-	return clients.AdminClient(), clients.AuthOpt(), nil
+	credentialsFuture := admin.NewPerRPCCredentialsFuture()
+	opts := []grpc.DialOption{
+		grpc.WithChainUnaryInterceptor(admin.NewAuthInterceptor(cfg, nil, credentialsFuture)),
+		grpc.WithPerRPCCredentials(credentialsFuture),
+	}
+
+	return clients.AdminClient(), clients.SignalServiceClient(), opts, nil
 }
 
 // New returns a new FlyteWorkflow controller
@@ -320,7 +326,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	flyteworkflowInformerFactory informers.SharedInformerFactory, informerFactory k8sInformers.SharedInformerFactory,
 	kubeClient executors.Client, scope promutils.Scope) (*Controller, error) {
 
-	adminClient, authOpts, err := getAdminClient(ctx)
+	adminClient, signalClient, authOpts, err := getAdminClient(ctx)
 	if err != nil {
 		logger.Errorf(ctx, "failed to initialize Admin client, err :%s", err.Error())
 		return nil, err
@@ -413,7 +419,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	}
 
 	logger.Info(ctx, "Setting up Catalog client.")
-	catalogClient, err := catalog.NewCatalogClient(ctx, authOpts)
+	catalogClient, err := catalog.NewCatalogClient(ctx, authOpts...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create datacatalog client")
 	}
@@ -433,7 +439,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 
 	nodeExecutor, err := nodes.NewExecutor(ctx, cfg.NodeConfig, store, controller.enqueueWorkflowForNodeUpdates, eventSink,
 		launchPlanActor, launchPlanActor, cfg.MaxDatasetSizeBytes,
-		storage.DataReference(cfg.DefaultRawOutputPrefix), kubeClient, catalogClient, recovery.NewClient(adminClient), &cfg.EventConfig, cfg.ClusterID, scope)
+		storage.DataReference(cfg.DefaultRawOutputPrefix), kubeClient, catalogClient, recovery.NewClient(adminClient), &cfg.EventConfig, cfg.ClusterID, signalClient, scope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create Controller.")
 	}
