@@ -21,40 +21,41 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
-	errors2 "github.com/flyteorg/flytestdlib/errors"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+
 	"github.com/flyteorg/flytepropeller/events"
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
+
+	errors2 "github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/flyteorg/flytestdlib/storage"
+
 	"github.com/golang/protobuf/ptypes"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 )
 
 type nodeMetrics struct {
@@ -203,6 +204,70 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 					nCtx.NodeExecutionMetadata().GetNodeExecutionID(), err)
 			}
 		}
+
+		// TODO @hamersaw - document partial recovery of dynamic tasks
+		if recovered.Metadata != nil && recovered.Metadata.IsDynamic {
+			// read node execution data
+			recoveredData, err := c.recoveryClient.RecoverNodeExecutionData(ctx, nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier, fullyQualifiedNodeID)
+			if err != nil {
+			}
+
+			// WE HAVE TO BE ABLE TO COMPUTE THE futures.pb file location from the previous execution ...
+			//     then we can just use it `f.Exists()` and copy raw using the DataStore()
+
+			// ... it doesn't exist anywhere (at least that we can be sure of
+			// probably the best thing to do is send the futures.pb location in the pb event and populate on the dynamic task model
+			// that way we can retrieve it here ... seems like unecessary work
+
+			// unless - can we decompose the CompiledWorkflowClosure in the djSpec?!?!?
+
+			logger.Infof(ctx, "HAMERSAW - data recovered")
+			if recoveredData != nil && recoveredData.DynamicWorkflow != nil && recoveredData.DynamicWorkflow.CompiledWorkflow != nil {
+				logger.Infof(ctx, "HAMERSAW - recover dynamic workflow!")
+				// TODO we need to copy the djSpec file from the previous node execution to this one however we
+				// do not know the futures.pb file location because:
+				// 1. it's not stored in recoverd.Closure.TargetMetadata
+				// 2. we only have access to the Dynamic CompiledWorkflowClosure
+				//    which unfortunately doesn't help becuase this value is cached in the dynamic task - if the cache is evicted we read the raw djSpec and repopulate the cache
+
+				// TODO @hamersaw - copy compiled workflow to current node future file (future.pb)
+
+				// TODO @hamersaw - set dynamic task state correctly?!?!
+				//return trns.WithInfo(handler.PhaseInfoRunning(trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalizing}, nil
+
+				// build initial dynamic workflow from compiled workflow closure
+				closure := recoveredData.DynamicWorkflow.CompiledWorkflow
+				dynamicWf, err := k8s.BuildFlyteWorkflow(closure, &core.LiteralMap{}, nil, "")
+				if err != nil {
+					//return nil, nil, dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "failed to build workflow")
+					return handler.PhaseInfoUndefined, err
+				}
+
+				// store compiled workflow closure in cache (but not really a cache) 
+				f, err := task.NewRemoteFutureFileReader(ctx, nCtx.NodeStatus().GetOutputDir(), nCtx.DataStore())
+				if err != nil {
+					//return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "failed to open futures file for reading")
+					return handler.PhaseInfoUndefined, err
+				}
+
+				if err := f.Cache(ctx, dynamicWf, closure); err != nil {
+					logger.Errorf(ctx, "Failed to cache Dynamic workflow [%s]", err.Error())
+				}
+
+				// return task running
+				//return trns.WithInfo(handler.PhaseInfoRunning(trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalizing}, nil
+				var trns handler.Transition
+				//newState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalized}
+				newState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}
+
+				if err := nCtx.NodeStateWriter().PutDynamicNodeState(newState); err != nil {
+					return handler.PhaseInfoUndefined, err
+				}
+
+				return handler.PhaseInfoRunning(trns.Info().GetInfo()), nil
+			}
+		}
+
 		logger.Debugf(ctx, "Node [%+v] phase [%v] is not recoverable", nCtx.NodeExecutionMetadata().GetNodeExecutionID(), recovered.Closure.Phase)
 		return handler.PhaseInfoUndefined, nil
 	}
@@ -329,7 +394,8 @@ func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructur
 		if !node.IsStartNode() {
 			if nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier != nil {
 				phaseInfo, err := c.attemptRecovery(ctx, nCtx)
-				if err != nil || phaseInfo.GetPhase() == handler.EPhaseRecovered {
+				//if err != nil || phaseInfo.GetPhase() == handler.EPhaseRecovered {
+				if err != nil || phaseInfo.GetPhase() != handler.EPhaseUndefined {
 					return phaseInfo, err
 				}
 			}
