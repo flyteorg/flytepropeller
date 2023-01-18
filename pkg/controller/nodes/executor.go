@@ -29,7 +29,6 @@ import (
 	"github.com/flyteorg/flytepropeller/events"
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
@@ -205,66 +204,38 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 			}
 		}
 
-		// TODO @hamersaw - document partial recovery of dynamic tasks
+		// if this node is a dynamic task we attempt to recover the compiled workflow from instances where the parent
+		// task succeeded but the dynamic task did not complete. this is important to ensure correctness since node ids
+		// within the compiled closure may not be generated deterministically.
 		if recovered.Metadata != nil && recovered.Metadata.IsDynamic {
 			// read node execution data
-			recoveredData, err := c.recoveryClient.RecoverNodeExecutionData(ctx, nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier, fullyQualifiedNodeID)
+			recoveredData, err := c.recoveryClient.RecoverNodeExecutionData(ctx,
+				nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier, fullyQualifiedNodeID)
 			if err != nil {
+				return handler.PhaseInfoUndefined, err
 			}
 
-			// WE HAVE TO BE ABLE TO COMPUTE THE futures.pb file location from the previous execution ...
-			//     then we can just use it `f.Exists()` and copy raw using the DataStore()
-
-			// ... it doesn't exist anywhere (at least that we can be sure of
-			// probably the best thing to do is send the futures.pb location in the pb event and populate on the dynamic task model
-			// that way we can retrieve it here ... seems like unecessary work
-
-			// unless - can we decompose the CompiledWorkflowClosure in the djSpec?!?!?
-
-			logger.Infof(ctx, "HAMERSAW - data recovered")
-			if recoveredData != nil && recoveredData.DynamicWorkflow != nil && recoveredData.DynamicWorkflow.CompiledWorkflow != nil {
-				logger.Infof(ctx, "HAMERSAW - recover dynamic workflow!")
-				// TODO we need to copy the djSpec file from the previous node execution to this one however we
-				// do not know the futures.pb file location because:
-				// 1. it's not stored in recoverd.Closure.TargetMetadata
-				// 2. we only have access to the Dynamic CompiledWorkflowClosure
-				//    which unfortunately doesn't help becuase this value is cached in the dynamic task - if the cache is evicted we read the raw djSpec and repopulate the cache
-
-				// TODO @hamersaw - copy compiled workflow to current node future file (future.pb)
-
-				// TODO @hamersaw - set dynamic task state correctly?!?!
-				//return trns.WithInfo(handler.PhaseInfoRunning(trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalizing}, nil
-
-				// build initial dynamic workflow from compiled workflow closure
-				closure := recoveredData.DynamicWorkflow.CompiledWorkflow
-				dynamicWf, err := k8s.BuildFlyteWorkflow(closure, &core.LiteralMap{}, nil, "")
-				if err != nil {
-					//return nil, nil, dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "failed to build workflow")
-					return handler.PhaseInfoUndefined, err
-				}
-
-				// store compiled workflow closure in cache (but not really a cache) 
+			if recoveredData != nil && recoveredData.DynamicWorkflow != nil && len(recoveredData.DynamicWorkflow.DynamicJobSpecUri) > 0 {
+				// copy previous DynamicJobSpec file
 				f, err := task.NewRemoteFutureFileReader(ctx, nCtx.NodeStatus().GetOutputDir(), nCtx.DataStore())
 				if err != nil {
-					//return dynamicWorkflowContext{}, errors.Wrapf(utils.ErrorCodeSystem, err, "failed to open futures file for reading")
+					return handler.PhaseInfoUndefined, err
+					//return handler.PhaseInfoUndefined, errors.Wrapf(
+					//	errors.StorageError, nCtx.NodeID(), err, "Failed to store inputs for Node. InputsFile [%s]", nCtx.InputReader().GetInputPath())
+				}
+
+				sourceDataReference := storage.DataReference(recoveredData.DynamicWorkflow.DynamicJobSpecUri)
+				if err := nCtx.DataStore().CopyRaw(ctx, sourceDataReference, f.GetLoc(), storage.Options{}); err != nil {
 					return handler.PhaseInfoUndefined, err
 				}
 
-				if err := f.Cache(ctx, dynamicWf, closure); err != nil {
-					logger.Errorf(ctx, "Failed to cache Dynamic workflow [%s]", err.Error())
-				}
-
-				// return task running
-				//return trns.WithInfo(handler.PhaseInfoRunning(trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalizing}, nil
-				var trns handler.Transition
-				//newState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalized}
-				newState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}
-
+				// transition node phase to 'Running' and dynamic task phase to 'DynamicNodePhaseParentFinalized'
+				newState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalized}
 				if err := nCtx.NodeStateWriter().PutDynamicNodeState(newState); err != nil {
 					return handler.PhaseInfoUndefined, err
 				}
 
-				return handler.PhaseInfoRunning(trns.Info().GetInfo()), nil
+				return handler.PhaseInfoRunning(nil), nil // TODO @hamersaw test
 			}
 		}
 
