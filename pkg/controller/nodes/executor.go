@@ -208,34 +208,38 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		// task succeeded but the dynamic task did not complete. this is important to ensure correctness since node ids
 		// within the compiled closure may not be generated deterministically.
 		if recovered.Metadata != nil && recovered.Metadata.IsDynamic {
-			// read node execution data
+			/*// read node execution data
 			recoveredData, err := c.recoveryClient.RecoverNodeExecutionData(ctx,
 				nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier, fullyQualifiedNodeID)
 			if err != nil {
 				return handler.PhaseInfoUndefined, err
 			}
 
-			if recoveredData != nil && recoveredData.DynamicWorkflow != nil && len(recoveredData.DynamicWorkflow.DynamicJobSpecUri) > 0 {
+			if recoveredData != nil && recoveredData.DynamicWorkflow != nil && len(recoveredData.DynamicWorkflow.DynamicJobSpecUri) > 0 {*/
+			if len(recovered.Closure.DynamicJobSpecUri) > 0 {
+				// TODO - do we need to copy input values?1?!
+
 				// copy previous DynamicJobSpec file
 				f, err := task.NewRemoteFutureFileReader(ctx, nCtx.NodeStatus().GetOutputDir(), nCtx.DataStore())
 				if err != nil {
 					return handler.PhaseInfoUndefined, err
-					//return handler.PhaseInfoUndefined, errors.Wrapf(
-					//	errors.StorageError, nCtx.NodeID(), err, "Failed to store inputs for Node. InputsFile [%s]", nCtx.InputReader().GetInputPath())
 				}
 
-				sourceDataReference := storage.DataReference(recoveredData.DynamicWorkflow.DynamicJobSpecUri)
-				if err := nCtx.DataStore().CopyRaw(ctx, sourceDataReference, f.GetLoc(), storage.Options{}); err != nil {
-					return handler.PhaseInfoUndefined, err
+				//dynamicJobSpecReference := storage.DataReference(recoveredData.DynamicWorkflow.DynamicJobSpecUri)
+				dynamicJobSpecReference := storage.DataReference(recovered.Closure.DynamicJobSpecUri)
+				if err := nCtx.DataStore().CopyRaw(ctx, dynamicJobSpecReference, f.GetLoc(), storage.Options{}); err != nil {
+					return handler.PhaseInfoUndefined, errors.Wrapf(errors.StorageError, nCtx.NodeID(), err,
+						"failed to store dynamic job spec for node. source file [%s] destination file [%s]", dynamicJobSpecReference, f.GetLoc())
 				}
 
 				// transition node phase to 'Running' and dynamic task phase to 'DynamicNodePhaseParentFinalized'
-				newState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalized}
-				if err := nCtx.NodeStateWriter().PutDynamicNodeState(newState); err != nil {
-					return handler.PhaseInfoUndefined, err
+				state := nCtx.NodeStateReader().GetDynamicNodeState()
+				state.Phase = v1alpha1.DynamicNodePhaseParentFinalized
+				if err := nCtx.NodeStateWriter().PutDynamicNodeState(state); err != nil {
+					return handler.PhaseInfoUndefined, errors.Wrapf(errors.UnknownError, nCtx.NodeID(), err, "failed to store dynamic node state")
 				}
 
-				return handler.PhaseInfoRunning(nil), nil // TODO @hamersaw test
+				return handler.PhaseInfoRunning(&handler.ExecutionInfo{}), nil
 			}
 		}
 
