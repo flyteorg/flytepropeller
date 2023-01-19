@@ -2140,8 +2140,8 @@ func TestRecover(t *testing.T) {
 		assert.Equal(t, phaseInfo.GetPhase(), handler.EPhaseRecovered)
 	})
 	t.Run("recover partially completed dynamic task", func(t *testing.T) {
-		srcDynamicJobSpecUri := "src/foo/bar"
-		dstDynamicJobSpecUri := "dst/foo/bar"
+		srcDynamicJobSpecURI := "src/foo/bar"
+		dstDynamicJobSpecURI := "dst/foo/bar"
 
 		// initialize node execution context
 		nCtx := &nodeHandlerMocks.NodeExecutionContext{}
@@ -2150,10 +2150,10 @@ func TestRecover(t *testing.T) {
 		nCtx.OnNodeStatus().Return(ns)
 
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
-		mockPBStore.On("CopyRaw", mock.Anything, storage.DataReference(srcDynamicJobSpecUri), storage.DataReference(dstDynamicJobSpecUri), mock.Anything).Return(nil)
+		mockPBStore.On("CopyRaw", mock.Anything, storage.DataReference(srcDynamicJobSpecURI), storage.DataReference(dstDynamicJobSpecURI), mock.Anything).Return(nil)
 		mockReferenceConstructor := storageMocks.ReferenceConstructor{}
 		mockReferenceConstructor.On("ConstructReference", mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("out"), "futures.pb").Return(
-			storage.DataReference(dstDynamicJobSpecUri), nil)
+			storage.DataReference(dstDynamicJobSpecURI), nil)
 		mockReferenceConstructor.On("ConstructReference", mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("out"), "futures_compiled.pb").Return(
 			storage.DataReference("out/futures_compiled.pb"), nil)
 		mockReferenceConstructor.On("ConstructReference", mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference("out"), "dynamic_compiled.pb").Return(
@@ -2181,8 +2181,8 @@ func TestRecover(t *testing.T) {
 		recoveryClient.On("RecoverNodeExecution", mock.Anything, recoveryID, nodeID).Return(
 			&admin.NodeExecution{
 				Closure: &admin.NodeExecutionClosure{
-					Phase: core.NodeExecution_FAILED,
-					DynamicJobSpecUri: srcDynamicJobSpecUri,
+					Phase:             core.NodeExecution_FAILED,
+					DynamicJobSpecUri: srcDynamicJobSpecURI,
 				},
 				Metadata: &admin.NodeExecutionMetaData{
 					IsDynamic: true,

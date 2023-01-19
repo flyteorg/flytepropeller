@@ -41,8 +41,8 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
-	errors2 "github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/contextutils"
+	errors2 "github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
@@ -53,7 +53,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -207,40 +206,27 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		// if this node is a dynamic task we attempt to recover the compiled workflow from instances where the parent
 		// task succeeded but the dynamic task did not complete. this is important to ensure correctness since node ids
 		// within the compiled closure may not be generated deterministically.
-		if recovered.Metadata != nil && recovered.Metadata.IsDynamic {
-			/*// read node execution data
-			recoveredData, err := c.recoveryClient.RecoverNodeExecutionData(ctx,
-				nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier, fullyQualifiedNodeID)
+		if recovered.Metadata != nil && recovered.Metadata.IsDynamic && len(recovered.Closure.DynamicJobSpecUri) > 0 {
+			// copy previous DynamicJobSpec file
+			f, err := task.NewRemoteFutureFileReader(ctx, nCtx.NodeStatus().GetOutputDir(), nCtx.DataStore())
 			if err != nil {
 				return handler.PhaseInfoUndefined, err
 			}
 
-			if recoveredData != nil && recoveredData.DynamicWorkflow != nil && len(recoveredData.DynamicWorkflow.DynamicJobSpecUri) > 0 {*/
-			if len(recovered.Closure.DynamicJobSpecUri) > 0 {
-				// TODO - do we need to copy input values?1?!
-
-				// copy previous DynamicJobSpec file
-				f, err := task.NewRemoteFutureFileReader(ctx, nCtx.NodeStatus().GetOutputDir(), nCtx.DataStore())
-				if err != nil {
-					return handler.PhaseInfoUndefined, err
-				}
-
-				//dynamicJobSpecReference := storage.DataReference(recoveredData.DynamicWorkflow.DynamicJobSpecUri)
-				dynamicJobSpecReference := storage.DataReference(recovered.Closure.DynamicJobSpecUri)
-				if err := nCtx.DataStore().CopyRaw(ctx, dynamicJobSpecReference, f.GetLoc(), storage.Options{}); err != nil {
-					return handler.PhaseInfoUndefined, errors.Wrapf(errors.StorageError, nCtx.NodeID(), err,
-						"failed to store dynamic job spec for node. source file [%s] destination file [%s]", dynamicJobSpecReference, f.GetLoc())
-				}
-
-				// transition node phase to 'Running' and dynamic task phase to 'DynamicNodePhaseParentFinalized'
-				state := nCtx.NodeStateReader().GetDynamicNodeState()
-				state.Phase = v1alpha1.DynamicNodePhaseParentFinalized
-				if err := nCtx.NodeStateWriter().PutDynamicNodeState(state); err != nil {
-					return handler.PhaseInfoUndefined, errors.Wrapf(errors.UnknownError, nCtx.NodeID(), err, "failed to store dynamic node state")
-				}
-
-				return handler.PhaseInfoRunning(&handler.ExecutionInfo{}), nil
+			dynamicJobSpecReference := storage.DataReference(recovered.Closure.DynamicJobSpecUri)
+			if err := nCtx.DataStore().CopyRaw(ctx, dynamicJobSpecReference, f.GetLoc(), storage.Options{}); err != nil {
+				return handler.PhaseInfoUndefined, errors.Wrapf(errors.StorageError, nCtx.NodeID(), err,
+					"failed to store dynamic job spec for node. source file [%s] destination file [%s]", dynamicJobSpecReference, f.GetLoc())
 			}
+
+			// transition node phase to 'Running' and dynamic task phase to 'DynamicNodePhaseParentFinalized'
+			state := nCtx.NodeStateReader().GetDynamicNodeState()
+			state.Phase = v1alpha1.DynamicNodePhaseParentFinalized
+			if err := nCtx.NodeStateWriter().PutDynamicNodeState(state); err != nil {
+				return handler.PhaseInfoUndefined, errors.Wrapf(errors.UnknownError, nCtx.NodeID(), err, "failed to store dynamic node state")
+			}
+
+			return handler.PhaseInfoRunning(&handler.ExecutionInfo{}), nil
 		}
 
 		logger.Debugf(ctx, "Node [%+v] phase [%v] is not recoverable", nCtx.NodeExecutionMetadata().GetNodeExecutionID(), recovered.Closure.Phase)
@@ -710,7 +696,7 @@ func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx *nodeExe
 	// NOTE: It is important to increment attempts only after abort has been called. Increment attempt mutates the state
 	// Attempt is used throughout the system to determine the idempotent resource version.
 	nodeStatus.IncrementAttempts()
-	nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, v1.Now(), "retrying", nil)
+	nodeStatus.UpdatePhase(v1alpha1.NodePhaseRunning, metav1.Now(), "retrying", nil)
 	// We are going to retry in the next round, so we should clear all current state
 	nodeStatus.ClearSubNodeStatus()
 	nodeStatus.ClearTaskStatus()
@@ -744,7 +730,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 		if err := c.abort(ctx, h, nCtx, "node failing"); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, v1.Now(), nodeStatus.GetMessage(), nodeStatus.GetExecutionError())
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, metav1.Now(), nodeStatus.GetMessage(), nodeStatus.GetExecutionError())
 		c.metrics.FailureDuration.Observe(ctx, nodeStatus.GetStartedAt().Time, nodeStatus.GetStoppedAt().Time)
 		if nCtx.md.IsInterruptible() {
 			c.metrics.InterruptibleNodesTerminated.Inc(ctx)
@@ -759,7 +745,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 		}
 
 		nodeStatus.ClearSubNodeStatus()
-		nodeStatus.UpdatePhase(v1alpha1.NodePhaseTimedOut, v1.Now(), nodeStatus.GetMessage(), nodeStatus.GetExecutionError())
+		nodeStatus.UpdatePhase(v1alpha1.NodePhaseTimedOut, metav1.Now(), nodeStatus.GetMessage(), nodeStatus.GetExecutionError())
 		c.metrics.TimedOutFailure.Inc(ctx)
 		if nCtx.md.IsInterruptible() {
 			c.metrics.InterruptibleNodesTerminated.Inc(ctx)
@@ -772,7 +758,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 		if err := c.finalize(ctx, h, nCtx); err != nil {
 			return executors.NodeStatusUndefined, err
 		}
-		t := v1.Now()
+		t := metav1.Now()
 
 		started := nodeStatus.GetStartedAt()
 		if started == nil {
