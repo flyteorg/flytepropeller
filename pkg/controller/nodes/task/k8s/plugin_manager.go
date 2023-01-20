@@ -188,19 +188,19 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 
 	tmpl, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
-		return pluginsCore.Transition{}, err
+		return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("Failed to read task template", err.Error(), nil)), nil
 	}
 
 	k8sTaskCtxMetadata, err := newTaskExecutionMetadata(tCtx.TaskExecutionMetadata(), tmpl)
 	if err != nil {
-		return pluginsCore.Transition{}, err
+		return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("Failed to create task context", err.Error(), nil)), nil
 	}
 
 	k8sTaskCtx := newTaskExecutionContext(tCtx, k8sTaskCtxMetadata)
 
 	o, err := e.plugin.BuildResource(ctx, k8sTaskCtx)
 	if err != nil {
-		return pluginsCore.UnknownTransition, err
+		return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("Failed to build k8s resource", err.Error(), nil)), nil
 	}
 
 	e.AddObjectMetadata(k8sTaskCtxMetadata, o, config.GetK8sPluginConfig())
