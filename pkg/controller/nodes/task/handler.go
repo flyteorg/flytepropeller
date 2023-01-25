@@ -805,28 +805,31 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 		logger.Errorf(ctx, "Abort failed when calling plugin abort.")
 		return err
 	}
-	taskExecID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
-	evRecorder := nCtx.EventsRecorder()
-	nodeExecutionID, err := getParentNodeExecIDForTask(&taskExecID, nCtx.ExecutionContext())
-	if err != nil {
-		return err
-	}
-	if err := evRecorder.RecordTaskEvent(ctx, &event.TaskExecutionEvent{
-		TaskId:                taskExecID.TaskId,
-		ParentNodeExecutionId: nodeExecutionID,
-		RetryAttempt:          nCtx.CurrentAttempt(),
-		Phase:                 core.TaskExecution_ABORTED,
-		OccurredAt:            ptypes.TimestampNow(),
-		OutputResult: &event.TaskExecutionEvent_Error{
-			Error: &core.ExecutionError{
-				Code:    "Task Aborted",
-				Message: reason,
-			}},
-	}, t.eventConfig); err != nil && !eventsErr.IsNotFound(err) && !eventsErr.IsEventIncompatibleClusterError(err) {
-		// If a prior workflow/node/task execution event has failed because of an invalid cluster error, don't stall the abort
-		// at this point in the clean-up.
-		logger.Errorf(ctx, "failed to send event to Admin. error: %s", err.Error())
-		return err
+
+	if !currentPhase.IsTerminal() {
+		taskExecID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
+		evRecorder := nCtx.EventsRecorder()
+		nodeExecutionID, err := getParentNodeExecIDForTask(&taskExecID, nCtx.ExecutionContext())
+		if err != nil {
+			return err
+		}
+		if err := evRecorder.RecordTaskEvent(ctx, &event.TaskExecutionEvent{
+			TaskId:                taskExecID.TaskId,
+			ParentNodeExecutionId: nodeExecutionID,
+			RetryAttempt:          nCtx.CurrentAttempt(),
+			Phase:                 core.TaskExecution_ABORTED,
+			OccurredAt:            ptypes.TimestampNow(),
+			OutputResult: &event.TaskExecutionEvent_Error{
+				Error: &core.ExecutionError{
+					Code:    "Task Aborted",
+					Message: reason,
+				}},
+		}, t.eventConfig); err != nil && !eventsErr.IsNotFound(err) && !eventsErr.IsEventIncompatibleClusterError(err) {
+			// If a prior workflow/node/task execution event has failed because of an invalid cluster error, don't stall the abort
+			// at this point in the clean-up.
+			logger.Errorf(ctx, "failed to send event to Admin. error: %s", err.Error())
+			return err
+		}
 	}
 	return nil
 }
