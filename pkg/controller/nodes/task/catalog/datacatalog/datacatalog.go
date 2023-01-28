@@ -99,15 +99,6 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (catalog.Entry
 		return catalog.Entry{}, errors.Wrapf(err, "DataCatalog failed to get dataset for ID %s", key.Identifier.String())
 	}
 
-	//inputs := &core.LiteralMap{}
-	//if key.TypedInterface.Inputs != nil {
-	//	retInputs, err := key.InputReader.Get(ctx)
-	//	if err != nil {
-	//		return catalog.Entry{}, errors.Wrap(err, "failed to read inputs when trying to query catalog")
-	//	}
-	//	inputs = retInputs
-	//}
-
 	tag, err := GenerateArtifactTagName(ctx, key.Inputs)
 	if err != nil {
 		logger.Errorf(ctx, "DataCatalog failed to generate tag for inputs %+v, err: %+v", key.Inputs, err)

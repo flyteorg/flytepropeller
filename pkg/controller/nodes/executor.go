@@ -223,7 +223,7 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 	nodeInputs := recoveredData.GetFullInputs()
 	// Copy inputs to this node's expected location
 	if nodeInputs != nil {
-		if err := c.store.WriteProtobuf(ctx, nCtx.InputReader().GetInputPath(), storage.Options{}, recoveredData.FullInputs); err != nil {
+		if err = c.store.WriteProtobuf(ctx, nCtx.InputReader().GetInputPath(), storage.Options{}, recoveredData.FullInputs); err != nil {
 			c.metrics.InputsWriteFailure.Inc(ctx)
 			logger.Errorf(ctx, "Failed to move recovered inputs for Node. Error [%v]. InputsFile [%s]", err, nCtx.InputReader().GetInputPath())
 			return handler.PhaseInfoUndefined, errors.Wrapf(
@@ -231,7 +231,7 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		}
 	} else if len(recovered.InputUri) > 0 {
 		// If the inputs are too large they won't be returned inline in the RecoverData call. We must fetch them before copying them.
-		nodeInputs := &core.LiteralMap{}
+		nodeInputs = &core.LiteralMap{}
 		if recoveredData.FullInputs == nil {
 			if err := c.store.ReadProtobuf(ctx, storage.DataReference(recovered.InputUri), nodeInputs); err != nil {
 				return handler.PhaseInfoUndefined, errors.Wrapf(errors.InputsNotFoundError, nCtx.NodeID(), err, "failed to read data from dataDir [%v].", recovered.InputUri)
