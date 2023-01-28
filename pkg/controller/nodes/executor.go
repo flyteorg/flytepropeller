@@ -6,14 +6,14 @@
 // to the respective node handlers
 //
 // Available node handlers are
-// - Task: Arguably the most important handler as it handles all tasks. These include all plugins. The goal of the workflow is
-//         is to run tasks, thus every workflow will contain atleast one TaskNode (except for the case, where the workflow
-//          is purely a meta-workflow and can run other workflows
-// - SubWorkflow: This is one of the most important handlers. It can execute Workflows that are nested inside a workflow
-// - DynamicTask Handler: This is just a decorator on the Task Handler. It handles cases, in which the Task returns a futures
-//                        file. Every Task is actually executed through the DynamicTaskHandler
-// - Branch Handler: This handler is used to execute branches
-// - Start & End Node handler: these are nominal handlers for the start and end node and do no really carry a lot of logic
+//   - Task: Arguably the most important handler as it handles all tasks. These include all plugins. The goal of the workflow is
+//     is to run tasks, thus every workflow will contain atleast one TaskNode (except for the case, where the workflow
+//     is purely a meta-workflow and can run other workflows
+//   - SubWorkflow: This is one of the most important handlers. It can execute Workflows that are nested inside a workflow
+//   - DynamicTask Handler: This is just a decorator on the Task Handler. It handles cases, in which the Task returns a futures
+//     file. Every Task is actually executed through the DynamicTaskHandler
+//   - Branch Handler: This handler is used to execute branches
+//   - Start & End Node handler: these are nominal handlers for the start and end node and do no really carry a lot of logic
 package nodes
 
 import (
@@ -220,8 +220,9 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		logger.Warnf(ctx, "call to attemptRecovery node [%+v] data returned no error but also no data", nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 		return handler.PhaseInfoUndefined, nil
 	}
+	nodeInputs := recoveredData.GetFullInputs()
 	// Copy inputs to this node's expected location
-	if recoveredData.FullInputs != nil {
+	if nodeInputs != nil {
 		if err := c.store.WriteProtobuf(ctx, nCtx.InputReader().GetInputPath(), storage.Options{}, recoveredData.FullInputs); err != nil {
 			c.metrics.InputsWriteFailure.Inc(ctx)
 			logger.Errorf(ctx, "Failed to move recovered inputs for Node. Error [%v]. InputsFile [%s]", err, nCtx.InputReader().GetInputPath())
@@ -283,6 +284,7 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 	}
 
 	info := &handler.ExecutionInfo{
+		Inputs:     nodeInputs,
 		OutputInfo: oi,
 	}
 
@@ -312,7 +314,8 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 // In this method we check if the queue is ready to be processed and if so, we prime it in Admin as queued
 // Before we start the node execution, we need to transition this Node status to Queued.
 // This is because a node execution has to exist before task/wf executions can start.
-func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructure, nCtx handler.NodeExecutionContext) (handler.PhaseInfo, error) {
+func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructure, nCtx handler.NodeExecutionContext) (
+	handler.PhaseInfo, error) {
 	logger.Debugf(ctx, "Node not yet started")
 	// Query the nodes information to figure out if it can be executed.
 	predicatePhase, err := CanExecute(ctx, dag, nCtx.ContextualNodeLookup(), nCtx.Node())
@@ -353,14 +356,14 @@ func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructur
 					c.metrics.InputsWriteFailure.Inc(ctx)
 					logger.Errorf(ctx, "Failed to store inputs for Node. Error [%v]. InputsFile [%s]", err, inputsFile)
 					return handler.PhaseInfoUndefined, errors.Wrapf(
-						errors.StorageError, node.GetID(), err, "Failed to store inputs for Node. InputsFile [%s]", inputsFile)
+						errors.StorageError, node.GetID(), nil, "Failed to store inputs for Node. InputsFile [%s]", inputsFile)
 				}
 			}
 
 			logger.Debugf(ctx, "Node Data Directory [%s].", nodeStatus.GetDataDir())
 		}
 
-		return handler.PhaseInfoQueued("node queued"), nil
+		return handler.PhaseInfoQueued("node queued", nodeInputs), nil
 	}
 
 	// Now that we have resolved the inputs, we can record as a transition latency. This is because we have completed
@@ -497,7 +500,8 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 
 		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
 			p, nCtx.InputReader().GetInputPath().String(), nodeStatus, nCtx.ExecutionContext().GetEventVersion(),
-			nCtx.ExecutionContext().GetParentInfo(), nCtx.node, c.clusterID, nCtx.NodeStateReader().GetDynamicNodeState().Phase)
+			nCtx.ExecutionContext().GetParentInfo(), nCtx.node, c.clusterID, nCtx.NodeStateReader().GetDynamicNodeState().Phase,
+			c.eventConfig)
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "could not convert phase info to event")
 		}
@@ -612,7 +616,8 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 
 		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
 			p, nCtx.InputReader().GetInputPath().String(), nCtx.NodeStatus(), nCtx.ExecutionContext().GetEventVersion(),
-			nCtx.ExecutionContext().GetParentInfo(), nCtx.node, c.clusterID, nCtx.NodeStateReader().GetDynamicNodeState().Phase)
+			nCtx.ExecutionContext().GetParentInfo(), nCtx.node, c.clusterID, nCtx.NodeStateReader().GetDynamicNodeState().Phase,
+			c.eventConfig)
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "could not convert phase info to event")
 		}

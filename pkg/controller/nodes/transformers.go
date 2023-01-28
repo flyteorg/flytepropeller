@@ -3,6 +3,7 @@ package nodes
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"strconv"
 	"time"
 
@@ -79,7 +80,8 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 	status v1alpha1.ExecutableNodeStatus,
 	eventVersion v1alpha1.EventVersion,
 	parentInfo executors.ImmutableParentInfo,
-	node v1alpha1.ExecutableNode, clusterID string, dynamicNodePhase v1alpha1.DynamicNodePhase) (*event.NodeExecutionEvent, error) {
+	node v1alpha1.ExecutableNode, clusterID string, dynamicNodePhase v1alpha1.DynamicNodePhase,
+	eventConfig *config.EventConfig) (*event.NodeExecutionEvent, error) {
 	if info.GetPhase() == handler.EPhaseNotReady {
 		return nil, nil
 	}
@@ -116,7 +118,6 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 		nev = &event.NodeExecutionEvent{
 			Id:           nodeExecID,
 			Phase:        phase,
-			InputUri:     inputPath,
 			OccurredAt:   occurredTime,
 			ProducerId:   clusterID,
 			EventVersion: nodeExecutionEventVersion,
@@ -176,6 +177,17 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 		nev.IsDynamic = true
 		if nev.GetTaskNodeMetadata() != nil && nev.GetTaskNodeMetadata().DynamicWorkflow != nil {
 			nev.IsParent = true
+		}
+	}
+	if eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
+		if eInfo != nil {
+			nev.InputValue = &event.NodeExecutionEvent_InputData{
+				InputData: eInfo.Inputs,
+			}
+		}
+	} else {
+		nev.InputValue = &event.NodeExecutionEvent_InputUri{
+			InputUri: inputPath,
 		}
 	}
 	return nev, nil

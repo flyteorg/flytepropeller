@@ -99,18 +99,18 @@ func (m *CatalogClient) Get(ctx context.Context, key catalog.Key) (catalog.Entry
 		return catalog.Entry{}, errors.Wrapf(err, "DataCatalog failed to get dataset for ID %s", key.Identifier.String())
 	}
 
-	inputs := &core.LiteralMap{}
-	if key.TypedInterface.Inputs != nil {
-		retInputs, err := key.InputReader.Get(ctx)
-		if err != nil {
-			return catalog.Entry{}, errors.Wrap(err, "failed to read inputs when trying to query catalog")
-		}
-		inputs = retInputs
-	}
+	//inputs := &core.LiteralMap{}
+	//if key.TypedInterface.Inputs != nil {
+	//	retInputs, err := key.InputReader.Get(ctx)
+	//	if err != nil {
+	//		return catalog.Entry{}, errors.Wrap(err, "failed to read inputs when trying to query catalog")
+	//	}
+	//	inputs = retInputs
+	//}
 
-	tag, err := GenerateArtifactTagName(ctx, inputs)
+	tag, err := GenerateArtifactTagName(ctx, key.Inputs)
 	if err != nil {
-		logger.Errorf(ctx, "DataCatalog failed to generate tag for inputs %+v, err: %+v", inputs, err)
+		logger.Errorf(ctx, "DataCatalog failed to generate tag for inputs %+v, err: %+v", key.Inputs, err)
 		return catalog.Entry{}, err
 	}
 
@@ -171,35 +171,25 @@ func (m *CatalogClient) CreateDataset(ctx context.Context, key catalog.Key, meta
 	return datasetID, nil
 }
 
-// prepareInputsAndOutputs reads the inputs and outputs of a task and returns them as core.LiteralMaps to be consumed by datacatalog.
-func (m *CatalogClient) prepareInputsAndOutputs(ctx context.Context, key catalog.Key, reader io.OutputReader) (inputs *core.LiteralMap, outputs *core.LiteralMap, err error) {
-	inputs = &core.LiteralMap{}
+// prepareOutputs reads the inputs and outputs of a task and returns them as core.LiteralMaps to be consumed by datacatalog.
+func (m *CatalogClient) prepareOutputs(ctx context.Context, key catalog.Key, reader io.OutputReader) (outputs *core.LiteralMap, err error) {
 	outputs = &core.LiteralMap{}
-	if key.TypedInterface.Inputs != nil && len(key.TypedInterface.Inputs.Variables) != 0 {
-		retInputs, err := key.InputReader.Get(ctx)
-		if err != nil {
-			logger.Errorf(ctx, "DataCatalog failed to read inputs err: %s", err)
-			return nil, nil, err
-		}
-		logger.Debugf(ctx, "DataCatalog read inputs")
-		inputs = retInputs
-	}
 
 	if key.TypedInterface.Outputs != nil && len(key.TypedInterface.Outputs.Variables) != 0 {
 		retOutputs, retErr, err := reader.Read(ctx)
 		if err != nil {
 			logger.Errorf(ctx, "DataCatalog failed to read outputs err: %s", err)
-			return nil, nil, err
+			return nil, err
 		}
 		if retErr != nil {
 			logger.Errorf(ctx, "DataCatalog failed to read outputs, err :%s", retErr.Message)
-			return nil, nil, errors.Errorf("Failed to read outputs. EC: %s, Msg: %s", retErr.Code, retErr.Message)
+			return nil, errors.Errorf("Failed to read outputs. EC: %s, Msg: %s", retErr.Code, retErr.Message)
 		}
 		logger.Debugf(ctx, "DataCatalog read outputs")
 		outputs = retOutputs
 	}
 
-	return inputs, outputs, nil
+	return outputs, nil
 }
 
 // CreateArtifact creates an Artifact in datacatalog including its associated ArtifactData and tags it with a hash of
@@ -317,12 +307,12 @@ func (m *CatalogClient) Put(ctx context.Context, key catalog.Key, reader io.Outp
 		return catalog.Status{}, err
 	}
 
-	inputs, outputs, err := m.prepareInputsAndOutputs(ctx, key, reader)
+	outputs, err := m.prepareOutputs(ctx, key, reader)
 	if err != nil {
 		return catalog.Status{}, err
 	}
 
-	return m.CreateArtifact(ctx, key, datasetID, inputs, outputs, metadata)
+	return m.CreateArtifact(ctx, key, datasetID, key.Inputs, outputs, metadata)
 }
 
 // Update stores the result of a task execution as a cached Artifact, overwriting any already stored data from a previous
@@ -338,18 +328,18 @@ func (m *CatalogClient) Update(ctx context.Context, key catalog.Key, reader io.O
 		return catalog.Status{}, err
 	}
 
-	inputs, outputs, err := m.prepareInputsAndOutputs(ctx, key, reader)
+	outputs, err := m.prepareOutputs(ctx, key, reader)
 	if err != nil {
 		return catalog.Status{}, err
 	}
 
-	catalogStatus, err := m.UpdateArtifact(ctx, key, datasetID, inputs, outputs, metadata)
+	catalogStatus, err := m.UpdateArtifact(ctx, key, datasetID, key.Inputs, outputs, metadata)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			// No existing artifact found (e.g. initial execution of task with overwrite flag already set),
 			// silently ignore error and create artifact instead to make overwriting an idempotent operation.
 			logger.Debugf(ctx, "Artifact %+v for dataset %+v does not exist while updating, creating instead", key, datasetID)
-			return m.CreateArtifact(ctx, key, datasetID, inputs, outputs, metadata)
+			return m.CreateArtifact(ctx, key, datasetID, key.Inputs, outputs, metadata)
 		}
 
 		logger.Errorf(ctx, "Failed to update artifact %+v for dataset %+v: %v", key, datasetID, err)
@@ -369,16 +359,7 @@ func (m *CatalogClient) GetOrExtendReservation(ctx context.Context, key catalog.
 		return nil, err
 	}
 
-	inputs := &core.LiteralMap{}
-	if key.TypedInterface.Inputs != nil {
-		retInputs, err := key.InputReader.Get(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to read inputs when trying to query catalog")
-		}
-		inputs = retInputs
-	}
-
-	tag, err := GenerateArtifactTagName(ctx, inputs)
+	tag, err := GenerateArtifactTagName(ctx, key.Inputs)
 	if err != nil {
 		return nil, err
 	}
@@ -409,16 +390,7 @@ func (m *CatalogClient) ReleaseReservation(ctx context.Context, key catalog.Key,
 		return err
 	}
 
-	inputs := &core.LiteralMap{}
-	if key.TypedInterface.Inputs != nil {
-		retInputs, err := key.InputReader.Get(ctx)
-		if err != nil {
-			return errors.Wrap(err, "failed to read inputs when trying to query catalog")
-		}
-		inputs = retInputs
-	}
-
-	tag, err := GenerateArtifactTagName(ctx, inputs)
+	tag, err := GenerateArtifactTagName(ctx, key.Inputs)
 	if err != nil {
 		return err
 	}

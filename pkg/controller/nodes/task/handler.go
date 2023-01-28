@@ -561,6 +561,20 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// So now we will derive this from the plugin phase
 	// TODO @kumare re-evaluate this decision
 
+	tk, err := tCtx.tr.Read(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
+		return handler.UnknownTransition, err
+	}
+	inputs := &core.LiteralMap{}
+	if tk.Interface != nil {
+		retInputs, err := nCtx.InputReader().Get(ctx)
+		if err != nil {
+			logger.Errorf(ctx, "failed to read inputs when checking catalog cache %w", err)
+			return handler.UnknownTransition, err
+		}
+		inputs = retInputs
+	}
 	// STEP 1: Check Cache
 	if (ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache) && checkCatalog {
 		// This is assumed to be first time. we will check catalog and call handle
@@ -571,7 +585,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			pluginTrns.PopulateCacheInfo(catalog.NewCatalogEntry(nil, cacheSkipped))
 			t.metrics.catalogSkipCount.Inc(ctx)
 		} else {
-			entry, err := t.CheckCatalogCache(ctx, tCtx.tr, nCtx.InputReader(), tCtx.ow)
+			entry, err := t.CheckCatalogCache(ctx, tk, inputs, tCtx.ow)
 			if err != nil {
 				logger.Errorf(ctx, "failed to check catalog cache with error")
 				return handler.UnknownTransition, err
@@ -611,7 +625,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// Check catalog for cache reservation and acquire if none exists
 	if checkCatalog && (pluginTrns.execInfo.TaskNodeInfo == nil || pluginTrns.execInfo.TaskNodeInfo.TaskNodeMetadata.CacheStatus != core.CatalogCacheStatus_CACHE_HIT) {
 		ownerID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-		reservation, err := t.GetOrExtendCatalogReservation(ctx, ownerID, controllerConfig.GetConfig().WorkflowReEval.Duration, tCtx.tr, nCtx.InputReader())
+		reservation, err := t.GetOrExtendCatalogReservation(ctx, ownerID, controllerConfig.GetConfig().WorkflowReEval.Duration, tk, inputs)
 		if err != nil {
 			logger.Errorf(ctx, "failed to get or extend catalog reservation with error")
 			return handler.UnknownTransition, err
@@ -696,6 +710,8 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		evInfo, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
 			TaskExecContext:       tCtx,
 			InputReader:           nCtx.InputReader(),
+			Inputs:                inputs,
+			EventConfig:           t.eventConfig,
 			OutputWriter:          tCtx.ow,
 			Info:                  ev,
 			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
@@ -721,6 +737,8 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	evInfo, err := pluginTrns.FinalTaskEvent(ToTaskExecutionEventInputs{
 		TaskExecContext:       tCtx,
 		InputReader:           nCtx.InputReader(),
+		Inputs:                inputs,
+		EventConfig:           t.eventConfig,
 		OutputWriter:          tCtx.ow,
 		NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 		ExecContext:           nCtx.ExecutionContext(),
