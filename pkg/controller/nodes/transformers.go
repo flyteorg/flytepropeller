@@ -180,7 +180,9 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 		}
 	}
 	if eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
+		logger.Infof(context.TODO(), "**using inline event policy for inputs")
 		if eInfo != nil {
+			logger.Infof(context.TODO(), "**passing inline event inputs [%+v]", eInfo.Inputs)
 			nev.InputValue = &event.NodeExecutionEvent_InputData{
 				InputData: eInfo.Inputs,
 			}
