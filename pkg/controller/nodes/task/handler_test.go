@@ -455,6 +455,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 
 		ir := &ioMocks.InputReader{}
 		ir.OnGetInputPath().Return("input")
+		ir.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
 		nCtx := &nodeMocks.NodeExecutionContext{}
 		nCtx.OnNodeExecutionMetadata().Return(nm)
 		nCtx.OnNode().Return(n)
@@ -686,6 +687,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 				}),
 				resourceManager: noopRm,
 				taskMetricsMap:  make(map[MetricKey]*taskMetrics),
+				eventConfig:     eventConfig,
 			}
 			got, err := tk.Handle(context.TODO(), nCtx)
 			if (err != nil) != tt.want.wantErr {
@@ -801,6 +803,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 
 		ir := &ioMocks.InputReader{}
 		ir.OnGetInputPath().Return(storage.DataReference("input"))
+		ir.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
 		nCtx := &nodeMocks.NodeExecutionContext{}
 		nCtx.OnNodeExecutionMetadata().Return(nm)
 		nCtx.OnNode().Return(n)
@@ -1061,6 +1064,7 @@ func Test_task_Handle_Reservation(t *testing.T) {
 
 		ir := &ioMocks.InputReader{}
 		ir.OnGetInputPath().Return(storage.DataReference("input"))
+		ir.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
 		nCtx := &nodeMocks.NodeExecutionContext{}
 		nCtx.OnNodeExecutionMetadata().Return(nm)
 		nCtx.OnNode().Return(n)
@@ -1312,6 +1316,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 
 		ir := &ioMocks.InputReader{}
 		ir.OnGetInputPath().Return(storage.DataReference("input"))
+		ir.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
 		nCtx := &nodeMocks.NodeExecutionContext{}
 		nCtx.OnNodeExecutionMetadata().Return(nm)
 		nCtx.OnNode().Return(n)
@@ -1937,6 +1942,7 @@ func Test_task_Finalize(t *testing.T) {
 		n.OnGetResources().Return(res)
 
 		ir := &ioMocks.InputReader{}
+		ir.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
 		nCtx := &nodeMocks.NodeExecutionContext{}
 		nCtx.OnNodeExecutionMetadata().Return(nm)
 		nCtx.OnNode().Return(n)

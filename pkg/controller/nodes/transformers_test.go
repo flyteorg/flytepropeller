@@ -3,6 +3,8 @@ package nodes
 import (
 	"testing"
 
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -47,7 +49,9 @@ func TestToNodeExecutionEvent(t *testing.T) {
 				Domain:  "domain",
 				Name:    "exec",
 			},
-		}, info, "inputPath", &status, v1alpha1.EventVersion2, &parentInfo, &node, "clusterID", v1alpha1.DynamicNodePhaseParentFinalized)
+		}, info, "inputPath", &status, v1alpha1.EventVersion2, &parentInfo, &node, "clusterID", v1alpha1.DynamicNodePhaseParentFinalized, &config.EventConfig{
+			RawOutputPolicy: config.RawOutputPolicyReference,
+		})
 		assert.NoError(t, err)
 		assert.True(t, nev.IsDynamic)
 		assert.True(t, nev.IsParent)
@@ -79,7 +83,9 @@ func TestToNodeExecutionEvent(t *testing.T) {
 				Domain:  "domain",
 				Name:    "exec",
 			},
-		}, info, "inputPath", &status, v1alpha1.EventVersion2, &parentInfo, &node, "clusterID", v1alpha1.DynamicNodePhaseNone)
+		}, info, "inputPath", &status, v1alpha1.EventVersion2, &parentInfo, &node, "clusterID", v1alpha1.DynamicNodePhaseNone, &config.EventConfig{
+			RawOutputPolicy: config.RawOutputPolicyReference,
+		})
 		assert.NoError(t, err)
 		assert.False(t, nev.IsDynamic)
 		assert.True(t, nev.IsParent)

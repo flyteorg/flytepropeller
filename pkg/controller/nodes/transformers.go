@@ -3,9 +3,10 @@ package nodes
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"strconv"
 	"time"
+
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
@@ -180,9 +181,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 		}
 	}
 	if eventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
-		logger.Infof(context.TODO(), "**using inline event policy for inputs")
 		if eInfo != nil {
-			logger.Infof(context.TODO(), "**passing inline event inputs [%+v]", eInfo.Inputs)
 			nev.InputValue = &event.NodeExecutionEvent_InputData{
 				InputData: eInfo.Inputs,
 			}
