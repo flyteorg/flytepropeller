@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
+	"github.com/golang/protobuf/proto"
 	"testing"
 	"time"
 
@@ -55,7 +57,7 @@ import (
 )
 
 var eventConfig = &controllerConfig.EventConfig{
-	RawOutputPolicy: controllerConfig.RawOutputPolicyReference,
+	RawOutputPolicy: controllerConfig.RawOutputPolicyInline,
 }
 
 const testClusterID = "C1"
@@ -392,6 +394,11 @@ func CreateNoopResourceManager(ctx context.Context, scope promutils.Scope) resou
 
 func Test_task_Handle_NoCatalog(t *testing.T) {
 
+	inputs := &core.LiteralMap{
+		Literals: map[string]*core.Literal{
+			"foo": coreutils.MustMakeLiteral("bar"),
+		},
+	}
 	createNodeContext := func(pluginPhase pluginCore.Phase, pluginVer uint32, pluginResp fakeplugins.NextPhaseState, recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder, allowIncrementParallelism bool) *nodeMocks.NodeExecutionContext {
 		wfExecID := &core.WorkflowExecutionIdentifier{
 			Project: "project",
@@ -424,6 +431,17 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 				Discoverable: false,
 			},
 			Interface: &core.TypedInterface{
+				Inputs: &core.VariableMap{
+					Variables: map[string]*core.Variable{
+						"foo": {
+							Type: &core.LiteralType{
+								Type: &core.LiteralType_Simple{
+									Simple: core.SimpleType_STRING,
+								},
+							},
+						},
+					},
+				},
 				Outputs: &core.VariableMap{
 					Variables: map[string]*core.Variable{
 						"x": {
@@ -455,7 +473,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 
 		ir := &ioMocks.InputReader{}
 		ir.OnGetInputPath().Return("input")
-		ir.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
+		ir.OnGetMatch(mock.Anything).Return(inputs, nil)
 		nCtx := &nodeMocks.NodeExecutionContext{}
 		nCtx.OnNodeExecutionMetadata().Return(nm)
 		nCtx.OnNode().Return(n)
@@ -702,6 +720,9 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 						assert.Equal(t, tt.want.eventPhase.String(), e.Phase.String())
 						if tt.args.expectedState.TaskInfo != nil {
 							assert.Equal(t, tt.args.expectedState.TaskInfo.Logs, e.Logs)
+						}
+						if e.Phase == core.TaskExecution_RUNNING || e.Phase == core.TaskExecution_SUCCEEDED {
+							assert.True(t, proto.Equal(inputs, e.GetInputData()))
 						}
 					}
 				} else {

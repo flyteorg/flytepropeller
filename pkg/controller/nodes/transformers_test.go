@@ -1,6 +1,8 @@
 package nodes
 
 import (
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
+	"github.com/golang/protobuf/proto"
 	"testing"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
@@ -90,5 +92,32 @@ func TestToNodeExecutionEvent(t *testing.T) {
 		assert.False(t, nev.IsDynamic)
 		assert.True(t, nev.IsParent)
 		assert.Equal(t, nodeExecutionEventVersion, nev.EventVersion)
+	})
+	t.Run("inline events", func(t *testing.T) {
+		inputs := &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"foo": coreutils.MustMakeLiteral("bar"),
+			},
+		}
+		info := handler.PhaseInfoQueued("z", inputs)
+		status := mocks.ExecutableNodeStatus{}
+		status.OnGetOutputDir().Return(storage.DataReference("s3://foo/bar"))
+		status.OnGetParentNodeID().Return(nil)
+		node := mocks.ExecutableNode{}
+		node.OnGetID().Return("n")
+		node.OnGetName().Return("nodey")
+		node.OnGetKind().Return(v1alpha1.NodeKindTask)
+		nev, err := ToNodeExecutionEvent(&core.NodeExecutionIdentifier{
+			NodeId: "nodey",
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "exec",
+			},
+		}, info, "inputPath", &status, v1alpha1.EventVersion2, nil, &node, "clusterID", v1alpha1.DynamicNodePhaseParentFinalized, &config.EventConfig{
+			RawOutputPolicy: config.RawOutputPolicyInline,
+		})
+		assert.NoError(t, err)
+		assert.True(t, proto.Equal(inputs, nev.GetInputData()))
 	})
 }

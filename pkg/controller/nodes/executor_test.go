@@ -1795,7 +1795,12 @@ func TestNodeExecutionEventV1(t *testing.T) {
 	tID := &core.TaskExecutionIdentifier{
 		NodeExecutionId: nID,
 	}
-	p := handler.PhaseInfoQueued("r", &core.LiteralMap{})
+	inputs := &core.LiteralMap{
+		Literals: map[string]*core.Literal{
+			"foo": coreutils.MustMakeLiteral("bar"),
+		},
+	}
+	p := handler.PhaseInfoQueued("r", inputs)
 	//inputReader := &mocks3.InputReader{}
 	//inputReader.OnGetInputPath().Return("reference")
 	parentInfo := &mocks4.ImmutableParentInfo{}
@@ -1813,7 +1818,7 @@ func TestNodeExecutionEventV1(t *testing.T) {
 	nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
 	ns.OnGetParentTaskID().Return(tID)
 	eventOpt, err := ToNodeExecutionEvent(nID, p, "reference", ns, v1alpha1.EventVersion1, parentInfo, n, testClusterID, v1alpha1.DynamicNodePhaseNone, &config.EventConfig{
-		RawOutputPolicy: config.RawOutputPolicyReference,
+		RawOutputPolicy: config.RawOutputPolicyInline,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, "np1-2-n1", eventOpt.Id.NodeId)
@@ -1826,6 +1831,7 @@ func TestNodeExecutionEventV1(t *testing.T) {
 	assert.Nil(t, eventOpt.ParentTaskMetadata)
 	assert.Equal(t, "name", eventOpt.NodeName)
 	assert.Equal(t, "2", eventOpt.RetryGroup)
+	assert.True(t, proto.Equal(eventOpt.GetInputData(), inputs))
 }
 
 func TestNodeExecutor_RecursiveNodeHandler_ParallelismLimit(t *testing.T) {

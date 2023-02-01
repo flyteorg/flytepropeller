@@ -1,6 +1,8 @@
 package task
 
 import (
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
+	"github.com/golang/protobuf/proto"
 	"testing"
 	"time"
 
@@ -194,6 +196,32 @@ func TestToTaskExecutionEvent(t *testing.T) {
 	assert.Equal(t, generatedName, tev.Metadata.GeneratedName)
 	assert.EqualValues(t, resourcePoolInfo, tev.Metadata.ResourcePoolInfo)
 	assert.Equal(t, testClusterID, tev.ProducerId)
+
+	t.Run("inline event policy", func(t *testing.T) {
+		inputs := &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"foo": coreutils.MustMakeLiteral("bar"),
+			},
+		}
+		tev, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
+			TaskExecContext:       tCtx,
+			InputReader:           in,
+			Inputs:                inputs,
+			OutputWriter:          out,
+			Info:                  pluginCore.PhaseInfoQueued(n, 1, "z"),
+			NodeExecutionMetadata: &nodeExecutionMetadata,
+			ExecContext:           mockExecContext,
+			TaskType:              containerTaskType,
+			PluginID:              containerPluginIdentifier,
+			ResourcePoolInfo:      resourcePoolInfo,
+			ClusterID:             testClusterID,
+			EventConfig: &config.EventConfig{
+				RawOutputPolicy: config.RawOutputPolicyInline,
+			},
+		})
+		assert.NoError(t, err)
+		assert.True(t, proto.Equal(inputs, tev.GetInputData()))
+	})
 }
 
 func TestToTransitionType(t *testing.T) {

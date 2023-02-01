@@ -162,7 +162,7 @@ func (m *CatalogClient) CreateDataset(ctx context.Context, key catalog.Key, meta
 	return datasetID, nil
 }
 
-// prepareOutputs reads the inputs and outputs of a task and returns them as core.LiteralMaps to be consumed by datacatalog.
+// prepareOutputs reads the outputs of a task and returns them as core.LiteralMaps to be consumed by datacatalog.
 func (m *CatalogClient) prepareOutputs(ctx context.Context, key catalog.Key, reader io.OutputReader) (outputs *core.LiteralMap, err error) {
 	outputs = &core.LiteralMap{}
 
