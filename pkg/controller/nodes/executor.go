@@ -283,7 +283,6 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		return handler.PhaseInfoUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to store recovered node execution outputs")
 	}
 
-	logger.Infof(ctx, "**passing recovered inputs [%+v]", nodeInputs)
 	info := &handler.ExecutionInfo{
 		Inputs:     nodeInputs,
 		OutputInfo: oi,
