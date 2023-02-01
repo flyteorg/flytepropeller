@@ -1,9 +1,10 @@
 package nodes
 
 import (
+	"testing"
+
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/golang/protobuf/proto"
-	"testing"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 

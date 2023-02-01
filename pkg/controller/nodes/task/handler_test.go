@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/flyteorg/flyteidl/clients/go/coreutils"
-	"github.com/golang/protobuf/proto"
 	"testing"
 	"time"
+
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
+	"github.com/golang/protobuf/proto"
 
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	mocks2 "github.com/flyteorg/flytepropeller/events/mocks"

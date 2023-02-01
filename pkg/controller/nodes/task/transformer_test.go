@@ -1,10 +1,11 @@
 package task
 
 import (
-	"github.com/flyteorg/flyteidl/clients/go/coreutils"
-	"github.com/golang/protobuf/proto"
 	"testing"
 	"time"
+
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
+	"github.com/golang/protobuf/proto"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 
