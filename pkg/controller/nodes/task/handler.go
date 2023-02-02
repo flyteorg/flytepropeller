@@ -561,19 +561,23 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// So now we will derive this from the plugin phase
 	// TODO @kumare re-evaluate this decision
 
-	tk, err := tCtx.tr.Read(ctx)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
-		return handler.UnknownTransition, err
-	}
-	inputs := &core.LiteralMap{}
-	if tk.Interface != nil {
-		retInputs, err := nCtx.InputReader().Get(ctx)
+	var inputs *core.LiteralMap
+	if ts.PluginPhase == pluginCore.PhaseUndefined && t.eventConfig.RawOutputPolicy == controllerConfig.RawOutputPolicyInline {
+		// The task should only reach undefined exactly once. Since we want to send the inputs inline at some point in the task execution flow (but not necessarily every event), we send them for this event transition only.
+		// The calls to read from the catalog below may call InputReader.Get subsequent times, but the underlying implementation uses a CachedInputReader that will
+		// not re-download the inputs for the duration of this Handle call.
+		tk, err := tCtx.tr.Read(ctx)
 		if err != nil {
-			logger.Errorf(ctx, "failed to read inputs when checking catalog cache %w", err)
+			logger.Errorf(ctx, "failed to read TaskTemplate, error :%s", err.Error())
 			return handler.UnknownTransition, err
 		}
-		inputs = retInputs
+		if tk.Interface != nil {
+			inputs, err = nCtx.InputReader().Get(ctx)
+			if err != nil {
+				logger.Errorf(ctx, "failed to read inputs when checking catalog cache %w", err)
+				return handler.UnknownTransition, err
+			}
+		}
 	}
 	// STEP 1: Check Cache
 	if (ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache) && checkCatalog {
@@ -585,7 +589,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			pluginTrns.PopulateCacheInfo(catalog.NewCatalogEntry(nil, cacheSkipped))
 			t.metrics.catalogSkipCount.Inc(ctx)
 		} else {
-			entry, err := t.CheckCatalogCache(ctx, tk, inputs, tCtx.ow)
+			entry, err := t.CheckCatalogCache(ctx, tCtx.tr, nCtx.InputReader(), tCtx.ow)
 			if err != nil {
 				logger.Errorf(ctx, "failed to check catalog cache with error")
 				return handler.UnknownTransition, err
@@ -625,7 +629,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// Check catalog for cache reservation and acquire if none exists
 	if checkCatalog && (pluginTrns.execInfo.TaskNodeInfo == nil || pluginTrns.execInfo.TaskNodeInfo.TaskNodeMetadata.CacheStatus != core.CatalogCacheStatus_CACHE_HIT) {
 		ownerID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-		reservation, err := t.GetOrExtendCatalogReservation(ctx, ownerID, controllerConfig.GetConfig().WorkflowReEval.Duration, tk, inputs)
+		reservation, err := t.GetOrExtendCatalogReservation(ctx, ownerID, controllerConfig.GetConfig().WorkflowReEval.Duration, tCtx.tr, nCtx.InputReader())
 		if err != nil {
 			logger.Errorf(ctx, "failed to get or extend catalog reservation with error")
 			return handler.UnknownTransition, err

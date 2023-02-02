@@ -24,8 +24,12 @@ var (
 	cacheSkipped  = catalog.NewStatus(core.CatalogCacheStatus_CACHE_SKIPPED, nil)
 )
 
-func (t *Handler) CheckCatalogCache(ctx context.Context, tk *core.TaskTemplate, inputs *core.LiteralMap, outputWriter io.OutputWriter) (
-	catalog.Entry, error) {
+func (t *Handler) CheckCatalogCache(ctx context.Context, tr pluginCore.TaskReader, inputReader io.InputReader, outputWriter io.OutputWriter) (catalog.Entry, error) {
+	tk, err := tr.Read(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
+		return catalog.Entry{}, err
+	}
 
 	if tk.Metadata.Discoverable {
 		logger.Infof(ctx, "Catalog CacheEnabled: Looking up catalog Cache.")
@@ -33,7 +37,7 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tk *core.TaskTemplate, 
 			Identifier:     *tk.Id,
 			CacheVersion:   tk.Metadata.DiscoveryVersion,
 			TypedInterface: *tk.Interface,
-			Inputs:         inputs,
+			InputReader:    inputReader,
 		}
 
 		resp, err := t.catalog.Get(ctx, key)
@@ -74,14 +78,20 @@ func (t *Handler) CheckCatalogCache(ctx context.Context, tk *core.TaskTemplate, 
 // GetOrExtendCatalogReservation attempts to acquire an artifact reservation if the task is
 // cachable and cache serializable. If the reservation already exists for this owner, the
 // reservation is extended.
-func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID string, heartbeatInterval time.Duration, tk *core.TaskTemplate, inputs *core.LiteralMap) (catalog.ReservationEntry, error) {
+func (t *Handler) GetOrExtendCatalogReservation(ctx context.Context, ownerID string, heartbeatInterval time.Duration, tr pluginCore.TaskReader, inputReader io.InputReader) (catalog.ReservationEntry, error) {
+	tk, err := tr.Read(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
+		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
+	}
+
 	if tk.Metadata.Discoverable && tk.Metadata.CacheSerializable {
 		logger.Infof(ctx, "Catalog CacheSerializeEnabled: creating catalog reservation.")
 		key := catalog.Key{
 			Identifier:     *tk.Id,
 			CacheVersion:   tk.Metadata.DiscoveryVersion,
 			TypedInterface: *tk.Interface,
-			Inputs:         inputs,
+			InputReader:    inputReader,
 		}
 
 		reservation, err := t.catalog.GetOrExtendReservation(ctx, key, ownerID, heartbeatInterval)
@@ -202,20 +212,11 @@ func (t *Handler) ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1
 		cacheVersion = tk.Metadata.DiscoveryVersion
 	}
 
-	inputs := &core.LiteralMap{}
-	if tk.Interface != nil {
-		retInputs, err := i.Get(ctx)
-		if err != nil {
-			return cacheDisabled, nil, errors.Wrap(err, "failed to read inputs when validating outputs and adding to the cache")
-		}
-		inputs = retInputs
-	}
-
 	key := catalog.Key{
 		Identifier:     *tk.Id,
 		CacheVersion:   cacheVersion,
 		TypedInterface: *tk.Interface,
-		Inputs:         inputs,
+		InputReader:    i,
 	}
 
 	logger.Infof(ctx, "Catalog CacheEnabled. recording execution [%s/%s/%s/%s]", tk.Id.Project, tk.Id.Domain, tk.Id.Name, tk.Id.Version)
@@ -247,14 +248,6 @@ func (t *Handler) ReleaseCatalogReservation(ctx context.Context, ownerID string,
 		logger.Errorf(ctx, "Failed to read TaskTemplate, error :%s", err.Error())
 		return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), err
 	}
-	inputs := &core.LiteralMap{}
-	if tk.Interface != nil {
-		retInputs, err := inputReader.Get(ctx)
-		if err != nil {
-			return catalog.NewReservationEntryStatus(core.CatalogReservation_RESERVATION_FAILURE), errors.Wrap(err, "failed to read inputs when releasing catalog reservation")
-		}
-		inputs = retInputs
-	}
 
 	if tk.Metadata.Discoverable && tk.Metadata.CacheSerializable {
 		logger.Infof(ctx, "Catalog CacheSerializeEnabled: releasing catalog reservation.")
@@ -262,7 +255,7 @@ func (t *Handler) ReleaseCatalogReservation(ctx context.Context, ownerID string,
 			Identifier:     *tk.Id,
 			CacheVersion:   tk.Metadata.DiscoveryVersion,
 			TypedInterface: *tk.Interface,
-			Inputs:         inputs,
+			InputReader:    inputReader,
 		}
 
 		err := t.catalog.ReleaseReservation(ctx, key, ownerID)

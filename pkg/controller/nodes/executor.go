@@ -356,7 +356,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructur
 					c.metrics.InputsWriteFailure.Inc(ctx)
 					logger.Errorf(ctx, "Failed to store inputs for Node. Error [%v]. InputsFile [%s]", err, inputsFile)
 					return handler.PhaseInfoUndefined, errors.Wrapf(
-						errors.StorageError, node.GetID(), nil, "Failed to store inputs for Node. InputsFile [%s]", inputsFile)
+						errors.StorageError, node.GetID(), err, "Failed to store inputs for Node. InputsFile [%s]", inputsFile)
 				}
 			}
 
