@@ -132,15 +132,15 @@ func (c *Controller) run(ctx context.Context) error {
 
 // Called from leader elector -if configured- to start running as the leader.
 func (c *Controller) onStartedLeading(ctx context.Context) {
-	ctx, cancelNow := context.WithCancel(context.Background())
+	backgroundCtx, cancelNow := context.WithCancel(context.Background())
 	logger.Infof(ctx, "Acquired leader lease.")
 	go func() {
-		if err := c.run(ctx); err != nil {
-			logger.Panic(ctx, err)
+		if err := c.run(backgroundCtx); err != nil {
+			logger.Panic(backgroundCtx, err)
 		}
 	}()
 
-	<-ctx.Done()
+	<-backgroundCtx.Done()
 	logger.Infof(ctx, "Lost leader lease.")
 	cancelNow()
 }
