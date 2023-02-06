@@ -55,7 +55,6 @@ primary:
         retries: {}
 tasks:
 - template:
-    PodTemplate: null
     Target:
       Container:
         args:
