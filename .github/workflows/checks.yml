@@ -19,8 +19,10 @@ jobs:
   tests:
     name: Unit Tests
     uses: flyteorg/flytetools/.github/workflows/tests.yml@master
+    secrets:
+      FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
     with:
-      go-version: l.19
+      go-version: 'l.19'
 
   docker-build:
     name: Docker Build Images
