@@ -20,7 +20,7 @@ jobs:
     name: Unit Tests
     uses: flyteorg/flytetools/.github/workflows/tests.yml@master
     with:
-      go-version: "l.19"
+      go-version: "1.19"
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
 
