@@ -22,7 +22,7 @@ jobs:
     secrets:
       FLYTE_BOT_PAT: ${{ secrets.FLYTE_BOT_PAT }}
     with:
-      go-version: 'l.19'
+      go-version: l.19.5
 
   docker-build:
     name: Docker Build Images
