@@ -571,7 +571,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			logger.Errorf(ctx, "failed to read TaskTemplate, error :%s", err.Error())
 			return handler.UnknownTransition, err
 		}
-		if tk.Interface != nil {
+		if tk.Interface != nil && tk.Interface.Inputs != nil && len(tk.Interface.Inputs.Variables) > 0 {
 			inputs, err = nCtx.InputReader().Get(ctx)
 			if err != nil {
 				logger.Errorf(ctx, "failed to read inputs when checking catalog cache %w", err)
