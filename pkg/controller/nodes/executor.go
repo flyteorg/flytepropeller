@@ -372,7 +372,6 @@ func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructur
 		if !node.IsStartNode() {
 			if nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier != nil {
 				phaseInfo, err := c.attemptRecovery(ctx, nCtx)
-				//if err != nil || phaseInfo.GetPhase() == handler.EPhaseRecovered {
 				if err != nil || phaseInfo.GetPhase() != handler.EPhaseUndefined {
 					return phaseInfo, err
 				}
