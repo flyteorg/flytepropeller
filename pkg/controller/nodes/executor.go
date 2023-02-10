@@ -286,10 +286,13 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		logger.Warnf(ctx, "call to attemptRecovery node [%+v] data returned no error but also no data", nCtx.NodeExecutionMetadata().GetNodeExecutionID())
 		return handler.PhaseInfoUndefined, nil
 	}
+
 	// Copy inputs to this node's expected location
-	if nodeInputs, err := c.recoverInputs(ctx, nCtx, recovered, recoveredData); err != nil {
+	nodeInputs, err := c.recoverInputs(ctx, nCtx, recovered, recoveredData)
+	if err != nil {
 		return handler.PhaseInfoUndefined, err
 	}
+
 	// Similarly, copy outputs' reference
 	so := storage.Options{}
 	var outputs = &core.LiteralMap{}
