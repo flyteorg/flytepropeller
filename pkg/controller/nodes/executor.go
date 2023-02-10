@@ -287,7 +287,7 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		return handler.PhaseInfoUndefined, nil
 	}
 	// Copy inputs to this node's expected location
-	if _, err := c.recoverInputs(ctx, nCtx, recovered, recoveredData); err != nil {
+	if nodeInputs, err := c.recoverInputs(ctx, nCtx, recovered, recoveredData); err != nil {
 		return handler.PhaseInfoUndefined, err
 	}
 	// Similarly, copy outputs' reference
@@ -329,6 +329,7 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 	}
 
 	info := &handler.ExecutionInfo{
+		Inputs:     nodeInputs,
 		OutputInfo: oi,
 	}
 
@@ -358,7 +359,8 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 // In this method we check if the queue is ready to be processed and if so, we prime it in Admin as queued
 // Before we start the node execution, we need to transition this Node status to Queued.
 // This is because a node execution has to exist before task/wf executions can start.
-func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructure, nCtx handler.NodeExecutionContext) (handler.PhaseInfo, error) {
+func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructure, nCtx handler.NodeExecutionContext) (
+	handler.PhaseInfo, error) {
 	logger.Debugf(ctx, "Node not yet started")
 	// Query the nodes information to figure out if it can be executed.
 	predicatePhase, err := CanExecute(ctx, dag, nCtx.ContextualNodeLookup(), nCtx.Node())
@@ -406,7 +408,7 @@ func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructur
 			logger.Debugf(ctx, "Node Data Directory [%s].", nodeStatus.GetDataDir())
 		}
 
-		return handler.PhaseInfoQueued("node queued"), nil
+		return handler.PhaseInfoQueued("node queued", nodeInputs), nil
 	}
 
 	// Now that we have resolved the inputs, we can record as a transition latency. This is because we have completed
@@ -543,7 +545,8 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 
 		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
 			p, nCtx.InputReader().GetInputPath().String(), nodeStatus, nCtx.ExecutionContext().GetEventVersion(),
-			nCtx.ExecutionContext().GetParentInfo(), nCtx.node, c.clusterID, nCtx.NodeStateReader().GetDynamicNodeState().Phase)
+			nCtx.ExecutionContext().GetParentInfo(), nCtx.node, c.clusterID, nCtx.NodeStateReader().GetDynamicNodeState().Phase,
+			c.eventConfig)
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "could not convert phase info to event")
 		}
@@ -658,7 +661,8 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 
 		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
 			p, nCtx.InputReader().GetInputPath().String(), nCtx.NodeStatus(), nCtx.ExecutionContext().GetEventVersion(),
-			nCtx.ExecutionContext().GetParentInfo(), nCtx.node, c.clusterID, nCtx.NodeStateReader().GetDynamicNodeState().Phase)
+			nCtx.ExecutionContext().GetParentInfo(), nCtx.node, c.clusterID, nCtx.NodeStateReader().GetDynamicNodeState().Phase,
+			c.eventConfig)
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "could not convert phase info to event")
 		}
