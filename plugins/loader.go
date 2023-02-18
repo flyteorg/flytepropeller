@@ -18,6 +18,7 @@ import (
 	_ "github.com/flyteorg/flyteplugins/go/tasks/plugins/webapi/bigquery"
 	_ "github.com/flyteorg/flyteplugins/go/tasks/plugins/webapi/databricks"
         _ "github.com/flyteorg/flyteplugins/go/tasks/plugins/webapi/fastapi"
-        _ "github.com/flyteorg/flyteplugins/go/tasks/plugins/webapi/dummy" 
+        _ "github.com/flyteorg/flyteplugins/go/tasks/plugins/webapi/dummy"
+        _ "github.com/flyteorg/flyteplugins/go/tasks/plugins/webapi/grpc"
 	_ "github.com/flyteorg/flyteplugins/go/tasks/plugins/webapi/snowflake"
 )
