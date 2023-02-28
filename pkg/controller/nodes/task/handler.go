@@ -380,9 +380,12 @@ func (t Handler) fetchPluginTaskMetrics(pluginID, taskType string) (*taskMetrics
 	return t.taskMetricsMap[metricNameKey], nil
 }
 
+var totalRequest int
+
 func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *taskExecutionContext, ts handler.TaskNodeState) (*pluginRequestedTransition, error) {
 	pluginTrns := &pluginRequestedTransition{}
-
+	totalRequest++
+	logger.Infof(ctx, "number of request [%v]", totalRequest)
 	trns, err := func() (trns pluginCore.Transition, err error) {
 		defer func() {
 			if r := recover(); r != nil {
@@ -401,7 +404,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		logger.Warnf(ctx, "Runtime error from plugin [%s]. Error: %s", p.GetID(), err.Error())
 		return nil, regErrors.Wrapf(err, "failed to execute handle for plugin [%s]", p.GetID())
 	}
-
+	totalRequest--
 	err = validateTransition(trns)
 	if err != nil {
 		logger.Errorf(ctx, "Invalid transition from plugin [%s]. Error: %s", p.GetID(), err.Error())
