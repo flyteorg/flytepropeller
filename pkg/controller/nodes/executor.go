@@ -476,6 +476,7 @@ func (c *nodeExecutor) finalize(ctx context.Context, h handler.Node, nCtx handle
 func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executors.DAGStructure, nCtx *nodeExecContext, _ handler.Node) (executors.NodeStatus, error) {
 	logger.Debugf(ctx, "Node not yet started, running pre-execute")
 	defer logger.Debugf(ctx, "Node pre-execute completed")
+	occurredAt := time.Now()
 	p, err := c.preExecute(ctx, dag, nCtx)
 	if err != nil {
 		logger.Errorf(ctx, "failed preExecute for node. Error: %s", err.Error())
@@ -499,6 +500,7 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 	if np != nodeStatus.GetPhase() {
 		// assert np == Queued!
 		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s]", nodeStatus.GetPhase().String(), np.String())
+		p = p.WithOccuredAt(occurredAt)
 
 		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
 			p, nCtx.InputReader().GetInputPath().String(), nodeStatus, nCtx.ExecutionContext().GetEventVersion(),
