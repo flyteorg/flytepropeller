@@ -645,6 +645,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 							Message: err.Error(),
 						},
 					},
+					ReportedAt: ptypes.TimestampNow(),
 				})
 
 				if err != nil {
@@ -1106,6 +1107,7 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, execContext executors.E
 				},
 			},
 			ProducerId: c.clusterID,
+			ReportedAt: ptypes.TimestampNow(),
 		})
 		if err != nil && !eventsErr.IsNotFound(err) && !eventsErr.IsEventIncompatibleClusterError(err) {
 			if errors2.IsCausedBy(err, errors.IllegalStateError) {
