@@ -667,7 +667,7 @@ func TestSchemaCasting(t *testing.T) {
 
 	t.Run("GenericToSubsetTypedSchema", func(t *testing.T) {
 		castable := AreTypesCastable(genericStructuredDataset, subsetIntegerSchema)
-		assert.True(t, castable, "StructuredDataset() with generic format should be castable toSchema(a=Integer)")
+		assert.True(t, castable, "StructuredDataset() with generic format should be castable to Schema(a=Integer)")
 	})
 
 	t.Run("SupersetStructuredToSubsetTypedSchema", func(t *testing.T) {
