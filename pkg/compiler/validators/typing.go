@@ -115,7 +115,7 @@ func (t schemaTypeChecker) CastsFrom(upstreamType *flyte.LiteralType) bool {
 	}
 
 	// Flyte Schema can only be serialized to parquet
-	if !strings.EqualFold(structuredDatasetType.Format, "parquet") {
+	if len(structuredDatasetType.Format) != 0 && !strings.EqualFold(structuredDatasetType.Format, "parquet") {
 		return false
 	}
 
