@@ -8,6 +8,7 @@ import (
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
 	"github.com/golang/protobuf/ptypes"
@@ -69,6 +70,8 @@ func getParentNodeExecIDForTask(taskExecID *core.TaskExecutionIdentifier, execCo
 type ToTaskExecutionEventInputs struct {
 	TaskExecContext       pluginCore.TaskExecutionContext
 	InputReader           io.InputFilePaths
+	Inputs                *core.LiteralMap
+	EventConfig           *config.EventConfig
 	OutputWriter          io.OutputFilePaths
 	Info                  pluginCore.PhaseInfo
 	NodeExecutionMetadata handler.NodeExecutionMetadata
@@ -168,6 +171,15 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		tev.Metadata.InstanceClass = event.TaskExecutionMetadata_INTERRUPTIBLE
 	} else {
 		tev.Metadata.InstanceClass = event.TaskExecutionMetadata_DEFAULT
+	}
+	if input.EventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
+		tev.InputValue = &event.TaskExecutionEvent_InputData{
+			InputData: input.Inputs,
+		}
+	} else {
+		tev.InputValue = &event.TaskExecutionEvent_InputUri{
+			InputUri: input.InputReader.GetInputPath().String(),
+		}
 	}
 
 	return tev, nil

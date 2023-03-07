@@ -39,6 +39,7 @@ const (
 	ServerCertPrivateKey = "tls.key"
 	podDefaultNamespace  = "flyte"
 	permission           = 0644
+	folderPerm           = 0755
 )
 
 func InitCerts(ctx context.Context, propellerCfg *config.Config, cfg *webhookConfig.Config) error {
@@ -77,7 +78,7 @@ func createWebhookSecret(ctx context.Context, namespace string, cfg *webhookConf
 
 	if cfg.LocalCert {
 		if _, err := os.Stat(cfg.CertDir); os.IsNotExist(err) {
-			if err := os.Mkdir(cfg.CertDir, permission); err != nil {
+			if err := os.Mkdir(cfg.CertDir, folderPerm); err != nil {
 				return err
 			}
 		}
@@ -161,7 +162,7 @@ func createCerts(serviceName string, serviceNamespace string) (certs webhookCert
 			Organization: []string{"flyte.org"},
 		},
 		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(1, 0, 0),
+		NotAfter:              time.Now().AddDate(99, 0, 0),
 		IsCA:                  true,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
@@ -203,7 +204,7 @@ func createCerts(serviceName string, serviceNamespace string) (certs webhookCert
 			Organization: []string{"flyte.org"},
 		},
 		NotBefore:    time.Now(),
-		NotAfter:     time.Now().AddDate(1, 0, 0),
+		NotAfter:     time.Now().AddDate(99, 0, 0),
 		SubjectKeyId: []byte{1, 2, 3, 4, 6},
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:     x509.KeyUsageDigitalSignature,
