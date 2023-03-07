@@ -98,14 +98,6 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		}
 	}
 
-	reportedAt := ptypes.TimestampNow()
-	if i := input.Info.Info(); i != nil && i.ReportedAt != nil {
-		reportedAt, err = ptypes.TimestampProto(*i.ReportedAt)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	taskExecID := input.TaskExecContext.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	nodeExecutionID, err := getParentNodeExecIDForTask(&taskExecID, input.ExecContext)
 	if err != nil {
@@ -142,12 +134,10 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		PhaseVersion:          input.Info.Version(),
 		ProducerId:            input.ClusterID,
 		OccurredAt:            occurredAt,
-		InputUri:              input.InputReader.GetInputPath().String(),
 		TaskType:              input.TaskType,
 		Reason:                input.Info.Reason(),
 		Metadata:              metadata,
 		EventVersion:          taskExecutionEventVersion,
-		ReportedAt:            reportedAt,
 	}
 
 	if input.Info.Phase().IsSuccess() && input.OutputWriter != nil {
