@@ -262,8 +262,8 @@ github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYF
 github.com/felixge/httpsnoop v1.0.1/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/flyteorg/flyteidl v1.3.9 h1:MHUa89yKwCz58mQC2OxTzYjr0d3fA14qKG462v+RAyk=
 github.com/flyteorg/flyteidl v1.3.9/go.mod h1:Pkt2skI1LiHs/2ZoekBnyPhuGOFMiuul6HHcKGZBsbM=
-github.com/flyteorg/flyteplugins v1.0.29-0.20230309222106-47d5addf2889 h1:/XjK01hwpDZgzjmBvdN/3TG5tO3BCBt888J6kmPs6Hw=
-github.com/flyteorg/flyteplugins v1.0.29-0.20230309222106-47d5addf2889/go.mod h1:aef2mGG/Wb6UnOqz2tiNcp+NNJNvxZRz2xV7JVojq6k=
+github.com/flyteorg/flyteplugins v1.0.41-0.20230309230747-62577a2ad75f h1:M/bjtLZ00wD695KvKBo2KHgvtPtyYTeVF3FP2841eTY=
+github.com/flyteorg/flyteplugins v1.0.41-0.20230309230747-62577a2ad75f/go.mod h1:qyUPqVspLcLGJpKxVwHDWf+kBpOGuItOxCaF6zAmDio=
 github.com/flyteorg/flytestdlib v1.0.15 h1:kv9jDQmytbE84caY+pkZN8trJU2ouSAmESzpTEhfTt0=
 github.com/flyteorg/flytestdlib v1.0.15/go.mod h1:ghw/cjY0sEWIIbyCtcJnL/Gt7ZS7gf9SUi0CCPhbz3s=
 github.com/flyteorg/stow v0.3.6 h1:jt50ciM14qhKBaIrB+ppXXY+SXB59FNREFgTJqCyqIk=
