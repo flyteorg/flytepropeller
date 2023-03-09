@@ -182,14 +182,14 @@ func (p *Propeller) TryMutateWorkflow(ctx context.Context, originalW *v1alpha1.F
 // </pre>
 func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 	var span trace.Span
-	ctx, span = telemetryutils.NewSpan(ctx, "flytepropeller", "pkg.controller.Propeller/Handle")
+	ctx, span = telemetryutils.NewSpan(ctx, telemetryutils.FlytePropellerTracer, "pkg.controller.Propeller/Handle")
 	defer span.End()
 
 	logger.Infof(ctx, "Processing Workflow.")
 	defer logger.Infof(ctx, "Completed processing workflow.")
 
 	// Get the FlyteWorkflow resource with this namespace/name
-	_, wfStoreGetSpan := telemetryutils.NewSpan(ctx, "flytepropeller", "WorkflowStore.Get")
+	_, wfStoreGetSpan := telemetryutils.NewSpan(ctx, telemetryutils.FlytePropellerTracer, "WorkflowStore.Get")
 	w, fetchErr := p.wfStore.Get(ctx, namespace, name)
 	wfStoreGetSpan.End()
 	if fetchErr != nil {
@@ -258,7 +258,7 @@ func (p *Propeller) Handle(ctx context.Context, namespace, name string) error {
 // parseWorkflowClosureCrdFields attempts to retrieve offloaded static workflow closure data from the specified
 // DataReference.
 func (p *Propeller) parseWorkflowClosureCrdFields(ctx context.Context, dataReference storage.DataReference) (*k8s.WfClosureCrdFields, error) {
-	_, span := telemetryutils.NewSpan(ctx, "flytepropeller", "Populating Offloaded CRD")
+	_, span := telemetryutils.NewSpan(ctx, telemetryutils.FlytePropellerTracer, "pkg.controller.Propeller/parseWorkflowClosureCrdFields")
 	defer span.End()
 
 	t := p.metrics.WorkflowClosureReadTime.Start(ctx)
@@ -283,7 +283,7 @@ func (p *Propeller) parseWorkflowClosureCrdFields(ctx context.Context, dataRefer
 // streak performs a single iteration of mutating a workflow returning the newly mutated workflow on success or nil if
 // the workflow was not updated.
 func (p *Propeller) streak(ctx context.Context, w *v1alpha1.FlyteWorkflow, wfClosureCrdFields *k8s.WfClosureCrdFields) (*v1alpha1.FlyteWorkflow, error) {
-	ctx, span := telemetryutils.NewSpan(ctx, "flytepropeller", "Propeller.Streak")
+	ctx, span := telemetryutils.NewSpan(ctx, telemetryutils.FlytePropellerTracer, "pkg.controller.Propeller/streak")
 	defer span.End()
 
 	t := p.metrics.RoundTime.Start(ctx)
@@ -378,7 +378,7 @@ func (p *Propeller) streak(ctx context.Context, w *v1alpha1.FlyteWorkflow, wfClo
 	// update the GetExecutionStatus block of the FlyteWorkflow resource. UpdateStatus will not
 	// allow changes to the Spec of the resource, which is ideal for ensuring
 	// nothing other than resource status has been updated.
-	_, wfStoreUpdateSpan := telemetryutils.NewSpan(ctx, "flytepropeller", "WorkflowStore.Update")
+	_, wfStoreUpdateSpan := telemetryutils.NewSpan(ctx, telemetryutils.FlytePropellerTracer, "WorkflowStore.Update")
 	newWf, updateErr := p.wfStore.Update(ctx, mutatedWf, workflowstore.PriorityClassCritical)
 	wfStoreUpdateSpan.End()
 	if updateErr != nil {

@@ -538,7 +538,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	ttype := nCtx.TaskReader().GetTaskType()
 	ctx = contextutils.WithTaskType(ctx, ttype)
 
-	ctx, span := telemetryutils.NewSpan(ctx, "flytepropeller", "pkg.controller.nodes.task.Handler/HandleTask")
+	ctx, span := telemetryutils.NewSpan(ctx, telemetryutils.FlytePropellerTracer, "pkg.controller.nodes.task.Handler/HandleTask")
 	defer span.End()
 
 	p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())

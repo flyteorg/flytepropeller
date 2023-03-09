@@ -126,45 +126,14 @@ func executeRootCmd(baseCtx context.Context, cfg *config2.Config) error {
 		labeled.SetMetricKeys(keys...)
 	}
 
-	// TODO - add opentelemetry exporter
-	f, err := os.Create("traces.txt")
-	if err != nil {
-		return err
-	}
-
-	telemetryExporter, err := stdouttrace.New(
-		stdouttrace.WithWriter(f),
-		stdouttrace.WithPrettyPrint(), // Use human-readable output.
-		stdouttrace.WithoutTimestamps(), // Do not print timestamps for the demo.
-	)
-	if err != nil {
-		return err
-	}
-
-	telemetryResource, _ := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String("flytepropeller"), // TODO get these values from flytestdlib
-			semconv.ServiceVersionKey.String("v0.1.0"),
-			attribute.String("environment", "demo"),
-		),
-	)
-
-	tracerProvider := trace.NewTracerProvider(
-		trace.WithBatcher(telemetryExporter),
-		trace.WithResource(telemetryResource),
-	)
-
-	defer func() error {
-		if err := tracerProvider.Shutdown(context.Background()); err != nil {
-			logger.Fatalf(ctx, "failed to shutdown opentelemtry trace provider with err '%v'", err)
+	// register opentelementry tracer providers
+	for _, serviceName := range []string{telemetryutils.AdminClientTracer, telemetryutils.BlobstoreClientTracer,
+		telemetryutils.DataCatalogClientTracer, telemetryutils.FlytePropellerTracer, telemetryutils.K8sClientTracer} {
+		if err := telemetryutils.RegisterTracerProvider(serviceName, telemetryutils.GetConfig()) ; err != nil {
+			logger.Errorf(ctx, "Failed to create telemetry tracer provider. %v", err)
 			return err
 		}
-		return nil
-	}()
-
-	otel.SetTracerProvider(tracerProvider)
+	}
 
 	// Add the propeller subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.
 	propellerScope := promutils.NewScope(cfg.MetricsPrefix).NewSubScope("propeller").NewSubScope(cfg.LimitNamespace)

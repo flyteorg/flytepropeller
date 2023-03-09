@@ -481,7 +481,7 @@ func NewDataCatalog(ctx context.Context, endpoint string, insecureConnection boo
 
 	retryInterceptor := grpcRetry.UnaryClientInterceptor(grpcOptions...)
 
-	tracerProvider := telemetryutils.GetTracerProvider("datacatalog-client")
+	tracerProvider := telemetryutils.GetTracerProvider(telemetryutils.DataCatalogClientTracer)
 	opts = append(opts, grpc.WithChainUnaryInterceptor(
 		grpcPrometheus.UnaryClientInterceptor,
 		otelgrpc.UnaryClientInterceptor(

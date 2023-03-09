@@ -748,7 +748,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 	logger.Debugf(ctx, "Handling Node [%s]", nCtx.NodeID())
 	defer logger.Debugf(ctx, "Completed node [%s]", nCtx.NodeID())
 
-	ctx, span := telemetryutils.NewSpan(ctx, "flytepropeller", "pkg.controller.nodes.NodeExecutor/handleNode")
+	ctx, span := telemetryutils.NewSpan(ctx, telemetryutils.FlytePropellerTracer, "pkg.controller.nodes.NodeExecutor/handleNode")
 	defer span.End()
 
 	nodeStatus := nCtx.NodeStatus()

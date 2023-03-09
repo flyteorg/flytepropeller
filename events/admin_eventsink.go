@@ -131,7 +131,7 @@ func IDFromMessage(message proto.Message) ([]byte, error) {
 
 func initializeAdminClientFromConfig(ctx context.Context) (client service.AdminServiceClient, err error) {
 	cfg := admin2.GetConfig(ctx)
-	tracerProvider := telemetryutils.GetTracerProvider("admin-client")
+	tracerProvider := telemetryutils.GetTracerProvider(telemetryutils.AdminClientTracer)
 	opt := grpc.WithUnaryInterceptor(
 		otelgrpc.UnaryClientInterceptor(
 			otelgrpc.WithTracerProvider(tracerProvider),
