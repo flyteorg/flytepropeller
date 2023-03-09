@@ -19,17 +19,11 @@ import (
 	"github.com/flyteorg/flytestdlib/profutils"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/telemetryutils"
 	"github.com/flyteorg/flytestdlib/version"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 
 	"golang.org/x/sync/errgroup"
 
@@ -129,7 +123,7 @@ func executeRootCmd(baseCtx context.Context, cfg *config2.Config) error {
 	// register opentelementry tracer providers
 	for _, serviceName := range []string{telemetryutils.AdminClientTracer, telemetryutils.BlobstoreClientTracer,
 		telemetryutils.DataCatalogClientTracer, telemetryutils.FlytePropellerTracer, telemetryutils.K8sClientTracer} {
-		if err := telemetryutils.RegisterTracerProvider(serviceName, telemetryutils.GetConfig()) ; err != nil {
+		if err := telemetryutils.RegisterTracerProvider(serviceName, telemetryutils.GetConfig()); err != nil {
 			logger.Errorf(ctx, "Failed to create telemetry tracer provider. %v", err)
 			return err
 		}
