@@ -16,6 +16,7 @@ type pluginContext struct {
 	pluginsCore.TaskExecutionContext
 	// Lazily creates a buffered outputWriter, overriding the input outputWriter.
 	ow *ioutils.BufferedOutputWriter
+	k8sPluginState *k8s.PluginState
 }
 
 // Provides an output sync of type io.OutputWriter
@@ -26,9 +27,38 @@ func (p *pluginContext) OutputWriter() io.OutputWriter {
 	return buf
 }
 
-func newPluginContext(tCtx pluginsCore.TaskExecutionContext) *pluginContext {
+// TODO @hamersaw docs
+type pluginStateReader struct {
+	k8sPluginState *k8s.PluginState
+}
+
+// TODO @hamersaw docs
+func (p pluginStateReader) GetStateVersion() uint8 {
+	return 0;
+}
+
+// TODO @hamersaw docs
+func (p pluginStateReader) Get(t interface{}) (stateVersion uint8, err error) {
+	if pointer, ok := t.(*k8s.PluginState); ok {
+		*pointer = *p.k8sPluginState
+	} else {
+		// TODO @hamersaw err
+	}
+
+	return 0, nil
+}
+
+// TODO @hamersaw docs
+func (p *pluginContext) PluginStateReader() pluginsCore.PluginStateReader {
+	return  pluginStateReader {
+		k8sPluginState: p.k8sPluginState,
+	}
+}
+
+func newPluginContext(tCtx pluginsCore.TaskExecutionContext, k8sPluginState *k8s.PluginState) *pluginContext {
 	return &pluginContext{
 		TaskExecutionContext: tCtx,
 		ow:                   nil,
+		k8sPluginState:       k8sPluginState,
 	}
 }
