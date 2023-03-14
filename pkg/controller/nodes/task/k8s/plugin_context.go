@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
@@ -15,7 +16,7 @@ var _ k8s.PluginContext = &pluginContext{}
 type pluginContext struct {
 	pluginsCore.TaskExecutionContext
 	// Lazily creates a buffered outputWriter, overriding the input outputWriter.
-	ow *ioutils.BufferedOutputWriter
+	ow             *ioutils.BufferedOutputWriter
 	k8sPluginState *k8s.PluginState
 }
 
@@ -34,7 +35,7 @@ type pluginStateReader struct {
 
 // TODO @hamersaw docs
 func (p pluginStateReader) GetStateVersion() uint8 {
-	return 0;
+	return 0
 }
 
 // TODO @hamersaw docs
@@ -42,7 +43,7 @@ func (p pluginStateReader) Get(t interface{}) (stateVersion uint8, err error) {
 	if pointer, ok := t.(*k8s.PluginState); ok {
 		*pointer = *p.k8sPluginState
 	} else {
-		// TODO @hamersaw err
+		return 0, fmt.Errorf("unexpected type when reading plugin state")
 	}
 
 	return 0, nil
@@ -50,7 +51,7 @@ func (p pluginStateReader) Get(t interface{}) (stateVersion uint8, err error) {
 
 // TODO @hamersaw docs
 func (p *pluginContext) PluginStateReader() pluginsCore.PluginStateReader {
-	return  pluginStateReader {
+	return pluginStateReader{
 		k8sPluginState: p.k8sPluginState,
 	}
 }

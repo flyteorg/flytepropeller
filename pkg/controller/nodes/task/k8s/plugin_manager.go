@@ -327,7 +327,9 @@ func (e PluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutio
 	pluginPhase := ps.Phase
 	if ps.Phase == PluginPhaseNotStarted {
 		transition, err = e.LaunchResource(ctx, tCtx)
-		pluginPhase = PluginPhaseStarted
+		if err == nil && transition.Info().Phase() == pluginsCore.PhaseQueued {
+			pluginPhase = PluginPhaseStarted
+		}
 	} else {
 		transition, err = e.CheckResourcePhase(ctx, tCtx, &ps.K8sPluginState)
 	}
@@ -338,11 +340,11 @@ func (e PluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutio
 
 	// persist any changes in phase state
 	k8sPluginState := ps.K8sPluginState
-	if ps.Phase != pluginPhase || k8sPluginState.Phase != transition.Info().Phase() || 
+	if ps.Phase != pluginPhase || k8sPluginState.Phase != transition.Info().Phase() ||
 		k8sPluginState.PhaseVersion != transition.Info().Version() || k8sPluginState.Reason != transition.Info().Reason() {
 
 		newPluginState := PluginState{
-			Phase:          pluginPhase,
+			Phase: pluginPhase,
 			K8sPluginState: k8s.PluginState{
 				Phase:        transition.Info().Phase(),
 				PhaseVersion: transition.Info().Version(),
