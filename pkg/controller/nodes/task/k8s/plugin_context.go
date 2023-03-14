@@ -28,17 +28,17 @@ func (p *pluginContext) OutputWriter() io.OutputWriter {
 	return buf
 }
 
-// TODO @hamersaw docs
+// pluginStateReader overrides the default PluginStateReader to return a pre-assigned PluginState. This allows us to
+// encapsulate plugin state persistence in the existing k8s PluginManager and only expose the ability to read the
+// previous Phase, PhaseVersion, and Reason for all k8s plugins.
 type pluginStateReader struct {
 	k8sPluginState *k8s.PluginState
 }
 
-// TODO @hamersaw docs
 func (p pluginStateReader) GetStateVersion() uint8 {
 	return 0
 }
 
-// TODO @hamersaw docs
 func (p pluginStateReader) Get(t interface{}) (stateVersion uint8, err error) {
 	if pointer, ok := t.(*k8s.PluginState); ok {
 		*pointer = *p.k8sPluginState
@@ -49,7 +49,7 @@ func (p pluginStateReader) Get(t interface{}) (stateVersion uint8, err error) {
 	return 0, nil
 }
 
-// TODO @hamersaw docs
+// PluginStateReader overrides the default behavior to return our k8s plugin specific reader.
 func (p *pluginContext) PluginStateReader() pluginsCore.PluginStateReader {
 	return pluginStateReader{
 		k8sPluginState: p.k8sPluginState,

@@ -358,18 +358,6 @@ func (e PluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutio
 	}
 
 	return transition, err
-
-	// TODO @hamersaw - dead code
-	/*if ps.Phase == PluginPhaseNotStarted {
-		t, err := e.LaunchResource(ctx, tCtx)
-		if err == nil && t.Info().Phase() == pluginsCore.PhaseQueued {
-			if err := tCtx.PluginStateWriter().Put(pluginStateVersion, &PluginState{Phase: PluginPhaseStarted}); err != nil {
-				return pluginsCore.UnknownTransition, err
-			}
-		}
-		return t, err
-	}
-	return e.CheckResourcePhase(ctx, tCtx)*/
 }
 
 func (e PluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) error {
