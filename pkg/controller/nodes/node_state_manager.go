@@ -54,6 +54,7 @@ func (n nodeStateManager) GetTaskNodeState() handler.TaskNodeState {
 			BarrierClockTick:                   tn.GetBarrierClockTick(),
 			LastPhaseUpdatedAt:                 tn.GetLastPhaseUpdatedAt(),
 			PreviousNodeExecutionCheckpointURI: tn.GetPreviousNodeExecutionCheckpointPath(),
+			CleanupOnFailure:                   tn.GetCleanupOnFailure(),
 		}
 	}
 	return handler.TaskNodeState{}

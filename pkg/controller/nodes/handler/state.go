@@ -21,6 +21,7 @@ type TaskNodeState struct {
 	BarrierClockTick                   uint32
 	LastPhaseUpdatedAt                 time.Time
 	PreviousNodeExecutionCheckpointURI storage.DataReference
+	CleanupOnFailure                   bool
 }
 
 type BranchNodeState struct {
