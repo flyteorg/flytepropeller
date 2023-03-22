@@ -51,12 +51,10 @@ func (s staticNodeLookup) GetNodeExecutionStatus(_ context.Context, id v1alpha1.
 	return s.status[id]
 }
 
-// TODO @hamersaw implement
 func (s staticNodeLookup) ToNode(id v1alpha1.NodeID) ([]v1alpha1.NodeID, error) {
 	return nil, nil
 }
 
-// TODO @hamersaw implement
 func (s staticNodeLookup) FromNode(id v1alpha1.NodeID) ([]v1alpha1.NodeID, error) {
 	return nil, nil
 }
