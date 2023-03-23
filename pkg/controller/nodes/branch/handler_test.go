@@ -150,15 +150,15 @@ func TestBranchHandler_RecurseDownstream(t *testing.T) {
 	bn.OnGetID().Return(childNodeID)
 
 	tests := []struct {
-		name              string
-		ns                executors.NodeStatus
-		err               error
-		nodeStatus        *mocks2.ExecutableNodeStatus
-		branchTakenNode   v1alpha1.ExecutableNode
-		isErr             bool
-		expectedPhase     handler.EPhase
-		childPhase        v1alpha1.NodePhase
-		upstreamNodeID    string
+		name            string
+		ns              executors.NodeStatus
+		err             error
+		nodeStatus      *mocks2.ExecutableNodeStatus
+		branchTakenNode v1alpha1.ExecutableNode
+		isErr           bool
+		expectedPhase   handler.EPhase
+		childPhase      v1alpha1.NodePhase
+		upstreamNodeID  string
 	}{
 		{"upstreamNodeExists", executors.NodeStatusPending, nil,
 			&mocks2.ExecutableNodeStatus{}, bn, false, handler.EPhaseRunning, v1alpha1.NodePhaseQueued, "n2"},
