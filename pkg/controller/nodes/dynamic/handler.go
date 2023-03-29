@@ -110,8 +110,9 @@ func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, 
 	taskNodeInfoMetadata := &event.TaskNodeMetadata{}
 	if dCtx.subWorkflowClosure != nil && dCtx.subWorkflowClosure.Primary != nil && dCtx.subWorkflowClosure.Primary.Template != nil {
 		taskNodeInfoMetadata.DynamicWorkflow = &event.DynamicWorkflowNodeMetadata{
-			Id:               dCtx.subWorkflowClosure.Primary.Template.Id,
-			CompiledWorkflow: dCtx.subWorkflowClosure,
+			Id:                dCtx.subWorkflowClosure.Primary.Template.Id,
+			CompiledWorkflow:  dCtx.subWorkflowClosure,
+			DynamicJobSpecUri: dCtx.dynamicJobSpecURI,
 		}
 	}
 
@@ -160,6 +161,10 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 
 			return trns.WithInfo(handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
 		}
+
+		trns = trns.WithInfo(trns.Info().WithInfo(&handler.ExecutionInfo{
+			OutputInfo: trns.Info().GetInfo().OutputInfo,
+		}))
 	}
 
 	return trns, newState, nil

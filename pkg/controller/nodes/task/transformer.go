@@ -1,16 +1,20 @@
 package task
 
 import (
+	"time"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
-	"github.com/golang/protobuf/ptypes"
-
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+
+	"github.com/golang/protobuf/ptypes"
+	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
 )
 
 // This is used by flyteadmin to indicate that map tasks now report subtask metadata individually.
@@ -67,6 +71,8 @@ func getParentNodeExecIDForTask(taskExecID *core.TaskExecutionIdentifier, execCo
 type ToTaskExecutionEventInputs struct {
 	TaskExecContext       pluginCore.TaskExecutionContext
 	InputReader           io.InputFilePaths
+	Inputs                *core.LiteralMap
+	EventConfig           *config.EventConfig
 	OutputWriter          io.OutputFilePaths
 	Info                  pluginCore.PhaseInfo
 	NodeExecutionMetadata handler.NodeExecutionMetadata
@@ -75,15 +81,27 @@ type ToTaskExecutionEventInputs struct {
 	PluginID              string
 	ResourcePoolInfo      []*event.ResourcePoolInfo
 	ClusterID             string
+	OccurredAt            time.Time
 }
 
 func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutionEvent, error) {
 	// Transitions to a new phase
 
-	tm := ptypes.TimestampNow()
 	var err error
+	var occurredAt *timestamppb.Timestamp
 	if i := input.Info.Info(); i != nil && i.OccurredAt != nil {
-		tm, err = ptypes.TimestampProto(*i.OccurredAt)
+		occurredAt, err = ptypes.TimestampProto(*i.OccurredAt)
+	} else {
+		occurredAt, err = ptypes.TimestampProto(input.OccurredAt)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	reportedAt := ptypes.TimestampNow()
+	if i := input.Info.Info(); i != nil && i.ReportedAt != nil {
+		occurredAt, err = ptypes.TimestampProto(*i.ReportedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -124,12 +142,12 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		Phase:                 ToTaskEventPhase(input.Info.Phase()),
 		PhaseVersion:          input.Info.Version(),
 		ProducerId:            input.ClusterID,
-		OccurredAt:            tm,
-		InputUri:              input.InputReader.GetInputPath().String(),
+		OccurredAt:            occurredAt,
 		TaskType:              input.TaskType,
 		Reason:                input.Info.Reason(),
 		Metadata:              metadata,
 		EventVersion:          taskExecutionEventVersion,
+		ReportedAt:            reportedAt,
 	}
 
 	if input.Info.Phase().IsSuccess() && input.OutputWriter != nil {
@@ -153,6 +171,15 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		tev.Metadata.InstanceClass = event.TaskExecutionMetadata_INTERRUPTIBLE
 	} else {
 		tev.Metadata.InstanceClass = event.TaskExecutionMetadata_DEFAULT
+	}
+	if input.EventConfig.RawOutputPolicy == config.RawOutputPolicyInline {
+		tev.InputValue = &event.TaskExecutionEvent_InputData{
+			InputData: input.Inputs,
+		}
+	} else {
+		tev.InputValue = &event.TaskExecutionEvent_InputUri{
+			InputUri: input.InputReader.GetInputPath().String(),
+		}
 	}
 
 	return tev, nil

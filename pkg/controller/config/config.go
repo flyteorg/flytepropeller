@@ -1,33 +1,36 @@
-// Package config contains the core configuration for FlytePropeller. This configuration can be added under the ``propeller`` section.
-//  Example config:
+// Package config contains the core configuration for FlytePropeller. This configuration can be added under the “propeller“ section.
+//
+//	Example config:
+//
 // ----------------
-//  propeller:
-//     rawoutput-prefix: s3://my-container/test/
-//     metadata-prefix: metadata/propeller/sandbox
-//     workers: 4
-//     workflow-reeval-duration: 10s
-//     downstream-eval-duration: 5s
-//     limit-namespace: "all"
-//     prof-port: 11254
-//     metrics-prefix: flyte
-//     enable-admin-launcher: true
-//     max-ttl-hours: 1
-//     gc-interval: 500m
-//     queue:
-//       type: batch
-//       queue:
-//         type: bucket
-//         rate: 20
-//         capacity: 100
-//       sub-queue:
-//         type: bucket
-//         rate: 100
-//         capacity: 1000
-//     # This config assumes using `make start` in flytesnacks repo to startup a DinD k3s container
-//     kube-config: "$HOME/kubeconfig/k3s/k3s.yaml"
-//     publish-k8s-events: true
-//     workflowStore:
-//       policy: "ResourceVersionCache"
+//
+//	propeller:
+//	   rawoutput-prefix: s3://my-container/test/
+//	   metadata-prefix: metadata/propeller/sandbox
+//	   workers: 4
+//	   workflow-reeval-duration: 10s
+//	   downstream-eval-duration: 5s
+//	   limit-namespace: "all"
+//	   prof-port: 11254
+//	   metrics-prefix: flyte
+//	   enable-admin-launcher: true
+//	   max-ttl-hours: 1
+//	   gc-interval: 500m
+//	   queue:
+//	     type: batch
+//	     queue:
+//	       type: bucket
+//	       rate: 1000
+//	       capacity: 10000
+//	     sub-queue:
+//	       type: bucket
+//	       rate: 1000
+//	       capacity: 10000
+//	   # This config assumes using `make start` in flytesnacks repo to startup a DinD k3s container
+//	   kube-config: "$HOME/kubeconfig/k3s/k3s.yaml"
+//	   publish-k8s-events: true
+//	   workflowStore:
+//	     policy: "ResourceVersionCache"
 package config
 
 import (
@@ -67,15 +70,15 @@ var (
 			BatchSize: -1,
 			Queue: WorkqueueConfig{
 				Type:      WorkqueueTypeMaxOfRateLimiter,
-				BaseDelay: config.Duration{Duration: time.Second * 5},
+				BaseDelay: config.Duration{Duration: time.Second * 0},
 				MaxDelay:  config.Duration{Duration: time.Second * 60},
-				Rate:      100,
-				Capacity:  1000,
+				Rate:      1000,
+				Capacity:  10000,
 			},
 			Sub: WorkqueueConfig{
 				Type:     WorkqueueTypeBucketRateLimiter,
-				Rate:     100,
-				Capacity: 1000,
+				Rate:     1000,
+				Capacity: 10000,
 			},
 		},
 		KubeConfig: KubeClientConfig{
@@ -90,11 +93,6 @@ var (
 			RetryPeriod:   config.Duration{Duration: time.Second * 2},
 		},
 		NodeConfig: NodeConfig{
-			DefaultDeadlines: DefaultDeadlines{
-				DefaultNodeExecutionDeadline:  config.Duration{Duration: time.Hour * 48},
-				DefaultNodeActiveDeadline:     config.Duration{Duration: time.Hour * 48},
-				DefaultWorkflowActiveDeadline: config.Duration{Duration: time.Hour * 72},
-			},
 			MaxNodeRetriesOnSystemFailures: 3,
 			InterruptibleFailureThreshold:  1,
 		},

@@ -54,6 +54,10 @@ func (t *dynamicNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState)
 	return nil
 }
 
+func (t dynamicNodeStateHolder) PutGateNodeState(s handler.GateNodeState) error {
+	panic("not implemented")
+}
+
 var tID = "task-1"
 
 var eventConfig = &config.EventConfig{
@@ -507,6 +511,12 @@ func Test_dynamicNodeHandler_Handle_SubTaskV1(t *testing.T) {
 		return nCtx
 	}
 
+	execInfoOutputOnly := &handler.ExecutionInfo{
+		OutputInfo: &handler.OutputInfo{
+			OutputURI: "output-dir/outputs.pb",
+		},
+	}
+
 	type args struct {
 		s               executors.NodeStatus
 		isErr           bool
@@ -518,6 +528,7 @@ func Test_dynamicNodeHandler_Handle_SubTaskV1(t *testing.T) {
 		p     handler.EPhase
 		isErr bool
 		phase v1alpha1.DynamicNodePhase
+		info  *handler.ExecutionInfo
 	}
 	tests := []struct {
 		name string
@@ -526,10 +537,10 @@ func Test_dynamicNodeHandler_Handle_SubTaskV1(t *testing.T) {
 	}{
 		{"error", args{isErr: true, dj: createDynamicJobSpec()}, want{isErr: true}},
 		{"success", args{s: executors.NodeStatusSuccess, dj: createDynamicJobSpec()}, want{p: handler.EPhaseDynamicRunning, phase: v1alpha1.DynamicNodePhaseExecuting}},
-		{"complete", args{s: executors.NodeStatusComplete, dj: createDynamicJobSpec(), generateOutputs: true}, want{p: handler.EPhaseSuccess, phase: v1alpha1.DynamicNodePhaseExecuting}},
+		{"complete", args{s: executors.NodeStatusComplete, dj: createDynamicJobSpec(), generateOutputs: true}, want{p: handler.EPhaseSuccess, phase: v1alpha1.DynamicNodePhaseExecuting, info: execInfoOutputOnly}},
 		{"complete-no-outputs", args{s: executors.NodeStatusComplete, dj: createDynamicJobSpec(), generateOutputs: false}, want{p: handler.EPhaseRetryableFailure, phase: v1alpha1.DynamicNodePhaseFailing}},
-		{"complete-valid-error-retryable", args{s: executors.NodeStatusComplete, dj: createDynamicJobSpec(), validErr: &io.ExecutionError{IsRecoverable: true}, generateOutputs: true}, want{p: handler.EPhaseRetryableFailure, phase: v1alpha1.DynamicNodePhaseFailing}},
-		{"complete-valid-error", args{s: executors.NodeStatusComplete, dj: createDynamicJobSpec(), validErr: &io.ExecutionError{}, generateOutputs: true}, want{p: handler.EPhaseFailed, phase: v1alpha1.DynamicNodePhaseFailing}},
+		{"complete-valid-error-retryable", args{s: executors.NodeStatusComplete, dj: createDynamicJobSpec(), validErr: &io.ExecutionError{IsRecoverable: true}, generateOutputs: true}, want{p: handler.EPhaseRetryableFailure, phase: v1alpha1.DynamicNodePhaseFailing, info: execInfoOutputOnly}},
+		{"complete-valid-error", args{s: executors.NodeStatusComplete, dj: createDynamicJobSpec(), validErr: &io.ExecutionError{}, generateOutputs: true}, want{p: handler.EPhaseFailed, phase: v1alpha1.DynamicNodePhaseFailing, info: execInfoOutputOnly}},
 		{"failed", args{s: executors.NodeStatusFailed(&core.ExecutionError{}), dj: createDynamicJobSpec()}, want{p: handler.EPhaseDynamicRunning, phase: v1alpha1.DynamicNodePhaseFailing}},
 		{"running", args{s: executors.NodeStatusRunning, dj: createDynamicJobSpec()}, want{p: handler.EPhaseDynamicRunning, phase: v1alpha1.DynamicNodePhaseExecuting}},
 		{"running-valid-err", args{s: executors.NodeStatusRunning, dj: createDynamicJobSpec(), validErr: &io.ExecutionError{}}, want{p: handler.EPhaseDynamicRunning, phase: v1alpha1.DynamicNodePhaseExecuting}},
@@ -581,6 +592,7 @@ func Test_dynamicNodeHandler_Handle_SubTaskV1(t *testing.T) {
 			if err == nil {
 				assert.Equal(t, tt.want.p.String(), got.Info().GetPhase().String())
 				assert.Equal(t, tt.want.phase, s.s.Phase)
+				assert.Equal(t, tt.want.info, got.Info().GetInfo())
 			}
 		})
 	}

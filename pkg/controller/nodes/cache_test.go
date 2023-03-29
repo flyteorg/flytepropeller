@@ -117,7 +117,7 @@ func setupCacheableNodeExecutor(t *testing.T, catalogClient catalog.Client, data
 
 	nodeExecutorInterface, err := NewExecutor(ctx, nodeConfig, dataStore, enqueueWorkflow, mockEventSink,
 		adminClient, adminClient, maxDatasetSize, rawOutputPrefix, fakeKubeClient, catalogClient,
-		recoveryClient, eventConfig, testClusterID, testScope.NewSubScope("node_executor"))
+		recoveryClient, eventConfig, testClusterID, signalClient, testScope.NewSubScope("node_executor"))
 	assert.NoError(t, err)
 
 	nodeExecutor, ok := nodeExecutorInterface.(*nodeExecutor)

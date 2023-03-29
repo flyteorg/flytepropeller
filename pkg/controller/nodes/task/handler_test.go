@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
+	"github.com/golang/protobuf/proto"
+
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	mocks2 "github.com/flyteorg/flytepropeller/events/mocks"
 
@@ -53,7 +56,7 @@ import (
 )
 
 var eventConfig = &controllerConfig.EventConfig{
-	RawOutputPolicy: controllerConfig.RawOutputPolicyReference,
+	RawOutputPolicy: controllerConfig.RawOutputPolicyInline,
 }
 
 const testClusterID = "C1"
@@ -378,6 +381,10 @@ func (t taskNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) err
 	panic("not implemented")
 }
 
+func (t taskNodeStateHolder) PutGateNodeState(s handler.GateNodeState) error {
+	panic("not implemented")
+}
+
 func CreateNoopResourceManager(ctx context.Context, scope promutils.Scope) resourcemanager.BaseResourceManager {
 	rmBuilder, _ := resourcemanager.GetResourceManagerBuilderByType(ctx, rmConfig.TypeNoop, scope)
 	rm, _ := rmBuilder.BuildResourceManager(ctx)
@@ -386,6 +393,11 @@ func CreateNoopResourceManager(ctx context.Context, scope promutils.Scope) resou
 
 func Test_task_Handle_NoCatalog(t *testing.T) {
 
+	inputs := &core.LiteralMap{
+		Literals: map[string]*core.Literal{
+			"foo": coreutils.MustMakeLiteral("bar"),
+		},
+	}
 	createNodeContext := func(pluginPhase pluginCore.Phase, pluginVer uint32, pluginResp fakeplugins.NextPhaseState, recorder events.TaskEventRecorder, ttype string, s *taskNodeStateHolder, allowIncrementParallelism bool) *nodeMocks.NodeExecutionContext {
 		wfExecID := &core.WorkflowExecutionIdentifier{
 			Project: "project",
@@ -418,6 +430,17 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 				Discoverable: false,
 			},
 			Interface: &core.TypedInterface{
+				Inputs: &core.VariableMap{
+					Variables: map[string]*core.Variable{
+						"foo": {
+							Type: &core.LiteralType{
+								Type: &core.LiteralType_Simple{
+									Simple: core.SimpleType_STRING,
+								},
+							},
+						},
+					},
+				},
 				Outputs: &core.VariableMap{
 					Variables: map[string]*core.Variable{
 						"x": {
@@ -449,6 +472,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 
 		ir := &ioMocks.InputReader{}
 		ir.OnGetInputPath().Return("input")
+		ir.OnGetMatch(mock.Anything).Return(inputs, nil)
 		nCtx := &nodeMocks.NodeExecutionContext{}
 		nCtx.OnNodeExecutionMetadata().Return(nm)
 		nCtx.OnNode().Return(n)
@@ -680,6 +704,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 				}),
 				resourceManager: noopRm,
 				taskMetricsMap:  make(map[MetricKey]*taskMetrics),
+				eventConfig:     eventConfig,
 			}
 			got, err := tk.Handle(context.TODO(), nCtx)
 			if (err != nil) != tt.want.wantErr {
@@ -694,6 +719,9 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 						assert.Equal(t, tt.want.eventPhase.String(), e.Phase.String())
 						if tt.args.expectedState.TaskInfo != nil {
 							assert.Equal(t, tt.args.expectedState.TaskInfo.Logs, e.Logs)
+						}
+						if e.Phase == core.TaskExecution_RUNNING || e.Phase == core.TaskExecution_SUCCEEDED {
+							assert.True(t, proto.Equal(inputs, e.GetInputData()))
 						}
 					}
 				} else {
@@ -796,6 +824,7 @@ func Test_task_Handle_Barrier(t *testing.T) {
 
 		ir := &ioMocks.InputReader{}
 		ir.OnGetInputPath().Return(storage.DataReference("input"))
+		ir.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
 		nCtx := &nodeMocks.NodeExecutionContext{}
 		nCtx.OnNodeExecutionMetadata().Return(nm)
 		nCtx.OnNode().Return(n)
@@ -1417,6 +1446,7 @@ func Test_task_Finalize(t *testing.T) {
 		n.OnGetResources().Return(res)
 
 		ir := &ioMocks.InputReader{}
+		ir.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
 		nCtx := &nodeMocks.NodeExecutionContext{}
 		nCtx.OnNodeExecutionMetadata().Return(nm)
 		nCtx.OnNode().Return(n)

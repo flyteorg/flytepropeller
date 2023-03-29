@@ -4,10 +4,10 @@ import (
 	"strings"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
-	"github.com/flyteorg/flytepropeller/pkg/utils"
 	"github.com/go-test/deep"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -50,7 +50,7 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		}
 	}
 
-	res, err := utils.ToK8sResourceRequirements(resources)
+	res, err := flytek8s.ToK8sResourceRequirements(resources)
 	if err != nil {
 		errs.Collect(errors.NewWorkflowBuildError(err))
 		return nil, false
@@ -128,6 +128,32 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		// as the first element in the list. That way list[0] will always be the first node
 		actualNode := []*v1alpha1.NodeSpec{nodeSpec}
 		return append(actualNode, ns...), !errs.HasErrors()
+	case *core.Node_GateNode:
+		nodeSpec.Kind = v1alpha1.NodeKindGate
+		gateNode := n.GetGateNode()
+		switch gateNode.Condition.(type) {
+		case *core.GateNode_Approve:
+			nodeSpec.GateNode = &v1alpha1.GateNodeSpec{
+				Kind: v1alpha1.ConditionKindApprove,
+				Approve: &v1alpha1.ApproveCondition{
+					ApproveCondition: gateNode.GetApprove(),
+				},
+			}
+		case *core.GateNode_Signal:
+			nodeSpec.GateNode = &v1alpha1.GateNodeSpec{
+				Kind: v1alpha1.ConditionKindSignal,
+				Signal: &v1alpha1.SignalCondition{
+					SignalCondition: gateNode.GetSignal(),
+				},
+			}
+		case *core.GateNode_Sleep:
+			nodeSpec.GateNode = &v1alpha1.GateNodeSpec{
+				Kind: v1alpha1.ConditionKindSleep,
+				Sleep: &v1alpha1.SleepCondition{
+					SleepCondition: gateNode.GetSleep(),
+				},
+			}
+		}
 	default:
 		if n.GetId() == v1alpha1.StartNodeID {
 			nodeSpec.Kind = v1alpha1.NodeKindStart

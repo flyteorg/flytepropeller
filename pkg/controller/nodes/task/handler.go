@@ -541,7 +541,27 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// So now we will derive this from the plugin phase
 	// TODO @kumare re-evaluate this decision
 
+	var inputs *core.LiteralMap
+	if ts.PluginPhase == pluginCore.PhaseUndefined && t.eventConfig.RawOutputPolicy == controllerConfig.RawOutputPolicyInline {
+		// The task should only reach undefined exactly once. Since we want to send the inputs inline at some point in the task execution flow (but not necessarily every event), we send them for this event transition only.
+		// The calls to read from the catalog below may call InputReader.Get subsequent times, but the underlying implementation uses a CachedInputReader that will
+		// not re-download the inputs for the duration of this Handle call.
+		tk, err := tCtx.tr.Read(ctx)
+		if err != nil {
+			logger.Errorf(ctx, "failed to read TaskTemplate, error :%s", err.Error())
+			return handler.UnknownTransition, err
+		}
+		if tk.Interface != nil && tk.Interface.Inputs != nil && len(tk.Interface.Inputs.Variables) > 0 {
+			inputs, err = nCtx.InputReader().Get(ctx)
+			if err != nil {
+				logger.Errorf(ctx, "failed to read inputs when checking catalog cache %w", err)
+				return handler.UnknownTransition, err
+			}
+		}
+	}
+
 	barrierTick := uint32(0)
+	occurredAt := time.Now()
 	// STEP 2: If no cache-hit and not transitioning to PhaseWaitingForCache, then lets invoke the plugin and wait for a transition out of undefined
 	if pluginTrns.execInfo.TaskNodeInfo == nil || (pluginTrns.pInfo.Phase() != pluginCore.PhaseWaitingForCache &&
 		pluginTrns.execInfo.TaskNodeInfo.TaskNodeMetadata.CacheStatus != core.CatalogCacheStatus_CACHE_HIT) {
@@ -597,6 +617,8 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		evInfo, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
 			TaskExecContext:       tCtx,
 			InputReader:           nCtx.InputReader(),
+			Inputs:                inputs,
+			EventConfig:           t.eventConfig,
 			OutputWriter:          tCtx.ow,
 			Info:                  ev,
 			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
@@ -605,6 +627,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			PluginID:              p.GetID(),
 			ResourcePoolInfo:      tCtx.rm.GetResourcePoolInfo(),
 			ClusterID:             t.clusterID,
+			OccurredAt:            occurredAt,
 		})
 		if err != nil {
 			return handler.UnknownTransition, err
@@ -622,6 +645,8 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	evInfo, err := pluginTrns.FinalTaskEvent(ToTaskExecutionEventInputs{
 		TaskExecContext:       tCtx,
 		InputReader:           nCtx.InputReader(),
+		Inputs:                inputs,
+		EventConfig:           t.eventConfig,
 		OutputWriter:          tCtx.ow,
 		NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 		ExecContext:           nCtx.ExecutionContext(),
@@ -629,6 +654,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		PluginID:              p.GetID(),
 		ResourcePoolInfo:      tCtx.rm.GetResourcePoolInfo(),
 		ClusterID:             t.clusterID,
+		OccurredAt:            occurredAt,
 	})
 	if err != nil {
 		logger.Errorf(ctx, "failed to convert plugin transition to TaskExecutionEvent. Error: %s", err.Error())

@@ -132,15 +132,15 @@ func (c *Controller) run(ctx context.Context) error {
 
 // Called from leader elector -if configured- to start running as the leader.
 func (c *Controller) onStartedLeading(ctx context.Context) {
-	ctx, cancelNow := context.WithCancel(context.Background())
+	backgroundCtx, cancelNow := context.WithCancel(ctx)
 	logger.Infof(ctx, "Acquired leader lease.")
 	go func() {
-		if err := c.run(ctx); err != nil {
-			logger.Panic(ctx, err)
+		if err := c.run(backgroundCtx); err != nil {
+			logger.Panic(backgroundCtx, err)
 		}
 	}()
 
-	<-ctx.Done()
+	<-backgroundCtx.Done()
 	logger.Infof(ctx, "Lost leader lease.")
 	cancelNow()
 }
@@ -305,11 +305,11 @@ func newControllerMetrics(scope promutils.Scope) *metrics {
 	}
 }
 
-func getAdminClient(ctx context.Context) (client service.AdminServiceClient, opt []grpc.DialOption, err error) {
+func getAdminClient(ctx context.Context) (client service.AdminServiceClient, signalClient service.SignalServiceClient, opt []grpc.DialOption, err error) {
 	cfg := admin.GetConfig(ctx)
 	clients, err := admin.NewClientsetBuilder().WithConfig(cfg).Build(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize clientset. Error: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialize clientset. Error: %w", err)
 	}
 
 	credentialsFuture := admin.NewPerRPCCredentialsFuture()
@@ -318,7 +318,7 @@ func getAdminClient(ctx context.Context) (client service.AdminServiceClient, opt
 		grpc.WithPerRPCCredentials(credentialsFuture),
 	}
 
-	return clients.AdminClient(), opts, nil
+	return clients.AdminClient(), clients.SignalServiceClient(), opts, nil
 }
 
 // New returns a new FlyteWorkflow controller
@@ -326,7 +326,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	flyteworkflowInformerFactory informers.SharedInformerFactory, informerFactory k8sInformers.SharedInformerFactory,
 	kubeClient executors.Client, scope promutils.Scope) (*Controller, error) {
 
-	adminClient, authOpts, err := getAdminClient(ctx)
+	adminClient, signalClient, authOpts, err := getAdminClient(ctx)
 	if err != nil {
 		logger.Errorf(ctx, "failed to initialize Admin client, err :%s", err.Error())
 		return nil, err
@@ -439,7 +439,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 
 	nodeExecutor, err := nodes.NewExecutor(ctx, cfg.NodeConfig, store, controller.enqueueWorkflowForNodeUpdates, eventSink,
 		launchPlanActor, launchPlanActor, cfg.MaxDatasetSizeBytes,
-		storage.DataReference(cfg.DefaultRawOutputPrefix), kubeClient, catalogClient, recovery.NewClient(adminClient), &cfg.EventConfig, cfg.ClusterID, scope)
+		storage.DataReference(cfg.DefaultRawOutputPrefix), kubeClient, catalogClient, recovery.NewClient(adminClient), &cfg.EventConfig, cfg.ClusterID, signalClient, scope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create Controller.")
 	}
@@ -460,7 +460,7 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 	// Set up an event handler for when FlyteWorkflow resources change
 	flyteworkflowInformer.Informer().AddEventHandler(controller.getWorkflowUpdatesHandler())
 
-	updateHandler := flytek8s.GetPodTemplateUpdatesHandler(&flytek8s.DefaultPodTemplateStore, flyteK8sConfig.GetK8sPluginConfig().DefaultPodTemplateName)
+	updateHandler := flytek8s.GetPodTemplateUpdatesHandler(&flytek8s.DefaultPodTemplateStore)
 	podTemplateInformer.Informer().AddEventHandler(updateHandler)
 	return controller, nil
 }
