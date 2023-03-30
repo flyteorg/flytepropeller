@@ -56,6 +56,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const cacheSerializedReason = "waiting on serialized cache"
+
 type nodeMetrics struct {
 	Scope                         promutils.Scope
 	FailureDuration               labeled.StopWatch
@@ -630,11 +632,11 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		return executors.NodeStatusQueued, nil
 	} else if np == v1alpha1.NodePhaseSkipped {
 		return executors.NodeStatusSuccess, nil
-	} /*else if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
+	} else if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
 		// if cache hit then immediately process downstream nodes
 		nodeStatus.ResetDirty()
 		return c.handleDownstream(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nCtx.Node())
-	} */ // TODO @hamersaw disable cache hit handleDownstream
+	}
 
 	return executors.NodeStatusPending, nil
 }
@@ -660,12 +662,14 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 			return executors.NodeStatusUndefined, err
 		}
 
-		// TODO @hamersaw - document since we already check cache in queued the first time we hit this we shouldn't check it
-		// could potentially use nodeStatus.GetMessage() check and update on RESERVATION_EXISTS
 		if cacheSerializable && nCtx.ExecutionContext().GetExecutionConfig().OverwriteCache {
 			status := catalog.NewStatus(core.CatalogCacheStatus_CACHE_SKIPPED, nil)
 			cacheStatus = &status
-		} else if cacheSerializable && currentPhase == v1alpha1.NodePhaseQueued {
+		} else if cacheSerializable && currentPhase == v1alpha1.NodePhaseQueued && nodeStatus.GetMessage() == cacheSerializedReason {
+			// since we already check the cache before transitioning to Phase Queued we only need to check it again if
+			// the cache is serialized and that causes the node to stay in the Queued phase. the easiest way to detect
+			// this is verifying the NodeStatus Reason is what we set it during cache serialization.
+
 			entry, err := c.CheckCatalogCache(ctx, nCtx, cacheHandler)
 			if err != nil {
 				logger.Errorf(ctx, "failed to check the catalog cache with err '%s'", err.Error())
@@ -706,7 +710,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 				logger.Infof(ctx, "acquired cache reservation")
 			} else if status == core.CatalogReservation_RESERVATION_EXISTS {
 				// if reservation is held by another owner we stay in the queued phase
-				p = handler.PhaseInfoQueued("waiting on serialized cache", nil)
+				p = handler.PhaseInfoQueued(cacheSerializedReason, nil)
 			}
 		}
 	}
@@ -886,11 +890,11 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 
 	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
 
-	/*if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
+	if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
 		// if cache hit then immediately process downstream nodes
 		nodeStatus.ResetDirty()
 		return c.handleDownstream(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nCtx.Node())
-	}*/ // TODO @hamersaw disable cache hit handleDownstream
+	}
 
 	return finalStatus, nil
 }
