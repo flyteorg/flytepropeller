@@ -40,6 +40,8 @@ func formatGCPSecretAccessCommand(secret *core.Secret) []string {
 	// `gcloud` writes this file with permission 0600.
 	// This will cause permission issues in the main container when using non-root
 	// users, so we fix the file permissions with `chmod`.
+	secretDir := strings.ToLower(filepath.Join(GCPSecretMountPath, secret.Group))
+	secretPath := strings.ToLower(filepath.Join(secretDir, secret.GroupVersion))
 	args := []string{
 		"gcloud",
 		"secrets",
@@ -49,13 +51,13 @@ func formatGCPSecretAccessCommand(secret *core.Secret) []string {
 		fmt.Sprintf("--secret=%s", secret.Group),
 		fmt.Sprintf(
 			"--out-file=%s",
-			filepath.Join(GCPSecretMountPath, secret.Group, secret.GroupVersion),
+			secretPath,
 		),
 		"&&",
 		"chmod",
 		"+rX",
-		filepath.Join(GCPSecretMountPath, secret.Group),
-		filepath.Join(GCPSecretMountPath, secret.Group, secret.GroupVersion),
+		secretDir,
+		secretPath,
 	}
 	return []string{"sh", "-c", strings.Join(args, " ")}
 }

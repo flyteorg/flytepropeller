@@ -40,7 +40,7 @@ func TestGCPSecretManagerInjector_Inject(t *testing.T) {
 					Command: []string{
 						"sh",
 						"-c",
-						"gcloud secrets versions access 2 --secret=TestSecret --out-file=/etc/flyte/secrets/TestSecret/2 && chmod +rX /etc/flyte/secrets/TestSecret /etc/flyte/secrets/TestSecret/2",
+						"gcloud secrets versions access 2 --secret=TestSecret --out-file=/etc/flyte/secrets/testsecret/2 && chmod +rX /etc/flyte/secrets/testsecret /etc/flyte/secrets/testsecret/2",
 					},
 					Env: []corev1.EnvVar{
 						{
