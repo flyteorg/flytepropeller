@@ -88,6 +88,7 @@ type nodeMetrics struct {
 	catalogPutSuccessCount         labeled.Counter
 	catalogMissCount               labeled.Counter
 	catalogHitCount                labeled.Counter
+	catalogSkipCount               labeled.Counter
 	reservationGetSuccessCount     labeled.Counter
 	reservationGetFailureCount     labeled.Counter
 	reservationReleaseSuccessCount labeled.Counter
@@ -559,6 +560,11 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		if err != nil {
 			logger.Errorf(ctx, "failed to determine if node is cacheable with err '%s'", err.Error())
 			return executors.NodeStatusUndefined, err
+		} else if cacheable && nCtx.ExecutionContext().GetExecutionConfig().OverwriteCache {
+			logger.Info(ctx, "execution config forced cache skip, not checking catalog")
+			status := catalog.NewStatus(core.CatalogCacheStatus_CACHE_SKIPPED, nil)
+			cacheStatus = &status
+			c.metrics.catalogSkipCount.Inc(ctx)
 		} else if cacheable {
 			entry, err := c.CheckCatalogCache(ctx, nCtx, cacheHandler)
 			if err != nil {
@@ -624,11 +630,11 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		return executors.NodeStatusQueued, nil
 	} else if np == v1alpha1.NodePhaseSkipped {
 		return executors.NodeStatusSuccess, nil
-	} else if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
+	} /*else if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
 		// if cache hit then immediately process downstream nodes
 		nodeStatus.ResetDirty()
 		return c.handleDownstream(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nCtx.Node())
-	}
+	} */ // TODO @hamersaw disable cache hit handleDownstream
 
 	return executors.NodeStatusPending, nil
 }
@@ -656,7 +662,10 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 
 		// TODO @hamersaw - document since we already check cache in queued the first time we hit this we shouldn't check it
 		// could potentially use nodeStatus.GetMessage() check and update on RESERVATION_EXISTS
-		if cacheSerializable && currentPhase == v1alpha1.NodePhaseQueued {
+		if cacheSerializable && nCtx.ExecutionContext().GetExecutionConfig().OverwriteCache {
+			status := catalog.NewStatus(core.CatalogCacheStatus_CACHE_SKIPPED, nil)
+			cacheStatus = &status
+		} else if cacheSerializable && currentPhase == v1alpha1.NodePhaseQueued {
 			entry, err := c.CheckCatalogCache(ctx, nCtx, cacheHandler)
 			if err != nil {
 				logger.Errorf(ctx, "failed to check the catalog cache with err '%s'", err.Error())
@@ -682,7 +691,9 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 			}
 		}
 
-		if cacheSerializable && (cacheStatus == nil || cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT) {
+		if cacheSerializable && !nCtx.ExecutionContext().GetExecutionConfig().OverwriteCache &&
+			(cacheStatus == nil || (cacheStatus.GetCacheStatus() != core.CatalogCacheStatus_CACHE_HIT)) {
+
 			entry, err := c.GetOrExtendCatalogReservation(ctx, nCtx, cacheHandler, config.GetConfig().WorkflowReEval.Duration)
 			if err != nil {
 				logger.Errorf(ctx, "failed to check for catalog reservation with err '%s'", err.Error())
@@ -875,11 +886,11 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 
 	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
 
-	if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
+	/*if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
 		// if cache hit then immediately process downstream nodes
 		nodeStatus.ResetDirty()
 		return c.handleDownstream(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nCtx.Node())
-	}
+	}*/ // TODO @hamersaw disable cache hit handleDownstream
 
 	return finalStatus, nil
 }
@@ -1422,6 +1433,7 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 			NodeInputGatherLatency:         labeled.NewStopWatch("node_input_latency", "Measures the latency to aggregate inputs and check readiness of a node", time.Millisecond, nodeScope, labeled.EmitUnlabeledMetric),
 			catalogHitCount:                labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", scope),
 			catalogMissCount:               labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", scope),
+			catalogSkipCount:               labeled.NewCounter("discovery_skip_count", "Task cached skipped in Discovery", scope),
 			catalogPutSuccessCount:         labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", scope),
 			catalogPutFailureCount:         labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", scope),
 			catalogGetFailureCount:         labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", scope),
