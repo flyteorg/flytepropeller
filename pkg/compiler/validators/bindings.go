@@ -5,6 +5,7 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/compiler/typing"
 
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	flyte "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	c "github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
@@ -125,7 +126,7 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 					}
 				}
 
-				if !validateParamTypes || AreTypesCastable(sourceType, expectedType) {
+				if !validateParamTypes || coreutils.AreTypesCastable(sourceType, expectedType) {
 					val.Promise.NodeId = upNode.GetId()
 					return param.GetType(), []c.NodeID{val.Promise.NodeId}, true
 				}
@@ -141,10 +142,10 @@ func validateBinding(w c.WorkflowBuilder, nodeID c.NodeID, nodeParam string, bin
 			return nil, nil, !errs.HasErrors()
 		}
 
-		literalType := literalTypeForScalar(val.Scalar)
+		literalType := coreutils.LiteralTypeForScalar(val.Scalar)
 		if literalType == nil {
 			errs.Collect(errors.NewUnrecognizedValueErr(nodeID, reflect.TypeOf(val.Scalar.GetValue()).String()))
-		} else if validateParamTypes && !AreTypesCastable(literalType, expectedType) {
+		} else if validateParamTypes && !coreutils.AreTypesCastable(literalType, expectedType) {
 			errs.Collect(errors.NewMismatchingTypesErr(nodeID, nodeParam, literalType.String(), expectedType.String()))
 		}
 

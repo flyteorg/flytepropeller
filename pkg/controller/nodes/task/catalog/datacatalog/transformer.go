@@ -8,11 +8,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
-
-	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
 
 	"github.com/flyteorg/flytestdlib/pbhash"
 )
@@ -55,8 +54,8 @@ func GenerateTaskOutputsFromArtifact(id core.Identifier, taskInterface core.Type
 		}
 
 		expectedVarType := outputVariables[artifactData.Name].GetType()
-		inputType := validators.LiteralTypeForLiteral(artifactData.Value)
-		if !validators.AreTypesCastable(inputType, expectedVarType) {
+		inputType := coreutils.LiteralTypeForLiteral(artifactData.Value)
+		if !coreutils.AreTypesCastable(inputType, expectedVarType) {
 			return nil, fmt.Errorf("unexpected artifactData: [%v] type: [%v] does not match any task output type: [%v]", artifactData.Name, inputType, expectedVarType)
 		}
 
