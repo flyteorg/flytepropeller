@@ -3,6 +3,7 @@ package validators
 import (
 	"fmt"
 
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	flyte "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	c "github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
@@ -14,7 +15,7 @@ func validateOperand(node c.NodeBuilder, paramName string, operand *flyte.Operan
 		errs.Collect(errors.NewValueRequiredErr(node.GetId(), paramName))
 	} else if operand.GetPrimitive() != nil {
 		// no validation
-		literalType = literalTypeForPrimitive(operand.GetPrimitive())
+		literalType = coreutils.LiteralTypeForPrimitive(operand.GetPrimitive())
 	} else if len(operand.GetVar()) > 0 {
 		if node.GetInterface() != nil {
 			if param, paramOk := validateInputVar(node, operand.GetVar(), requireParamType, errs.NewScope()); paramOk {

@@ -1,10 +1,10 @@
 package k8s
 
 import (
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/common"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/errors"
-	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -34,8 +34,8 @@ func validateInputs(nodeID common.NodeID, iface *core.TypedInterface, inputs cor
 			continue
 		}
 
-		inputType := validators.LiteralTypeForLiteral(inputVal)
-		if !validators.AreTypesCastable(inputType, v.Type) {
+		inputType := coreutils.LiteralTypeForLiteral(inputVal)
+		if !coreutils.AreTypesCastable(inputType, v.Type) {
 			errs.Collect(errors.NewMismatchingTypesErr(nodeID, inputVar, v.Type.String(), inputType.String()))
 			continue
 		}
