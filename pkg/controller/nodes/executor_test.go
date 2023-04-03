@@ -2604,7 +2604,8 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			Status: v1alpha1.WorkflowStatus{
 				NodeStatus: map[v1alpha1.NodeID]*v1alpha1.NodeStatus{
 					currentNodeID: &v1alpha1.NodeStatus{
-						Phase: currentNodePhase,
+						Phase:   currentNodePhase,
+						Message: cacheSerializedReason,
 					},
 					downstreamNodeID: &v1alpha1.NodeStatus{
 						Phase: downstreamNodePhase,
@@ -2707,7 +2708,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			v1alpha1.NodePhaseNotYetStarted,
 			v1alpha1.NodePhaseSucceeded,
 			v1alpha1.NodePhaseNotYetStarted,
-			v1alpha1.NodePhaseQueued,
+			v1alpha1.NodePhaseNotYetStarted,
 		},
 		{
 			"Queued->CacheHit->Success",
@@ -2718,7 +2719,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			v1alpha1.NodePhaseQueued,
 			v1alpha1.NodePhaseSucceeded,
 			v1alpha1.NodePhaseNotYetStarted,
-			v1alpha1.NodePhaseQueued,
+			v1alpha1.NodePhaseNotYetStarted,
 		},
 		{
 			"Queued->CacheMiss->Queued",

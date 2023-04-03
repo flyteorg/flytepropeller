@@ -632,16 +632,12 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		return executors.NodeStatusQueued, nil
 	} else if np == v1alpha1.NodePhaseSkipped {
 		return executors.NodeStatusSuccess, nil
-	} else if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
-		// if cache hit then immediately process downstream nodes
-		nodeStatus.ResetDirty()
-		return c.handleDownstream(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nCtx.Node())
 	}
 
 	return executors.NodeStatusPending, nil
 }
 
-func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag executors.DAGStructure, nCtx *nodeExecContext, h handler.Node) (executors.NodeStatus, error) {
+func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *nodeExecContext, h handler.Node) (executors.NodeStatus, error) {
 	nodeStatus := nCtx.NodeStatus()
 	currentPhase := nodeStatus.GetPhase()
 	p := handler.PhaseInfoUndefined
@@ -889,13 +885,6 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, dag execut
 	}
 
 	UpdateNodeStatus(np, p, nCtx.nsm, nodeStatus)
-
-	if cacheStatus != nil && cacheStatus.GetCacheStatus() == core.CatalogCacheStatus_CACHE_HIT {
-		// if cache hit then immediately process downstream nodes
-		nodeStatus.ResetDirty()
-		return c.handleDownstream(ctx, nCtx.ExecutionContext(), dag, nCtx.ContextualNodeLookup(), nCtx.Node())
-	}
-
 	return finalStatus, nil
 }
 
@@ -999,7 +988,7 @@ func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructur
 		return executors.NodeStatusFailed(nodeStatus.GetExecutionError()), nil
 	}
 
-	return c.handleQueuedOrRunningNode(ctx, dag, nCtx, h)
+	return c.handleQueuedOrRunningNode(ctx, nCtx, h)
 }
 
 // The space search for the next node to execute is implemented like a DFS algorithm. handleDownstream visits all the nodes downstream from
