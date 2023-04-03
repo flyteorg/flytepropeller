@@ -45,6 +45,7 @@ const (
 	NodeKindBranch   NodeKind = "branch"   // A Branch node with conditions
 	NodeKindWorkflow NodeKind = "workflow" // Either an inline workflow or a remote workflow definition
 	NodeKindGate     NodeKind = "gate"     // A Gate node with a condition
+	NodeKindArray    NodeKind = "array"    // An array node with a subtask Node
 	NodeKindStart    NodeKind = "start"    // Start node is a special node
 	NodeKindEnd      NodeKind = "end"
 )
@@ -253,6 +254,10 @@ type ExecutableGateNode interface {
 	GetSleep() *core.SleepCondition
 }
 
+type ExecutableArrayNode interface {
+	// TODO @hamersaw - complete ExecutableArrayNode
+}
+
 type ExecutableWorkflowNodeStatus interface {
 	GetWorkflowNodePhase() WorkflowNodePhase
 	GetExecutionError() *core.ExecutionError
@@ -273,6 +278,16 @@ type MutableGateNodeStatus interface {
 	Mutable
 	ExecutableGateNodeStatus
 	SetGateNodePhase(phase GateNodePhase)
+}
+
+type ExecutableArrayNodeStatus interface {
+	GetArrayNodePhase() ArrayNodePhase
+}
+
+type MutableArrayNodeStatus interface {
+	Mutable
+	ExecutableArrayNodeStatus
+	SetArrayNodePhase(phase ArrayNodePhase)
 }
 
 type Mutable interface {
@@ -310,6 +325,10 @@ type MutableNodeStatus interface {
 	GetGateNodeStatus() MutableGateNodeStatus
 	GetOrCreateGateNodeStatus() MutableGateNodeStatus
 	ClearGateNodeStatus()
+
+	GetArrayNodeStatus() MutableArrayNodeStatus
+	GetOrCreateArrayNodeStatus() MutableArrayNodeStatus
+	ClearArrayNodeStatus()
 }
 
 type ExecutionTimeInfo interface {
@@ -393,6 +412,7 @@ type ExecutableNode interface {
 	GetBranchNode() ExecutableBranchNode
 	GetWorkflowNode() ExecutableWorkflowNode
 	GetGateNode() ExecutableGateNode
+	GetArrayNode() ExecutableArrayNode
 	GetOutputAlias() []Alias
 	GetInputBindings() []*Binding
 	GetResources() *v1.ResourceRequirements

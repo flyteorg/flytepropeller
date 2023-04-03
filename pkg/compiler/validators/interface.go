@@ -153,6 +153,8 @@ func ValidateUnderlyingInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs e
 		} else {
 			errs.Collect(errors.NewNoConditionFound(node.GetId()))
 		}
+	case *core.Node_ArrayNode:
+		// TODO @hamersaw complete
 	default:
 		errs.Collect(errors.NewValueRequiredErr(node.GetId(), "Target"))
 	}

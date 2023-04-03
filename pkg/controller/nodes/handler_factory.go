@@ -5,28 +5,26 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 
-	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/dynamic"
-
-	"github.com/flyteorg/flytestdlib/promutils"
-
-	"github.com/pkg/errors"
-
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/array"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/branch"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/dynamic"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/end"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/gate"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/start"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task"
+
+	"github.com/flyteorg/flytestdlib/promutils"
+
+	"github.com/pkg/errors"
 )
 
 //go:generate mockery -name HandlerFactory -case=underscore
@@ -72,6 +70,7 @@ func NewHandlerFactory(ctx context.Context, executor executors.Node, workflowLau
 			v1alpha1.NodeKindTask:     dynamic.New(t, executor, launchPlanReader, eventConfig, scope),
 			v1alpha1.NodeKindWorkflow: subworkflow.New(executor, workflowLauncher, recoveryClient, eventConfig, scope),
 			v1alpha1.NodeKindGate:     gate.New(eventConfig, signalClient, scope),
+			v1alpha1.NodeKindArray:    array.New(scope),
 			v1alpha1.NodeKindStart:    start.New(),
 			v1alpha1.NodeKindEnd:      end.New(),
 		},

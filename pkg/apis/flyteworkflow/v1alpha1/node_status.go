@@ -207,6 +207,30 @@ func (in *GateNodeStatus) SetGateNodePhase(phase GateNodePhase) {
 	}
 }
 
+type ArrayNodePhase int
+
+const (
+	ArrayNodePhaseUndefined ArrayNodePhase = iota
+	ArrayNodePhaseExecuting
+	// TODO @hamersaw - need more phases
+)
+
+type ArrayNodeStatus struct {
+	MutableStruct
+	Phase ArrayNodePhase `json:"phase,omitempty"`
+}
+
+func (in *ArrayNodeStatus) GetArrayNodePhase() ArrayNodePhase {
+	return in.Phase
+}
+
+func (in *ArrayNodeStatus) SetArrayNodePhase(phase ArrayNodePhase) {
+	if in.Phase != phase {
+		in.SetDirty()
+		in.Phase = phase
+	}
+}
+
 type NodeStatus struct {
 	MutableStruct
 	Phase                NodePhase     `json:"phase,omitempty"`
@@ -235,6 +259,7 @@ type NodeStatus struct {
 	TaskNodeStatus    *TaskNodeStatus    `json:",omitempty"`
 	DynamicNodeStatus *DynamicNodeStatus `json:"dynamicNodeStatus,omitempty"`
 	GateNodeStatus    *GateNodeStatus    `json:"gateNodeStatus,omitempty"`
+	ArrayNodeStatus   *ArrayNodeStatus   `json:"arrayNodeStatus,omitempty"`
 	// In case of Failing/Failed Phase, an execution error can be optionally associated with the Node
 	Error *ExecutionError `json:"error,omitempty"`
 
@@ -315,6 +340,13 @@ func (in *NodeStatus) GetGateNodeStatus() MutableGateNodeStatus {
 	return in.GateNodeStatus
 }
 
+func (in *NodeStatus) GetArrayNodeStatus() MutableArrayNodeStatus {
+	if in.ArrayNodeStatus == nil {
+		return nil
+	}
+	return in.ArrayNodeStatus
+}
+
 func (in NodeStatus) VisitNodeStatuses(visitor NodeStatusVisitFn) {
 	for n, s := range in.SubNodeStatus {
 		visitor(n, s)
@@ -350,6 +382,11 @@ func (in *NodeStatus) ClearSubNodeStatus() {
 
 func (in *NodeStatus) ClearGateNodeStatus() {
 	in.GateNodeStatus = nil
+	in.SetDirty()
+}
+
+func (in *NodeStatus) ClearArrayNodeStatus() {
+	in.ArrayNodeStatus = nil
 	in.SetDirty()
 }
 
@@ -457,6 +494,17 @@ func (in *NodeStatus) GetOrCreateGateNodeStatus() MutableGateNodeStatus {
 	}
 
 	return in.GateNodeStatus
+}
+
+func (in *NodeStatus) GetOrCreateArrayNodeStatus() MutableArrayNodeStatus {
+	if in.ArrayNodeStatus == nil {
+		in.SetDirty()
+		in.ArrayNodeStatus = &ArrayNodeStatus{
+			MutableStruct: MutableStruct{},
+		}
+	}
+
+	return in.ArrayNodeStatus
 }
 
 func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason string, err *core.ExecutionError) {

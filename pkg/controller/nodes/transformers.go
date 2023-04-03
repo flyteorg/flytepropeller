@@ -275,4 +275,10 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 		t := s.GetOrCreateGateNodeStatus()
 		t.SetGateNodePhase(n.g.Phase)
 	}
+
+	// Update array node status
+	if n.a != nil {
+		t := s.GetOrCreateArrayNodeStatus()
+		t.SetArrayNodePhase(n.a.Phase)
+	}
 }

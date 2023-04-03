@@ -46,12 +46,17 @@ type GateNodeState struct {
 	StartedAt time.Time
 }
 
+type ArrayNodeState struct {
+	Phase v1alpha1.ArrayNodePhase
+}
+
 type NodeStateWriter interface {
 	PutTaskNodeState(s TaskNodeState) error
 	PutBranchNode(s BranchNodeState) error
 	PutDynamicNodeState(s DynamicNodeState) error
 	PutWorkflowNodeState(s WorkflowNodeState) error
 	PutGateNodeState(s GateNodeState) error
+	PutArrayNodeState(s ArrayNodeState) error
 }
 
 type NodeStateReader interface {
@@ -60,4 +65,5 @@ type NodeStateReader interface {
 	GetDynamicNodeState() DynamicNodeState
 	GetWorkflowNodeState() WorkflowNodeState
 	GetGateNodeState() GateNodeState
+	GetArrayNodeState() ArrayNodeState
 }

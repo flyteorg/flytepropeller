@@ -197,7 +197,7 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecution
 
 	// update gate node status
 	if err := nCtx.NodeStateWriter().PutGateNodeState(gateNodeState); err != nil {
-		logger.Errorf(ctx, "failed to store TaskNode state with err [%s]", err.Error())
+		logger.Errorf(ctx, "failed to store GateNode state with err [%s]", err.Error())
 		return handler.UnknownTransition, err
 	}
 
