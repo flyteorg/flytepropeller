@@ -1,11 +1,14 @@
-package handler
+package interfaces
 
 import (
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+
 	"github.com/flyteorg/flytestdlib/bitarray"
 	"github.com/flyteorg/flytestdlib/storage"
 )

@@ -15,7 +15,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager"
 	"github.com/flyteorg/flytepropeller/pkg/utils"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -58,7 +58,7 @@ func (te taskExecutionID) GetGeneratedNameWith(minLength, maxLength int) (string
 }
 
 type taskExecutionMetadata struct {
-	handler.NodeExecutionMetadata
+	interfaces.NodeExecutionMetadata
 	taskExecID        taskExecutionID
 	o                 pluginCore.TaskOverrides
 	maxAttempts       uint32
@@ -82,7 +82,7 @@ func (t taskExecutionMetadata) GetPlatformResources() *v1.ResourceRequirements {
 }
 
 type taskExecutionContext struct {
-	handler.NodeExecutionContext
+	interfaces.NodeExecutionContext
 	tm  taskExecutionMetadata
 	rm  resourcemanager.TaskResourceManager
 	psm *pluginStateManager
@@ -203,7 +203,7 @@ func convertTaskResourcesToRequirements(taskResources v1alpha1.TaskResources) *v
 // ComputeRawOutputPrefix constructs the output directory, where raw outputs of a task can be stored by the task. FlytePropeller may not have
 // access to this location and can be passed in per execution.
 // the function also returns the uniqueID generated
-func ComputeRawOutputPrefix(ctx context.Context, length int, nCtx handler.NodeExecutionContext, currentNodeUniqueID v1alpha1.NodeID, currentAttempt uint32) (io.RawOutputPaths, string, error) {
+func ComputeRawOutputPrefix(ctx context.Context, length int, nCtx interfaces.NodeExecutionContext, currentNodeUniqueID v1alpha1.NodeID, currentAttempt uint32) (io.RawOutputPaths, string, error) {
 	uniqueID, err := encoding.FixedLengthUniqueIDForParts(length, []string{nCtx.NodeExecutionMetadata().GetOwnerID().Name, currentNodeUniqueID, strconv.Itoa(int(currentAttempt))})
 	if err != nil {
 		// SHOULD never really happen
@@ -218,7 +218,7 @@ func ComputeRawOutputPrefix(ctx context.Context, length int, nCtx handler.NodeEx
 }
 
 // ComputePreviousCheckpointPath returns the checkpoint path for the previous attempt, if this is the first attempt then returns an empty path
-func ComputePreviousCheckpointPath(ctx context.Context, length int, nCtx handler.NodeExecutionContext, currentNodeUniqueID v1alpha1.NodeID, currentAttempt uint32) (storage.DataReference, error) {
+func ComputePreviousCheckpointPath(ctx context.Context, length int, nCtx interfaces.NodeExecutionContext, currentNodeUniqueID v1alpha1.NodeID, currentAttempt uint32) (storage.DataReference, error) {
 	// If first attempt for this node execution, look for a checkpoint path in a prior execution
 	if currentAttempt == 0 {
 		return nCtx.NodeStateReader().GetTaskNodeState().PreviousNodeExecutionCheckpointURI, nil
@@ -232,7 +232,7 @@ func ComputePreviousCheckpointPath(ctx context.Context, length int, nCtx handler
 	return ioutils.ConstructCheckpointPath(nCtx.DataStore(), prevRawOutputPrefix.GetRawOutputPrefix()), nil
 }
 
-func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx handler.NodeExecutionContext, plugin pluginCore.Plugin) (*taskExecutionContext, error) {
+func (t *Handler) newTaskExecutionContext(ctx context.Context, nCtx interfaces.NodeExecutionContext, plugin pluginCore.Plugin) (*taskExecutionContext, error) {
 	id := GetTaskExecutionIdentifier(nCtx)
 
 	currentNodeUniqueID := nCtx.NodeID()

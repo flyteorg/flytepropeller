@@ -1,32 +1,27 @@
-package handler
+package interfaces
 
 import (
 	"context"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
-	"github.com/flyteorg/flytestdlib/promutils"
-	"github.com/flyteorg/flytestdlib/storage"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"github.com/flyteorg/flytepropeller/events"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
+
+	"github.com/flyteorg/flytestdlib/storage"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type TaskReader interface {
 	Read(ctx context.Context) (*core.TaskTemplate, error)
 	GetTaskType() v1alpha1.TaskType
 	GetTaskID() *core.Identifier
-}
-
-type SetupContext interface {
-	EnqueueOwner() func(string)
-	OwnerKind() string
-	MetricsScope() promutils.Scope
 }
 
 type NodeExecutionMetadata interface {

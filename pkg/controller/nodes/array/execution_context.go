@@ -2,11 +2,11 @@ package array
 
 import (
 	//"github.com/flyteorg/flytepropeller/pkg/controller/executors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 )
 
 type arrayNodeExecutionContext struct {
-	handler.NodeExecutionContext
+	interfaces.NodeExecutionContext
 }
 
 // TODO @hamersaw - overwrite everything
@@ -31,7 +31,7 @@ add environment variables for maptask execution either:
 	}
 }*/
 
-func newArrayNodeExecutionContext(nodeExecutionContext handler.NodeExecutionContext) arrayNodeExecutionContext {
+func newArrayNodeExecutionContext(nodeExecutionContext interfaces.NodeExecutionContext) arrayNodeExecutionContext {
 	return arrayNodeExecutionContext{
 		NodeExecutionContext: nodeExecutionContext,
 	}

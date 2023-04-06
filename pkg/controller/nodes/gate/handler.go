@@ -13,6 +13,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -46,12 +47,12 @@ func newMetrics(scope promutils.Scope) metrics {
 }
 
 // Abort stops the gate node defined in the NodeExecutionContext
-func (g *gateNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
+func (g *gateNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecutionContext, reason string) error {
 	return nil
 }
 
 // Finalize completes the gate node defined in the NodeExecutionContext
-func (g *gateNodeHandler) Finalize(ctx context.Context, _ handler.NodeExecutionContext) error {
+func (g *gateNodeHandler) Finalize(ctx context.Context, _ interfaces.NodeExecutionContext) error {
 	return nil
 }
 
@@ -63,7 +64,7 @@ func (g *gateNodeHandler) FinalizeRequired() bool {
 
 // Handle is responsible for transitioning and reporting node state to complete the node defined
 // by the NodeExecutionContext
-func (g *gateNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
+func (g *gateNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContext) (handler.Transition, error) {
 	gateNode := nCtx.Node().GetGateNode()
 	gateNodeState := nCtx.NodeStateReader().GetGateNodeState()
 

@@ -11,8 +11,8 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
-	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 
 	"github.com/flyteorg/flytestdlib/bitarray"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -24,7 +24,7 @@ import (
 // arrayNodeHandler is a handle implementation for processing array nodes
 type arrayNodeHandler struct {
 	metrics      metrics
-	nodeExecutor executors.Node
+	nodeExecutor interfaces.Node
 }
 
 // metrics encapsulates the prometheus metrics for this handler
@@ -40,12 +40,12 @@ func newMetrics(scope promutils.Scope) metrics {
 }
 
 // Abort stops the array node defined in the NodeExecutionContext
-func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
+func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecutionContext, reason string) error {
 	return nil // TODO @hamersaw - implement abort
 }
 
 // Finalize completes the array node defined in the NodeExecutionContext
-func (a *arrayNodeHandler) Finalize(ctx context.Context, _ handler.NodeExecutionContext) error {
+func (a *arrayNodeHandler) Finalize(ctx context.Context, _ interfaces.NodeExecutionContext) error {
 	return nil // TODO @hamersaw - implement finalize
 }
 
@@ -57,7 +57,7 @@ func (a *arrayNodeHandler) FinalizeRequired() bool {
 
 // Handle is responsible for transitioning and reporting node state to complete the node defined
 // by the NodeExecutionContext
-func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
+func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContext) (handler.Transition, error) {
 	//arrayNode := nCtx.Node().GetArrayNode()
 	arrayNodeState := nCtx.NodeStateReader().GetArrayNodeState()
 
@@ -143,24 +143,33 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx handler.NodeExecutio
 			// TODO @hamersaw - can probably create a single arrayNodeLookup with all the subNodeIDs
 			arrayNodeLookup := newArrayNodeLookup(nCtx.ContextualNodeLookup(), subNodeID, subNodeSpec, subNodeStatus)
 
-			// create base NodeExecutionContext
-			nodeExecutionContext, err := a.nodeExecutor.NewNodeExecutionContext(ctx, nCtx.ExecutionContext(), arrayNodeLookup, subNodeID)
+			// create arrayNodeExecutor
+			/*nodeExecutionContext, err := a.nodeExecutor.NewNodeExecutionContext(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, subNodeID)
 			if err != nil {
 				// TODO @hamersaw fail
 			}
 
 			// create new arrayNodeExecutionContext to override for array task execution
-			arrayNodeExecutionContext := newArrayNodeExecutionContext(nodeExecutionContext, inputReader)
+			arrayNodeExecutionContext := newArrayNodeExecutionContext(nodeExecutionContext, inputReader)*/
+			arrayNodeExecutor := newArrayNodeExecutor(a.nodeExecutor)
+
+			// execute subNode through RecursiveNodeHandler
+			nodeStatus, err := arrayNodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, &arrayNodeLookup, subNodeSpec)
+			if err != nil {
+				// TODO @hamersaw fail
+			}
+
+			fmt.Printf("HAMERSAW - node phase transition %d -> %d", nodePhase, nodeStatus.NodePhase)
 
 			// execute subNode through RecursiveNodeHandler
 			// TODO @hamersaw -  either
 			//  (1) add func to create nodeExecutionContext to RecursiveNodeHandler
 			//  (2) create nodeExecutionContext before call to RecursiveNodeHandler
 			//      can do with small wrapper function call
-			nodeStatus, err := a.nodeExecutor.RecursiveNodeHandler(ctx, arrayNodeExecutionContext, &arrayNodeLookup, &arrayNodeLookup, subNodeSpec)
+			/*nodeStatus, err := a.nodeExecutor.RecursiveNodeHandler(ctx, arrayNodeExecutionContext, &arrayNodeLookup, &arrayNodeLookup, subNodeSpec)
 			if err != nil {
 				// TODO @hamersaw fail
-			}
+			}*/
 
 			// handleNode / abort / finalize task nodeExecutionContext and Handler as parameters - THIS IS THE ENTRYPOINT WE'RE LOOKING FOR
 		}
@@ -192,7 +201,7 @@ func (a *arrayNodeHandler) Setup(_ context.Context, _ handler.SetupContext) erro
 }
 
 // New initializes a new arrayNodeHandler
-func New(nodeExecutor executors.Node, scope promutils.Scope) handler.Node {
+func New(nodeExecutor interfaces.Node, scope promutils.Scope) handler.Node {
 	arrayScope := scope.NewSubScope("array")
 	return &arrayNodeHandler{
 		metrics:      newMetrics(arrayScope),
