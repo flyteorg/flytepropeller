@@ -39,7 +39,7 @@ func (b *branchHandler) Setup(ctx context.Context, _ handler.SetupContext) error
 }
 
 func (b *branchHandler) HandleBranchNode(ctx context.Context, branchNode v1alpha1.ExecutableBranchNode, nCtx interfaces.NodeExecutionContext, nl executors.NodeLookup) (handler.Transition, error) {
-	if nCtx.NodeStateReader().GetBranchNode().FinalizedNodeID == nil {
+	if nCtx.NodeStateReader().GetBranchNodeState().FinalizedNodeID == nil {
 		nodeInputs, err := nCtx.InputReader().Get(ctx)
 		if err != nil {
 			errMsg := fmt.Sprintf("Failed to read input. Error [%s]", err)
@@ -81,7 +81,7 @@ func (b *branchHandler) HandleBranchNode(ctx context.Context, branchNode v1alpha
 	}
 
 	// If the branchNodestatus was already evaluated i.e, Node is in Running status
-	branchStatus := nCtx.NodeStateReader().GetBranchNode()
+	branchStatus := nCtx.NodeStateReader().GetBranchNodeState()
 	userError := branchNode.GetElseFail()
 	finalNodeID := branchStatus.FinalizedNodeID
 	if finalNodeID == nil {
@@ -177,7 +177,7 @@ func (b *branchHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecution
 	}
 
 	// If the branch was already evaluated i.e, Node is in Running status
-	branchNodeState := nCtx.NodeStateReader().GetBranchNode()
+	branchNodeState := nCtx.NodeStateReader().GetBranchNodeState()
 	if branchNodeState.Phase == v1alpha1.BranchNodeNotYetEvaluated {
 		logger.Errorf(ctx, "No node finalized through previous branch evaluation.")
 		return nil
@@ -221,7 +221,7 @@ func (b *branchHandler) Finalize(ctx context.Context, nCtx interfaces.NodeExecut
 	}
 
 	// If the branch was already evaluated i.e, Node is in Running status
-	branchNodeState := nCtx.NodeStateReader().GetBranchNode()
+	branchNodeState := nCtx.NodeStateReader().GetBranchNodeState()
 	if branchNodeState.Phase == v1alpha1.BranchNodeNotYetEvaluated {
 		logger.Errorf(ctx, "No node finalized through previous branch evaluation.")
 		return nil

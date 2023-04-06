@@ -61,13 +61,20 @@ type NodeStateWriter interface {
 	PutWorkflowNodeState(s WorkflowNodeState) error
 	PutGateNodeState(s GateNodeState) error
 	PutArrayNodeState(s ArrayNodeState) error
+	ClearNodeStatus()
 }
 
 type NodeStateReader interface {
+	HasTaskNodeState() bool
 	GetTaskNodeState() TaskNodeState
-	GetBranchNode() BranchNodeState
+	HasBranchNodeState() bool
+	GetBranchNodeState() BranchNodeState
+	HasDynamicNodeState() bool
 	GetDynamicNodeState() DynamicNodeState
+	HasWorkflowNodeState() bool
 	GetWorkflowNodeState() WorkflowNodeState
+	HasGateNodeState() bool
 	GetGateNodeState() GateNodeState
+	HasArrayNodeState() bool
 	GetArrayNodeState() ArrayNodeState
 }

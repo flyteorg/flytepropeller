@@ -49,6 +49,30 @@ func (n *nodeStateManager) PutArrayNodeState(s interfaces.ArrayNodeState) error 
 	return nil
 }
 
+func (n *nodeStateManager) HasTaskNodeState() bool {
+	return n.t != nil
+}
+
+func (n *nodeStateManager) HasBranchNodeState() bool {
+	return n.b != nil
+}
+
+func (n *nodeStateManager) HasDynamicNodeState() bool {
+	return n.d != nil
+}
+
+func (n *nodeStateManager) HasWorkflowNodeState() bool {
+	return n.w != nil
+}
+
+func (n *nodeStateManager) HasGateNodeState() bool {
+	return n.g != nil
+}
+
+func (n *nodeStateManager) HasArrayNodeState() bool {
+	return n.a != nil
+}
+
 func (n nodeStateManager) GetTaskNodeState() interfaces.TaskNodeState {
 	tn := n.nodeStatus.GetTaskNodeStatus()
 	if tn != nil {
@@ -65,7 +89,7 @@ func (n nodeStateManager) GetTaskNodeState() interfaces.TaskNodeState {
 	return interfaces.TaskNodeState{}
 }
 
-func (n nodeStateManager) GetBranchNode() interfaces.BranchNodeState {
+func (n nodeStateManager) GetBranchNodeState() interfaces.BranchNodeState {
 	bn := n.nodeStatus.GetBranchStatus()
 	bs := interfaces.BranchNodeState{}
 	if bn != nil {
@@ -116,7 +140,7 @@ func (n nodeStateManager) GetArrayNodeState() interfaces.ArrayNodeState {
 	return as
 }
 
-func (n *nodeStateManager) clearNodeStatus() {
+func (n *nodeStateManager) ClearNodeStatus() {
 	n.t = nil
 	n.b = nil
 	n.d = nil

@@ -15,7 +15,6 @@ import (
 	"github.com/flyteorg/flytepropeller/events"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 	"github.com/flyteorg/flytepropeller/pkg/utils"
 )
@@ -187,13 +186,13 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 }
 
 func (c *nodeExecutor) NewNodeExecutionContext(ctx context.Context, executionContext executors.ExecutionContext,
-	nl executors.NodeLookup, currentNodeID v1alpha1.NodeID) (*nodeExecContext, error) {
+	nl executors.NodeLookup, currentNodeID v1alpha1.NodeID) (interfaces.NodeExecutionContext, error) {
 	n, ok := nl.GetNode(currentNodeID)
 	if !ok {
 		return nil, fmt.Errorf("failed to find node with ID [%s] in execution [%s]", currentNodeID, executionContext.GetID())
 	}
 
-	var tr handler.TaskReader
+	var tr interfaces.TaskReader
 	if n.GetKind() == v1alpha1.NodeKindTask {
 		if n.GetTaskID() == nil {
 			return nil, fmt.Errorf("bad state, no task-id defined for node [%s]", n.GetID())
