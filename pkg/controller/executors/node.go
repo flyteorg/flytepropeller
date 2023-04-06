@@ -7,6 +7,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	//"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 )
 
 //go:generate mockery -all -case=underscore
@@ -80,6 +81,9 @@ type Node interface {
 	AbortHandler(ctx context.Context, execContext ExecutionContext, dag DAGStructure, nl NodeLookup, currentNode v1alpha1.ExecutableNode, reason string) error
 
 	FinalizeHandler(ctx context.Context, execContext ExecutionContext, dag DAGStructure, nl NodeLookup, currentNode v1alpha1.ExecutableNode) error
+
+	// TODO @docs
+	//NewNodeExecContext(ctx context.Context, executionContext ExecutionContext, nl NodeLookup, currentNodeID v1alpha1.NodeID) (handler.NodeExecutionContext, error)
 
 	// This method should be used to initialize Node executor
 	Initialize(ctx context.Context) error

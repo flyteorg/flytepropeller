@@ -280,5 +280,6 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 	if n.a != nil {
 		t := s.GetOrCreateArrayNodeStatus()
 		t.SetArrayNodePhase(n.a.Phase)
+		t.SetSubNodePhases(n.a.SubNodePhases)
 	}
 }

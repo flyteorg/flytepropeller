@@ -733,6 +733,8 @@ func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx *nodeExe
 	nodeStatus.ClearTaskStatus()
 	nodeStatus.ClearWorkflowStatus()
 	nodeStatus.ClearDynamicNodeStatus()
+	nodeStatus.ClearGateNodeStatus()
+	nodeStatus.ClearArrayNodeStatus()
 	return executors.NodeStatusPending, nil
 }
 
@@ -998,7 +1000,7 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 			return executors.NodeStatusRunning, nil
 		}
 
-		nCtx, err := c.newNodeExecContextDefault(ctx, currentNode.GetID(), execContext, nl)
+		nCtx, err := c.NewNodeExecutionContext(ctx, execContext, nl, currentNode.GetID())
 		if err != nil {
 			// NodeExecution creation failure is a permanent fail / system error.
 			// Should a system failure always return an err?
@@ -1064,7 +1066,7 @@ func (c *nodeExecutor) FinalizeHandler(ctx context.Context, execContext executor
 			return err
 		}
 
-		nCtx, err := c.newNodeExecContextDefault(ctx, currentNode.GetID(), execContext, nl)
+		nCtx, err := c.NewNodeExecutionContext(ctx, execContext, nl, currentNode.GetID())
 		if err != nil {
 			return err
 		}
@@ -1123,7 +1125,7 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, execContext executors.E
 			return err
 		}
 
-		nCtx, err := c.newNodeExecContextDefault(ctx, currentNode.GetID(), execContext, nl)
+		nCtx, err := c.NewNodeExecutionContext(ctx, execContext, nl, currentNode.GetID())
 		if err != nil {
 			return err
 		}

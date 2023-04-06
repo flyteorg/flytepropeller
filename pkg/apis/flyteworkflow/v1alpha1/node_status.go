@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/bitarray"
 	"github.com/flyteorg/flytestdlib/storage"
-
 	"github.com/flyteorg/flytestdlib/logger"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -210,14 +210,17 @@ func (in *GateNodeStatus) SetGateNodePhase(phase GateNodePhase) {
 type ArrayNodePhase int
 
 const (
-	ArrayNodePhaseUndefined ArrayNodePhase = iota
+	ArrayNodePhaseNone ArrayNodePhase = iota
 	ArrayNodePhaseExecuting
+	ArrayNodePhaseFailing
+	ArrayNodePhaseSucceeding
 	// TODO @hamersaw - need more phases
 )
 
 type ArrayNodeStatus struct {
 	MutableStruct
-	Phase ArrayNodePhase `json:"phase,omitempty"`
+	Phase         ArrayNodePhase        `json:"phase,omitempty"`
+	SubNodePhases bitarray.CompactArray `json:"subphase,omitempty"`
 }
 
 func (in *ArrayNodeStatus) GetArrayNodePhase() ArrayNodePhase {
@@ -228,6 +231,17 @@ func (in *ArrayNodeStatus) SetArrayNodePhase(phase ArrayNodePhase) {
 	if in.Phase != phase {
 		in.SetDirty()
 		in.Phase = phase
+	}
+}
+
+func (in *ArrayNodeStatus) GetSubNodePhases() bitarray.CompactArray {
+	return in.SubNodePhases
+}
+
+func (in *ArrayNodeStatus) SetSubNodePhases(subNodePhases bitarray.CompactArray) {
+	if in.SubNodePhases != subNodePhases {
+		in.SetDirty()
+		in.SubNodePhases = subNodePhases
 	}
 }
 

@@ -70,7 +70,7 @@ func NewHandlerFactory(ctx context.Context, executor executors.Node, workflowLau
 			v1alpha1.NodeKindTask:     dynamic.New(t, executor, launchPlanReader, eventConfig, scope),
 			v1alpha1.NodeKindWorkflow: subworkflow.New(executor, workflowLauncher, recoveryClient, eventConfig, scope),
 			v1alpha1.NodeKindGate:     gate.New(eventConfig, signalClient, scope),
-			v1alpha1.NodeKindArray:    array.New(scope),
+			v1alpha1.NodeKindArray:    array.New(executor, scope),
 			v1alpha1.NodeKindStart:    start.New(),
 			v1alpha1.NodeKindEnd:      end.New(),
 		},

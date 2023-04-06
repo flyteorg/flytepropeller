@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/bitarray"
 	"github.com/flyteorg/flytestdlib/storage"
 )
 
@@ -282,12 +283,14 @@ type MutableGateNodeStatus interface {
 
 type ExecutableArrayNodeStatus interface {
 	GetArrayNodePhase() ArrayNodePhase
+	GetSubNodePhases() bitarray.CompactArray
 }
 
 type MutableArrayNodeStatus interface {
 	Mutable
 	ExecutableArrayNodeStatus
 	SetArrayNodePhase(phase ArrayNodePhase)
+	SetSubNodePhases(subNodePhases bitarray.CompactArray)
 }
 
 type Mutable interface {

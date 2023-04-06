@@ -111,6 +111,7 @@ func (n nodeStateManager) GetArrayNodeState() handler.ArrayNodeState {
 	as := handler.ArrayNodeState{}
 	if an != nil {
 		as.Phase = an.GetArrayNodePhase()
+		as.SubNodePhases = an.GetSubNodePhases()
 	}
 	return as
 }

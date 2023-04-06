@@ -156,6 +156,11 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		}
 	case *core.Node_ArrayNode:
 		// TODO @hamersaw - complete
+		nodeSpec.Kind = v1alpha1.NodeKindArray
+		nodeSpec.ArrayNode = &v1alpha1.ArrayNodeSpec{
+		}
+		//arrayNode := n.GetArrayNode()
+
 	default:
 		if n.GetId() == v1alpha1.StartNodeID {
 			nodeSpec.Kind = v1alpha1.NodeKindStart

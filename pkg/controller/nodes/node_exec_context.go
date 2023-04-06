@@ -185,8 +185,8 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 	}
 }
 
-func (c *nodeExecutor) newNodeExecContextDefault(ctx context.Context, currentNodeID v1alpha1.NodeID,
-	executionContext executors.ExecutionContext, nl executors.NodeLookup) (*nodeExecContext, error) {
+func (c *nodeExecutor) NewNodeExecutionContext(ctx context.Context, executionContext executors.ExecutionContext,
+	nl executors.NodeLookup, currentNodeID v1alpha1.NodeID) (*nodeExecContext, error) {
 	n, ok := nl.GetNode(currentNodeID)
 	if !ok {
 		return nil, fmt.Errorf("failed to find node with ID [%s] in execution [%s]", currentNodeID, executionContext.GetID())
