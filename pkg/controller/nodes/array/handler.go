@@ -151,7 +151,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 
 			// create new arrayNodeExecutionContext to override for array task execution
 			arrayNodeExecutionContext := newArrayNodeExecutionContext(nodeExecutionContext, inputReader)*/
-			arrayNodeExecutor := newArrayNodeExecutor(a.nodeExecutor)
+			arrayNodeExecutor := newArrayNodeExecutor(a.nodeExecutor, subNodeID, inputReader)
 
 			// execute subNode through RecursiveNodeHandler
 			nodeStatus, err := arrayNodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, &arrayNodeLookup, subNodeSpec)
@@ -160,18 +160,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			}
 
 			fmt.Printf("HAMERSAW - node phase transition %d -> %d", nodePhase, nodeStatus.NodePhase)
-
-			// execute subNode through RecursiveNodeHandler
-			// TODO @hamersaw -  either
-			//  (1) add func to create nodeExecutionContext to RecursiveNodeHandler
-			//  (2) create nodeExecutionContext before call to RecursiveNodeHandler
-			//      can do with small wrapper function call
-			/*nodeStatus, err := a.nodeExecutor.RecursiveNodeHandler(ctx, arrayNodeExecutionContext, &arrayNodeLookup, &arrayNodeLookup, subNodeSpec)
-			if err != nil {
-				// TODO @hamersaw fail
-			}*/
-
-			// handleNode / abort / finalize task nodeExecutionContext and Handler as parameters - THIS IS THE ENTRYPOINT WE'RE LOOKING FOR
 		}
 
 		// TODO @hamersaw - determine summary phases

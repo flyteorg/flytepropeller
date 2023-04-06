@@ -16,6 +16,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/end"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/gate"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/start"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow"
@@ -55,7 +56,7 @@ func (f handlerFactory) Setup(ctx context.Context, setup handler.SetupContext) e
 	return nil
 }
 
-func NewHandlerFactory(ctx context.Context, executor executors.Node, workflowLauncher launchplan.Executor,
+func NewHandlerFactory(ctx context.Context, executor interfaces.Node, workflowLauncher launchplan.Executor,
 	launchPlanReader launchplan.Reader, kubeClient executors.Client, client catalog.Client, recoveryClient recovery.Client,
 	eventConfig *config.EventConfig, clusterID string, signalClient service.SignalServiceClient, scope promutils.Scope) (HandlerFactory, error) {
 

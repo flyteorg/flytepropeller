@@ -34,6 +34,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task"
@@ -155,7 +156,7 @@ func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *eve
 	return err
 }
 
-func (c *nodeExecutor) recoverInputs(ctx context.Context, nCtx handler.NodeExecutionContext,
+func (c *nodeExecutor) recoverInputs(ctx context.Context, nCtx interfaces.NodeExecutionContext,
 	recovered *admin.NodeExecution, recoveredData *admin.NodeExecutionGetDataResponse) (*core.LiteralMap, error) {
 
 	nodeInputs := recoveredData.FullInputs
@@ -184,7 +185,7 @@ func (c *nodeExecutor) recoverInputs(ctx context.Context, nCtx handler.NodeExecu
 	return nodeInputs, nil
 }
 
-func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.PhaseInfo, error) {
+func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx interfaces.NodeExecutionContext) (handler.PhaseInfo, error) {
 	fullyQualifiedNodeID := nCtx.NodeExecutionMetadata().GetNodeExecutionID().NodeId
 	if nCtx.ExecutionContext().GetEventVersion() != v1alpha1.EventVersion0 {
 		// compute fully qualified node id (prefixed with parent id and retry attempt) to ensure uniqueness
@@ -364,7 +365,7 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 // In this method we check if the queue is ready to be processed and if so, we prime it in Admin as queued
 // Before we start the node execution, we need to transition this Node status to Queued.
 // This is because a node execution has to exist before task/wf executions can start.
-func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructure, nCtx handler.NodeExecutionContext) (
+func (c *nodeExecutor) preExecute(ctx context.Context, dag executors.DAGStructure, nCtx interfaces.NodeExecutionContext) (
 	handler.PhaseInfo, error) {
 	logger.Debugf(ctx, "Node not yet started")
 	// Query the nodes information to figure out if it can be executed.
@@ -504,7 +505,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx *nodeEx
 	return phase, nil
 }
 
-func (c *nodeExecutor) abort(ctx context.Context, h handler.Node, nCtx handler.NodeExecutionContext, reason string) error {
+func (c *nodeExecutor) abort(ctx context.Context, h handler.Node, nCtx interfaces.NodeExecutionContext, reason string) error {
 	logger.Debugf(ctx, "Calling aborting & finalize")
 	if err := h.Abort(ctx, nCtx, reason); err != nil {
 		finalizeErr := h.Finalize(ctx, nCtx)
@@ -517,7 +518,7 @@ func (c *nodeExecutor) abort(ctx context.Context, h handler.Node, nCtx handler.N
 	return h.Finalize(ctx, nCtx)
 }
 
-func (c *nodeExecutor) finalize(ctx context.Context, h handler.Node, nCtx handler.NodeExecutionContext) error {
+func (c *nodeExecutor) finalize(ctx context.Context, h handler.Node, nCtx interfaces.NodeExecutionContext) error {
 	return h.Finalize(ctx, nCtx)
 }
 
@@ -1210,7 +1211,7 @@ func (c *nodeExecutor) Initialize(ctx context.Context) error {
 func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink,
 	workflowLauncher launchplan.Executor, launchPlanReader launchplan.Reader, maxDatasetSize int64,
 	defaultRawOutputPrefix storage.DataReference, kubeClient executors.Client,
-	catalogClient catalog.Client, recoveryClient recovery.Client, eventConfig *config.EventConfig, clusterID string, signalClient service.SignalServiceClient, scope promutils.Scope) (executors.Node, error) {
+	catalogClient catalog.Client, recoveryClient recovery.Client, eventConfig *config.EventConfig, clusterID string, signalClient service.SignalServiceClient, scope promutils.Scope) (interfaces.Node, error) {
 
 	// TODO we may want to make this configurable.
 	shardSelector, err := ioutils.NewBase36PrefixShardSelector(ctx)

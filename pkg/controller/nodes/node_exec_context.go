@@ -16,6 +16,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 	"github.com/flyteorg/flytepropeller/pkg/utils"
 )
 
@@ -57,8 +58,8 @@ func (e nodeExecMetadata) GetLabels() map[string]string {
 
 type nodeExecContext struct {
 	store               *storage.DataStore
-	tr                  handler.TaskReader
-	md                  handler.NodeExecutionMetadata
+	tr                  interfaces.TaskReader
+	md                  interfaces.NodeExecutionMetadata
 	er                  events.TaskEventRecorder
 	inputs              io.InputReader
 	node                v1alpha1.ExecutableNode
@@ -92,15 +93,15 @@ func (e nodeExecContext) EnqueueOwnerFunc() func() error {
 	return e.enqueueOwner
 }
 
-func (e nodeExecContext) TaskReader() handler.TaskReader {
+func (e nodeExecContext) TaskReader() interfaces.TaskReader {
 	return e.tr
 }
 
-func (e nodeExecContext) NodeStateReader() handler.NodeStateReader {
+func (e nodeExecContext) NodeStateReader() interfaces.NodeStateReader {
 	return e.nsm
 }
 
-func (e nodeExecContext) NodeStateWriter() handler.NodeStateWriter {
+func (e nodeExecContext) NodeStateWriter() interfaces.NodeStateWriter {
 	return e.nsm
 }
 
@@ -132,7 +133,7 @@ func (e nodeExecContext) NodeStatus() v1alpha1.ExecutableNodeStatus {
 	return e.nodeStatus
 }
 
-func (e nodeExecContext) NodeExecutionMetadata() handler.NodeExecutionMetadata {
+func (e nodeExecContext) NodeExecutionMetadata() interfaces.NodeExecutionMetadata {
 	return e.md
 }
 
@@ -142,7 +143,7 @@ func (e nodeExecContext) MaxDatasetSizeBytes() int64 {
 
 func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext executors.ExecutionContext, nl executors.NodeLookup,
 	node v1alpha1.ExecutableNode, nodeStatus v1alpha1.ExecutableNodeStatus, inputs io.InputReader, interruptible bool, interruptibleFailureThreshold uint32,
-	maxDatasetSize int64, er events.TaskEventRecorder, tr handler.TaskReader, nsm *nodeStateManager,
+	maxDatasetSize int64, er events.TaskEventRecorder, tr interfaces.TaskReader, nsm *nodeStateManager,
 	enqueueOwner func() error, rawOutputPrefix storage.DataReference, outputShardSelector ioutils.ShardSelector) *nodeExecContext {
 
 	md := nodeExecMetadata{
