@@ -58,7 +58,7 @@ func (a *arrayNodeHandler) FinalizeRequired() bool {
 // Handle is responsible for transitioning and reporting node state to complete the node defined
 // by the NodeExecutionContext
 func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContext) (handler.Transition, error) {
-	//arrayNode := nCtx.Node().GetArrayNode()
+	arrayNode := nCtx.Node().GetArrayNode()
 	arrayNodeState := nCtx.NodeStateReader().GetArrayNodeState()
 
 	// TODO @hamersaw - handle array node
@@ -122,44 +122,45 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			var inputReader io.InputReader
 			if nodePhase == v1alpha1.NodePhaseNotYetStarted { // TODO @hamersaw - need to do this for PhaseSucceeded as well?!?! to write cache outputs once fastcache is in
 				// create input readers and set nodePhase to Queued to skip resolving inputs but still allow cache lookups
-				// TODO @hamersaw - create input readers
+				// TODO @hamersaw - actually create input readers
+				inputReader = newStaticInputReader(nCtx.InputReader(), nil)
 				nodePhase = v1alpha1.NodePhaseQueued
 			}
 
 			// wrap node lookup
+			subNodeSpec := *arrayNode.GetSubNodeSpec()
+
 			subNodeID := fmt.Sprintf("%s-n%d", nCtx.NodeID(), i)
-			subNodeSpec := &v1alpha1.NodeSpec{
+			subNodeSpec.ID = subNodeID
+			subNodeSpec.Name = subNodeID
+			/*subNodeSpec := &v1alpha1.NodeSpec{
 				ID:   subNodeID,
 				Name: subNodeID,
-			} // TODO @hamersaw - compile this in ArrayNodeSpec?
+			} // TODO @hamersaw - compile this in ArrayNodeSpec?*/
 			subNodeStatus := &v1alpha1.NodeStatus{
 				Phase: nodePhase,
-				/*TaskNodeStatus: &v1alpha1.TaskNodeStatus{
-					Phase: nodePhase, // used for cache lookups - once fastcache is done we dont care about the TaskNodeStatus
-				},*/
+				TaskNodeStatus: &v1alpha1.TaskNodeStatus{
+					// TODO @hamersaw - to get caching working we need to set to Queued to force cache lookup
+					// once fastcache is done we dont care about the TaskNodeStatus
+					Phase: int(core.Phases[core.PhaseRunning]),
+				},
 				// TODO @hamersaw - fill out systemFailures, retryAttempt etc
 			}
 
 			// TODO @hamersaw - can probably create a single arrayNodeLookup with all the subNodeIDs
-			arrayNodeLookup := newArrayNodeLookup(nCtx.ContextualNodeLookup(), subNodeID, subNodeSpec, subNodeStatus)
+			arrayNodeLookup := newArrayNodeLookup(nCtx.ContextualNodeLookup(), subNodeID, &subNodeSpec, subNodeStatus)
 
 			// create arrayNodeExecutor
-			/*nodeExecutionContext, err := a.nodeExecutor.NewNodeExecutionContext(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, subNodeID)
-			if err != nil {
-				// TODO @hamersaw fail
-			}
-
-			// create new arrayNodeExecutionContext to override for array task execution
-			arrayNodeExecutionContext := newArrayNodeExecutionContext(nodeExecutionContext, inputReader)*/
-			arrayNodeExecutor := newArrayNodeExecutor(a.nodeExecutor, subNodeID, inputReader)
+			arrayNodeExecutor := newArrayNodeExecutor(a.nodeExecutor, subNodeID, i, inputReader)
 
 			// execute subNode through RecursiveNodeHandler
-			nodeStatus, err := arrayNodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, &arrayNodeLookup, subNodeSpec)
+			nodeStatus, err := arrayNodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec)
 			if err != nil {
 				// TODO @hamersaw fail
 			}
 
-			fmt.Printf("HAMERSAW - node phase transition %d -> %d", nodePhase, nodeStatus.NodePhase)
+			//fmt.Printf("HAMERSAW - node phase transition %d -> %d", nodePhase, nodeStatus.NodePhase)
+			arrayNodeState.SubNodePhases.SetItem(i, uint64(nodeStatus.NodePhase))
 		}
 
 		// TODO @hamersaw - determine summary phases
@@ -168,7 +169,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 	case v1alpha1.ArrayNodePhaseFailing:
 		// TODO @hamersaw - abort everything!
 	case v1alpha1.ArrayNodePhaseSucceeding:
-		// TODO @hamersaw - collect outputs
+		// TODO @hamersaw - collect outputs and write as List[]
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(nil)), nil
 	default:
 		// TODO @hamersaw - fail

@@ -256,6 +256,7 @@ type ExecutableGateNode interface {
 }
 
 type ExecutableArrayNode interface {
+	GetSubNodeSpec() *NodeSpec
 	// TODO @hamersaw - complete ExecutableArrayNode
 }
 

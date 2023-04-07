@@ -227,6 +227,7 @@ func (c *nodeExecutor) NewNodeExecutionContext(ctx context.Context, executionCon
 		rawOutputPrefix = storage.DataReference(executionContext.GetRawOutputDataConfig().OutputLocationPrefix)
 	}
 
+	fmt.Printf("HAMERSAW - creating base NodeExecutionContext for %s\n", currentNodeID)
 	return newNodeExecContext(ctx, c.store, executionContext, nl, n, s,
 		ioutils.NewCachedInputReader(
 			ctx,

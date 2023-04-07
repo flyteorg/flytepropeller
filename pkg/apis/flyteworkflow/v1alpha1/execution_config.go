@@ -32,6 +32,8 @@ type ExecutionConfig struct {
 	Interruptible *bool
 	// Defines whether a workflow should skip all its cached results and re-compute its output, overwriting any already stored data.
 	OverwriteCache bool
+	// TODO @hamersaw - docs
+	EnvironmentVariables map[string]string
 }
 
 type TaskPluginOverride struct {

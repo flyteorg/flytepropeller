@@ -4,5 +4,10 @@ import (
 )
 
 type ArrayNodeSpec struct {
-	// TODO @hamersaw - fill out evaluation
+	SubNodeSpec *NodeSpec 
+	// TODO @hamersaw - fill out ArrayNodeSpec
+}
+
+func (a *ArrayNodeSpec) GetSubNodeSpec() *NodeSpec {
+	return a.SubNodeSpec
 }

@@ -74,6 +74,10 @@ func (n *nodeStateManager) HasArrayNodeState() bool {
 }
 
 func (n nodeStateManager) GetTaskNodeState() interfaces.TaskNodeState {
+	if n.t != nil {
+		return *n.t
+	}
+
 	tn := n.nodeStatus.GetTaskNodeStatus()
 	if tn != nil {
 		return interfaces.TaskNodeState{
@@ -90,6 +94,10 @@ func (n nodeStateManager) GetTaskNodeState() interfaces.TaskNodeState {
 }
 
 func (n nodeStateManager) GetBranchNodeState() interfaces.BranchNodeState {
+	if n.b != nil {
+		return *n.b
+	}
+
 	bn := n.nodeStatus.GetBranchStatus()
 	bs := interfaces.BranchNodeState{}
 	if bn != nil {
@@ -100,6 +108,10 @@ func (n nodeStateManager) GetBranchNodeState() interfaces.BranchNodeState {
 }
 
 func (n nodeStateManager) GetDynamicNodeState() interfaces.DynamicNodeState {
+	if n.d != nil {
+		return *n.d
+	}
+
 	dn := n.nodeStatus.GetDynamicNodeStatus()
 	ds := interfaces.DynamicNodeState{}
 	if dn != nil {
@@ -112,6 +124,10 @@ func (n nodeStateManager) GetDynamicNodeState() interfaces.DynamicNodeState {
 }
 
 func (n nodeStateManager) GetWorkflowNodeState() interfaces.WorkflowNodeState {
+	if n.w != nil {
+		return *n.w
+	}
+
 	wn := n.nodeStatus.GetWorkflowNodeStatus()
 	ws := interfaces.WorkflowNodeState{}
 	if wn != nil {
@@ -122,6 +138,10 @@ func (n nodeStateManager) GetWorkflowNodeState() interfaces.WorkflowNodeState {
 }
 
 func (n nodeStateManager) GetGateNodeState() interfaces.GateNodeState {
+	if n.g != nil {
+		return *n.g
+	}
+
 	gn := n.nodeStatus.GetGateNodeStatus()
 	gs := interfaces.GateNodeState{}
 	if gn != nil {
@@ -131,6 +151,10 @@ func (n nodeStateManager) GetGateNodeState() interfaces.GateNodeState {
 }
 
 func (n nodeStateManager) GetArrayNodeState() interfaces.ArrayNodeState {
+	if n.a != nil {
+		return *n.a
+	}
+
 	an := n.nodeStatus.GetArrayNodeStatus()
 	as := interfaces.ArrayNodeState{}
 	if an != nil {

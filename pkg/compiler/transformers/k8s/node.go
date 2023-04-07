@@ -155,12 +155,19 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 			}
 		}
 	case *core.Node_ArrayNode:
+		arrayNode := n.GetArrayNode()
+
+		// build subNodeSpecs
+		subNodeSpecs, ok := buildNodeSpec(arrayNode.Node, tasks, errs)
+		if !ok {
+			return nil, ok
+		}
+
 		// TODO @hamersaw - complete
 		nodeSpec.Kind = v1alpha1.NodeKindArray
 		nodeSpec.ArrayNode = &v1alpha1.ArrayNodeSpec{
+			SubNodeSpec: subNodeSpecs[0],
 		}
-		//arrayNode := n.GetArrayNode()
-
 	default:
 		if n.GetId() == v1alpha1.StartNodeID {
 			nodeSpec.Kind = v1alpha1.NodeKindStart
