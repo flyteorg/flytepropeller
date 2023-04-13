@@ -967,11 +967,23 @@ func IsMaxParallelismAchieved(ctx context.Context, currentNode v1alpha1.Executab
 	return false
 }
 
+
 // RecursiveNodeHandler This is the entrypoint of executing a node in a workflow. A workflow consists of nodes, that are
 // nested within other nodes. The system follows an actor model, where the parent nodes control the execution of nested nodes
 // The recursive node-handler uses a modified depth-first type of algorithm to execute non-blocked nodes.
 func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext executors.ExecutionContext,
 	dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) (
+	interfaces.NodeStatus, error) {
+	
+	return c.RecursiveNodeHandlerWithNodeContextModifier(ctx, execContext, dag, nl, currentNode, func (nCtx interfaces.NodeExecutionContext) interfaces.NodeExecutionContext {
+		return nCtx
+	})
+}
+
+// TODO @hamersaw
+func (c *nodeExecutor) RecursiveNodeHandlerWithNodeContextModifier(ctx context.Context, execContext executors.ExecutionContext,
+	dag executors.DAGStructure, nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode,
+	nCtxModifier func (interfaces.NodeExecutionContext) interfaces.NodeExecutionContext) (
 	interfaces.NodeStatus, error) {
 
 	currentNodeCtx := contextutils.WithNodeID(ctx, currentNode.GetID())
@@ -1011,6 +1023,8 @@ func (c *nodeExecutor) RecursiveNodeHandler(ctx context.Context, execContext exe
 				Kind:    core.ExecutionError_SYSTEM,
 			}), nil
 		}
+
+		nCtx = nCtxModifier(nCtx)
 
 		// Now depending on the node type decide
 		h, err := c.nodeHandlerFactory.GetHandler(nCtx.Node().GetKind())

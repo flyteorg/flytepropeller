@@ -79,6 +79,9 @@ type Node interface {
 	RecursiveNodeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure,
 		nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) (NodeStatus, error)
 
+	RecursiveNodeHandlerWithNodeContextModifier(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure,
+		nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode, nCtxModifier func (NodeExecutionContext) NodeExecutionContext) (NodeStatus, error)
+
 	// This aborts the given node. If the given node is complete then it recursively finds the running nodes and aborts them
 	AbortHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure,
 		nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode, reason string) error

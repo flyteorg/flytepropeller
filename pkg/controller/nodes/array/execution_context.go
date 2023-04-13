@@ -26,6 +26,9 @@ func (a arrayExecutionContext) GetExecutionConfig() v1alpha1.ExecutionConfig {
 
 func newArrayExecutionContext(executionContext executors.ExecutionContext, subNodeIndex int) arrayExecutionContext {
 	executionConfig := executionContext.GetExecutionConfig()
+	if executionConfig.EnvironmentVariables == nil {
+		executionConfig.EnvironmentVariables = make(map[string]string)
+	}
 	executionConfig.EnvironmentVariables[JobIndexVarName] = FlyteK8sArrayIndexVarName
 	executionConfig.EnvironmentVariables[FlyteK8sArrayIndexVarName] = strconv.Itoa(subNodeIndex)
 
