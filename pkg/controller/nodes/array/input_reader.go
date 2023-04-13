@@ -24,7 +24,6 @@ func newStaticInputReader(inputPaths io.InputFilePaths, input *idlcore.LiteralMa
 }
 
 func constructLiteralMap(ctx context.Context, inputReader io.InputReader, index int, inputs *idlcore.LiteralMap) (idlcore.LiteralMap, error) {
-	// TODO @hamersaw - read inputs
 	var err error
 	if inputs == nil {
 		inputs, err = inputReader.Get(ctx)

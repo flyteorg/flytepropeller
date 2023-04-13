@@ -295,7 +295,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		}
 
 		// TODO @hamersaw - collect outputs and write as List[]
-		//fmt.Printf("HAMERSAW - final outputs %+v\n", idlcore.LiteralMap{Literals: outputLiterals})
+		fmt.Printf("HAMERSAW - final outputs %+v\n", idlcore.LiteralMap{Literals: outputLiterals})
 		outputLiteralMap := &idlcore.LiteralMap{
 			Literals: outputLiterals,
 		}
