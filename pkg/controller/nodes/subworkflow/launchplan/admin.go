@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	evtErr "github.com/flyteorg/flytepropeller/events/errors"
 	"time"
+
+	evtErr "github.com/flyteorg/flytepropeller/events/errors"
 
 	"github.com/flyteorg/flytestdlib/cache"
 	"golang.org/x/time/rate"
