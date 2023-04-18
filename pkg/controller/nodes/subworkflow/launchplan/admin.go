@@ -96,7 +96,7 @@ func (a *adminLaunchPlanExecutor) Launch(ctx context.Context, launchCtx LaunchCo
 	}
 
 	var interruptible *wrappers.BoolValue
-	if launchCtx.Interruptible != nil{
+	if launchCtx.Interruptible != nil {
 		interruptible = &wrappers.BoolValue{
 			Value: *launchCtx.Interruptible,
 		}
@@ -120,7 +120,6 @@ func (a *adminLaunchPlanExecutor) Launch(ctx context.Context, launchCtx LaunchCo
 			SecurityContext:     &launchCtx.SecurityContext,
 			MaxParallelism:      int32(launchCtx.MaxParallelism),
 			RawOutputDataConfig: launchCtx.RawOutputDataConfig,
-			//ClusterAssignment:  launchCtx.ClusterAssignment, TODO @hamersaw - do we need this?
 			Interruptible:       interruptible,
 			OverwriteCache:      launchCtx.OverwriteCache,
 		},
