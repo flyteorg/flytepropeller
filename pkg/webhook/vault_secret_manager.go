@@ -74,7 +74,7 @@ func (i VaultSecretManagerInjector) Inject(ctx context.Context, secret *coreIdl.
 			return p, false, err
 		}
 
-		p.ObjectMeta.Annotations = utils.UnionMaps(i.cfg.ExtraAnnotations, p.ObjectMeta.Annotations)
+		p.ObjectMeta.Annotations = utils.UnionMaps(i.cfg.Annotations, p.ObjectMeta.Annotations)
 		p.ObjectMeta.Annotations = utils.UnionMaps(commonVaultAnnotations, p.ObjectMeta.Annotations)
 		p.ObjectMeta.Annotations = utils.UnionMaps(secretVaultAnnotations, p.ObjectMeta.Annotations)
 
