@@ -114,6 +114,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 			OccurredAt:   occurredTime,
 			ProducerId:   clusterID,
 			EventVersion: nodeExecutionEventVersion,
+			ReportedAt:   ptypes.TimestampNow(),
 		}
 	} else {
 		nev = &event.NodeExecutionEvent{
@@ -122,6 +123,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 			OccurredAt:   occurredTime,
 			ProducerId:   clusterID,
 			EventVersion: nodeExecutionEventVersion,
+			ReportedAt:   ptypes.TimestampNow(),
 		}
 	}
 
@@ -237,7 +239,6 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n *nodeStateMa
 		t.SetLastPhaseUpdatedAt(n.t.LastPhaseUpdatedAt)
 		t.SetPluginState(n.t.PluginState)
 		t.SetPluginStateVersion(n.t.PluginStateVersion)
-		t.SetBarrierClockTick(n.t.BarrierClockTick)
 		t.SetPreviousNodeExecutionCheckpointPath(n.t.PreviousNodeExecutionCheckpointURI)
 		t.SetCleanupOnFailure(n.t.CleanupOnFailure)
 	}
