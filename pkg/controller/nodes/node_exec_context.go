@@ -185,7 +185,7 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 	}
 }
 
-func (c *nodeExecutor) NewNodeExecutionContext(ctx context.Context, executionContext executors.ExecutionContext,
+func (c *nodeExecutor) BuildNodeExecutionContext(ctx context.Context, executionContext executors.ExecutionContext,
 	nl executors.NodeLookup, currentNodeID v1alpha1.NodeID) (interfaces.NodeExecutionContext, error) {
 	n, ok := nl.GetNode(currentNodeID)
 	if !ok {

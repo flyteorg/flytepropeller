@@ -26,7 +26,7 @@ func (s *setupContext) MetricsScope() promutils.Scope {
 	return s.scope
 }
 
-func (c *nodeExecutor) newSetupContext(_ context.Context) handler.SetupContext {
+func (c *recursiveNodeExecutor) newSetupContext(_ context.Context) handler.SetupContext {
 	return &setupContext{
 		enq:   c.enqueueWorkflow,
 		scope: c.metrics.Scope,

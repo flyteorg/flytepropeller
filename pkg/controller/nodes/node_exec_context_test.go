@@ -108,7 +108,7 @@ func Test_NodeContextDefault(t *testing.T) {
 		SystemFailures: 0,
 	})
 
-	nodeExecutor := nodeExecutor{
+	nodeExecutor := recursiveNodeExecutor{
 		interruptibleFailureThreshold: 0,
 		maxDatasetSizeBytes:           0,
 		defaultDataSandbox:            "s3://bucket-a",
@@ -133,7 +133,7 @@ func Test_NodeContextDefaultInterruptible(t *testing.T) {
 	scope := promutils.NewTestScope()
 
 	dataStore, _ := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, scope.NewSubScope("dataStore"))
-	nodeExecutor := nodeExecutor{
+	nodeExecutor := recursiveNodeExecutor{
 		interruptibleFailureThreshold: 10,
 		maxDatasetSizeBytes:           0,
 		defaultDataSandbox:            "s3://bucket-a",

@@ -79,9 +79,6 @@ type Node interface {
 	RecursiveNodeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure,
 		nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) (NodeStatus, error)
 
-	RecursiveNodeHandlerWithNodeContextModifier(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure,
-		nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode, nCtxModifier func (NodeExecutionContext) NodeExecutionContext) (NodeStatus, error)
-
 	// This aborts the given node. If the given node is complete then it recursively finds the running nodes and aborts them
 	AbortHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure,
 		nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode, reason string) error
@@ -89,12 +86,19 @@ type Node interface {
 	FinalizeHandler(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructure,
 		nl executors.NodeLookup, currentNode v1alpha1.ExecutableNode) error
 
-	// TODO @hamersaw - docs
-	NewNodeExecutionContext(ctx context.Context, executionContext executors.ExecutionContext,
-		nl executors.NodeLookup, currentNodeID v1alpha1.NodeID) (NodeExecutionContext, error)
-
 	// This method should be used to initialize Node executor
 	Initialize(ctx context.Context) error
+
+	// TODO @hamersaw - docs
+	GetNodeExecutionContextBuilder() NodeExecutionContextBuilder
+	WithNodeExecutionContextBuilder(NodeExecutionContextBuilder) Node
+}
+
+// TODO @hamersaw - docs
+type NodeExecutionContextBuilder interface {
+	//BuildNodeExecutionContext(execContext executors.ExecutionContext) NodeExecutionContext
+	BuildNodeExecutionContext(ctx context.Context, executionContext executors.ExecutionContext,
+		nl executors.NodeLookup, currentNodeID v1alpha1.NodeID) (NodeExecutionContext, error)
 }
 
 // Helper struct to allow passing of status between functions

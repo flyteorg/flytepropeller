@@ -146,7 +146,7 @@ func TestNodeExecutor_Initialize(t *testing.T) {
 		execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, memStore, enQWf, mockEventSink, adminClient, adminClient,
 			10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 		assert.NoError(t, err)
-		exec := execIface.(*nodeExecutor)
+		exec := execIface.(*recursiveNodeExecutor)
 
 		hf := &mocks2.HandlerFactory{}
 		exec.nodeHandlerFactory = hf
@@ -160,7 +160,7 @@ func TestNodeExecutor_Initialize(t *testing.T) {
 		execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, memStore, enQWf, mockEventSink, adminClient, adminClient,
 			10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 		assert.NoError(t, err)
-		exec := execIface.(*nodeExecutor)
+		exec := execIface.(*recursiveNodeExecutor)
 
 		hf := &mocks2.HandlerFactory{}
 		exec.nodeHandlerFactory = hf
@@ -183,7 +183,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseStartNodes(t *testing.T) {
 	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
 		10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 	assert.NoError(t, err)
-	exec := execIface.(*nodeExecutor)
+	exec := execIface.(*recursiveNodeExecutor)
 
 	defaultNodeID := "n1"
 
@@ -287,7 +287,7 @@ func TestNodeExecutor_RecursiveNodeHandler_RecurseEndNode(t *testing.T) {
 	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
 		10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 	assert.NoError(t, err)
-	exec := execIface.(*nodeExecutor)
+	exec := execIface.(*recursiveNodeExecutor)
 
 	// Node not yet started
 	{
@@ -693,7 +693,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
 					10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 				assert.NoError(t, err)
-				exec := execIface.(*nodeExecutor)
+				exec := execIface.(*recursiveNodeExecutor)
 				exec.nodeHandlerFactory = hf
 
 				execContext := executors.NewExecutionContext(mockWf, mockWf, mockWf, nil, executors.InitializeControlFlow())
@@ -768,7 +768,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
 					10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 				assert.NoError(t, err)
-				exec := execIface.(*nodeExecutor)
+				exec := execIface.(*recursiveNodeExecutor)
 				exec.nodeHandlerFactory = hf
 
 				called := false
@@ -880,7 +880,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 				execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
 					10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 				assert.NoError(t, err)
-				exec := execIface.(*nodeExecutor)
+				exec := execIface.(*recursiveNodeExecutor)
 				exec.nodeHandlerFactory = hf
 
 				called := false
@@ -944,7 +944,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
 			10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 		assert.NoError(t, err)
-		exec := execIface.(*nodeExecutor)
+		exec := execIface.(*recursiveNodeExecutor)
 		exec.nodeHandlerFactory = hf
 
 		h := &nodeHandlerMocks.Node{}
@@ -975,7 +975,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Recurse(t *testing.T) {
 		execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
 			10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 		assert.NoError(t, err)
-		exec := execIface.(*nodeExecutor)
+		exec := execIface.(*recursiveNodeExecutor)
 		exec.nodeHandlerFactory = hf
 
 		h := &nodeHandlerMocks.Node{}
@@ -1009,7 +1009,7 @@ func TestNodeExecutor_RecursiveNodeHandler_NoDownstream(t *testing.T) {
 	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
 		10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 	assert.NoError(t, err)
-	exec := execIface.(*nodeExecutor)
+	exec := execIface.(*recursiveNodeExecutor)
 
 	defaultNodeID := "n1"
 	taskID := "tID"
@@ -1120,7 +1120,7 @@ func TestNodeExecutor_RecursiveNodeHandler_UpstreamNotReady(t *testing.T) {
 	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
 		10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 	assert.NoError(t, err)
-	exec := execIface.(*nodeExecutor)
+	exec := execIface.(*recursiveNodeExecutor)
 
 	defaultNodeID := "n1"
 	taskID := taskID
@@ -1236,7 +1236,7 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
 		10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 	assert.NoError(t, err)
-	exec := execIface.(*nodeExecutor)
+	exec := execIface.(*recursiveNodeExecutor)
 	// Node not yet started
 	{
 		tests := []struct {
@@ -1389,7 +1389,7 @@ func Test_nodeExecutor_RecordTransitionLatency(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &nodeExecutor{
+			c := &recursiveNodeExecutor{
 				nodeHandlerFactory: tt.fields.nodeHandlerFactory,
 				enqueueWorkflow:    tt.fields.enqueueWorkflow,
 				store:              tt.fields.store,
@@ -1489,7 +1489,7 @@ func Test_nodeExecutor_timeout(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &nodeExecutor{defaultActiveDeadline: time.Second, defaultExecutionDeadline: time.Second}
+			c := &recursiveNodeExecutor{defaultActiveDeadline: time.Second, defaultExecutionDeadline: time.Second}
 			handlerReturn := func() (handler.Transition, error) {
 				return handler.DoTransition(handler.TransitionTypeEphemeral, tt.phaseInfo), tt.err
 			}
@@ -1544,7 +1544,7 @@ func Test_nodeExecutor_system_error(t *testing.T) {
 
 	ns.On("ClearLastAttemptStartedAt").Return()
 
-	c := &nodeExecutor{}
+	c := &recursiveNodeExecutor{}
 	h := &nodeHandlerMocks.Node{}
 	h.On("Handle",
 		mock.MatchedBy(func(ctx context.Context) bool { return true }),
@@ -1575,7 +1575,7 @@ func Test_nodeExecutor_system_error(t *testing.T) {
 
 func Test_nodeExecutor_abort(t *testing.T) {
 	ctx := context.Background()
-	exec := nodeExecutor{}
+	exec := recursiveNodeExecutor{}
 	nCtx := &nodeExecContext{}
 
 	t.Run("abort error calls finalize", func(t *testing.T) {
@@ -1623,7 +1623,7 @@ func Test_nodeExecutor_abort(t *testing.T) {
 
 func TestNodeExecutor_AbortHandler(t *testing.T) {
 	ctx := context.Background()
-	exec := nodeExecutor{}
+	exec := recursiveNodeExecutor{}
 
 	t.Run("not-yet-started", func(t *testing.T) {
 		id := "id"
@@ -1658,7 +1658,7 @@ func TestNodeExecutor_AbortHandler(t *testing.T) {
 		h.OnFinalizeMatch(mock.Anything, mock.Anything).Return(nil)
 		hf.OnGetHandlerMatch(v1alpha1.NodeKindStart).Return(h, nil)
 
-		nExec := nodeExecutor{
+		nExec := recursiveNodeExecutor{
 			nodeRecorder:       incompatibleClusterErr,
 			nodeHandlerFactory: hf,
 		}
@@ -1680,7 +1680,7 @@ func TestNodeExecutor_AbortHandler(t *testing.T) {
 
 func TestNodeExecutor_FinalizeHandler(t *testing.T) {
 	ctx := context.Background()
-	exec := nodeExecutor{}
+	exec := recursiveNodeExecutor{}
 
 	t.Run("not-yet-started", func(t *testing.T) {
 		id := "id"
@@ -1846,7 +1846,7 @@ func TestNodeExecutor_RecursiveNodeHandler_ParallelismLimit(t *testing.T) {
 	execIface, err := NewExecutor(ctx, config.GetConfig().NodeConfig, store, enQWf, mockEventSink, adminClient, adminClient,
 		10, "s3://bucket", fakeKubeClient, catalogClient, recoveryClient, eventConfig, testClusterID, signalClient, promutils.NewTestScope())
 	assert.NoError(t, err)
-	exec := execIface.(*nodeExecutor)
+	exec := execIface.(*recursiveNodeExecutor)
 
 	defaultNodeID := "n1"
 	taskID := taskID
@@ -2013,7 +2013,7 @@ func Test_nodeExecutor_IdempotentRecordEvent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &nodeExecutor{
+			c := &recursiveNodeExecutor{
 				nodeRecorder: tt.rec,
 				eventConfig: &config.EventConfig{
 					RawOutputPolicy: config.RawOutputPolicyReference,
@@ -2139,7 +2139,7 @@ func TestRecover(t *testing.T) {
 		}
 		nCtx.OnDataStore().Return(storageClient)
 
-		executor := nodeExecutor{
+		executor := recursiveNodeExecutor{
 			recoveryClient: recoveryClient,
 			store:          storageClient,
 			eventConfig: &config.EventConfig{
@@ -2232,7 +2232,7 @@ func TestRecover(t *testing.T) {
 				DynamicWorkflow: dynamicWorkflow,
 			}, nil)
 
-		executor := nodeExecutor{
+		executor := recursiveNodeExecutor{
 			recoveryClient: recoveryClient,
 			store:          storageClient,
 			eventConfig:    eventConfig,
@@ -2305,7 +2305,7 @@ func TestRecover(t *testing.T) {
 
 		nCtx.OnDataStore().Return(storageClient)
 
-		executor := nodeExecutor{
+		executor := recursiveNodeExecutor{
 			recoveryClient: recoveryClient,
 			store:          storageClient,
 			eventConfig:    eventConfig,
@@ -2369,7 +2369,7 @@ func TestRecover(t *testing.T) {
 		}
 		nCtx.OnDataStore().Return(storageClient)
 
-		executor := nodeExecutor{
+		executor := recursiveNodeExecutor{
 			recoveryClient: recoveryClient,
 			store:          storageClient,
 			eventConfig:    eventConfig,
@@ -2399,7 +2399,7 @@ func TestRecover(t *testing.T) {
 				},
 			}, nil)
 
-		executor := nodeExecutor{
+		executor := recursiveNodeExecutor{
 			recoveryClient: recoveryClient,
 		}
 
@@ -2454,7 +2454,7 @@ func TestRecover(t *testing.T) {
 		}
 
 		nCtx.OnDataStore().Return(storageClient)
-		executor := nodeExecutor{
+		executor := recursiveNodeExecutor{
 			recoveryClient: recoveryClient,
 			store:          storageClient,
 			eventConfig:    eventConfig,
@@ -2499,7 +2499,7 @@ func TestRecover(t *testing.T) {
 		}
 		nCtx.OnDataStore().Return(storageClient)
 
-		executor := nodeExecutor{
+		executor := recursiveNodeExecutor{
 			recoveryClient: recoveryClient,
 			store:          storageClient,
 			eventConfig:    eventConfig,

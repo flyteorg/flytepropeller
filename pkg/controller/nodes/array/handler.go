@@ -208,14 +208,20 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			arrayNodeLookup := newArrayNodeLookup(nCtx.ContextualNodeLookup(), subNodeID, &subNodeSpec, subNodeStatus)
 
 			// execute subNode through RecursiveNodeHandler
-			_, err = a.nodeExecutor.RecursiveNodeHandlerWithNodeContextModifier(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec,
+			/*_, err = a.nodeExecutor.RecursiveNodeHandlerWithNodeContextModifier(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec,
 			func (nCtx interfaces.NodeExecutionContext) interfaces.NodeExecutionContext {
 				if nCtx.NodeID() == subNodeID {
 					return newArrayNodeExecutionContext(nCtx, inputReader, i)
 				}
 
 				return nCtx
-			})
+			})*/
+
+			// TODO @hamersaw - move all construction of nCtx internal -> can build a single arrayNodeExecutor and use for everyone -> build differently based on index
+			// execute subNode through RecursiveNodeHandler
+			arrayNodeExecutionContextBuilder := newArrayNodeExecutionContextBuilder(a.nodeExecutor.GetNodeExecutionContextBuilder(), subNodeID, i, inputReader)
+			arrayNodeExecutor := a.nodeExecutor.WithNodeExecutionContextBuilder(arrayNodeExecutionContextBuilder)
+			_, err = arrayNodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec)
 
 			if err != nil {
 				logger.Errorf(ctx, "HAMERSAW - %+v", err)

@@ -3,11 +3,20 @@ package handler
 import (
 	"context"
 
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 	"github.com/flyteorg/flytestdlib/promutils"
 )
 
 //go:generate mockery -all -case=underscore
+
+// TODO @hamersaw - docs?!?1
+type NodeExecutor interface {
+	// TODO @hamersaw - BuildNodeExecutionContext should be here - removes need for another interface
+	HandleNode(ctx context.Context, dag executors.DAGStructure, nCtx interfaces.NodeExecutionContext, h Node) (interfaces.NodeStatus, error)
+	Abort(ctx context.Context, h Node, nCtx interfaces.NodeExecutionContext, reason string) error
+	Finalize(ctx context.Context, h Node, nCtx interfaces.NodeExecutionContext) error
+}
 
 // Interface that should be implemented for a node type.
 type Node interface {

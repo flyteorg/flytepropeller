@@ -1,6 +1,8 @@
 package array
 
 import (
+	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
@@ -73,5 +75,43 @@ func newArrayNodeExecutionContext(nodeExecutionContext interfaces.NodeExecutionC
 		NodeExecutionContext: nodeExecutionContext,
 		inputReader:          inputReader,
 		executionContext:     arrayExecutionContext,
+	}
+}
+
+
+type arrayNodeExecutionContextBuilder struct {
+	nCtxBuilder interfaces.NodeExecutionContextBuilder
+	subNodeID    v1alpha1.NodeID
+	subNodeIndex int
+	inputReader  io.InputReader
+}
+
+func (a *arrayNodeExecutionContextBuilder) BuildNodeExecutionContext(ctx context.Context, executionContext executors.ExecutionContext,
+	nl executors.NodeLookup, currentNodeID v1alpha1.NodeID) (interfaces.NodeExecutionContext, error) {
+
+	// create base NodeExecutionContext
+	nCtx, err := a.nCtxBuilder.BuildNodeExecutionContext(ctx, executionContext, nl, currentNodeID)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("HAMERSAW - currentNodeID %s subNodeID %s!\n", currentNodeID, a.subNodeID)
+	if currentNodeID == a.subNodeID {
+		// overwrite NodeExecutionContext for ArrayNode execution
+		nCtx = newArrayNodeExecutionContext(nCtx, a.inputReader, a.subNodeIndex)
+	}
+
+	return nCtx, nil
+
+}
+
+func newArrayNodeExecutionContextBuilder(nCtxBuilder interfaces.NodeExecutionContextBuilder, subNodeID v1alpha1.NodeID,
+	subNodeIndex int, inputReader io.InputReader) interfaces.NodeExecutionContextBuilder {
+
+	return &arrayNodeExecutionContextBuilder{
+		nCtxBuilder:  nCtxBuilder,
+		subNodeID:    subNodeID,
+		subNodeIndex: subNodeIndex,
+		inputReader:  inputReader,
 	}
 }
