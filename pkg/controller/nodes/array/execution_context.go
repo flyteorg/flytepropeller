@@ -2,7 +2,6 @@ package array
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
@@ -95,14 +94,12 @@ func (a *arrayNodeExecutionContextBuilder) BuildNodeExecutionContext(ctx context
 		return nil, err
 	}
 
-	fmt.Println("HAMERSAW - currentNodeID %s subNodeID %s!\n", currentNodeID, a.subNodeID)
 	if currentNodeID == a.subNodeID {
 		// overwrite NodeExecutionContext for ArrayNode execution
 		nCtx = newArrayNodeExecutionContext(nCtx, a.inputReader, a.subNodeIndex)
 	}
 
 	return nCtx, nil
-
 }
 
 func newArrayNodeExecutionContextBuilder(nCtxBuilder interfaces.NodeExecutionContextBuilder, subNodeID v1alpha1.NodeID,

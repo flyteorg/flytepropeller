@@ -65,13 +65,18 @@ func NewHandlerFactory(ctx context.Context, executor interfaces.Node, workflowLa
 		return nil, err
 	}
 
+	arrayHandler, err := array.New(executor, scope)
+	if err != nil {
+		return nil, err
+	}
+
 	f := &handlerFactory{
 		handlers: map[v1alpha1.NodeKind]handler.Node{
 			v1alpha1.NodeKindBranch:   branch.New(executor, eventConfig, scope),
 			v1alpha1.NodeKindTask:     dynamic.New(t, executor, launchPlanReader, eventConfig, scope),
 			v1alpha1.NodeKindWorkflow: subworkflow.New(executor, workflowLauncher, recoveryClient, eventConfig, scope),
 			v1alpha1.NodeKindGate:     gate.New(eventConfig, signalClient, scope),
-			v1alpha1.NodeKindArray:    array.New(executor, scope),
+			v1alpha1.NodeKindArray:    arrayHandler,
 			v1alpha1.NodeKindStart:    start.New(),
 			v1alpha1.NodeKindEnd:      end.New(),
 		},
