@@ -285,6 +285,9 @@ type MutableGateNodeStatus interface {
 type ExecutableArrayNodeStatus interface {
 	GetArrayNodePhase() ArrayNodePhase
 	GetSubNodePhases() bitarray.CompactArray
+	GetSubNodeTaskPhases() bitarray.CompactArray
+	GetSubNodeRetryAttempts() bitarray.CompactArray
+	GetSubNodeSystemFailures() bitarray.CompactArray
 }
 
 type MutableArrayNodeStatus interface {
@@ -292,6 +295,9 @@ type MutableArrayNodeStatus interface {
 	ExecutableArrayNodeStatus
 	SetArrayNodePhase(phase ArrayNodePhase)
 	SetSubNodePhases(subNodePhases bitarray.CompactArray)
+	SetSubNodeTaskPhases(subNodeTaskPhases bitarray.CompactArray)
+	SetSubNodeRetryAttempts(subNodeRetryAttempts bitarray.CompactArray)
+	SetSubNodeSystemFailures(subNodeSystemFailures bitarray.CompactArray)
 }
 
 type Mutable interface {

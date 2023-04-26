@@ -43,6 +43,7 @@ type arrayNodeExecutionContext struct {
 	interfaces.NodeExecutionContext
 	inputReader      io.InputReader
 	executionContext arrayExecutionContext
+	nodeStatus       *v1alpha1.NodeStatus
 }
 
 func (a arrayNodeExecutionContext) InputReader() io.InputReader {
@@ -53,36 +54,27 @@ func (a arrayNodeExecutionContext) ExecutionContext() executors.ExecutionContext
 	return a.executionContext
 }
 
-// TODO @hamersaw - overwrite everything
-/*
-inputReader
-taskRecorder
-nodeRecorder - need to add to nodeExecutionContext so we can override?!?!
-maxParallelism - looks like we need:
-	ExecutionConfig.GetMaxParallelism
-	ExecutionContext.IncrementMaxParallelism
-storage locations - dataPrefix?
+func (a arrayNodeExecutionContext) NodeStatus() v1alpha1.ExecutableNodeStatus {
+	return a.nodeStatus
+}
 
-add environment variables for maptask execution either:
-	(1) in arrayExecutionContext if we use separate for each
-	(2) in arrayNodeExectionContext if we choose to use single DAG
-*/
-
-func newArrayNodeExecutionContext(nodeExecutionContext interfaces.NodeExecutionContext, inputReader io.InputReader, subNodeIndex int) arrayNodeExecutionContext {
+func newArrayNodeExecutionContext(nodeExecutionContext interfaces.NodeExecutionContext, inputReader io.InputReader, subNodeIndex int, nodeStatus *v1alpha1.NodeStatus) arrayNodeExecutionContext {
 	arrayExecutionContext := newArrayExecutionContext(nodeExecutionContext.ExecutionContext(), subNodeIndex)
 	return arrayNodeExecutionContext{
 		NodeExecutionContext: nodeExecutionContext,
 		inputReader:          inputReader,
 		executionContext:     arrayExecutionContext,
+		nodeStatus:           nodeStatus,
 	}
 }
 
 
 type arrayNodeExecutionContextBuilder struct {
-	nCtxBuilder interfaces.NodeExecutionContextBuilder
-	subNodeID    v1alpha1.NodeID
-	subNodeIndex int
-	inputReader  io.InputReader
+	nCtxBuilder   interfaces.NodeExecutionContextBuilder
+	subNodeID     v1alpha1.NodeID
+	subNodeIndex  int
+	subNodeStatus *v1alpha1.NodeStatus
+	inputReader   io.InputReader
 }
 
 func (a *arrayNodeExecutionContextBuilder) BuildNodeExecutionContext(ctx context.Context, executionContext executors.ExecutionContext,
@@ -96,19 +88,20 @@ func (a *arrayNodeExecutionContextBuilder) BuildNodeExecutionContext(ctx context
 
 	if currentNodeID == a.subNodeID {
 		// overwrite NodeExecutionContext for ArrayNode execution
-		nCtx = newArrayNodeExecutionContext(nCtx, a.inputReader, a.subNodeIndex)
+		nCtx = newArrayNodeExecutionContext(nCtx, a.inputReader, a.subNodeIndex, a.subNodeStatus)
 	}
 
 	return nCtx, nil
 }
 
 func newArrayNodeExecutionContextBuilder(nCtxBuilder interfaces.NodeExecutionContextBuilder, subNodeID v1alpha1.NodeID,
-	subNodeIndex int, inputReader io.InputReader) interfaces.NodeExecutionContextBuilder {
+	subNodeIndex int, subNodeStatus *v1alpha1.NodeStatus, inputReader io.InputReader) interfaces.NodeExecutionContextBuilder {
 
 	return &arrayNodeExecutionContextBuilder{
-		nCtxBuilder:  nCtxBuilder,
-		subNodeID:    subNodeID,
-		subNodeIndex: subNodeIndex,
-		inputReader:  inputReader,
+		nCtxBuilder:   nCtxBuilder,
+		subNodeID:     subNodeID,
+		subNodeIndex:  subNodeIndex,
+		subNodeStatus: subNodeStatus,
+		inputReader:   inputReader,
 	}
 }

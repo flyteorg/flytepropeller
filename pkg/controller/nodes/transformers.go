@@ -289,5 +289,8 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n interfaces.N
 		t := s.GetOrCreateArrayNodeStatus()
 		t.SetArrayNodePhase(na.Phase)
 		t.SetSubNodePhases(na.SubNodePhases)
+		t.SetSubNodeTaskPhases(na.SubNodeTaskPhases)
+		t.SetSubNodeRetryAttempts(na.SubNodeRetryAttempts)
+		t.SetSubNodeSystemFailures(na.SubNodeSystemFailures)
 	}
 }

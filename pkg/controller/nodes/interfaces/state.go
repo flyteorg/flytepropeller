@@ -50,8 +50,11 @@ type GateNodeState struct {
 }
 
 type ArrayNodeState struct {
-	Phase         v1alpha1.ArrayNodePhase
-	SubNodePhases bitarray.CompactArray
+	Phase                 v1alpha1.ArrayNodePhase
+	SubNodePhases         bitarray.CompactArray
+	SubNodeTaskPhases     bitarray.CompactArray
+	SubNodeRetryAttempts  bitarray.CompactArray
+	SubNodeSystemFailures bitarray.CompactArray
 }
 
 type NodeStateWriter interface {

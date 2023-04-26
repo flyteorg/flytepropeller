@@ -219,8 +219,11 @@ const (
 
 type ArrayNodeStatus struct {
 	MutableStruct
-	Phase         ArrayNodePhase        `json:"phase,omitempty"`
-	SubNodePhases bitarray.CompactArray `json:"subphase,omitempty"`
+	Phase                 ArrayNodePhase        `json:"phase,omitempty"`
+	SubNodePhases         bitarray.CompactArray `json:"subphase,omitempty"`
+	SubNodeTaskPhases     bitarray.CompactArray `json:"subtphase,omitempty"`
+	SubNodeRetryAttempts  bitarray.CompactArray `json:"subattempts,omitempty"`
+	SubNodeSystemFailures bitarray.CompactArray `json:"subsysfailures,omitempty"`
 }
 
 func (in *ArrayNodeStatus) GetArrayNodePhase() ArrayNodePhase {
@@ -242,6 +245,39 @@ func (in *ArrayNodeStatus) SetSubNodePhases(subNodePhases bitarray.CompactArray)
 	if in.SubNodePhases != subNodePhases {
 		in.SetDirty()
 		in.SubNodePhases = subNodePhases
+	}
+}
+
+func (in *ArrayNodeStatus) GetSubNodeTaskPhases() bitarray.CompactArray {
+	return in.SubNodeTaskPhases
+}
+
+func (in *ArrayNodeStatus) SetSubNodeTaskPhases(subNodeTaskPhases bitarray.CompactArray) {
+	if in.SubNodeTaskPhases != subNodeTaskPhases {
+		in.SetDirty()
+		in.SubNodeTaskPhases = subNodeTaskPhases
+	}
+}
+
+func (in *ArrayNodeStatus) GetSubNodeRetryAttempts() bitarray.CompactArray {
+	return in.SubNodeRetryAttempts
+}
+
+func (in *ArrayNodeStatus) SetSubNodeRetryAttempts(subNodeRetryAttempts bitarray.CompactArray) {
+	if in.SubNodeRetryAttempts != subNodeRetryAttempts {
+		in.SetDirty()
+		in.SubNodeRetryAttempts = subNodeRetryAttempts
+	}
+}
+
+func (in *ArrayNodeStatus) GetSubNodeSystemFailures() bitarray.CompactArray {
+	return in.SubNodeSystemFailures
+}
+
+func (in *ArrayNodeStatus) SetSubNodeSystemFailures(subNodeSystemFailures bitarray.CompactArray) {
+	if in.SubNodeSystemFailures != subNodeSystemFailures {
+		in.SetDirty()
+		in.SubNodeSystemFailures = subNodeSystemFailures
 	}
 }
 
@@ -286,7 +322,9 @@ func (in *NodeStatus) IsDirty() bool {
 		(in.TaskNodeStatus != nil && in.TaskNodeStatus.IsDirty()) ||
 		(in.DynamicNodeStatus != nil && in.DynamicNodeStatus.IsDirty()) ||
 		(in.WorkflowNodeStatus != nil && in.WorkflowNodeStatus.IsDirty()) ||
-		(in.BranchStatus != nil && in.BranchStatus.IsDirty())
+		(in.BranchStatus != nil && in.BranchStatus.IsDirty()) ||
+		(in.GateNodeStatus != nil && in.GateNodeStatus.IsDirty()) ||
+		(in.ArrayNodeStatus != nil && in.ArrayNodeStatus.IsDirty())
 	if isDirty {
 		return true
 	}

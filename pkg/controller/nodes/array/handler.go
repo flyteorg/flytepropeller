@@ -103,13 +103,24 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		}
 
 		// initialize ArrayNode state
-		arrayNodeState.SubNodePhases, err = bitarray.NewCompactArray(uint(size), bitarray.Item(len(core.Phases)-1))
-		if err != nil {
-			return handler.UnknownTransition, err
+		maxAttempts := task.DefaultMaxAttempts
+		subNodeSpec := *arrayNode.GetSubNodeSpec()
+		if subNodeSpec.GetRetryStrategy() != nil && subNodeSpec.GetRetryStrategy().MinAttempts != nil {
+			maxAttempts = *subNodeSpec.GetRetryStrategy().MinAttempts
 		}
 
-		// TODO @hamersaw - init SystemFailures and RetryAttempts as well
-		//   do we want to abstract this? ie. arrayNodeState.GetStats(subNodeIndex) (phase, systemFailures, ...)
+		for _, item := range []struct{arrayReference *bitarray.CompactArray; maxValue int}{
+				{arrayReference: &arrayNodeState.SubNodePhases, maxValue: len(core.Phases)-1}, // TODO @hamersaw - maxValue is for task phases
+				{arrayReference: &arrayNodeState.SubNodeTaskPhases, maxValue: len(core.Phases)-1},
+				{arrayReference: &arrayNodeState.SubNodeRetryAttempts, maxValue: maxAttempts},
+				{arrayReference: &arrayNodeState.SubNodeSystemFailures, maxValue: maxAttempts},
+			} {
+
+			*item.arrayReference, err = bitarray.NewCompactArray(uint(size), bitarray.Item(item.maxValue))
+			if err != nil {
+				return handler.UnknownTransition, err
+			}
+		}
 
 		//fmt.Printf("HAMERSAW - created SubNodePhases with length '%d:%d'\n", size, len(arrayNodeState.SubNodePhases.GetItems()))
 		arrayNodeState.Phase = v1alpha1.ArrayNodePhaseExecuting
@@ -117,11 +128,14 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		// process array node subnodes
 		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
+			taskPhase := int(arrayNodeState.SubNodeTaskPhases.GetItem(i))
+
 			//fmt.Printf("HAMERSAW - evaluating node '%d' in phase '%d'\n", i, nodePhase)
+			fmt.Printf("HAMERSAW - evaluating node '%d' in node phase '%d' task phase '%d'\n", i, nodePhase, taskPhase)
 
 			// TODO @hamersaw fix - do not process nodes in terminal state
 			//if nodes.IsTerminalNodePhase(nodePhase) {
-			if nodePhase == v1alpha1.NodePhaseSucceeded || nodePhase == v1alpha1.NodePhaseFailed || nodePhase == v1alpha1.NodePhaseTimedOut || nodePhase == v1alpha1.NodePhaseSkipped {
+			if nodePhase == v1alpha1.NodePhaseSucceeded || nodePhase == v1alpha1.NodePhaseFailed || nodePhase == v1alpha1.NodePhaseTimedOut || nodePhase == v1alpha1.NodePhaseSkipped || nodePhase == v1alpha1.NodePhaseRecovered {
 				continue
 			}
 
@@ -155,9 +169,12 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			//  currently just mocking based on node phase -> which works for all k8s plugins
 			// we can not pre-allocated a bit array because max size is 256B and with 5k fanout node state = 1.28MB
 			pluginStateBytes := a.pluginStateBytesStarted
-			if nodePhase == v1alpha1.NodePhaseQueued {
+			//if nodePhase == v1alpha1.NodePhaseQueued || nodePhase == v1alpha1.NodePhaseRetryableFailure {
+			if taskPhase == int(core.PhaseUndefined) || taskPhase == int(core.PhaseRetryableFailure) {
 				pluginStateBytes = a.pluginStateBytesNotStarted
 			}
+			// TODO @hamerssaw NEED TO FIGURE THIS ^^^ OUT when working with node retries 
+			// Failed to find the Resource with name: flytesnacks-development/array-test-40-node-1-n1-1. Error: pods \"array-test-40-node-1-n1-1\" not found
 
 			// we set subDataDir and subOutputDir to the node dirs because flytekit automatically appends subtask
 			// index. however when we check completion status we need to manually append index - so in all cases
@@ -176,46 +193,63 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 
 			subNodeStatus := &v1alpha1.NodeStatus{
 				Phase: nodePhase,
-				TaskNodeStatus: &v1alpha1.TaskNodeStatus{
-					// TODO @hamersaw - to get caching working we need to set to Queued to force cache lookup
-					// once fastcache is done we dont care about the TaskNodeStatus
-					Phase: int(core.Phases[core.PhaseRunning]),
-					PluginState: pluginStateBytes,
-				},
 				DataDir:   subDataDir,
 				OutputDir: subOutputDir,
-				// TODO @hamersaw - fill out systemFailures, retryAttempt etc
+				Attempts: uint32(arrayNodeState.SubNodeRetryAttempts.GetItem(i)),
+				SystemFailures: uint32(arrayNodeState.SubNodeSystemFailures.GetItem(i)),
+				TaskNodeStatus: &v1alpha1.TaskNodeStatus{
+					// TODO @hamersaw - to get caching working we need to set to Undefined to force cache lookup
+					// once fastcache is done we dont care about the TaskNodeStatus
+					Phase: taskPhase,
+					PluginState: pluginStateBytes,
+				},
 			}
 
 			arrayNodeLookup := newArrayNodeLookup(nCtx.ContextualNodeLookup(), subNodeID, &subNodeSpec, subNodeStatus)
 
 			// execute subNode through RecursiveNodeHandler
-			arrayNodeExecutionContextBuilder := newArrayNodeExecutionContextBuilder(a.nodeExecutor.GetNodeExecutionContextBuilder(), subNodeID, i, inputReader)
+			arrayNodeExecutionContextBuilder := newArrayNodeExecutionContextBuilder(a.nodeExecutor.GetNodeExecutionContextBuilder(), subNodeID, i, subNodeStatus, inputReader)
 			arrayNodeExecutor := a.nodeExecutor.WithNodeExecutionContextBuilder(arrayNodeExecutionContextBuilder)
 			_, err = arrayNodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec)
 			if err != nil {
 				return handler.UnknownTransition, err
 			}
 
-			//fmt.Printf("HAMERSAW - node phase transition %d -> %d\n", nodePhase, subNodeStatus.GetPhase())
+			//fmt.Printf("HAMERSAW - '%d' transition node phase %d -> %d task phase '%d' -> '%d'\n", i,
+			//	nodePhase, subNodeStatus.GetPhase(), taskPhase, subNodeStatus.GetTaskNodeStatus().GetPhase())
+
 			arrayNodeState.SubNodePhases.SetItem(i, uint64(subNodeStatus.GetPhase()))
+			if subNodeStatus.GetTaskNodeStatus() == nil {
+				// TODO @hamersaw during retries we clear the GetTaskNodeStatus - so resetting task phase
+				arrayNodeState.SubNodeTaskPhases.SetItem(i, uint64(0))
+			} else {
+				arrayNodeState.SubNodeTaskPhases.SetItem(i, uint64(subNodeStatus.GetTaskNodeStatus().GetPhase()))
+			}
+			arrayNodeState.SubNodeRetryAttempts.SetItem(i, uint64(subNodeStatus.GetAttempts()))
+			arrayNodeState.SubNodeSystemFailures.SetItem(i, uint64(subNodeStatus.GetSystemFailures()))
 		}
 
 		// TODO @hamersaw - determine summary phases
-		succeeded := true
+		successCount := 0
+		failedCount := 0
 		for _, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
-			if nodePhase != v1alpha1.NodePhaseSucceeded {
-				succeeded = false
-				break
+			switch nodePhase {
+			case v1alpha1.NodePhaseSucceeded, v1alpha1.NodePhaseRecovered:
+				successCount++
+			case v1alpha1.NodePhaseFailed:
+				failedCount++
 			}
 		}
 
-		if succeeded {
+		if failedCount > 0 {
+			arrayNodeState.Phase = v1alpha1.ArrayNodePhaseFailing
+		} else if successCount == len(arrayNodeState.SubNodePhases.GetItems()) {
 			arrayNodeState.Phase = v1alpha1.ArrayNodePhaseSucceeding
 		}
 	case v1alpha1.ArrayNodePhaseFailing:
 		// TODO @hamersaw - abort everything!
+		fmt.Printf("HAMERSAW TODO - abort ArrayNode!\n")
 	case v1alpha1.ArrayNodePhaseSucceeding:
 		outputLiterals := make(map[string]*idlcore.Literal)
 		for i, _ := range arrayNodeState.SubNodePhases.GetItems() {
@@ -235,7 +269,8 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			if err != nil {
 				return handler.UnknownTransition, err
 			} else if executionErr != nil {
-				return handler.UnknownTransition, executionErr
+				// TODO @hamersaw handle executionErr
+				//return handler.UnknownTransition, executionErr
 			}
 
 			// copy individual subNode output literals into a collection of output literals

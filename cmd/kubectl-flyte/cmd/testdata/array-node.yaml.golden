@@ -3,7 +3,7 @@ tasks:
     args:
     - "pyflyte-fast-execute"
     - "--additional-distribution"
-    - "s3://my-s3-bucket/flytesnacks/development/TWUFWD6G3NTY7K2B6YJOCHXIKQ======/script_mode.tar.gz"
+    - "s3://my-s3-bucket/flytesnacks/development/SMJBJX7BQJ6MCOABLKQT5VZXVY======/script_mode.tar.gz"
     - "--dest-dir"
     - "/root"
     - "--"
@@ -77,6 +77,9 @@ workflow:
       var: a
     arrayNode:
       node:
+        metadata:
+          retries:
+            retries: 3
         taskNode:
           referenceId:
             name: task-1
