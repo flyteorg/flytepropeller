@@ -69,6 +69,7 @@ func (a *arrayNodeHandler) FinalizeRequired() bool {
 func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContext) (handler.Transition, error) {
 	arrayNode := nCtx.Node().GetArrayNode()
 	arrayNodeState := nCtx.NodeStateReader().GetArrayNodeState()
+	fmt.Printf("HAMERSAW - executing ArrayNode\n")
 
 	switch arrayNodeState.Phase {
 	case v1alpha1.ArrayNodePhaseNone:
@@ -122,16 +123,17 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			}
 		}
 
-		//fmt.Printf("HAMERSAW - created SubNodePhases with length '%d:%d'\n", size, len(arrayNodeState.SubNodePhases.GetItems()))
+		// transition ArrayNode to `ArrayNodePhaseExecuting`
 		arrayNodeState.Phase = v1alpha1.ArrayNodePhaseExecuting
 	case v1alpha1.ArrayNodePhaseExecuting:
 		// process array node subnodes
+		currentParallelism := uint32(0)
 		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
+			fmt.Printf("HAMERSAW - current parallelism %d '%d' max %d \n", i, currentParallelism, arrayNode.GetParallelism())
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
 			taskPhase := int(arrayNodeState.SubNodeTaskPhases.GetItem(i))
 
-			//fmt.Printf("HAMERSAW - evaluating node '%d' in phase '%d'\n", i, nodePhase)
-			fmt.Printf("HAMERSAW - evaluating node '%d' in node phase '%d' task phase '%d'\n", i, nodePhase, taskPhase)
+			//fmt.Printf("HAMERSAW - evaluating node '%d' in node phase '%d' task phase '%d'\n", i, nodePhase, taskPhase)
 
 			// TODO @hamersaw fix - do not process nodes in terminal state
 			//if nodes.IsTerminalNodePhase(nodePhase) {
@@ -164,7 +166,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			subNodeSpec.ID = subNodeID
 			subNodeSpec.Name = subNodeID
 
-			// TODO @hamersaw - store task phase and use to mock plugin state
 			// TODO - if we want to support more plugin types we need to figure out the best way to store plugin state
 			//  currently just mocking based on node phase -> which works for all k8s plugins
 			// we can not pre-allocated a bit array because max size is 256B and with 5k fanout node state = 1.28MB
@@ -173,8 +174,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			if taskPhase == int(core.PhaseUndefined) || taskPhase == int(core.PhaseRetryableFailure) {
 				pluginStateBytes = a.pluginStateBytesNotStarted
 			}
-			// TODO @hamerssaw NEED TO FIGURE THIS ^^^ OUT when working with node retries 
-			// Failed to find the Resource with name: flytesnacks-development/array-test-40-node-1-n1-1. Error: pods \"array-test-40-node-1-n1-1\" not found
 
 			// we set subDataDir and subOutputDir to the node dirs because flytekit automatically appends subtask
 			// index. however when we check completion status we need to manually append index - so in all cases
@@ -198,8 +197,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				Attempts: uint32(arrayNodeState.SubNodeRetryAttempts.GetItem(i)),
 				SystemFailures: uint32(arrayNodeState.SubNodeSystemFailures.GetItem(i)),
 				TaskNodeStatus: &v1alpha1.TaskNodeStatus{
-					// TODO @hamersaw - to get caching working we need to set to Undefined to force cache lookup
-					// once fastcache is done we dont care about the TaskNodeStatus
 					Phase: taskPhase,
 					PluginState: pluginStateBytes,
 				},
@@ -208,9 +205,16 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			arrayNodeLookup := newArrayNodeLookup(nCtx.ContextualNodeLookup(), subNodeID, &subNodeSpec, subNodeStatus)
 
 			// execute subNode through RecursiveNodeHandler
-			arrayNodeExecutionContextBuilder := newArrayNodeExecutionContextBuilder(a.nodeExecutor.GetNodeExecutionContextBuilder(), subNodeID, i, subNodeStatus, inputReader)
+			arrayNodeExecutionContextBuilder := newArrayNodeExecutionContextBuilder(a.nodeExecutor.GetNodeExecutionContextBuilder(),
+				subNodeID, i, subNodeStatus, inputReader, &currentParallelism, arrayNode.GetParallelism())
+			arrayExecutionContext := newArrayExecutionContext(nCtx.ExecutionContext(), i, &currentParallelism, arrayNode.GetParallelism())
+			/*arrayNodeExecutionContext, err := arrayNodeExecutionContextBuilder.BuildNodeExecutionContext(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, subNodeID)
+			if err != nil {
+				return handler.UnknownTransition, err
+			}*/
+
 			arrayNodeExecutor := a.nodeExecutor.WithNodeExecutionContextBuilder(arrayNodeExecutionContextBuilder)
-			_, err = arrayNodeExecutor.RecursiveNodeHandler(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec)
+			_, err = arrayNodeExecutor.RecursiveNodeHandler(ctx, arrayExecutionContext, &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec)
 			if err != nil {
 				return handler.UnknownTransition, err
 			}
@@ -229,7 +233,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			arrayNodeState.SubNodeSystemFailures.SetItem(i, uint64(subNodeStatus.GetSystemFailures()))
 		}
 
-		// TODO @hamersaw - determine summary phases
+		// process phases of subNodes to determine overall `ArrayNode` phase
 		successCount := 0
 		failedCount := 0
 		for _, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {

@@ -257,6 +257,7 @@ type ExecutableGateNode interface {
 
 type ExecutableArrayNode interface {
 	GetSubNodeSpec() *NodeSpec
+	GetParallelism() uint32
 	// TODO @hamersaw - complete ExecutableArrayNode
 }
 

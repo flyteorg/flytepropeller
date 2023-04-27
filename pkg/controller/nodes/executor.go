@@ -139,6 +139,7 @@ func canHandleNode(phase v1alpha1.NodePhase) bool {
 func IsMaxParallelismAchieved(ctx context.Context, currentNode v1alpha1.ExecutableNode, currentPhase v1alpha1.NodePhase,
 	execContext executors.ExecutionContext) bool {
 	maxParallelism := execContext.GetExecutionConfig().MaxParallelism
+	//fmt.Printf("HAMERSAW - maxParallelism %d\n", maxParallelism)
 	if maxParallelism == 0 {
 		logger.Debugf(ctx, "Parallelism control disabled")
 		return false
@@ -193,6 +194,7 @@ func (c *recursiveNodeExecutor) RecursiveNodeHandler(ctx context.Context, execCo
 			return interfaces.NodeStatusRunning, nil
 		}
 
+		fmt.Printf("HAMERSAW executing %s %+v\n", currentNode.GetID(), IsMaxParallelismAchieved(ctx, currentNode, nodePhase, execContext))
 		if IsMaxParallelismAchieved(ctx, currentNode, nodePhase, execContext) {
 			return interfaces.NodeStatusRunning, nil
 		}

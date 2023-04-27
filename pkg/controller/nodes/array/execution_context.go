@@ -2,6 +2,7 @@ package array
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
@@ -18,49 +19,63 @@ const (
 
 type arrayExecutionContext struct {
 	executors.ExecutionContext
-	executionConfig v1alpha1.ExecutionConfig
+	executionConfig    v1alpha1.ExecutionConfig
+	currentParallelism *uint32
 }
 
-func (a arrayExecutionContext) GetExecutionConfig() v1alpha1.ExecutionConfig {
+func (a *arrayExecutionContext) GetExecutionConfig() v1alpha1.ExecutionConfig {
 	return a.executionConfig
 }
 
-func newArrayExecutionContext(executionContext executors.ExecutionContext, subNodeIndex int) arrayExecutionContext {
+func (a *arrayExecutionContext) CurrentParallelism() uint32 {
+	return *a.currentParallelism
+}
+
+func (a *arrayExecutionContext) IncrementParallelism() uint32 {
+	*a.currentParallelism = *a.currentParallelism+1
+	fmt.Printf("HAMERSAW - increment parallelism %d\n", *a.currentParallelism)
+	return *a.currentParallelism
+}
+
+func newArrayExecutionContext(executionContext executors.ExecutionContext, subNodeIndex int, currentParallelism *uint32, maxParallelism uint32) *arrayExecutionContext {
 	executionConfig := executionContext.GetExecutionConfig()
 	if executionConfig.EnvironmentVariables == nil {
 		executionConfig.EnvironmentVariables = make(map[string]string)
 	}
 	executionConfig.EnvironmentVariables[JobIndexVarName] = FlyteK8sArrayIndexVarName
 	executionConfig.EnvironmentVariables[FlyteK8sArrayIndexVarName] = strconv.Itoa(subNodeIndex)
+	
+	executionConfig.MaxParallelism = maxParallelism
 
-	return arrayExecutionContext{
-		ExecutionContext: executionContext,
-		executionConfig:  executionConfig,
+	return &arrayExecutionContext{
+		ExecutionContext:   executionContext,
+		executionConfig:    executionConfig,
+		currentParallelism: currentParallelism,
 	}
 }
 
 type arrayNodeExecutionContext struct {
 	interfaces.NodeExecutionContext
 	inputReader      io.InputReader
-	executionContext arrayExecutionContext
+	executionContext *arrayExecutionContext
 	nodeStatus       *v1alpha1.NodeStatus
 }
 
-func (a arrayNodeExecutionContext) InputReader() io.InputReader {
+func (a *arrayNodeExecutionContext) InputReader() io.InputReader {
 	return a.inputReader
 }
 
-func (a arrayNodeExecutionContext) ExecutionContext() executors.ExecutionContext {
+func (a *arrayNodeExecutionContext) ExecutionContext() executors.ExecutionContext {
 	return a.executionContext
 }
 
-func (a arrayNodeExecutionContext) NodeStatus() v1alpha1.ExecutableNodeStatus {
+func (a *arrayNodeExecutionContext) NodeStatus() v1alpha1.ExecutableNodeStatus {
 	return a.nodeStatus
 }
 
-func newArrayNodeExecutionContext(nodeExecutionContext interfaces.NodeExecutionContext, inputReader io.InputReader, subNodeIndex int, nodeStatus *v1alpha1.NodeStatus) arrayNodeExecutionContext {
-	arrayExecutionContext := newArrayExecutionContext(nodeExecutionContext.ExecutionContext(), subNodeIndex)
-	return arrayNodeExecutionContext{
+func newArrayNodeExecutionContext(nodeExecutionContext interfaces.NodeExecutionContext, inputReader io.InputReader, subNodeIndex int, nodeStatus *v1alpha1.NodeStatus, currentParallelism *uint32, maxParallelism uint32) *arrayNodeExecutionContext {
+	arrayExecutionContext := newArrayExecutionContext(nodeExecutionContext.ExecutionContext(), subNodeIndex, currentParallelism, maxParallelism)
+	return &arrayNodeExecutionContext{
 		NodeExecutionContext: nodeExecutionContext,
 		inputReader:          inputReader,
 		executionContext:     arrayExecutionContext,
@@ -70,11 +85,13 @@ func newArrayNodeExecutionContext(nodeExecutionContext interfaces.NodeExecutionC
 
 
 type arrayNodeExecutionContextBuilder struct {
-	nCtxBuilder   interfaces.NodeExecutionContextBuilder
-	subNodeID     v1alpha1.NodeID
-	subNodeIndex  int
-	subNodeStatus *v1alpha1.NodeStatus
-	inputReader   io.InputReader
+	nCtxBuilder        interfaces.NodeExecutionContextBuilder
+	subNodeID          v1alpha1.NodeID
+	subNodeIndex       int
+	subNodeStatus      *v1alpha1.NodeStatus
+	inputReader        io.InputReader
+	currentParallelism *uint32
+	maxParallelism     uint32
 }
 
 func (a *arrayNodeExecutionContextBuilder) BuildNodeExecutionContext(ctx context.Context, executionContext executors.ExecutionContext,
@@ -88,20 +105,22 @@ func (a *arrayNodeExecutionContextBuilder) BuildNodeExecutionContext(ctx context
 
 	if currentNodeID == a.subNodeID {
 		// overwrite NodeExecutionContext for ArrayNode execution
-		nCtx = newArrayNodeExecutionContext(nCtx, a.inputReader, a.subNodeIndex, a.subNodeStatus)
+		nCtx = newArrayNodeExecutionContext(nCtx, a.inputReader, a.subNodeIndex, a.subNodeStatus, a.currentParallelism, a.maxParallelism)
 	}
 
 	return nCtx, nil
 }
 
 func newArrayNodeExecutionContextBuilder(nCtxBuilder interfaces.NodeExecutionContextBuilder, subNodeID v1alpha1.NodeID,
-	subNodeIndex int, subNodeStatus *v1alpha1.NodeStatus, inputReader io.InputReader) interfaces.NodeExecutionContextBuilder {
+	subNodeIndex int, subNodeStatus *v1alpha1.NodeStatus, inputReader io.InputReader, currentParallelism *uint32, maxParallelism uint32) interfaces.NodeExecutionContextBuilder {
 
 	return &arrayNodeExecutionContextBuilder{
-		nCtxBuilder:   nCtxBuilder,
-		subNodeID:     subNodeID,
-		subNodeIndex:  subNodeIndex,
-		subNodeStatus: subNodeStatus,
-		inputReader:   inputReader,
+		nCtxBuilder:        nCtxBuilder,
+		subNodeID:          subNodeID,
+		subNodeIndex:       subNodeIndex,
+		subNodeStatus:      subNodeStatus,
+		inputReader:        inputReader,
+		currentParallelism: currentParallelism,
+		maxParallelism:     maxParallelism,
 	}
 }

@@ -76,6 +76,7 @@ workflow:
           var: x
       var: a
     arrayNode:
+      parallelism: 1
       node:
         metadata:
           retries:
