@@ -2,7 +2,6 @@ package array
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
@@ -33,7 +32,6 @@ func (a *arrayExecutionContext) CurrentParallelism() uint32 {
 
 func (a *arrayExecutionContext) IncrementParallelism() uint32 {
 	*a.currentParallelism = *a.currentParallelism+1
-	fmt.Printf("HAMERSAW - increment parallelism %d\n", *a.currentParallelism)
 	return *a.currentParallelism
 }
 

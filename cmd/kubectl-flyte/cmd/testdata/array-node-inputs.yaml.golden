@@ -8,3 +8,6 @@ literals:
       - scalar:
           primitive:
             integer: "2"
+      - scalar:
+          primitive:
+            integer: "3"

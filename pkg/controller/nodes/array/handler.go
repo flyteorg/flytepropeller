@@ -69,7 +69,6 @@ func (a *arrayNodeHandler) FinalizeRequired() bool {
 func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContext) (handler.Transition, error) {
 	arrayNode := nCtx.Node().GetArrayNode()
 	arrayNodeState := nCtx.NodeStateReader().GetArrayNodeState()
-	fmt.Printf("HAMERSAW - executing ArrayNode\n")
 
 	switch arrayNodeState.Phase {
 	case v1alpha1.ArrayNodePhaseNone:
@@ -129,7 +128,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		// process array node subnodes
 		currentParallelism := uint32(0)
 		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
-			fmt.Printf("HAMERSAW - current parallelism %d '%d' max %d \n", i, currentParallelism, arrayNode.GetParallelism())
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
 			taskPhase := int(arrayNodeState.SubNodeTaskPhases.GetItem(i))
 
@@ -141,14 +139,11 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				continue
 			}
 
-			// initialize input reader if NodePhaseNotyetStarted or NodePhaseSucceeding for cache lookup and population 
-			var inputLiteralMap *idlcore.LiteralMap
-			var err error
-			if nodePhase == v1alpha1.NodePhaseNotYetStarted || nodePhase == v1alpha1.NodePhaseSucceeding {
-				inputLiteralMap, err = constructLiteralMap(ctx, nCtx.InputReader(), i)
-				if err != nil {
-					return handler.UnknownTransition, err
-				}
+			// need to initialize the inputReader everytime to ensure TaskHandler can access for cache lookups / population
+			// TODO @hamersaw - once fastcache is implemented this can be optimized to only initialize on NodePhaseUndefined and NodePhaseSucceeding
+			inputLiteralMap, err := constructLiteralMap(ctx, nCtx.InputReader(), i)
+			if err != nil {
+				return handler.UnknownTransition, err
 			}
 
 			inputReader := newStaticInputReader(nCtx.InputReader(), inputLiteralMap)
@@ -180,11 +175,15 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			// where the node phase is not Queued (ie. task handler will launch task and init flytekit params) we
 			// append the subtask index.
 			var subDataDir, subOutputDir storage.DataReference
-			if nodePhase == v1alpha1.NodePhaseQueued {
+			/*if nodePhase == v1alpha1.NodePhaseQueued {
 				subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx)
 			} else {
 				subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
-			}
+			}*/
+			// TODO @hamersaw - this is a problem because cache lookups happen in NodePhaseQueued
+			// so the cache hit items will be written to the wrong location
+			//    can we just change flytekit appending the index onto the location?!?1
+			subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
 
 			if err != nil {
 				return handler.UnknownTransition, err
@@ -208,10 +207,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			arrayNodeExecutionContextBuilder := newArrayNodeExecutionContextBuilder(a.nodeExecutor.GetNodeExecutionContextBuilder(),
 				subNodeID, i, subNodeStatus, inputReader, &currentParallelism, arrayNode.GetParallelism())
 			arrayExecutionContext := newArrayExecutionContext(nCtx.ExecutionContext(), i, &currentParallelism, arrayNode.GetParallelism())
-			/*arrayNodeExecutionContext, err := arrayNodeExecutionContextBuilder.BuildNodeExecutionContext(ctx, nCtx.ExecutionContext(), &arrayNodeLookup, subNodeID)
-			if err != nil {
-				return handler.UnknownTransition, err
-			}*/
 
 			arrayNodeExecutor := a.nodeExecutor.WithNodeExecutionContextBuilder(arrayNodeExecutionContextBuilder)
 			_, err = arrayNodeExecutor.RecursiveNodeHandler(ctx, arrayExecutionContext, &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec)
