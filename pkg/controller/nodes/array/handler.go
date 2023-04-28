@@ -151,6 +151,8 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			// if node has not yet started we automatically set to NodePhaseQueued to skip input resolution
 			if nodePhase == v1alpha1.NodePhaseNotYetStarted {
 				// TODO @hamersaw how does this work with fastcache?
+				// to supprt fastcache we'll need to override the bindings to BindingScalars for the input resolution on the nCtx
+				// that way we resolution is just reading a literal ... but does this still write a file then?!?
 				nodePhase = v1alpha1.NodePhaseQueued
 			}
 
@@ -174,8 +176,8 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			// index. however when we check completion status we need to manually append index - so in all cases
 			// where the node phase is not Queued (ie. task handler will launch task and init flytekit params) we
 			// append the subtask index.
-			var subDataDir, subOutputDir storage.DataReference
-			/*if nodePhase == v1alpha1.NodePhaseQueued {
+			/*var subDataDir, subOutputDir storage.DataReference
+			if nodePhase == v1alpha1.NodePhaseQueued {
 				subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx)
 			} else {
 				subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
@@ -183,8 +185,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			// TODO @hamersaw - this is a problem because cache lookups happen in NodePhaseQueued
 			// so the cache hit items will be written to the wrong location
 			//    can we just change flytekit appending the index onto the location?!?1
-			subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
-
+			subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
 			if err != nil {
 				return handler.UnknownTransition, err
 			}

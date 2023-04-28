@@ -29,7 +29,7 @@ tasks:
     - "map-task"
     - "task-name"
     - "a_mappable_task"
-    image: cr.flyte.org/flyteorg/flytekit:py3.10-latest
+    image: "array-node:ee1ba227aa95447d04bb1761691b4d97749642dc"
     resources:
       limits:
         - name: 1
