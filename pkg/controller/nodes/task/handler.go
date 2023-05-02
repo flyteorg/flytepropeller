@@ -207,7 +207,6 @@ type Handler struct {
 	kubeClient      pluginCore.KubeClient
 	secretManager   pluginCore.SecretManager
 	resourceManager resourcemanager.BaseResourceManager
-	barrierCache    *barrier
 	cfg             *config.Config
 	pluginScope     promutils.Scope
 	eventConfig     *controllerConfig.EventConfig
@@ -561,6 +560,24 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	// So now we will derive this from the plugin phase
 	// TODO @kumare re-evaluate this decision
 
+	var inputs *core.LiteralMap
+	if ts.PluginPhase == pluginCore.PhaseUndefined && t.eventConfig.RawOutputPolicy == controllerConfig.RawOutputPolicyInline {
+		// The task should only reach undefined exactly once. Since we want to send the inputs inline at some point in the task execution flow (but not necessarily every event), we send them for this event transition only.
+		// The calls to read from the catalog below may call InputReader.Get subsequent times, but the underlying implementation uses a CachedInputReader that will
+		// not re-download the inputs for the duration of this Handle call.
+		tk, err := tCtx.tr.Read(ctx)
+		if err != nil {
+			logger.Errorf(ctx, "failed to read TaskTemplate, error :%s", err.Error())
+			return handler.UnknownTransition, err
+		}
+		if tk.Interface != nil && tk.Interface.Inputs != nil && len(tk.Interface.Inputs.Variables) > 0 {
+			inputs, err = nCtx.InputReader().Get(ctx)
+			if err != nil {
+				logger.Errorf(ctx, "failed to read inputs when checking catalog cache %w", err)
+				return handler.UnknownTransition, err
+			}
+		}
+	}
 	// STEP 1: Check Cache
 	if (ts.PluginPhase == pluginCore.PhaseUndefined || ts.PluginPhase == pluginCore.PhaseWaitingForCache) && checkCatalog {
 		// This is assumed to be first time. we will check catalog and call handle
@@ -640,47 +657,19 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		}
 	}
 
-	barrierTick := uint32(0)
+	occurredAt := time.Now()
 	// STEP 2: If no cache-hit and not transitioning to PhaseWaitingForCache, then lets invoke the plugin and wait for a transition out of undefined
 	if pluginTrns.execInfo.TaskNodeInfo == nil || (pluginTrns.pInfo.Phase() != pluginCore.PhaseWaitingForCache &&
 		pluginTrns.execInfo.TaskNodeInfo.TaskNodeMetadata.CacheStatus != core.CatalogCacheStatus_CACHE_HIT) {
-		prevBarrier := t.barrierCache.GetPreviousBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
-		// Lets start with the current barrierTick (the value to be stored) same as the barrierTick in the cache
-		barrierTick = prevBarrier.BarrierClockTick
-		// Lets check if this value in cache is less than or equal to one in the store
-		if barrierTick <= ts.BarrierClockTick {
-			var err error
-			pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
-			if err != nil {
-				return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
-			}
-			if pluginTrns.IsPreviouslyObserved() {
-				logger.Debugf(ctx, "No state change for Task, previously observed same transition. Short circuiting.")
-				return pluginTrns.FinalTransition(ctx)
-			}
-			// Now no matter what we should update the barrierTick (stored in state)
-			// This is because the state is ahead of the inmemory representation
-			// This can happen in the case where the process restarted or the barrier cache got reset
-			barrierTick = ts.BarrierClockTick
-			// Now if the transition is of type barrier, lets tick the clock by one from the prev known value
-			// store that in the cache
-			if pluginTrns.ttype == handler.TransitionTypeBarrier {
-				logger.Infof(ctx, "Barrier transition observed for Plugin [%s], TaskExecID [%s]. recording: [%s]", p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), pluginTrns.pInfo.String())
-				barrierTick = barrierTick + 1
-				t.barrierCache.RecordBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), BarrierTransition{
-					BarrierClockTick: barrierTick,
-					CallLog: PluginCallLog{
-						PluginTransition: pluginTrns,
-					},
-				})
 
-			}
-		} else {
-			// Barrier tick will remain to be the one in cache.
-			// Now it may happen that the cache may get reset before we store the barrier tick
-			// this will cause us to lose that information and potentially replaying.
-			logger.Infof(ctx, "Replaying Barrier transition for cache tick [%d] < stored tick [%d], Plugin [%s], TaskExecID [%s]. recording: [%s]", barrierTick, ts.BarrierClockTick, p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), prevBarrier.CallLog.PluginTransition.pInfo.String())
-			pluginTrns = prevBarrier.CallLog.PluginTransition
+		var err error
+		pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
+		if err != nil {
+			return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
+		}
+		if pluginTrns.IsPreviouslyObserved() {
+			logger.Debugf(ctx, "No state change for Task, previously observed same transition. Short circuiting.")
+			return pluginTrns.FinalTransition(ctx)
 		}
 	}
 
@@ -696,6 +685,8 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		evInfo, err := ToTaskExecutionEvent(ToTaskExecutionEventInputs{
 			TaskExecContext:       tCtx,
 			InputReader:           nCtx.InputReader(),
+			Inputs:                inputs,
+			EventConfig:           t.eventConfig,
 			OutputWriter:          tCtx.ow,
 			Info:                  ev,
 			NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
@@ -704,6 +695,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 			PluginID:              p.GetID(),
 			ResourcePoolInfo:      tCtx.rm.GetResourcePoolInfo(),
 			ClusterID:             t.clusterID,
+			OccurredAt:            occurredAt,
 		})
 		if err != nil {
 			return handler.UnknownTransition, err
@@ -721,6 +713,8 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	evInfo, err := pluginTrns.FinalTaskEvent(ToTaskExecutionEventInputs{
 		TaskExecContext:       tCtx,
 		InputReader:           nCtx.InputReader(),
+		Inputs:                inputs,
+		EventConfig:           t.eventConfig,
 		OutputWriter:          tCtx.ow,
 		NodeExecutionMetadata: nCtx.NodeExecutionMetadata(),
 		ExecContext:           nCtx.ExecutionContext(),
@@ -728,6 +722,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		PluginID:              p.GetID(),
 		ResourcePoolInfo:      tCtx.rm.GetResourcePoolInfo(),
 		ClusterID:             t.clusterID,
+		OccurredAt:            occurredAt,
 	})
 	if err != nil {
 		logger.Errorf(ctx, "failed to convert plugin transition to TaskExecutionEvent. Error: %s", err.Error())
@@ -750,9 +745,9 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		PluginStateVersion:                 pluginTrns.pluginStateVersion,
 		PluginPhase:                        pluginTrns.pInfo.Phase(),
 		PluginPhaseVersion:                 pluginTrns.pInfo.Version(),
-		BarrierClockTick:                   barrierTick,
 		LastPhaseUpdatedAt:                 time.Now(),
 		PreviousNodeExecutionCheckpointURI: ts.PreviousNodeExecutionCheckpointURI,
+		CleanupOnFailure:                   ts.CleanupOnFailure || pluginTrns.pInfo.CleanupOnFailure(),
 	})
 	if err != nil {
 		logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())
@@ -767,10 +762,11 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 }
 
 func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
-	currentPhase := nCtx.NodeStateReader().GetTaskNodeState().PluginPhase
+	taskNodeState := nCtx.NodeStateReader().GetTaskNodeState()
+	currentPhase := taskNodeState.PluginPhase
 	logger.Debugf(ctx, "Abort invoked with phase [%v]", currentPhase)
 
-	if currentPhase.IsTerminal() {
+	if currentPhase.IsTerminal() && !(currentPhase.IsFailure() && taskNodeState.CleanupOnFailure) {
 		logger.Debugf(ctx, "Returning immediately from Abort since task is already in terminal phase.", currentPhase)
 		return nil
 	}
@@ -907,7 +903,6 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		asyncCatalog:    async,
 		resourceManager: nil,
 		secretManager:   secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
-		barrierCache:    newLRUBarrier(ctx, cfg.BarrierConfig),
 		cfg:             cfg,
 		eventConfig:     eventConfig,
 		clusterID:       clusterID,

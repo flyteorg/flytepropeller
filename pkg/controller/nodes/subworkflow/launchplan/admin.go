@@ -2,24 +2,29 @@ package launchplan
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
-
-	"github.com/flyteorg/flytestdlib/cache"
-	"golang.org/x/time/rate"
-	"k8s.io/client-go/util/workqueue"
-
-	"github.com/flyteorg/flytestdlib/errors"
-
-	"github.com/flyteorg/flytestdlib/logger"
-
-	"github.com/flyteorg/flytestdlib/promutils"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+
+	"github.com/flyteorg/flytestdlib/cache"
+	stdErr "github.com/flyteorg/flytestdlib/errors"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
+
+	evtErr "github.com/flyteorg/flytepropeller/events/errors"
+
+	"github.com/golang/protobuf/ptypes/wrappers"
+
+	"golang.org/x/time/rate"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"k8s.io/client-go/util/workqueue"
 )
 
 var isRecovery = true
@@ -61,11 +66,11 @@ func (a *adminLaunchPlanExecutor) handleLaunchError(ctx context.Context, isRecov
 			logger.Errorf(ctx, "Failed to add ExecID [%v] to auto refresh cache", executionID)
 		}
 
-		return errors.Wrapf(RemoteErrorAlreadyExists, err, "ExecID %s already exists", executionID.Name)
+		return stdErr.Wrapf(RemoteErrorAlreadyExists, err, "ExecID %s already exists", executionID.Name)
 	case codes.DataLoss, codes.DeadlineExceeded, codes.Internal, codes.Unknown, codes.Canceled:
-		return errors.Wrapf(RemoteErrorSystem, err, "failed to launch workflow [%s], system error", launchPlanRef.Name)
+		return stdErr.Wrapf(RemoteErrorSystem, err, "failed to launch workflow [%s], system error", launchPlanRef.Name)
 	default:
-		return errors.Wrapf(RemoteErrorUser, err, "failed to launch workflow")
+		return stdErr.Wrapf(RemoteErrorUser, err, "failed to launch workflow")
 	}
 }
 
@@ -90,6 +95,13 @@ func (a *adminLaunchPlanExecutor) Launch(ctx context.Context, launchCtx LaunchCo
 		}
 	}
 
+	var interruptible *wrappers.BoolValue
+	if launchCtx.Interruptible != nil {
+		interruptible = &wrappers.BoolValue{
+			Value: *launchCtx.Interruptible,
+		}
+	}
+
 	req := &admin.ExecutionCreateRequest{
 		Project: executionID.Project,
 		Domain:  executionID.Domain,
@@ -108,6 +120,8 @@ func (a *adminLaunchPlanExecutor) Launch(ctx context.Context, launchCtx LaunchCo
 			SecurityContext:     &launchCtx.SecurityContext,
 			MaxParallelism:      int32(launchCtx.MaxParallelism),
 			RawOutputDataConfig: launchCtx.RawOutputDataConfig,
+			Interruptible:       interruptible,
+			OverwriteCache:      launchCtx.OverwriteCache,
 		},
 	}
 
@@ -154,9 +168,9 @@ func (a *adminLaunchPlanExecutor) GetLaunchPlan(ctx context.Context, launchPlanR
 	lp, err := a.adminClient.GetLaunchPlan(ctx, &getObjectRequest)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			return nil, errors.Wrapf(RemoteErrorNotFound, err, "No launch plan retrieved from Admin")
+			return nil, stdErr.Wrapf(RemoteErrorNotFound, err, "No launch plan retrieved from Admin")
 		}
-		return nil, errors.Wrapf(RemoteErrorSystem, err, "Could not fetch launch plan definition from Admin")
+		return nil, stdErr.Wrapf(RemoteErrorSystem, err, "Could not fetch launch plan definition from Admin")
 	}
 
 	return lp, nil
@@ -172,7 +186,16 @@ func (a *adminLaunchPlanExecutor) Kill(ctx context.Context, executionID *core.Wo
 		if status.Code(err) == codes.NotFound {
 			return nil
 		}
-		return errors.Wrapf(RemoteErrorSystem, err, "system error")
+
+		err = evtErr.WrapError(err)
+		eventErr := &evtErr.EventError{}
+		if errors.As(err, eventErr) {
+			if eventErr.Code == evtErr.EventAlreadyInTerminalStateError {
+				return nil
+			}
+		}
+
+		return stdErr.Wrapf(RemoteErrorSystem, err, "system error")
 	}
 	return nil
 }
@@ -207,12 +230,12 @@ func (a *adminLaunchPlanExecutor) syncItem(ctx context.Context, batch cache.Batc
 
 		res, err := a.adminClient.GetExecution(ctx, req)
 		if err != nil {
-			// TODO: Define which error codes are system errors (and return the error) vs user errors.
+			// TODO: Define which error codes are system errors (and return the error) vs user stdErr.
 
 			if status.Code(err) == codes.NotFound {
-				err = errors.Wrapf(RemoteErrorNotFound, err, "execID [%s] not found on remote", exec.WorkflowExecutionIdentifier.Name)
+				err = stdErr.Wrapf(RemoteErrorNotFound, err, "execID [%s] not found on remote", exec.WorkflowExecutionIdentifier.Name)
 			} else {
-				err = errors.Wrapf(RemoteErrorSystem, err, "system error")
+				err = stdErr.Wrapf(RemoteErrorSystem, err, "system error")
 			}
 
 			resp = append(resp, cache.ItemSyncResponse{
