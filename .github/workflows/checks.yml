@@ -69,10 +69,9 @@ jobs:
 
   push_docker_image:
     name: Build & Push Flytepropeller Image
-    needs: [ bump_version ]
     uses: flyteorg/flytetools/.github/workflows/publish.yml@master
     with:
-      version: ${{ needs.bump_version.outputs.version }}
+      version: v1.1.88
       dockerfile: Dockerfile
       push: true
       repository: ${{ github.repository }}
