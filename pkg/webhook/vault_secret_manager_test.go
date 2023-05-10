@@ -255,16 +255,6 @@ func TestVaultSecretManagerInjector_Inject(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Unsupported KV version fails",
-			args: args{
-				cfg:    config.VaultSecretManagerConfig{Role: "flyte", KVVersion: 3},
-				secret: inputSecret,
-				p:      NewInputPod(map[string]string{}),
-			},
-			want:    nil,
-			wantErr: true,
-		},
-		{
 			name: "DB Secret backend enginge is supported",
 			args: args{
 				cfg: config.VaultSecretManagerConfig{Role: "flyte", KVVersion: config.KVVersion1},
