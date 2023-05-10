@@ -120,7 +120,6 @@ func ExpectedExistingRoleAnnotation(uuid string) *corev1.Pod {
 }
 
 func ExpectedConfigAnnotation(uuid string) *corev1.Pod {
-	// Injects uuid into expected output for KV v2 secrets
 	expected := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
