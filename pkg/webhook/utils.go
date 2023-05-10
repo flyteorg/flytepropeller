@@ -147,6 +147,8 @@ func CreateVaultAnnotationsForSecret(secret *core.Secret, kvversion config.KVVer
 	case "db":
 		// For the database secrets engine backend we do not want to use the templating
 	default:
+		// Deprecated: The config setting KVVersion is deprecated and will be removed in a future release.
+		// You should instead use the GroupVersion field in the secret definition.
 		// Support using the legacy KVVersion config if GroupVersion is not set
 		switch kvversion {
 		case config.KVVersion1:
