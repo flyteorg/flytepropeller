@@ -45,7 +45,6 @@ func RetrieveUUID(annotations map[string]string) string {
 }
 
 func ExpectedKVv1(uuid string) *corev1.Pod {
-	// Injects uuid into expected output for KV v1 secrets
 	expected := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
@@ -64,7 +63,6 @@ func ExpectedKVv1(uuid string) *corev1.Pod {
 }
 
 func ExpectedKVv2(uuid string) *corev1.Pod {
-	// Injects uuid into expected output for KV v2 secrets
 	expected := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
