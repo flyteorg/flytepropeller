@@ -110,6 +110,7 @@ func (c *Controller) Run(ctx context.Context) error {
 
 // Start the actual work of controller (e.g. GC, consume and process queue items... etc.)
 func (c *Controller) run(ctx context.Context) error {
+	logger.Info(ctx, "foo")
 	// Initializing WorkerPool
 	logger.Info(ctx, "Initializing controller")
 	if err := c.workerPool.Initialize(ctx); err != nil {
