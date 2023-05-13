@@ -40,6 +40,22 @@ from the propeller repo.
 
 Install
 -------
+
+Flytepropeller requires Go 1.19, as specified in the `go.mod` file. To switch to Go 1.19, you can use the following commands:
+
+```
+   $ go install golang.org/dl/go1.19@latest
+   $ go1.19 download
+   $ export GOROOT=$(go1.19 env GOROOT)
+   $ export PATH="$GOROOT/bin:$PATH"
+```
+
+To install the dependencies listed in the `go.mod` file, you can use the following command:
+
+```
+   $ go mod tidy
+```
+
 This command will install kubectl-flyte and flytepropeller to `~/go/bin`
 
 ```
