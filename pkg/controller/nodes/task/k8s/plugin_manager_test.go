@@ -978,16 +978,14 @@ func TestPluginManager_AddObjectMetadata(t *testing.T) {
 
 func TestResourceManagerConstruction(t *testing.T) {
 	ctx := context.Background()
-	sCtx := &pluginsCoreMock.SetupContext{}
 	fakeKubeClient := mocks.NewFakeKubeClient()
-	sCtx.On("KubeClient").Return(fakeKubeClient)
 
 	scope := promutils.NewScope("test:plugin_manager")
 	index := NewResourceMonitorIndex()
 	gvk, err := getPluginGvk(&v1.Pod{})
 	assert.NoError(t, err)
 	assert.Equal(t, gvk.Kind, "Pod")
-	si, err := getPluginSharedInformer(ctx, sCtx, &v1.Pod{})
+	si, err := getPluginSharedInformer(ctx, fakeKubeClient, &v1.Pod{})
 	assert.NotNil(t, si)
 	assert.NoError(t, err)
 	rm := index.GetOrCreateResourceLevelMonitor(ctx, scope, si, gvk)
