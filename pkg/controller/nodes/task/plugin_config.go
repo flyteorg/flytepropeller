@@ -10,6 +10,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flytestdlib/logger"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/webapi/grpc"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/k8s"
 )
@@ -19,6 +20,8 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 		return nil, nil, fmt.Errorf("unable to initialize plugin list, cfg is a required argument")
 	}
 
+	// Register the GRPC plugin after the config is loaded
+	grpc.RegisterGrpcPlugin()
 	pluginsConfigMeta, err := cfg.GetEnabledPlugins()
 	if err != nil {
 		return nil, nil, err
