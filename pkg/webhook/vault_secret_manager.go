@@ -68,14 +68,9 @@ func (i VaultSecretManagerInjector) Inject(ctx context.Context, secret *coreIdl.
 			"vault.hashicorp.com/agent-pre-populate-only": "true",
 		}
 
-		secretVaultAnnotations, err := CreateVaultAnnotationsForSecret(secret, i.cfg.KVVersion)
-		// Creating annotations can break with an unsupported KVVersion
-		if err != nil {
-			return p, false, err
-		}
+		secretVaultAnnotations := CreateVaultAnnotationsForSecret(secret, i.cfg.KVVersion)
 
-		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, commonVaultAnnotations)
-		p.ObjectMeta.Annotations = utils.UnionMaps(p.ObjectMeta.Annotations, secretVaultAnnotations)
+		p.ObjectMeta.Annotations = utils.UnionMaps(secretVaultAnnotations, commonVaultAnnotations, i.cfg.Annotations, p.ObjectMeta.Annotations)
 
 	case coreIdl.Secret_ENV_VAR:
 		return p, false, fmt.Errorf("Env_Var is not a supported mount requirement for Vault Secret Manager")
