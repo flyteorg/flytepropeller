@@ -167,6 +167,14 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 			SubNodeSpec: subNodeSpecs[0],
 			Parallelism: arrayNode.Parallelism,
 		}
+
+		// TODO @hamersaw hack - should not be necessary, should be set in flytekit
+		for _, binding := range nodeSpec.InputBindings {
+			switch b := binding.Binding.Binding.Value.(type) {
+			case *core.BindingData_Promise:
+				b.Promise.NodeId = "start-node"
+			}
+		}
 	default:
 		if n.GetId() == v1alpha1.StartNodeID {
 			nodeSpec.Kind = v1alpha1.NodeKindStart

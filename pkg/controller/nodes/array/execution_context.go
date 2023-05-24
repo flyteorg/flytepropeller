@@ -4,9 +4,12 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 )
@@ -52,19 +55,34 @@ func newArrayExecutionContext(executionContext executors.ExecutionContext, subNo
 	}
 }
 
+type arrayEventRecorder struct {}
+
+func (a *arrayEventRecorder) RecordNodeEvent(ctx context.Context, event *event.NodeExecutionEvent, eventConfig *config.EventConfig) error {
+	return nil
+}
+
+func (a *arrayEventRecorder) RecordTaskEvent(ctx context.Context, event *event.TaskExecutionEvent, eventConfig *config.EventConfig) error {
+	return nil
+}
+
 type arrayNodeExecutionContext struct {
 	interfaces.NodeExecutionContext
-	inputReader      io.InputReader
+	eventRecorder    *arrayEventRecorder
 	executionContext *arrayExecutionContext
+	inputReader      io.InputReader
 	nodeStatus       *v1alpha1.NodeStatus
 }
 
-func (a *arrayNodeExecutionContext) InputReader() io.InputReader {
-	return a.inputReader
+func (a *arrayNodeExecutionContext) EventsRecorder() interfaces.EventRecorder {
+	return a.eventRecorder
 }
 
 func (a *arrayNodeExecutionContext) ExecutionContext() executors.ExecutionContext {
 	return a.executionContext
+}
+
+func (a *arrayNodeExecutionContext) InputReader() io.InputReader {
+	return a.inputReader
 }
 
 func (a *arrayNodeExecutionContext) NodeStatus() v1alpha1.ExecutableNodeStatus {
@@ -75,12 +93,12 @@ func newArrayNodeExecutionContext(nodeExecutionContext interfaces.NodeExecutionC
 	arrayExecutionContext := newArrayExecutionContext(nodeExecutionContext.ExecutionContext(), subNodeIndex, currentParallelism, maxParallelism)
 	return &arrayNodeExecutionContext{
 		NodeExecutionContext: nodeExecutionContext,
-		inputReader:          inputReader,
+		eventRecorder:        &arrayEventRecorder{},
 		executionContext:     arrayExecutionContext,
+		inputReader:          inputReader,
 		nodeStatus:           nodeStatus,
 	}
 }
-
 
 type arrayNodeExecutionContextBuilder struct {
 	nCtxBuilder        interfaces.NodeExecutionContextBuilder

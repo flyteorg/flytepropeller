@@ -109,6 +109,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			maxAttempts = *subNodeSpec.GetRetryStrategy().MinAttempts
 		}
 
+		fmt.Printf("HAMERSAW - maxAttempts %d\n", maxAttempts)
 		for _, item := range []struct{arrayReference *bitarray.CompactArray; maxValue int}{
 				{arrayReference: &arrayNodeState.SubNodePhases, maxValue: len(core.Phases)-1}, // TODO @hamersaw - maxValue is for task phases
 				{arrayReference: &arrayNodeState.SubNodeTaskPhases, maxValue: len(core.Phases)-1},
@@ -205,6 +206,8 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			arrayNodeLookup := newArrayNodeLookup(nCtx.ContextualNodeLookup(), subNodeID, &subNodeSpec, subNodeStatus)
 
 			// execute subNode through RecursiveNodeHandler
+			// TODO @hamersaw - if recursiveNodeHandler is exported then can we just create a new one without needing the
+			//   new GetNodeExecutionContextBuilder and WithNodeExecutionContextBuilder functions?
 			arrayNodeExecutionContextBuilder := newArrayNodeExecutionContextBuilder(a.nodeExecutor.GetNodeExecutionContextBuilder(),
 				subNodeID, i, subNodeStatus, inputReader, &currentParallelism, arrayNode.GetParallelism())
 			arrayExecutionContext := newArrayExecutionContext(nCtx.ExecutionContext(), i, &currentParallelism, arrayNode.GetParallelism())
@@ -225,6 +228,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			} else {
 				arrayNodeState.SubNodeTaskPhases.SetItem(i, uint64(subNodeStatus.GetTaskNodeStatus().GetPhase()))
 			}
+			fmt.Printf("HAMERSAW - setting %d to %d\n", i, uint64(subNodeStatus.GetAttempts()))
 			arrayNodeState.SubNodeRetryAttempts.SetItem(i, uint64(subNodeStatus.GetAttempts()))
 			arrayNodeState.SubNodeSystemFailures.SetItem(i, uint64(subNodeStatus.GetSystemFailures()))
 		}

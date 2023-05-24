@@ -96,7 +96,6 @@ type Node interface {
 
 // TODO @hamersaw - docs
 type NodeExecutionContextBuilder interface {
-	//BuildNodeExecutionContext(execContext executors.ExecutionContext) NodeExecutionContext
 	BuildNodeExecutionContext(ctx context.Context, executionContext executors.ExecutionContext,
 		nl executors.NodeLookup, currentNodeID v1alpha1.NodeID) (NodeExecutionContext, error)
 }
