@@ -109,7 +109,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			maxAttempts = *subNodeSpec.GetRetryStrategy().MinAttempts
 		}
 
-		fmt.Printf("HAMERSAW - maxAttempts %d\n", maxAttempts)
 		for _, item := range []struct{arrayReference *bitarray.CompactArray; maxValue int}{
 				{arrayReference: &arrayNodeState.SubNodePhases, maxValue: len(core.Phases)-1}, // TODO @hamersaw - maxValue is for task phases
 				{arrayReference: &arrayNodeState.SubNodeTaskPhases, maxValue: len(core.Phases)-1},
@@ -177,19 +176,21 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			// index. however when we check completion status we need to manually append index - so in all cases
 			// where the node phase is not Queued (ie. task handler will launch task and init flytekit params) we
 			// append the subtask index.
-			/*var subDataDir, subOutputDir storage.DataReference
+			var subDataDir, subOutputDir storage.DataReference
 			if nodePhase == v1alpha1.NodePhaseQueued {
 				subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx)
 			} else {
 				subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
-			}*/
+			}
 			// TODO @hamersaw - this is a problem because cache lookups happen in NodePhaseQueued
 			// so the cache hit items will be written to the wrong location
 			//    can we just change flytekit appending the index onto the location?!?1
-			subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
+			/*subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
 			if err != nil {
 				return handler.UnknownTransition, err
-			}
+			}*/
+
+			//fmt.Printf("HAMERSAW - subDataDir '%s' subOutputDir '%s'\n", subDataDir, subOutputDir)
 
 			subNodeStatus := &v1alpha1.NodeStatus{
 				Phase: nodePhase,
@@ -228,7 +229,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			} else {
 				arrayNodeState.SubNodeTaskPhases.SetItem(i, uint64(subNodeStatus.GetTaskNodeStatus().GetPhase()))
 			}
-			fmt.Printf("HAMERSAW - setting %d to %d\n", i, uint64(subNodeStatus.GetAttempts()))
 			arrayNodeState.SubNodeRetryAttempts.SetItem(i, uint64(subNodeStatus.GetAttempts()))
 			arrayNodeState.SubNodeSystemFailures.SetItem(i, uint64(subNodeStatus.GetSystemFailures()))
 		}
@@ -238,6 +238,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		failedCount := 0
 		for _, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
+			//fmt.Printf("HAMERSAW - node %d phase %d\n", i, nodePhase)
 			switch nodePhase {
 			case v1alpha1.NodePhaseSucceeded, v1alpha1.NodePhaseRecovered:
 				successCount++
