@@ -308,7 +308,13 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			return handler.UnknownTransition, err
 		}
 
-		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(nil)), nil
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(
+			&handler.ExecutionInfo{
+				OutputInfo: &handler.OutputInfo{
+					OutputURI: outputFile,
+				},
+			},
+		)), nil
 	default:
 		// TODO @hamersaw - fail
 	}
