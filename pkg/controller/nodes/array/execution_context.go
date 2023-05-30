@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
@@ -65,12 +66,44 @@ func (a *arrayEventRecorder) RecordTaskEvent(ctx context.Context, event *event.T
 	return nil
 }
 
+type arrayTaskReader struct {
+	interfaces.TaskReader
+}
+
+func (a *arrayTaskReader) Read(ctx context.Context) (*core.TaskTemplate, error) {
+	taskTemplate, err := a.TaskReader.Read(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert output list variable to singular
+	outputVariables := make(map[string]*core.Variable)
+	for key, value := range taskTemplate.Interface.Outputs.Variables {
+		switch v := value.Type.Type.(type) {
+		case *core.LiteralType_CollectionType:
+			outputVariables[key] = &core.Variable{
+				Type:        v.CollectionType,
+				Description: value.Description,
+			}
+		default:
+			outputVariables[key] = value
+		}
+	}
+
+	taskTemplate.Interface.Outputs = &core.VariableMap{
+		Variables: outputVariables,
+	}
+	return taskTemplate, nil
+}
+
+
 type arrayNodeExecutionContext struct {
 	interfaces.NodeExecutionContext
 	eventRecorder    *arrayEventRecorder
 	executionContext *arrayExecutionContext
 	inputReader      io.InputReader
 	nodeStatus       *v1alpha1.NodeStatus
+	taskReader       interfaces.TaskReader
 }
 
 func (a *arrayNodeExecutionContext) EventsRecorder() interfaces.EventRecorder {
@@ -89,6 +122,10 @@ func (a *arrayNodeExecutionContext) NodeStatus() v1alpha1.ExecutableNodeStatus {
 	return a.nodeStatus
 }
 
+func (a *arrayNodeExecutionContext) TaskReader() interfaces.TaskReader {
+	return a.taskReader
+}
+
 func newArrayNodeExecutionContext(nodeExecutionContext interfaces.NodeExecutionContext, inputReader io.InputReader, subNodeIndex int, nodeStatus *v1alpha1.NodeStatus, currentParallelism *uint32, maxParallelism uint32) *arrayNodeExecutionContext {
 	arrayExecutionContext := newArrayExecutionContext(nodeExecutionContext.ExecutionContext(), subNodeIndex, currentParallelism, maxParallelism)
 	return &arrayNodeExecutionContext{
@@ -97,6 +134,7 @@ func newArrayNodeExecutionContext(nodeExecutionContext interfaces.NodeExecutionC
 		executionContext:     arrayExecutionContext,
 		inputReader:          inputReader,
 		nodeStatus:           nodeStatus,
+		taskReader:           &arrayTaskReader{nodeExecutionContext.TaskReader()},
 	}
 }
 
