@@ -176,19 +176,19 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			// index. however when we check completion status we need to manually append index - so in all cases
 			// where the node phase is not Queued (ie. task handler will launch task and init flytekit params) we
 			// append the subtask index.
-			var subDataDir, subOutputDir storage.DataReference
+			/*var subDataDir, subOutputDir storage.DataReference
 			if nodePhase == v1alpha1.NodePhaseQueued {
 				subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx)
 			} else {
 				subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
-			}
+			}*/
 			// TODO @hamersaw - this is a problem because cache lookups happen in NodePhaseQueued
 			// so the cache hit items will be written to the wrong location
 			//    can we just change flytekit appending the index onto the location?!?1
-			/*subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
+			subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
 			if err != nil {
 				return handler.UnknownTransition, err
-			}*/
+			}
 
 			//fmt.Printf("HAMERSAW - subDataDir '%s' subOutputDir '%s'\n", subDataDir, subOutputDir)
 
@@ -207,8 +207,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			arrayNodeLookup := newArrayNodeLookup(nCtx.ContextualNodeLookup(), subNodeID, &subNodeSpec, subNodeStatus)
 
 			// execute subNode through RecursiveNodeHandler
-			// TODO @hamersaw - if recursiveNodeHandler is exported then can we just create a new one without needing the
-			//   new GetNodeExecutionContextBuilder and WithNodeExecutionContextBuilder functions?
 			arrayNodeExecutionContextBuilder := newArrayNodeExecutionContextBuilder(a.nodeExecutor.GetNodeExecutionContextBuilder(),
 				subNodeID, i, subNodeStatus, inputReader, &currentParallelism, arrayNode.GetParallelism())
 			arrayExecutionContext := newArrayExecutionContext(nCtx.ExecutionContext(), i, &currentParallelism, arrayNode.GetParallelism())
@@ -255,6 +253,10 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 	case v1alpha1.ArrayNodePhaseFailing:
 		// TODO @hamersaw - abort everything!
 		fmt.Printf("HAMERSAW TODO - abort ArrayNode!\n")
+
+		/*return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(
+			//TODO @hamersaw - fill out error message for all failed subtasks
+		)), nil*/
 	case v1alpha1.ArrayNodePhaseSucceeding:
 		outputLiterals := make(map[string]*idlcore.Literal)
 		for i, _ := range arrayNodeState.SubNodePhases.GetItems() {
@@ -318,6 +320,9 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 	default:
 		// TODO @hamersaw - fail
 	}
+
+	// TODO @hamersaw - send task-level events
+	// this requires externalResources to emulate current maptasks
 
 	// update array node status
 	if err := nCtx.NodeStateWriter().PutArrayNodeState(arrayNodeState); err != nil {
