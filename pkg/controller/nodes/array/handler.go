@@ -10,6 +10,7 @@ import (
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/errorcollector"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
@@ -50,12 +51,26 @@ func newMetrics(scope promutils.Scope) metrics {
 
 // Abort stops the array node defined in the NodeExecutionContext
 func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecutionContext, reason string) error {
-	return nil // TODO @hamersaw - implement abort
+	arrayNodeState := nCtx.NodeStateReader().GetArrayNodeState()
+	switch arrayNodeState.Phase {
+	case v1alpha1.ArrayNodePhaseExecuting:
+		fallthrough
+	case v1alpha1.ArrayNodePhaseFailing:
+		 // TODO @hamersaw - implement abort
+	}
+	return nil
 }
 
 // Finalize completes the array node defined in the NodeExecutionContext
-func (a *arrayNodeHandler) Finalize(ctx context.Context, _ interfaces.NodeExecutionContext) error {
-	return nil // TODO @hamersaw - implement finalize - clear node data?!?!
+func (a *arrayNodeHandler) Finalize(ctx context.Context, nCtx interfaces.NodeExecutionContext) error {
+	arrayNodeState := nCtx.NodeStateReader().GetArrayNodeState()
+	switch arrayNodeState.Phase {
+	case v1alpha1.ArrayNodePhaseExecuting:
+		fallthrough
+	case v1alpha1.ArrayNodePhaseFailing:
+		 // TODO @hamersaw - implement finalize
+	}
+	return nil
 }
 
 // FinalizeRequired defines whether or not this handler requires finalize to be called on
@@ -127,6 +142,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 	case v1alpha1.ArrayNodePhaseExecuting:
 		// process array node subnodes
 		currentParallelism := uint32(0)
+		messageCollector := errorcollector.NewErrorMessageCollector()
 		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
 			taskPhase := int(arrayNodeState.SubNodeTaskPhases.GetItem(i))
@@ -140,7 +156,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			}
 
 			// need to initialize the inputReader everytime to ensure TaskHandler can access for cache lookups / population
-			// TODO @hamersaw - once fastcache is implemented this can be optimized to only initialize on NodePhaseUndefined and NodePhaseSucceeding
 			inputLiteralMap, err := constructLiteralMap(ctx, nCtx.InputReader(), i)
 			if err != nil {
 				return handler.UnknownTransition, err
@@ -217,6 +232,11 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				return handler.UnknownTransition, err
 			}
 
+			// capture subtask error if exists
+			if subNodeStatus.Error != nil {
+				messageCollector.Collect(i, subNodeStatus.Error.Message)
+			}
+
 			//fmt.Printf("HAMERSAW - '%d' transition node phase %d -> %d task phase '%d' -> '%d'\n", i,
 			//	nodePhase, subNodeStatus.GetPhase(), taskPhase, subNodeStatus.GetTaskNodeStatus().GetPhase())
 
@@ -234,14 +254,24 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		// process phases of subNodes to determine overall `ArrayNode` phase
 		successCount := 0
 		failedCount := 0
+		failingCount := 0
 		for _, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
 			//fmt.Printf("HAMERSAW - node %d phase %d\n", i, nodePhase)
 			switch nodePhase {
 			case v1alpha1.NodePhaseSucceeded, v1alpha1.NodePhaseRecovered:
 				successCount++
+			case v1alpha1.NodePhaseFailing:
+				failingCount++
 			case v1alpha1.NodePhaseFailed:
 				failedCount++
+			}
+		}
+
+		// if there is a failing node set the error message
+		if failingCount > 0 && arrayNodeState.Error == nil {
+			arrayNodeState.Error = &idlcore.ExecutionError{
+				Message: messageCollector.Summary(512), // TODO @hamersaw - make configurable
 			}
 		}
 
@@ -251,12 +281,21 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			arrayNodeState.Phase = v1alpha1.ArrayNodePhaseSucceeding
 		}
 	case v1alpha1.ArrayNodePhaseFailing:
-		// TODO @hamersaw - abort everything!
-		fmt.Printf("HAMERSAW TODO - abort ArrayNode!\n")
+		if err := a.Abort(ctx, nCtx, "TODO @hamersaw"); err != nil {
+			return handler.UnknownTransition, err
+		}
 
-		/*return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(
-			//TODO @hamersaw - fill out error message for all failed subtasks
-		)), nil*/
+		// fail with error (if provided)
+		if arrayNodeState.Error != nil {
+			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailureErr(arrayNodeState.Error, nil)), nil
+		}
+
+		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(
+			idlcore.ExecutionError_UNKNOWN,
+			"ArrayNodeFailing",
+			"Unknown reason",
+			nil,
+		)), nil
 	case v1alpha1.ArrayNodePhaseSucceeding:
 		outputLiterals := make(map[string]*idlcore.Literal)
 		for i, _ := range arrayNodeState.SubNodePhases.GetItems() {

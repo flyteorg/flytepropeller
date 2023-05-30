@@ -220,6 +220,7 @@ const (
 type ArrayNodeStatus struct {
 	MutableStruct
 	Phase                 ArrayNodePhase        `json:"phase,omitempty"`
+	ExecutionError        *core.ExecutionError  `json:"executionError,omitempty"`
 	SubNodePhases         bitarray.CompactArray `json:"subphase,omitempty"`
 	SubNodeTaskPhases     bitarray.CompactArray `json:"subtphase,omitempty"`
 	SubNodeRetryAttempts  bitarray.CompactArray `json:"subattempts,omitempty"`
@@ -234,6 +235,17 @@ func (in *ArrayNodeStatus) SetArrayNodePhase(phase ArrayNodePhase) {
 	if in.Phase != phase {
 		in.SetDirty()
 		in.Phase = phase
+	}
+}
+
+func (in *ArrayNodeStatus) GetExecutionError() *core.ExecutionError {
+	return in.ExecutionError
+}
+
+func (in *ArrayNodeStatus) SetExecutionError(executionError *core.ExecutionError) {
+	if in.ExecutionError != executionError {
+		in.SetDirty()
+		in.ExecutionError = executionError
 	}
 }
 

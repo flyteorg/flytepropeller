@@ -285,6 +285,7 @@ type MutableGateNodeStatus interface {
 
 type ExecutableArrayNodeStatus interface {
 	GetArrayNodePhase() ArrayNodePhase
+	GetExecutionError() *core.ExecutionError
 	GetSubNodePhases() bitarray.CompactArray
 	GetSubNodeTaskPhases() bitarray.CompactArray
 	GetSubNodeRetryAttempts() bitarray.CompactArray
@@ -295,6 +296,7 @@ type MutableArrayNodeStatus interface {
 	Mutable
 	ExecutableArrayNodeStatus
 	SetArrayNodePhase(phase ArrayNodePhase)
+	SetExecutionError(executionError *core.ExecutionError)
 	SetSubNodePhases(subNodePhases bitarray.CompactArray)
 	SetSubNodeTaskPhases(subNodeTaskPhases bitarray.CompactArray)
 	SetSubNodeRetryAttempts(subNodeRetryAttempts bitarray.CompactArray)
