@@ -14,6 +14,7 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
@@ -51,32 +52,83 @@ func newMetrics(scope promutils.Scope) metrics {
 
 // Abort stops the array node defined in the NodeExecutionContext
 func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecutionContext, reason string) error {
+	arrayNode := nCtx.Node().GetArrayNode()
 	arrayNodeState := nCtx.NodeStateReader().GetArrayNodeState()
+
+	messageCollector := errorcollector.NewErrorMessageCollector()
 	switch arrayNodeState.Phase {
-	case v1alpha1.ArrayNodePhaseExecuting:
-		fallthrough
-	case v1alpha1.ArrayNodePhaseFailing:
-		 // TODO @hamersaw - implement abort
+	case v1alpha1.ArrayNodePhaseExecuting, v1alpha1.ArrayNodePhaseFailing:
+		currentParallelism := uint32(0)
+		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
+			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
+
+			// TODO @hamersaw fix - do not process nodes that haven't started or are in a terminal state
+			//if nodes.IsNotyetStarted(nodePhase) || nodes.IsTerminalNodePhase(nodePhase) {
+			if nodePhase == v1alpha1.NodePhaseNotYetStarted || nodePhase == v1alpha1.NodePhaseSucceeded || nodePhase == v1alpha1.NodePhaseFailed || nodePhase == v1alpha1.NodePhaseTimedOut || nodePhase == v1alpha1.NodePhaseSkipped || nodePhase == v1alpha1.NodePhaseRecovered {
+				continue
+			}
+
+			// create array contexts
+			arrayNodeExecutor, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, _, err :=
+				a.buildArrayNodeContext(ctx, nCtx, &arrayNodeState, arrayNode, i, &currentParallelism)
+
+			// abort subNode
+			err = arrayNodeExecutor.AbortHandler(ctx, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, reason)
+			if err != nil {
+				messageCollector.Collect(i, err.Error())
+			}
+		}
 	}
+
+	if messageCollector.Length() > 0 {
+		return fmt.Errorf(messageCollector.Summary(512)) // TODO @hamersaw - make configurable
+	}
+
 	return nil
 }
 
 // Finalize completes the array node defined in the NodeExecutionContext
 func (a *arrayNodeHandler) Finalize(ctx context.Context, nCtx interfaces.NodeExecutionContext) error {
+	arrayNode := nCtx.Node().GetArrayNode()
 	arrayNodeState := nCtx.NodeStateReader().GetArrayNodeState()
+
+	messageCollector := errorcollector.NewErrorMessageCollector()
 	switch arrayNodeState.Phase {
-	case v1alpha1.ArrayNodePhaseExecuting:
-		fallthrough
-	case v1alpha1.ArrayNodePhaseFailing:
-		 // TODO @hamersaw - implement finalize
+	case v1alpha1.ArrayNodePhaseExecuting, v1alpha1.ArrayNodePhaseFailing, v1alpha1.ArrayNodePhaseSucceeding:
+		currentParallelism := uint32(0)
+		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
+			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
+
+			// TODO @hamersaw fix - do not process nodes that haven't started
+			//if nodes.IsNotyetStarted(nodePhase) {
+			if nodePhase == v1alpha1.NodePhaseNotYetStarted {
+				continue
+			}
+
+			// create array contexts
+			arrayNodeExecutor, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, _, err :=
+				a.buildArrayNodeContext(ctx, nCtx, &arrayNodeState, arrayNode, i, &currentParallelism)
+
+			// finalize subNode
+			err = arrayNodeExecutor.FinalizeHandler(ctx, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec)
+			if err != nil {
+				messageCollector.Collect(i, err.Error())
+			}
+		}
 	}
+
+	if messageCollector.Length() > 0 {
+		return fmt.Errorf(messageCollector.Summary(512)) // TODO @hamersaw - make configurable
+	}
+
 	return nil
 }
 
-// FinalizeRequired defines whether or not this handler requires finalize to be called on
-// node completion
+// FinalizeRequired defines whether or not this handler requires finalize to be called on node
+// completion
 func (a *arrayNodeHandler) FinalizeRequired() bool {
-	return false
+	 // must return true because we can't determine if finalize is required for the subNode
+	return true
 }
 
 // Handle is responsible for transitioning and reporting node state to complete the node defined
@@ -145,9 +197,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		messageCollector := errorcollector.NewErrorMessageCollector()
 		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
-			taskPhase := int(arrayNodeState.SubNodeTaskPhases.GetItem(i))
-
-			//fmt.Printf("HAMERSAW - evaluating node '%d' in node phase '%d' task phase '%d'\n", i, nodePhase, taskPhase)
 
 			// TODO @hamersaw fix - do not process nodes in terminal state
 			//if nodes.IsTerminalNodePhase(nodePhase) {
@@ -155,84 +204,17 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				continue
 			}
 
-			// need to initialize the inputReader everytime to ensure TaskHandler can access for cache lookups / population
-			inputLiteralMap, err := constructLiteralMap(ctx, nCtx.InputReader(), i)
+			// create array contexts
+			arrayNodeExecutor, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, subNodeStatus, err :=
+				a.buildArrayNodeContext(ctx, nCtx, &arrayNodeState, arrayNode, i, &currentParallelism)
+
+			// execute subNode
+			_, err = arrayNodeExecutor.RecursiveNodeHandler(ctx, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec)
 			if err != nil {
 				return handler.UnknownTransition, err
 			}
 
-			inputReader := newStaticInputReader(nCtx.InputReader(), inputLiteralMap)
-
-			// if node has not yet started we automatically set to NodePhaseQueued to skip input resolution
-			if nodePhase == v1alpha1.NodePhaseNotYetStarted {
-				// TODO @hamersaw how does this work with fastcache?
-				// to supprt fastcache we'll need to override the bindings to BindingScalars for the input resolution on the nCtx
-				// that way we resolution is just reading a literal ... but does this still write a file then?!?
-				nodePhase = v1alpha1.NodePhaseQueued
-			}
-
-			// wrap node lookup
-			subNodeSpec := *arrayNode.GetSubNodeSpec()
-
-			subNodeID := fmt.Sprintf("%s-n%d", nCtx.NodeID(), i)
-			subNodeSpec.ID = subNodeID
-			subNodeSpec.Name = subNodeID
-
-			// TODO - if we want to support more plugin types we need to figure out the best way to store plugin state
-			//  currently just mocking based on node phase -> which works for all k8s plugins
-			// we can not pre-allocated a bit array because max size is 256B and with 5k fanout node state = 1.28MB
-			pluginStateBytes := a.pluginStateBytesStarted
-			//if nodePhase == v1alpha1.NodePhaseQueued || nodePhase == v1alpha1.NodePhaseRetryableFailure {
-			if taskPhase == int(core.PhaseUndefined) || taskPhase == int(core.PhaseRetryableFailure) {
-				pluginStateBytes = a.pluginStateBytesNotStarted
-			}
-
-			// we set subDataDir and subOutputDir to the node dirs because flytekit automatically appends subtask
-			// index. however when we check completion status we need to manually append index - so in all cases
-			// where the node phase is not Queued (ie. task handler will launch task and init flytekit params) we
-			// append the subtask index.
-			/*var subDataDir, subOutputDir storage.DataReference
-			if nodePhase == v1alpha1.NodePhaseQueued {
-				subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx)
-			} else {
-				subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
-			}*/
-			// TODO @hamersaw - this is a problem because cache lookups happen in NodePhaseQueued
-			// so the cache hit items will be written to the wrong location
-			//    can we just change flytekit appending the index onto the location?!?1
-			subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
-			if err != nil {
-				return handler.UnknownTransition, err
-			}
-
-			//fmt.Printf("HAMERSAW - subDataDir '%s' subOutputDir '%s'\n", subDataDir, subOutputDir)
-
-			subNodeStatus := &v1alpha1.NodeStatus{
-				Phase: nodePhase,
-				DataDir:   subDataDir,
-				OutputDir: subOutputDir,
-				Attempts: uint32(arrayNodeState.SubNodeRetryAttempts.GetItem(i)),
-				SystemFailures: uint32(arrayNodeState.SubNodeSystemFailures.GetItem(i)),
-				TaskNodeStatus: &v1alpha1.TaskNodeStatus{
-					Phase: taskPhase,
-					PluginState: pluginStateBytes,
-				},
-			}
-
-			arrayNodeLookup := newArrayNodeLookup(nCtx.ContextualNodeLookup(), subNodeID, &subNodeSpec, subNodeStatus)
-
-			// execute subNode through RecursiveNodeHandler
-			arrayNodeExecutionContextBuilder := newArrayNodeExecutionContextBuilder(a.nodeExecutor.GetNodeExecutionContextBuilder(),
-				subNodeID, i, subNodeStatus, inputReader, &currentParallelism, arrayNode.GetParallelism())
-			arrayExecutionContext := newArrayExecutionContext(nCtx.ExecutionContext(), i, &currentParallelism, arrayNode.GetParallelism())
-
-			arrayNodeExecutor := a.nodeExecutor.WithNodeExecutionContextBuilder(arrayNodeExecutionContextBuilder)
-			_, err = arrayNodeExecutor.RecursiveNodeHandler(ctx, arrayExecutionContext, &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec)
-			if err != nil {
-				return handler.UnknownTransition, err
-			}
-
-			// capture subtask error if exists
+			// capture subNode error if exists
 			if subNodeStatus.Error != nil {
 				messageCollector.Collect(i, subNodeStatus.Error.Message)
 			}
@@ -240,6 +222,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			//fmt.Printf("HAMERSAW - '%d' transition node phase %d -> %d task phase '%d' -> '%d'\n", i,
 			//	nodePhase, subNodeStatus.GetPhase(), taskPhase, subNodeStatus.GetTaskNodeStatus().GetPhase())
 
+			// update subNode state
 			arrayNodeState.SubNodePhases.SetItem(i, uint64(subNodeStatus.GetPhase()))
 			if subNodeStatus.GetTaskNodeStatus() == nil {
 				// TODO @hamersaw during retries we clear the GetTaskNodeStatus - so resetting task phase
@@ -281,11 +264,11 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			arrayNodeState.Phase = v1alpha1.ArrayNodePhaseSucceeding
 		}
 	case v1alpha1.ArrayNodePhaseFailing:
-		if err := a.Abort(ctx, nCtx, "TODO @hamersaw"); err != nil {
+		if err := a.Abort(ctx, nCtx, "ArrayNodeFailing"); err != nil {
 			return handler.UnknownTransition, err
 		}
 
-		// fail with error (if provided)
+		// fail with reported error if one exists
 		if arrayNodeState.Error != nil {
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailureErr(arrayNodeState.Error, nil)), nil
 		}
@@ -397,6 +380,85 @@ func New(nodeExecutor interfaces.Node, scope promutils.Scope) (handler.Node, err
 		pluginStateBytesNotStarted: pluginStateBytesNotStarted,
 		pluginStateBytesStarted:    pluginStateBytesStarted,
 	}, nil
+}
+
+func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx interfaces.NodeExecutionContext, arrayNodeState *interfaces.ArrayNodeState, arrayNode v1alpha1.ExecutableArrayNode, subNodeIndex int, currentParallelism *uint32) (
+	interfaces.Node, executors.ExecutionContext, executors.DAGStructure, executors.NodeLookup, *v1alpha1.NodeSpec, *v1alpha1.NodeStatus, error) {
+
+	nodePhase := v1alpha1.NodePhase(arrayNodeState.SubNodePhases.GetItem(subNodeIndex))
+	taskPhase := int(arrayNodeState.SubNodeTaskPhases.GetItem(subNodeIndex))
+
+	// need to initialize the inputReader everytime to ensure TaskHandler can access for cache lookups / population
+	inputLiteralMap, err := constructLiteralMap(ctx, nCtx.InputReader(), subNodeIndex)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, err
+	}
+
+	inputReader := newStaticInputReader(nCtx.InputReader(), inputLiteralMap)
+
+	// if node has not yet started we automatically set to NodePhaseQueued to skip input resolution
+	if nodePhase == v1alpha1.NodePhaseNotYetStarted {
+		// TODO @hamersaw how does this work with fastcache?
+		// to supprt fastcache we'll need to override the bindings to BindingScalars for the input resolution on the nCtx
+		// that way we resolution is just reading a literal ... but does this still write a file then?!?
+		nodePhase = v1alpha1.NodePhaseQueued
+	}
+
+	// wrap node lookup
+	subNodeSpec := *arrayNode.GetSubNodeSpec()
+
+	subNodeID := fmt.Sprintf("%s-n%d", nCtx.NodeID(), subNodeIndex)
+	subNodeSpec.ID = subNodeID
+	subNodeSpec.Name = subNodeID
+
+	// TODO - if we want to support more plugin types we need to figure out the best way to store plugin state
+	//  currently just mocking based on node phase -> which works for all k8s plugins
+	// we can not pre-allocated a bit array because max size is 256B and with 5k fanout node state = 1.28MB
+	pluginStateBytes := a.pluginStateBytesStarted
+	//if nodePhase == v1alpha1.NodePhaseQueued || nodePhase == v1alpha1.NodePhaseRetryableFailure {
+	if taskPhase == int(core.PhaseUndefined) || taskPhase == int(core.PhaseRetryableFailure) {
+		pluginStateBytes = a.pluginStateBytesNotStarted
+	}
+
+	// we set subDataDir and subOutputDir to the node dirs because flytekit automatically appends subtask
+	// index. however when we check completion status we need to manually append index - so in all cases
+	// where the node phase is not Queued (ie. task handler will launch task and init flytekit params) we
+	// append the subtask index.
+	/*var subDataDir, subOutputDir storage.DataReference
+	if nodePhase == v1alpha1.NodePhaseQueued {
+		subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx)
+	} else {
+		subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
+	}*/
+	// TODO @hamersaw - this is a problem because cache lookups happen in NodePhaseQueued
+	// so the cache hit items will be written to the wrong location
+	//    can we just change flytekit appending the index onto the location?!?1
+	subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(subNodeIndex))
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, err
+	}
+
+	subNodeStatus := &v1alpha1.NodeStatus{
+		Phase:     nodePhase,
+		DataDir:   subDataDir,
+		OutputDir: subOutputDir,
+		Attempts: uint32(arrayNodeState.SubNodeRetryAttempts.GetItem(subNodeIndex)),
+		SystemFailures: uint32(arrayNodeState.SubNodeSystemFailures.GetItem(subNodeIndex)),
+		TaskNodeStatus: &v1alpha1.TaskNodeStatus{
+			Phase: taskPhase,
+			PluginState: pluginStateBytes,
+		},
+	}
+
+	arrayNodeLookup := newArrayNodeLookup(nCtx.ContextualNodeLookup(), subNodeID, &subNodeSpec, subNodeStatus)
+
+	arrayExecutionContext := newArrayExecutionContext(nCtx.ExecutionContext(), subNodeIndex, currentParallelism, arrayNode.GetParallelism())
+
+	arrayNodeExecutionContextBuilder := newArrayNodeExecutionContextBuilder(a.nodeExecutor.GetNodeExecutionContextBuilder(),
+		subNodeID, subNodeIndex, subNodeStatus, inputReader, currentParallelism, arrayNode.GetParallelism())
+	arrayNodeExecutor := a.nodeExecutor.WithNodeExecutionContextBuilder(arrayNodeExecutionContextBuilder)
+
+	return arrayNodeExecutor, arrayExecutionContext, &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec, subNodeStatus, nil
 }
 
 func bytesFromK8sPluginState(pluginState k8s.PluginState) ([]byte, error) {
