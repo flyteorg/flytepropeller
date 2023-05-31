@@ -42,6 +42,9 @@ type eventRecorder struct {
 }
 
 func (r *eventRecorder) sinkEvent(ctx context.Context, event proto.Message) error {
+	deadline := time.Now().Add(10 * time.Minute)
+	ctx, cancelCtx := context.WithDeadline(ctx, deadline)
+	defer cancelCtx()
 	startTime := time.Now()
 
 	err := r.eventSink.Sink(ctx, event)
