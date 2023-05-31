@@ -51,6 +51,7 @@ type GateNodeState struct {
 
 type ArrayNodeState struct {
 	Phase                 v1alpha1.ArrayNodePhase
+	TaskPhaseVersion      uint32
 	Error                 *core.ExecutionError
 	SubNodePhases         bitarray.CompactArray
 	SubNodeTaskPhases     bitarray.CompactArray

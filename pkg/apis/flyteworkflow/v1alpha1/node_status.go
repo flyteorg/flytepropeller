@@ -225,6 +225,7 @@ type ArrayNodeStatus struct {
 	SubNodeTaskPhases     bitarray.CompactArray `json:"subtphase,omitempty"`
 	SubNodeRetryAttempts  bitarray.CompactArray `json:"subattempts,omitempty"`
 	SubNodeSystemFailures bitarray.CompactArray `json:"subsysfailures,omitempty"`
+	TaskPhaseVersion      uint32                `json:"taskPhaseVersion,omitempty"`
 }
 
 func (in *ArrayNodeStatus) GetArrayNodePhase() ArrayNodePhase {
@@ -290,6 +291,17 @@ func (in *ArrayNodeStatus) SetSubNodeSystemFailures(subNodeSystemFailures bitarr
 	if in.SubNodeSystemFailures != subNodeSystemFailures {
 		in.SetDirty()
 		in.SubNodeSystemFailures = subNodeSystemFailures
+	}
+}
+
+func (in *ArrayNodeStatus) GetTaskPhaseVersion() uint32 {
+	return in.TaskPhaseVersion
+}
+
+func (in *ArrayNodeStatus) SetTaskPhaseVersion(taskPhaseVersion uint32) {
+	if in.TaskPhaseVersion != taskPhaseVersion {
+		in.SetDirty()
+		in.TaskPhaseVersion = taskPhaseVersion
 	}
 }
 

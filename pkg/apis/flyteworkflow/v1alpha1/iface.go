@@ -290,6 +290,7 @@ type ExecutableArrayNodeStatus interface {
 	GetSubNodeTaskPhases() bitarray.CompactArray
 	GetSubNodeRetryAttempts() bitarray.CompactArray
 	GetSubNodeSystemFailures() bitarray.CompactArray
+	GetTaskPhaseVersion() uint32
 }
 
 type MutableArrayNodeStatus interface {
@@ -301,6 +302,7 @@ type MutableArrayNodeStatus interface {
 	SetSubNodeTaskPhases(subNodeTaskPhases bitarray.CompactArray)
 	SetSubNodeRetryAttempts(subNodeRetryAttempts bitarray.CompactArray)
 	SetSubNodeSystemFailures(subNodeSystemFailures bitarray.CompactArray)
+	SetTaskPhaseVersion(taskPhaseVersion uint32)
 }
 
 type Mutable interface {

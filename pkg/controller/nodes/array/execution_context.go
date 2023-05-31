@@ -56,14 +56,27 @@ func newArrayExecutionContext(executionContext executors.ExecutionContext, subNo
 	}
 }
 
-type arrayEventRecorder struct {}
+type arrayEventRecorder struct {
+	taskEvents []*event.TaskExecutionEvent
+}
 
 func (a *arrayEventRecorder) RecordNodeEvent(ctx context.Context, event *event.NodeExecutionEvent, eventConfig *config.EventConfig) error {
 	return nil
 }
 
 func (a *arrayEventRecorder) RecordTaskEvent(ctx context.Context, event *event.TaskExecutionEvent, eventConfig *config.EventConfig) error {
+	a.taskEvents = append(a.taskEvents, event)
 	return nil
+}
+
+func (a *arrayEventRecorder) Events() []*event.TaskExecutionEvent {
+	return a.taskEvents
+}
+
+func newArrayEventRecorder() *arrayEventRecorder {
+	return &arrayEventRecorder{
+		taskEvents: make([]*event.TaskExecutionEvent, 0),
+	}
 }
 
 type arrayTaskReader struct {
@@ -99,7 +112,7 @@ func (a *arrayTaskReader) Read(ctx context.Context) (*core.TaskTemplate, error) 
 
 type arrayNodeExecutionContext struct {
 	interfaces.NodeExecutionContext
-	eventRecorder    *arrayEventRecorder
+	eventRecorder    interfaces.EventRecorder
 	executionContext *arrayExecutionContext
 	inputReader      io.InputReader
 	nodeStatus       *v1alpha1.NodeStatus
@@ -126,11 +139,11 @@ func (a *arrayNodeExecutionContext) TaskReader() interfaces.TaskReader {
 	return a.taskReader
 }
 
-func newArrayNodeExecutionContext(nodeExecutionContext interfaces.NodeExecutionContext, inputReader io.InputReader, subNodeIndex int, nodeStatus *v1alpha1.NodeStatus, currentParallelism *uint32, maxParallelism uint32) *arrayNodeExecutionContext {
+func newArrayNodeExecutionContext(nodeExecutionContext interfaces.NodeExecutionContext, inputReader io.InputReader, eventRecorder interfaces.EventRecorder, subNodeIndex int, nodeStatus *v1alpha1.NodeStatus, currentParallelism *uint32, maxParallelism uint32) *arrayNodeExecutionContext {
 	arrayExecutionContext := newArrayExecutionContext(nodeExecutionContext.ExecutionContext(), subNodeIndex, currentParallelism, maxParallelism)
 	return &arrayNodeExecutionContext{
 		NodeExecutionContext: nodeExecutionContext,
-		eventRecorder:        &arrayEventRecorder{},
+		eventRecorder:        eventRecorder,
 		executionContext:     arrayExecutionContext,
 		inputReader:          inputReader,
 		nodeStatus:           nodeStatus,
@@ -146,6 +159,7 @@ type arrayNodeExecutionContextBuilder struct {
 	inputReader        io.InputReader
 	currentParallelism *uint32
 	maxParallelism     uint32
+	eventRecorder      interfaces.EventRecorder
 }
 
 func (a *arrayNodeExecutionContextBuilder) BuildNodeExecutionContext(ctx context.Context, executionContext executors.ExecutionContext,
@@ -159,14 +173,15 @@ func (a *arrayNodeExecutionContextBuilder) BuildNodeExecutionContext(ctx context
 
 	if currentNodeID == a.subNodeID {
 		// overwrite NodeExecutionContext for ArrayNode execution
-		nCtx = newArrayNodeExecutionContext(nCtx, a.inputReader, a.subNodeIndex, a.subNodeStatus, a.currentParallelism, a.maxParallelism)
+		nCtx = newArrayNodeExecutionContext(nCtx, a.inputReader, a.eventRecorder, a.subNodeIndex, a.subNodeStatus, a.currentParallelism, a.maxParallelism)
 	}
 
 	return nCtx, nil
 }
 
 func newArrayNodeExecutionContextBuilder(nCtxBuilder interfaces.NodeExecutionContextBuilder, subNodeID v1alpha1.NodeID,
-	subNodeIndex int, subNodeStatus *v1alpha1.NodeStatus, inputReader io.InputReader, currentParallelism *uint32, maxParallelism uint32) interfaces.NodeExecutionContextBuilder {
+	subNodeIndex int, subNodeStatus *v1alpha1.NodeStatus, inputReader io.InputReader, eventRecorder interfaces.EventRecorder,  
+	currentParallelism *uint32, maxParallelism uint32) interfaces.NodeExecutionContextBuilder {
 
 	return &arrayNodeExecutionContextBuilder{
 		nCtxBuilder:        nCtxBuilder,
@@ -176,5 +191,6 @@ func newArrayNodeExecutionContextBuilder(nCtxBuilder interfaces.NodeExecutionCon
 		inputReader:        inputReader,
 		currentParallelism: currentParallelism,
 		maxParallelism:     maxParallelism,
+		eventRecorder:      eventRecorder,
 	}
 }

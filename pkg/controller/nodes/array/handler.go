@@ -74,7 +74,7 @@ func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecut
 			}
 
 			// create array contexts
-			arrayNodeExecutor, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, _, err :=
+			arrayNodeExecutor, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, _, _, err :=
 				a.buildArrayNodeContext(ctx, nCtx, &arrayNodeState, arrayNode, i, &currentParallelism)
 
 			// abort subNode
@@ -111,7 +111,7 @@ func (a *arrayNodeHandler) Finalize(ctx context.Context, nCtx interfaces.NodeExe
 			}
 
 			// create array contexts
-			arrayNodeExecutor, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, _, err :=
+			arrayNodeExecutor, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, _, _, err :=
 				a.buildArrayNodeContext(ctx, nCtx, &arrayNodeState, arrayNode, i, &currentParallelism)
 
 			// finalize subNode
@@ -143,6 +143,8 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 	arrayNodeState := nCtx.NodeStateReader().GetArrayNodeState()
 
 	var externalResources []*event.ExternalResourceInfo
+	taskPhaseVersion := arrayNodeState.TaskPhaseVersion
+
 	switch arrayNodeState.Phase {
 	case v1alpha1.ArrayNodePhaseNone:
 		// identify and validate array node input value lengths
@@ -200,7 +202,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		for i := 0; i < size; i++ {
 			externalResources = append(externalResources, &event.ExternalResourceInfo{
 				ExternalId:   fmt.Sprintf("%s-%d", nCtx.NodeID, i), // TODO @hamersaw do better
-				//CacheStatus:  cacheStatus,
 				Index:        uint32(i),
 				Logs:         nil,
 				RetryAttempt: 0,
@@ -214,6 +215,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		// process array node subnodes
 		currentParallelism := uint32(0)
 		messageCollector := errorcollector.NewErrorMessageCollector()
+		externalResources = make([]*event.ExternalResourceInfo, 0)
 		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
 
@@ -224,7 +226,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			}
 
 			// create array contexts
-			arrayNodeExecutor, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, subNodeStatus, err :=
+			arrayNodeExecutor, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, subNodeStatus, arrayEventRecorder, err :=
 				a.buildArrayNodeContext(ctx, nCtx, &arrayNodeState, arrayNode, i, &currentParallelism)
 
 			// execute subNode
@@ -236,6 +238,23 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			// capture subNode error if exists
 			if subNodeStatus.Error != nil {
 				messageCollector.Collect(i, subNodeStatus.Error.Message)
+			}
+
+			// process TaskExecutionEvents
+			for _, taskExecutionEvent := range arrayEventRecorder.Events() {
+				taskPhase := idlcore.TaskExecution_UNDEFINED
+				if taskNodeStatus := subNodeStatus.GetTaskNodeStatus(); taskNodeStatus != nil {
+					taskPhase = task.ToTaskEventPhase(core.Phase(taskNodeStatus.GetPhase()))
+				}
+
+				fmt.Printf("HAMERSAW - processing event '%s' for node '%d' with phase '%d'\n", taskExecutionEvent.Phase.String(), i, taskPhase)
+				externalResources = append(externalResources, &event.ExternalResourceInfo{
+					ExternalId:   fmt.Sprintf("%s-%d", nCtx.NodeID, i), // TODO @hamersaw do better
+					Index:        uint32(i),
+					Logs:         taskExecutionEvent.Logs,
+					RetryAttempt: 0,
+					Phase:        taskPhase,
+				})
 			}
 
 			//fmt.Printf("HAMERSAW - '%d' transition node phase %d -> %d task phase '%d' -> '%d'\n", i,
@@ -376,13 +395,13 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				ResourceType: idlcore.ResourceType_TASK,
 				Project:      workflowExecutionId.Project,
 				Domain:       workflowExecutionId.Domain,
-				Name:         "foo", // TODO @hamersaw - do better
-				Version:      "v1", // TODO @hamersaw - do better
+				Name:         "foo", // TODO @hamersaw - make it better
+				Version:      "v1", // TODO @hamersaw - please
 			},
 			ParentNodeExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
 			RetryAttempt:          0, // ArrayNode will never retry 
 			Phase:                 2, // TODO @hamersaw - determine node phase from ArrayNodePhase (ie. Queued, Running, Succeeded, Failed)
-			PhaseVersion:          0, // TODO @hamersaw - need to increment?
+			PhaseVersion:          taskPhaseVersion,
 			OccurredAt:            occurredAt,
 			Metadata: &event.TaskExecutionMetadata{
 				ExternalResources: externalResources,
@@ -394,11 +413,12 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		// TODO @hamersaw - pass eventConfig correctly
 		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, taskExecutionEvent, &config.EventConfig{}); err != nil {
 			logger.Errorf(ctx, "ArrayNode event recording failed: [%s]", err.Error())
-			//logger.Errorf(ctx, "event recording failed for Plugin [%s], eventPhase [%s], error :%s", p.GetID(), evInfo.Phase.String(), err.Error())
-			// Check for idempotency
-			// Check for terminate state error
 			return handler.UnknownTransition, err
 		}
+
+		// TODO @hamersaw - only need to increment if arrayNodeState.Phase does not change
+		//  if it does we can reset to 0
+		arrayNodeState.TaskPhaseVersion = taskPhaseVersion+1
 	}
 
 	// update array node status
@@ -438,7 +458,7 @@ func New(nodeExecutor interfaces.Node, scope promutils.Scope) (handler.Node, err
 }
 
 func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx interfaces.NodeExecutionContext, arrayNodeState *interfaces.ArrayNodeState, arrayNode v1alpha1.ExecutableArrayNode, subNodeIndex int, currentParallelism *uint32) (
-	interfaces.Node, executors.ExecutionContext, executors.DAGStructure, executors.NodeLookup, *v1alpha1.NodeSpec, *v1alpha1.NodeStatus, error) {
+	interfaces.Node, executors.ExecutionContext, executors.DAGStructure, executors.NodeLookup, *v1alpha1.NodeSpec, *v1alpha1.NodeStatus, *arrayEventRecorder, error) {
 
 	nodePhase := v1alpha1.NodePhase(arrayNodeState.SubNodePhases.GetItem(subNodeIndex))
 	taskPhase := int(arrayNodeState.SubNodeTaskPhases.GetItem(subNodeIndex))
@@ -446,7 +466,7 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 	// need to initialize the inputReader everytime to ensure TaskHandler can access for cache lookups / population
 	inputLiteralMap, err := constructLiteralMap(ctx, nCtx.InputReader(), subNodeIndex)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 
 	inputReader := newStaticInputReader(nCtx.InputReader(), inputLiteralMap)
@@ -490,7 +510,7 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 	//    can we just change flytekit appending the index onto the location?!?1
 	subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(subNodeIndex))
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 
 	subNodeStatus := &v1alpha1.NodeStatus{
@@ -509,11 +529,12 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 
 	arrayExecutionContext := newArrayExecutionContext(nCtx.ExecutionContext(), subNodeIndex, currentParallelism, arrayNode.GetParallelism())
 
+	arrayEventRecorder := newArrayEventRecorder()
 	arrayNodeExecutionContextBuilder := newArrayNodeExecutionContextBuilder(a.nodeExecutor.GetNodeExecutionContextBuilder(),
-		subNodeID, subNodeIndex, subNodeStatus, inputReader, currentParallelism, arrayNode.GetParallelism())
+		subNodeID, subNodeIndex, subNodeStatus, inputReader, arrayEventRecorder, currentParallelism, arrayNode.GetParallelism())
 	arrayNodeExecutor := a.nodeExecutor.WithNodeExecutionContextBuilder(arrayNodeExecutionContextBuilder)
 
-	return arrayNodeExecutor, arrayExecutionContext, &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec, subNodeStatus, nil
+	return arrayNodeExecutor, arrayExecutionContext, &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec, subNodeStatus, arrayEventRecorder, nil
 }
 
 func bytesFromK8sPluginState(pluginState k8s.PluginState) ([]byte, error) {

@@ -164,6 +164,7 @@ func (n nodeStateManager) GetArrayNodeState() interfaces.ArrayNodeState {
 		as.SubNodeTaskPhases = an.GetSubNodeTaskPhases()
 		as.SubNodeRetryAttempts = an.GetSubNodeRetryAttempts()
 		as.SubNodeSystemFailures = an.GetSubNodeSystemFailures()
+		as.TaskPhaseVersion = an.GetTaskPhaseVersion()
 	}
 	return as
 }
