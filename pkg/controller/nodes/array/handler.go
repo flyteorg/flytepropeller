@@ -5,8 +5,10 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	idlcore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
@@ -14,6 +16,7 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
@@ -26,6 +29,8 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/storage"
+
+	"github.com/golang/protobuf/ptypes"
 )
 
 //go:generate mockery -all -case=underscore
@@ -137,6 +142,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 	arrayNode := nCtx.Node().GetArrayNode()
 	arrayNodeState := nCtx.NodeStateReader().GetArrayNodeState()
 
+	var externalResources []*event.ExternalResourceInfo
 	switch arrayNodeState.Phase {
 	case v1alpha1.ArrayNodePhaseNone:
 		// identify and validate array node input value lengths
@@ -187,6 +193,19 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			if err != nil {
 				return handler.UnknownTransition, err
 			}
+		}
+
+		// initialize externalResources
+		externalResources = make([]*event.ExternalResourceInfo, 0, size)
+		for i := 0; i < size; i++ {
+			externalResources = append(externalResources, &event.ExternalResourceInfo{
+				ExternalId:   fmt.Sprintf("%s-%d", nCtx.NodeID, i), // TODO @hamersaw do better
+				//CacheStatus:  cacheStatus,
+				Index:        uint32(i),
+				Logs:         nil,
+				RetryAttempt: 0,
+				Phase:        idlcore.TaskExecution_QUEUED,
+			})
 		}
 
 		// transition ArrayNode to `ArrayNodePhaseExecuting`
@@ -343,8 +362,44 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		// TODO @hamersaw - fail
 	}
 
-	// TODO @hamersaw - send task-level events
-	// this requires externalResources to emulate current maptasks
+	// TODO @hamersaw - send task-level events - this requires externalResources to emulate current maptasks
+	if len(externalResources) > 0 {
+		occurredAt, err := ptypes.TimestampProto(time.Now())
+		if err != nil {
+			return handler.UnknownTransition, err
+		}
+
+		nodeExecutionId := nCtx.NodeExecutionMetadata().GetNodeExecutionID()
+		workflowExecutionId := nodeExecutionId.ExecutionId
+		taskExecutionEvent := &event.TaskExecutionEvent{
+			TaskId: &idlcore.Identifier{
+				ResourceType: idlcore.ResourceType_TASK,
+				Project:      workflowExecutionId.Project,
+				Domain:       workflowExecutionId.Domain,
+				Name:         "foo", // TODO @hamersaw - do better
+				Version:      "v1", // TODO @hamersaw - do better
+			},
+			ParentNodeExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
+			RetryAttempt:          0, // ArrayNode will never retry 
+			Phase:                 2, // TODO @hamersaw - determine node phase from ArrayNodePhase (ie. Queued, Running, Succeeded, Failed)
+			PhaseVersion:          0, // TODO @hamersaw - need to increment?
+			OccurredAt:            occurredAt,
+			Metadata: &event.TaskExecutionMetadata{
+				ExternalResources: externalResources,
+			},
+			TaskType: "k8s-array",
+			EventVersion: 1,
+		}
+
+		// TODO @hamersaw - pass eventConfig correctly
+		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, taskExecutionEvent, &config.EventConfig{}); err != nil {
+			logger.Errorf(ctx, "ArrayNode event recording failed: [%s]", err.Error())
+			//logger.Errorf(ctx, "event recording failed for Plugin [%s], eventPhase [%s], error :%s", p.GetID(), evInfo.Phase.String(), err.Error())
+			// Check for idempotency
+			// Check for terminate state error
+			return handler.UnknownTransition, err
+		}
+	}
 
 	// update array node status
 	if err := nCtx.NodeStateWriter().PutArrayNodeState(arrayNodeState); err != nil {
