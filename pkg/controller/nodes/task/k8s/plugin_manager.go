@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
@@ -59,7 +58,8 @@ const (
 )
 
 type PluginState struct {
-	Phase PluginPhase
+	Phase          PluginPhase
+	K8sPluginState k8s.PluginState
 }
 
 type PluginMetrics struct {
@@ -224,14 +224,19 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 	}
 
 	if err != nil && !k8serrors.IsAlreadyExists(err) {
-		if backoff.IsBackoffError(err) {
+		if backoff.IsResourceQuotaExceeded(err) && !backoff.IsResourceRequestsEligible(err) {
+			// if task resources exceed resource quotas then permanently fail because the task will
+			// be stuck waiting for resources until the `node-active-deadline` terminates the node.
+			logger.Errorf(ctx, "task resource requests exceed k8s resource limits. err: %v", err)
+			return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("ResourceRequestsExceedLimits",
+				fmt.Sprintf("requested resources exceed limits: %v", err.Error()), nil)), nil
+		} else if stdErrors.IsCausedBy(err, errors.BackOffError) {
 			logger.Warnf(ctx, "Failed to launch job, resource quota exceeded. err: %v", err)
 			return pluginsCore.DoTransition(pluginsCore.PhaseInfoWaitingForResourcesInfo(time.Now(), pluginsCore.DefaultPhaseVersion, fmt.Sprintf("Exceeded resourcequota: %s", err.Error()), nil)), nil
+		} else if e.backOffController == nil && backoff.IsResourceQuotaExceeded(err) {
+			logger.Warnf(ctx, "Failed to launch job, resource quota exceeded and the operation is not guarded by back-off. err: %v", err)
+			return pluginsCore.DoTransition(pluginsCore.PhaseInfoWaitingForResourcesInfo(time.Now(), pluginsCore.DefaultPhaseVersion, fmt.Sprintf("Exceeded resourcequota: %s", err.Error()), nil)), nil
 		} else if k8serrors.IsForbidden(err) {
-			if e.backOffController == nil && strings.Contains(err.Error(), "exceeded quota") {
-				logger.Warnf(ctx, "Failed to launch job, resource quota exceeded and the operation is not guarded by back-off. err: %v", err)
-				return pluginsCore.DoTransition(pluginsCore.PhaseInfoWaitingForResourcesInfo(time.Now(), pluginsCore.DefaultPhaseVersion, fmt.Sprintf("Exceeded resourcequota: %s", err.Error()), nil)), nil
-			}
 			return pluginsCore.DoTransition(pluginsCore.PhaseInfoRetryableFailure("RuntimeFailure", err.Error(), nil)), nil
 		} else if k8serrors.IsBadRequest(err) || k8serrors.IsInvalid(err) {
 			logger.Errorf(ctx, "Badly formatted resource for plugin [%s], err %s", e.id, err)
@@ -248,7 +253,7 @@ func (e *PluginManager) LaunchResource(ctx context.Context, tCtx pluginsCore.Tas
 	return pluginsCore.DoTransition(pluginsCore.PhaseInfoQueued(k8sCreateTimestamp, pluginsCore.DefaultPhaseVersion, "task submitted to K8s")), nil
 }
 
-func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (pluginsCore.Transition, error) {
+func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, k8sPluginState *k8s.PluginState) (pluginsCore.Transition, error) {
 
 	o, err := e.plugin.BuildIdentityResource(ctx, tCtx.TaskExecutionMetadata())
 	if err != nil {
@@ -275,7 +280,7 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 		e.metrics.ResourceDeleted.Inc(ctx)
 	}
 
-	pCtx := newPluginContext(tCtx)
+	pCtx := newPluginContext(tCtx, k8sPluginState)
 	p, err := e.plugin.GetTaskPhase(ctx, pCtx, o)
 	if err != nil {
 		logger.Warnf(ctx, "failed to check status of resource in plugin [%s], with error: %s", e.GetID(), err.Error())
@@ -312,6 +317,7 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 }
 
 func (e PluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (pluginsCore.Transition, error) {
+	// read phase state
 	ps := PluginState{}
 	if v, err := tCtx.PluginStateReader().Get(&ps); err != nil {
 		if v != pluginStateVersion {
@@ -319,16 +325,44 @@ func (e PluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutio
 		}
 		return pluginsCore.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
+
+	// evaluate plugin
+	var err error
+	var transition pluginsCore.Transition
+	pluginPhase := ps.Phase
 	if ps.Phase == PluginPhaseNotStarted {
-		t, err := e.LaunchResource(ctx, tCtx)
-		if err == nil && t.Info().Phase() == pluginsCore.PhaseQueued {
-			if err := tCtx.PluginStateWriter().Put(pluginStateVersion, &PluginState{Phase: PluginPhaseStarted}); err != nil {
-				return pluginsCore.UnknownTransition, err
-			}
+		transition, err = e.LaunchResource(ctx, tCtx)
+		if err == nil && transition.Info().Phase() == pluginsCore.PhaseQueued {
+			pluginPhase = PluginPhaseStarted
 		}
-		return t, err
+	} else {
+		transition, err = e.CheckResourcePhase(ctx, tCtx, &ps.K8sPluginState)
 	}
-	return e.CheckResourcePhase(ctx, tCtx)
+
+	if err != nil {
+		return transition, err
+	}
+
+	// persist any changes in phase state
+	k8sPluginState := ps.K8sPluginState
+	if ps.Phase != pluginPhase || k8sPluginState.Phase != transition.Info().Phase() ||
+		k8sPluginState.PhaseVersion != transition.Info().Version() || k8sPluginState.Reason != transition.Info().Reason() {
+
+		newPluginState := PluginState{
+			Phase: pluginPhase,
+			K8sPluginState: k8s.PluginState{
+				Phase:        transition.Info().Phase(),
+				PhaseVersion: transition.Info().Version(),
+				Reason:       transition.Info().Reason(),
+			},
+		}
+
+		if err := tCtx.PluginStateWriter().Put(pluginStateVersion, &newPluginState); err != nil {
+			return pluginsCore.UnknownTransition, err
+		}
+	}
+
+	return transition, err
 }
 
 func (e PluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) error {
@@ -510,7 +544,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		return false
 	}
 
-	if err := src.InjectCache(iCtx.KubeClient().GetCache()); err != nil {
+	if err := src.InjectCache(kubeClient.GetCache()); err != nil {
 		logger.Errorf(ctx, "failed to set informers for ObjectType %s", src.String())
 		return nil, err
 	}
@@ -591,7 +625,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	if err != nil {
 		return nil, err
 	}
-	sharedInformer, err := getPluginSharedInformer(ctx, iCtx, entry.ResourceToWatch)
+	sharedInformer, err := getPluginSharedInformer(ctx, kubeClient, entry.ResourceToWatch)
 	if err != nil {
 		return nil, err
 	}
@@ -617,8 +651,8 @@ func getPluginGvk(resourceToWatch runtime.Object) (schema.GroupVersionKind, erro
 	return kinds[0], nil
 }
 
-func getPluginSharedInformer(ctx context.Context, iCtx pluginsCore.SetupContext, resourceToWatch client.Object) (cache.SharedIndexInformer, error) {
-	i, err := iCtx.KubeClient().GetCache().GetInformer(ctx, resourceToWatch)
+func getPluginSharedInformer(ctx context.Context, kubeClient pluginsCore.KubeClient, resourceToWatch client.Object) (cache.SharedIndexInformer, error) {
+	i, err := kubeClient.GetCache().GetInformer(ctx, resourceToWatch)
 	if err != nil {
 		return nil, errors.Wrapf(errors.PluginInitializationFailed, err, "Error getting informer for %s", reflect.TypeOf(i))
 	}

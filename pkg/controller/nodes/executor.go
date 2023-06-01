@@ -220,7 +220,7 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 	// A recoverable node execution should always be in a terminal phase
 	switch recovered.Closure.Phase {
 	case core.NodeExecution_SKIPPED:
-		return handler.PhaseInfoSkip(nil, "node execution recovery indicated original node was skipped"), nil
+		return handler.PhaseInfoUndefined, nil
 	case core.NodeExecution_SUCCEEDED:
 		fallthrough
 	case core.NodeExecution_RECOVERED:
@@ -528,8 +528,7 @@ func (c *nodeExecutor) finalize(ctx context.Context, h handler.Node, nCtx handle
 func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executors.DAGStructure, nCtx *nodeExecContext, _ handler.Node) (executors.NodeStatus, error) {
 	logger.Debugf(ctx, "Node not yet started, running pre-execute")
 	defer logger.Debugf(ctx, "Node pre-execute completed")
-
-	beginHandleTimestamp := time.Now()
+	occurredAt := time.Now()
 	p, err := c.preExecute(ctx, dag, nCtx)
 	if err != nil {
 		logger.Errorf(ctx, "failed preExecute for node. Error: %s", err.Error())
@@ -553,6 +552,7 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 	if np != nodeStatus.GetPhase() {
 		// assert np == Queued!
 		logger.Infof(ctx, "Change in node state detected from [%s] -> [%s]", nodeStatus.GetPhase().String(), np.String())
+		p = p.WithOccuredAt(occurredAt)
 
 		nev, err := ToNodeExecutionEvent(nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
 			p, nCtx.InputReader().GetInputPath().String(), nodeStatus, nCtx.ExecutionContext().GetEventVersion(),
@@ -561,11 +561,6 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 		if err != nil {
 			return executors.NodeStatusUndefined, errors.Wrapf(errors.IllegalStateError, nCtx.NodeID(), err, "could not convert phase info to event")
 		}
-		protoTimestamp, err := ptypes.TimestampProto(beginHandleTimestamp)
-		if err != nil {
-			return executors.NodeStatusUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "failed to convert timestamp to proto")
-		}
-		nev.OccurredAt = protoTimestamp
 		err = c.IdempotentRecordEvent(ctx, nev)
 		if err != nil {
 			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
@@ -702,6 +697,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx *node
 							Message: err.Error(),
 						},
 					},
+					ReportedAt: ptypes.TimestampNow(),
 				})
 
 				if err != nil {
@@ -1166,6 +1162,7 @@ func (c *nodeExecutor) AbortHandler(ctx context.Context, execContext executors.E
 				},
 			},
 			ProducerId: c.clusterID,
+			ReportedAt: ptypes.TimestampNow(),
 		})
 		if err != nil && !eventsErr.IsNotFound(err) && !eventsErr.IsEventIncompatibleClusterError(err) {
 			if errors2.IsCausedBy(err, errors.IllegalStateError) {

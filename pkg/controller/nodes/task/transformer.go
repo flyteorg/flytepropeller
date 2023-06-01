@@ -11,9 +11,10 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
-	"github.com/golang/protobuf/ptypes"
-
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+
+	"github.com/golang/protobuf/ptypes"
+	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
 )
 
 // This is used by flyteadmin to indicate that map tasks now report subtask metadata individually.
@@ -86,13 +87,21 @@ type ToTaskExecutionEventInputs struct {
 func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutionEvent, error) {
 	// Transitions to a new phase
 
-	occurredAt, err := ptypes.TimestampProto(input.OccurredAt)
+	var err error
+	var occurredAt *timestamppb.Timestamp
+	if i := input.Info.Info(); i != nil && i.OccurredAt != nil {
+		occurredAt, err = ptypes.TimestampProto(*i.OccurredAt)
+	} else {
+		occurredAt, err = ptypes.TimestampProto(input.OccurredAt)
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	if i := input.Info.Info(); i != nil && i.OccurredAt != nil {
-		occurredAt, err = ptypes.TimestampProto(*i.OccurredAt)
+	reportedAt := ptypes.TimestampNow()
+	if i := input.Info.Info(); i != nil && i.ReportedAt != nil {
+		occurredAt, err = ptypes.TimestampProto(*i.ReportedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -138,6 +147,7 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		Reason:                input.Info.Reason(),
 		Metadata:              metadata,
 		EventVersion:          taskExecutionEventVersion,
+		ReportedAt:            reportedAt,
 	}
 
 	if input.Info.Phase().IsSuccess() && input.OutputWriter != nil {
