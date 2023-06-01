@@ -247,13 +247,13 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 					taskPhase = task.ToTaskEventPhase(core.Phase(taskNodeStatus.GetPhase()))
 				}
 
-				fmt.Printf("HAMERSAW - processing event '%s' for node '%d' with phase '%d'\n", taskExecutionEvent.Phase.String(), i, taskPhase)
 				externalResources = append(externalResources, &event.ExternalResourceInfo{
 					ExternalId:   fmt.Sprintf("%s-%d", nCtx.NodeID, i), // TODO @hamersaw do better
 					Index:        uint32(i),
 					Logs:         taskExecutionEvent.Logs,
 					RetryAttempt: 0,
 					Phase:        taskPhase,
+					//CacheStatus:  taskExecutionEvent.Metadata, // TODO @hamersaw - figure out how to get CacheStatus back
 				})
 			}
 
@@ -406,7 +406,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			Metadata: &event.TaskExecutionMetadata{
 				ExternalResources: externalResources,
 			},
-			TaskType: "k8s-array",
+			TaskType:     "k8s-array",
 			EventVersion: 1,
 		}
 
