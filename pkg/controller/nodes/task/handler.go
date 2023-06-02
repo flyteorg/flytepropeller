@@ -174,7 +174,6 @@ func (p *pluginRequestedTransition) FinalTransition(ctx context.Context) (handle
 		return handler.DoTransition(p.ttype, handler.PhaseInfoSuccess(&p.execInfo)), nil
 	case pluginCore.PhaseRetryableFailure:
 		logger.Debugf(ctx, "Transitioning to RetryableFailure")
-		fmt.Printf("HAMERSAW - %+v\n", p.pInfo.Err())
 		return handler.DoTransition(p.ttype, handler.PhaseInfoRetryableFailureErr(p.pInfo.Err(), &p.execInfo)), nil
 	case pluginCore.PhasePermanentFailure:
 		logger.Debugf(ctx, "Transitioning to Failure")

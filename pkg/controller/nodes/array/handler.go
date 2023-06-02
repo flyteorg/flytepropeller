@@ -321,7 +321,8 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		outputLiterals := make(map[string]*idlcore.Literal)
 		for i, _ := range arrayNodeState.SubNodePhases.GetItems() {
 			// initialize subNode reader
-			subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
+			currentAttempt := uint32(arrayNodeState.SubNodeRetryAttempts.GetItem(i))
+			subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(i), strconv.Itoa(int(currentAttempt)))
 			if err != nil {
 				return handler.UnknownTransition, err
 			}
@@ -508,7 +509,8 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 	// TODO @hamersaw - this is a problem because cache lookups happen in NodePhaseQueued
 	// so the cache hit items will be written to the wrong location
 	//    can we just change flytekit appending the index onto the location?!?1
-	subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(subNodeIndex))
+	currentAttempt := uint32(arrayNodeState.SubNodeRetryAttempts.GetItem(subNodeIndex))
+	subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(subNodeIndex), strconv.Itoa(int(currentAttempt)))
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, err
 	}
@@ -517,7 +519,7 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 		Phase:     nodePhase,
 		DataDir:   subDataDir,
 		OutputDir: subOutputDir,
-		Attempts: uint32(arrayNodeState.SubNodeRetryAttempts.GetItem(subNodeIndex)),
+		Attempts:  currentAttempt,
 		SystemFailures: uint32(arrayNodeState.SubNodeSystemFailures.GetItem(subNodeIndex)),
 		TaskNodeStatus: &v1alpha1.TaskNodeStatus{
 			Phase: taskPhase,
@@ -525,6 +527,7 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 		},
 	}
 
+	// initialize mocks
 	arrayNodeLookup := newArrayNodeLookup(nCtx.ContextualNodeLookup(), subNodeID, &subNodeSpec, subNodeStatus)
 
 	arrayExecutionContext := newArrayExecutionContext(nCtx.ExecutionContext(), subNodeIndex, currentParallelism, arrayNode.GetParallelism())
