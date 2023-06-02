@@ -260,10 +260,10 @@ github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5Kwzbycv
 github.com/fatih/color v1.13.0 h1:8LOYc1KYPPmyKMuN8QV2DNRWNbLo6LZ0iLs8+mlH53w=
 github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
 github.com/felixge/httpsnoop v1.0.1/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
-github.com/flyteorg/flyteidl v1.5.9 h1:jqoenDx6p1Uncja1LMSzWmq3mBrMQ6vOdzN7/Ma3P28=
-github.com/flyteorg/flyteidl v1.5.9/go.mod h1:EtE/muM2lHHgBabjYcxqe9TWeJSL0kXwbI0RgVwI4Og=
-github.com/flyteorg/flyteplugins v1.0.59-0.20230530185411-b466e7acdc26 h1:U4Zojo6r9UyiXqk99J6UQwuz+I+euWs93/46ActK3O8=
-github.com/flyteorg/flyteplugins v1.0.59-0.20230530185411-b466e7acdc26/go.mod h1:HlkqVWgAlnF+huRcwCeENA92iYTnUNpEuIMixgnyJzo=
+github.com/flyteorg/flyteidl v1.5.10 h1:SHeiaWRt8EAVuFsat+BJswtc07HTZ4DqhfTEYSm621k=
+github.com/flyteorg/flyteidl v1.5.10/go.mod h1:EtE/muM2lHHgBabjYcxqe9TWeJSL0kXwbI0RgVwI4Og=
+github.com/flyteorg/flyteplugins v1.0.59-0.20230602221507-ad3148f60b2c h1:+ToeC7IegWWtOGlCVqYwEGYFfEJRQPvGjA5g47315Ts=
+github.com/flyteorg/flyteplugins v1.0.59-0.20230602221507-ad3148f60b2c/go.mod h1:HHt4nKDKVwrZPKDsj99dNtDSIJL378xNotYMA3a/TFA=
 github.com/flyteorg/flytestdlib v1.0.15 h1:kv9jDQmytbE84caY+pkZN8trJU2ouSAmESzpTEhfTt0=
 github.com/flyteorg/flytestdlib v1.0.15/go.mod h1:ghw/cjY0sEWIIbyCtcJnL/Gt7ZS7gf9SUi0CCPhbz3s=
 github.com/flyteorg/stow v0.3.6 h1:jt50ciM14qhKBaIrB+ppXXY+SXB59FNREFgTJqCyqIk=
