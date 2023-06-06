@@ -260,6 +260,11 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 					taskPhase = task.ToTaskEventPhase(core.Phase(taskNodeStatus.GetPhase()))
 				}
 
+				for _, log := range taskExecutionEvent.Logs {
+					// TODO @hamersaw - do we need to add retryattempt?
+					log.Name = fmt.Sprintf("-%d", log.Name, i)
+				}
+
 				externalResources = append(externalResources, &event.ExternalResourceInfo{
 					ExternalId:   fmt.Sprintf("%s-%d", nCtx.NodeID, i), // TODO @hamersaw do better
 					Index:        uint32(i),
@@ -327,11 +332,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			// wait until all tasks have completed before declaring success
 			arrayNodeState.Phase = v1alpha1.ArrayNodePhaseSucceeding
 		}
-		/*if failedCount > 0 {
-			arrayNodeState.Phase = v1alpha1.ArrayNodePhaseFailing
-		} else if successCount == len(arrayNodeState.SubNodePhases.GetItems()) {
-			arrayNodeState.Phase = v1alpha1.ArrayNodePhaseSucceeding
-		}*/
 	case v1alpha1.ArrayNodePhaseFailing:
 		if err := a.Abort(ctx, nCtx, "ArrayNodeFailing"); err != nil {
 			return handler.UnknownTransition, err
@@ -369,22 +369,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				// append nil literal for all ouput variables
 				for name, _ := range outputVariables {
 					appendLiteral(name, nilLiteral, outputLiterals, len(arrayNodeState.SubNodePhases.GetItems()))
-					/*// TODO @hamersaw - refactor because duplicated below
-					outputLiteral, exists := outputLiterals[name]
-					if !exists {
-						outputLiteral = &idlcore.Literal{
-							Value: &idlcore.Literal_Collection{
-								Collection: &idlcore.LiteralCollection{
-									Literals: make([]*idlcore.Literal, 0, len(arrayNodeState.SubNodePhases.GetItems())),
-								},
-							},
-						}
-
-						outputLiterals[name] = outputLiteral
-					}
-
-					collection := outputLiteral.GetCollection()
-					collection.Literals = append(collection.Literals, nilLiteral)*/
 				}
 			} else {
 				// initialize subNode reader
@@ -411,21 +395,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				// copy individual subNode output literals into a collection of output literals
 				for name, literal := range outputs.GetLiterals() {
 					appendLiteral(name, literal, outputLiterals, len(arrayNodeState.SubNodePhases.GetItems()))
-					/*outputLiteral, exists := outputLiterals[name]
-					if !exists {
-						outputLiteral = &idlcore.Literal{
-							Value: &idlcore.Literal_Collection{
-								Collection: &idlcore.LiteralCollection{
-									Literals: make([]*idlcore.Literal, 0, len(arrayNodeState.SubNodePhases.GetItems())),
-								},
-							},
-						}
-
-						outputLiterals[name] = outputLiteral
-					}
-
-					collection := outputLiteral.GetCollection()
-					collection.Literals = append(collection.Literals, literal)*/
 				}
 			}
 		}
@@ -465,7 +434,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				ResourceType: idlcore.ResourceType_TASK,
 				Project:      workflowExecutionId.Project,
 				Domain:       workflowExecutionId.Domain,
-				Name:         "foo", // TODO @hamersaw - make it better
+				Name:         nCtx.NodeID(), //"foo", // TODO @hamersaw - make it better
 				Version:      "v1", // TODO @hamersaw - please
 			},
 			ParentNodeExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
