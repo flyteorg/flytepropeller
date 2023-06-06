@@ -171,6 +171,13 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 			Parallelism: arrayNode.Parallelism,
 		}
 
+		switch successCriteria := arrayNode.SuccessCriteria.(type) {
+		case *core.ArrayNode_MinSuccesses: 
+			nodeSpec.ArrayNode.MinSuccesses = &successCriteria.MinSuccesses;
+		case *core.ArrayNode_MinSuccessRatio:
+			nodeSpec.ArrayNode.MinSuccessRatio = &successCriteria.MinSuccessRatio;
+		}
+
 		// TODO @hamersaw hack - should not be necessary, should be set in flytekit
 		for _, binding := range nodeSpec.InputBindings {
 			switch b := binding.Binding.Binding.Value.(type) {

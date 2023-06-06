@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -22,8 +23,8 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/k8s"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/codex"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/k8s"
 
 	"github.com/flyteorg/flytestdlib/bitarray"
 	"github.com/flyteorg/flytestdlib/logger"
@@ -31,6 +32,18 @@ import (
 	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/golang/protobuf/ptypes"
+)
+
+var (
+	nilLiteral = &idlcore.Literal{
+		Value: &idlcore.Literal_Scalar{
+			Scalar: &idlcore.Scalar{
+				Value: &idlcore.Scalar_NoneType{
+					NoneType: &idlcore.Void{},
+				},
+			},
+		},
+	}
 )
 
 //go:generate mockery -all -case=underscore
@@ -276,17 +289,28 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		successCount := 0
 		failedCount := 0
 		failingCount := 0
+		runningCount := 0
 		for _, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
 			//fmt.Printf("HAMERSAW - node %d phase %d\n", i, nodePhase)
 			switch nodePhase {
-			case v1alpha1.NodePhaseSucceeded, v1alpha1.NodePhaseRecovered:
+			case v1alpha1.NodePhaseSucceeded, v1alpha1.NodePhaseRecovered: // TODO @hamersaw NodePhaseSkipped?
 				successCount++
 			case v1alpha1.NodePhaseFailing:
 				failingCount++
-			case v1alpha1.NodePhaseFailed:
+	 		case v1alpha1.NodePhaseFailed: // TODO @hamersaw NodePhaseTimedOut?
 				failedCount++
+			default:
+				runningCount++
 			}
+		}
+
+		// calculate minimum number of successes to succeed the ArrayNode
+		minSuccesses := len(arrayNodeState.SubNodePhases.GetItems())
+		if arrayNode.GetMinSuccesses() != nil {
+			minSuccesses = int(*arrayNode.GetMinSuccesses())
+		} else if minSuccessRatio := arrayNode.GetMinSuccessRatio(); minSuccessRatio != nil {
+			minSuccesses = int(math.Ceil(float64(*minSuccessRatio) * float64(minSuccesses)))
 		}
 
 		// if there is a failing node set the error message
@@ -296,11 +320,18 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			}
 		}
 
-		if failedCount > 0 {
+		if len(arrayNodeState.SubNodePhases.GetItems()) - failedCount < minSuccesses {
+			// no chance to reach the mininum number of successes
+			arrayNodeState.Phase = v1alpha1.ArrayNodePhaseFailing
+		} else if successCount >= minSuccesses && runningCount == 0 {
+			// wait until all tasks have completed before declaring success
+			arrayNodeState.Phase = v1alpha1.ArrayNodePhaseSucceeding
+		}
+		/*if failedCount > 0 {
 			arrayNodeState.Phase = v1alpha1.ArrayNodePhaseFailing
 		} else if successCount == len(arrayNodeState.SubNodePhases.GetItems()) {
 			arrayNodeState.Phase = v1alpha1.ArrayNodePhaseSucceeding
-		}
+		}*/
 	case v1alpha1.ArrayNodePhaseFailing:
 		if err := a.Abort(ctx, nCtx, "ArrayNodeFailing"); err != nil {
 			return handler.UnknownTransition, err
@@ -319,45 +350,83 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		)), nil
 	case v1alpha1.ArrayNodePhaseSucceeding:
 		outputLiterals := make(map[string]*idlcore.Literal)
-		for i, _ := range arrayNodeState.SubNodePhases.GetItems() {
-			// initialize subNode reader
-			currentAttempt := uint32(arrayNodeState.SubNodeRetryAttempts.GetItem(i))
-			subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(i), strconv.Itoa(int(currentAttempt)))
-			if err != nil {
-				return handler.UnknownTransition, err
-			}
+		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
+			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
 
-			// checkpoint paths are not computed here because this function is only called when writing
-			// existing cached outputs. if this functionality changes this will need to be revisited.
-			outputPaths := ioutils.NewCheckpointRemoteFilePaths(ctx, nCtx.DataStore(), subOutputDir, ioutils.NewRawOutputPaths(ctx, subDataDir), "")
-			reader := ioutils.NewRemoteFileOutputReader(ctx, nCtx.DataStore(), outputPaths, int64(999999999))
-
-			// read outputs
-			outputs, executionErr, err := reader.Read(ctx)
-			if err != nil {
-				return handler.UnknownTransition, err
-			} else if executionErr != nil {
-				// TODO @hamersaw handle executionErr
-				//return handler.UnknownTransition, executionErr
-			}
-
-			// copy individual subNode output literals into a collection of output literals
-			for name, literal := range outputs.GetLiterals() {
-				outputLiteral, exists := outputLiterals[name]
-				if !exists {
-					outputLiteral = &idlcore.Literal{
-						Value: &idlcore.Literal_Collection{
-							Collection: &idlcore.LiteralCollection{
-								Literals: make([]*idlcore.Literal, 0, len(arrayNodeState.SubNodePhases.GetItems())),
-							},
-						},
-					}
-
-					outputLiterals[name] = outputLiteral
+			if nodePhase != v1alpha1.NodePhaseSucceeded {
+				// retrieve output variables from task template
+				var outputVariables map[string]*idlcore.Variable
+				task, err := nCtx.ExecutionContext().GetTask(*arrayNode.GetSubNodeSpec().TaskRef)
+				if err != nil {
+					// Should never happen
+					return handler.UnknownTransition, err
 				}
 
-				collection := outputLiteral.GetCollection()
-				collection.Literals = append(collection.Literals, literal)
+				if task.CoreTask() != nil && task.CoreTask().Interface != nil && task.CoreTask().Interface.Outputs != nil {
+					outputVariables = task.CoreTask().Interface.Outputs.Variables
+				}
+
+				// append nil literal for all ouput variables
+				for name, _ := range outputVariables {
+					appendLiteral(name, nilLiteral, outputLiterals, len(arrayNodeState.SubNodePhases.GetItems()))
+					/*// TODO @hamersaw - refactor because duplicated below
+					outputLiteral, exists := outputLiterals[name]
+					if !exists {
+						outputLiteral = &idlcore.Literal{
+							Value: &idlcore.Literal_Collection{
+								Collection: &idlcore.LiteralCollection{
+									Literals: make([]*idlcore.Literal, 0, len(arrayNodeState.SubNodePhases.GetItems())),
+								},
+							},
+						}
+
+						outputLiterals[name] = outputLiteral
+					}
+
+					collection := outputLiteral.GetCollection()
+					collection.Literals = append(collection.Literals, nilLiteral)*/
+				}
+			} else {
+				// initialize subNode reader
+				currentAttempt := uint32(arrayNodeState.SubNodeRetryAttempts.GetItem(i))
+				subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(i), strconv.Itoa(int(currentAttempt)))
+				if err != nil {
+					return handler.UnknownTransition, err
+				}
+
+				// checkpoint paths are not computed here because this function is only called when writing
+				// existing cached outputs. if this functionality changes this will need to be revisited.
+				outputPaths := ioutils.NewCheckpointRemoteFilePaths(ctx, nCtx.DataStore(), subOutputDir, ioutils.NewRawOutputPaths(ctx, subDataDir), "")
+				reader := ioutils.NewRemoteFileOutputReader(ctx, nCtx.DataStore(), outputPaths, int64(999999999))
+
+				// read outputs
+				outputs, executionErr, err := reader.Read(ctx)
+				if err != nil {
+					return handler.UnknownTransition, err
+				} else if executionErr != nil {
+					// TODO @hamersaw handle executionErr
+					//return handler.UnknownTransition, executionErr
+				}
+
+				// copy individual subNode output literals into a collection of output literals
+				for name, literal := range outputs.GetLiterals() {
+					appendLiteral(name, literal, outputLiterals, len(arrayNodeState.SubNodePhases.GetItems()))
+					/*outputLiteral, exists := outputLiterals[name]
+					if !exists {
+						outputLiteral = &idlcore.Literal{
+							Value: &idlcore.Literal_Collection{
+								Collection: &idlcore.LiteralCollection{
+									Literals: make([]*idlcore.Literal, 0, len(arrayNodeState.SubNodePhases.GetItems())),
+								},
+							},
+						}
+
+						outputLiterals[name] = outputLiteral
+					}
+
+					collection := outputLiteral.GetCollection()
+					collection.Literals = append(collection.Literals, literal)*/
+				}
 			}
 		}
 
@@ -538,6 +607,24 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 	arrayNodeExecutor := a.nodeExecutor.WithNodeExecutionContextBuilder(arrayNodeExecutionContextBuilder)
 
 	return arrayNodeExecutor, arrayExecutionContext, &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec, subNodeStatus, arrayEventRecorder, nil
+}
+
+func appendLiteral(name string, literal *idlcore.Literal, outputLiterals map[string]*idlcore.Literal, length int) {
+	outputLiteral, exists := outputLiterals[name]
+	if !exists {
+		outputLiteral = &idlcore.Literal{
+			Value: &idlcore.Literal_Collection{
+				Collection: &idlcore.LiteralCollection{
+					Literals: make([]*idlcore.Literal, 0, length),
+				},
+			},
+		}
+
+		outputLiterals[name] = outputLiteral
+	}
+
+	collection := outputLiteral.GetCollection()
+	collection.Literals = append(collection.Literals, literal)
 }
 
 func bytesFromK8sPluginState(pluginState k8s.PluginState) ([]byte, error) {

@@ -258,7 +258,8 @@ type ExecutableGateNode interface {
 type ExecutableArrayNode interface {
 	GetSubNodeSpec() *NodeSpec
 	GetParallelism() uint32
-	// TODO @hamersaw - complete ExecutableArrayNode
+	GetMinSuccesses() *uint32
+	GetMinSuccessRatio() *float32
 }
 
 type ExecutableWorkflowNodeStatus interface {
