@@ -57,10 +57,12 @@ func newArrayExecutionContext(executionContext executors.ExecutionContext, subNo
 }
 
 type arrayEventRecorder struct {
+	nodeEvents []*event.NodeExecutionEvent
 	taskEvents []*event.TaskExecutionEvent
 }
 
 func (a *arrayEventRecorder) RecordNodeEvent(ctx context.Context, event *event.NodeExecutionEvent, eventConfig *config.EventConfig) error {
+	a.nodeEvents = append(a.nodeEvents, event)
 	return nil
 }
 
@@ -69,12 +71,17 @@ func (a *arrayEventRecorder) RecordTaskEvent(ctx context.Context, event *event.T
 	return nil
 }
 
-func (a *arrayEventRecorder) Events() []*event.TaskExecutionEvent {
+func (a *arrayEventRecorder) NodeEvents() []*event.NodeExecutionEvent {
+	return a.nodeEvents
+}
+
+func (a *arrayEventRecorder) TaskEvents() []*event.TaskExecutionEvent {
 	return a.taskEvents
 }
 
 func newArrayEventRecorder() *arrayEventRecorder {
 	return &arrayEventRecorder{
+		nodeEvents: make([]*event.NodeExecutionEvent, 0),
 		taskEvents: make([]*event.TaskExecutionEvent, 0),
 	}
 }

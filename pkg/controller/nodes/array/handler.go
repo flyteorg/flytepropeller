@@ -253,8 +253,18 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				messageCollector.Collect(i, subNodeStatus.Error.Message)
 			}
 
-			// process TaskExecutionEvents
-			for _, taskExecutionEvent := range arrayEventRecorder.Events() {
+			// process events
+			cacheStatus := idlcore.CatalogCacheStatus_CACHE_DISABLED
+			for _, nodeExecutionEvent := range arrayEventRecorder.NodeEvents() {
+				switch target := nodeExecutionEvent.TargetMetadata.(type) {
+				case *event.NodeExecutionEvent_TaskNodeMetadata:
+					if target.TaskNodeMetadata != nil {
+						cacheStatus = target.TaskNodeMetadata.CacheStatus
+					}
+				}
+			}
+
+			for _, taskExecutionEvent := range arrayEventRecorder.TaskEvents() {
 				taskPhase := idlcore.TaskExecution_UNDEFINED
 				if taskNodeStatus := subNodeStatus.GetTaskNodeStatus(); taskNodeStatus != nil {
 					taskPhase = task.ToTaskEventPhase(core.Phase(taskNodeStatus.GetPhase()))
@@ -262,7 +272,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 
 				for _, log := range taskExecutionEvent.Logs {
 					// TODO @hamersaw - do we need to add retryattempt?
-					log.Name = fmt.Sprintf("-%d", log.Name, i)
+					log.Name = fmt.Sprintf("%s-%d", log.Name, i)
 				}
 
 				externalResources = append(externalResources, &event.ExternalResourceInfo{
@@ -271,7 +281,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 					Logs:         taskExecutionEvent.Logs,
 					RetryAttempt: 0,
 					Phase:        taskPhase,
-					//CacheStatus:  taskExecutionEvent.Metadata, // TODO @hamersaw - figure out how to get CacheStatus back
+					CacheStatus:  cacheStatus, // TODO @hamersaw - figure out how to get CacheStatus back
 				})
 			}
 
