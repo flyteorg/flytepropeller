@@ -73,6 +73,7 @@ func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecut
 	arrayNode := nCtx.Node().GetArrayNode()
 	arrayNodeState := nCtx.NodeStateReader().GetArrayNodeState()
 
+	externalResources := make([]*event.ExternalResourceInfo, 0, len(arrayNodeState.SubNodePhases.GetItems()))
 	messageCollector := errorcollector.NewErrorMessageCollector()
 	switch arrayNodeState.Phase {
 	case v1alpha1.ArrayNodePhaseExecuting, v1alpha1.ArrayNodePhaseFailing:
@@ -94,12 +95,32 @@ func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecut
 			err = arrayNodeExecutor.AbortHandler(ctx, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, reason)
 			if err != nil {
 				messageCollector.Collect(i, err.Error())
+			} else {
+				externalResources = append(externalResources, &event.ExternalResourceInfo{
+					ExternalId:   fmt.Sprintf("%s-%d", nCtx.NodeID, i), // TODO @hamersaw do better
+					Index:        uint32(i),
+					Logs:         nil,
+					RetryAttempt: 0,
+					Phase:        idlcore.TaskExecution_ABORTED,
+				})
 			}
 		}
 	}
 
 	if messageCollector.Length() > 0 {
 		return fmt.Errorf(messageCollector.Summary(512)) // TODO @hamersaw - make configurable
+	}
+
+	// TODO @hamersaw - update aborted state for subnodes
+	taskExecutionEvent, err := buildTaskExecutionEvent(ctx, nCtx, idlcore.TaskExecution_ABORTED, 0, externalResources)
+	if err != nil {
+		return err
+	}
+
+	// TODO @hamersaw - pass eventConfig correctly
+	if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, taskExecutionEvent, &config.EventConfig{}); err != nil {
+		logger.Errorf(ctx, "ArrayNode event recording failed: [%s]", err.Error())
+		return err
 	}
 
 	return nil
@@ -281,7 +302,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 					Logs:         taskExecutionEvent.Logs,
 					RetryAttempt: 0,
 					Phase:        taskPhase,
-					CacheStatus:  cacheStatus, // TODO @hamersaw - figure out how to get CacheStatus back
+					CacheStatus:  cacheStatus,
 				})
 			}
 
@@ -432,7 +453,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 
 	// TODO @hamersaw - send task-level events - this requires externalResources to emulate current maptasks
 	if len(externalResources) > 0 {
-		occurredAt, err := ptypes.TimestampProto(time.Now())
+		/*occurredAt, err := ptypes.TimestampProto(time.Now())
 		if err != nil {
 			return handler.UnknownTransition, err
 		}
@@ -444,7 +465,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				ResourceType: idlcore.ResourceType_TASK,
 				Project:      workflowExecutionId.Project,
 				Domain:       workflowExecutionId.Domain,
-				Name:         nCtx.NodeID(), //"foo", // TODO @hamersaw - make it better
+				Name:         nCtx.NodeID(),
 				Version:      "v1", // TODO @hamersaw - please
 			},
 			ParentNodeExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
@@ -457,6 +478,12 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			},
 			TaskType:     "k8s-array",
 			EventVersion: 1,
+		}*/
+
+		// TODO @hamersaw - determine node phase from ArrayNodePhase (ie. Queued, Running, Succeeded, Failed)
+		taskExecutionEvent, err := buildTaskExecutionEvent(ctx, nCtx, idlcore.TaskExecution_RUNNING, taskPhaseVersion, externalResources)
+		if err != nil {
+			return handler.UnknownTransition, err
 		}
 
 		// TODO @hamersaw - pass eventConfig correctly
@@ -604,6 +631,35 @@ func appendLiteral(name string, literal *idlcore.Literal, outputLiterals map[str
 
 	collection := outputLiteral.GetCollection()
 	collection.Literals = append(collection.Literals, literal)
+}
+
+func buildTaskExecutionEvent(ctx context.Context, nCtx interfaces.NodeExecutionContext, taskPhase idlcore.TaskExecution_Phase, taskPhaseVersion uint32, externalResources []*event.ExternalResourceInfo) (*event.TaskExecutionEvent, error) {
+	occurredAt, err := ptypes.TimestampProto(time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	nodeExecutionId := nCtx.NodeExecutionMetadata().GetNodeExecutionID()
+	workflowExecutionId := nodeExecutionId.ExecutionId
+	return &event.TaskExecutionEvent{
+		TaskId: &idlcore.Identifier{
+			ResourceType: idlcore.ResourceType_TASK,
+			Project:      workflowExecutionId.Project,
+			Domain:       workflowExecutionId.Domain,
+			Name:         nCtx.NodeID(),
+			Version:      "v1", // TODO @hamersaw - please
+		},
+		ParentNodeExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
+		RetryAttempt:          0, // ArrayNode will never retry 
+		Phase:                 taskPhase,
+		PhaseVersion:          taskPhaseVersion,
+		OccurredAt:            occurredAt,
+		Metadata: &event.TaskExecutionMetadata{
+			ExternalResources: externalResources,
+		},
+		TaskType:     "k8s-array",
+		EventVersion: 1,
+	}, nil
 }
 
 func bytesFromK8sPluginState(pluginState k8s.PluginState) ([]byte, error) {
