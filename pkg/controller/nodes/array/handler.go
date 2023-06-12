@@ -97,7 +97,7 @@ func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecut
 				messageCollector.Collect(i, err.Error())
 			} else {
 				externalResources = append(externalResources, &event.ExternalResourceInfo{
-					ExternalId:   fmt.Sprintf("%s-%d", nCtx.NodeID, i), // TODO @hamersaw do better
+					ExternalId:   buildSubNodeID(nCtx, i, 0),
 					Index:        uint32(i),
 					Logs:         nil,
 					RetryAttempt: 0,
@@ -111,7 +111,7 @@ func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecut
 		return fmt.Errorf(messageCollector.Summary(512)) // TODO @hamersaw - make configurable
 	}
 
-	// TODO @hamersaw - update aborted state for subnodes
+	// update aborted state for subnodes
 	taskExecutionEvent, err := buildTaskExecutionEvent(ctx, nCtx, idlcore.TaskExecution_ABORTED, 0, externalResources)
 	if err != nil {
 		return err
@@ -235,7 +235,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		externalResources = make([]*event.ExternalResourceInfo, 0, size)
 		for i := 0; i < size; i++ {
 			externalResources = append(externalResources, &event.ExternalResourceInfo{
-				ExternalId:   fmt.Sprintf("%s-%d", nCtx.NodeID, i), // TODO @hamersaw do better
+				ExternalId:   buildSubNodeID(nCtx, i, 0),
 				Index:        uint32(i),
 				Logs:         nil,
 				RetryAttempt: 0,
@@ -285,6 +285,8 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				}
 			}
 
+			retryAttempt := subNodeStatus.GetAttempts()
+
 			for _, taskExecutionEvent := range arrayEventRecorder.TaskEvents() {
 				taskPhase := idlcore.TaskExecution_UNDEFINED
 				if taskNodeStatus := subNodeStatus.GetTaskNodeStatus(); taskNodeStatus != nil {
@@ -297,17 +299,14 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				}
 
 				externalResources = append(externalResources, &event.ExternalResourceInfo{
-					ExternalId:   fmt.Sprintf("%s-%d", nCtx.NodeID, i), // TODO @hamersaw do better
+					ExternalId:   buildSubNodeID(nCtx, i, retryAttempt),
 					Index:        uint32(i),
 					Logs:         taskExecutionEvent.Logs,
-					RetryAttempt: 0,
+					RetryAttempt: retryAttempt,
 					Phase:        taskPhase,
 					CacheStatus:  cacheStatus,
 				})
 			}
-
-			//fmt.Printf("HAMERSAW - '%d' transition node phase %d -> %d task phase '%d' -> '%d'\n", i,
-			//	nodePhase, subNodeStatus.GetPhase(), taskPhase, subNodeStatus.GetTaskNodeStatus().GetPhase())
 
 			// update subNode state
 			arrayNodeState.SubNodePhases.SetItem(i, uint64(subNodeStatus.GetPhase()))
@@ -451,35 +450,9 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		// TODO @hamersaw - fail
 	}
 
-	// TODO @hamersaw - send task-level events - this requires externalResources to emulate current maptasks
+	// if there were changes to subnode status externalResources will be populated and must be
+	// reported to admin through a TaskExecutionEvent.
 	if len(externalResources) > 0 {
-		/*occurredAt, err := ptypes.TimestampProto(time.Now())
-		if err != nil {
-			return handler.UnknownTransition, err
-		}
-
-		nodeExecutionId := nCtx.NodeExecutionMetadata().GetNodeExecutionID()
-		workflowExecutionId := nodeExecutionId.ExecutionId
-		taskExecutionEvent := &event.TaskExecutionEvent{
-			TaskId: &idlcore.Identifier{
-				ResourceType: idlcore.ResourceType_TASK,
-				Project:      workflowExecutionId.Project,
-				Domain:       workflowExecutionId.Domain,
-				Name:         nCtx.NodeID(),
-				Version:      "v1", // TODO @hamersaw - please
-			},
-			ParentNodeExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
-			RetryAttempt:          0, // ArrayNode will never retry 
-			Phase:                 2, // TODO @hamersaw - determine node phase from ArrayNodePhase (ie. Queued, Running, Succeeded, Failed)
-			PhaseVersion:          taskPhaseVersion,
-			OccurredAt:            occurredAt,
-			Metadata: &event.TaskExecutionMetadata{
-				ExternalResources: externalResources,
-			},
-			TaskType:     "k8s-array",
-			EventVersion: 1,
-		}*/
-
 		// TODO @hamersaw - determine node phase from ArrayNodePhase (ie. Queued, Running, Succeeded, Failed)
 		taskExecutionEvent, err := buildTaskExecutionEvent(ctx, nCtx, idlcore.TaskExecution_RUNNING, taskPhaseVersion, externalResources)
 		if err != nil {
@@ -661,6 +634,12 @@ func buildTaskExecutionEvent(ctx context.Context, nCtx interfaces.NodeExecutionC
 		EventVersion: 1,
 	}, nil
 }
+
+// TODO @hamersaw - what do we want for a subnode ID?
+func buildSubNodeID(nCtx interfaces.NodeExecutionContext, index int, retryAttempt uint32) string {
+	return fmt.Sprintf("%s-n%d-%d", nCtx.NodeID, index, retryAttempt)
+}
+
 
 func bytesFromK8sPluginState(pluginState k8s.PluginState) ([]byte, error) {
 	buffer := make([]byte, 0, task.MaxPluginStateSizeBytes)
