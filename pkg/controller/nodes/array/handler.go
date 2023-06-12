@@ -1,12 +1,10 @@
 package array
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math"
 	"strconv"
-	"time"
 
 	idlcore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
@@ -24,15 +22,12 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/codex"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/k8s"
 
 	"github.com/flyteorg/flytestdlib/bitarray"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/storage"
-
-	"github.com/golang/protobuf/ptypes"
 )
 
 var (
@@ -112,7 +107,7 @@ func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecut
 		return fmt.Errorf(messageCollector.Summary(events.MaxErrorMessageLength))
 	}
 
-	// update aborted state for subnodes
+	// update aborted state for subNodes
 	taskExecutionEvent, err := buildTaskExecutionEvent(ctx, nCtx, idlcore.TaskExecution_ABORTED, 0, externalResources)
 	if err != nil {
 		return err
@@ -248,7 +243,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		// transition ArrayNode to `ArrayNodePhaseExecuting`
 		arrayNodeState.Phase = v1alpha1.ArrayNodePhaseExecuting
 	case v1alpha1.ArrayNodePhaseExecuting:
-		// process array node subnodes
+		// process array node subNodes
 		currentParallelism := uint32(0)
 		messageCollector := errorcollector.NewErrorMessageCollector()
 		externalResources = make([]*event.ExternalResourceInfo, 0)
@@ -295,8 +290,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				}
 
 				for _, log := range taskExecutionEvent.Logs {
-					// TODO @hamersaw - do we need to add retryAttempt to log name?
-					log.Name = fmt.Sprintf("%s-%d", log.Name, i)
+					log.Name = fmt.Sprintf("%s-%d", log.Name, i) // TODO @hamersaw - do we need to add retryAttempt to log name?
 				}
 
 				externalResources = append(externalResources, &event.ExternalResourceInfo{
@@ -449,7 +443,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "invalid ArrayNode phase %+v", arrayNodeState.Phase)
 	}
 
-	// if there were changes to subnode status externalResources will be populated and must be
+	// if there were changes to subNode status externalResources will be populated and must be
 	// reported to admin through a TaskExecutionEvent.
 	if len(externalResources) > 0 {
 		// determine task phase from ArrayNodePhase
@@ -468,7 +462,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		// need to increment taskPhaseVersion if arrayNodeState.Phase does not change, otherwise
 		// reset to 0. by incrementing this always we report an event and ensure processing
 		// everytime the ArrayNode is evaluated. if this overhead becomes too large, we will need
-		// to revisit and only increment when any subnode state changes. 
+		// to revisit and only increment when any subNode state changes. 
 		if currentArrayNodePhase != arrayNodeState.Phase {
 			arrayNodeState.TaskPhaseVersion = 0
 		} else {
@@ -598,87 +592,4 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 	arrayNodeExecutor := a.nodeExecutor.WithNodeExecutionContextBuilder(arrayNodeExecutionContextBuilder)
 
 	return arrayNodeExecutor, arrayExecutionContext, &arrayNodeLookup, &arrayNodeLookup, &subNodeSpec, subNodeStatus, arrayEventRecorder, nil
-}
-
-func appendLiteral(name string, literal *idlcore.Literal, outputLiterals map[string]*idlcore.Literal, length int) {
-	outputLiteral, exists := outputLiterals[name]
-	if !exists {
-		outputLiteral = &idlcore.Literal{
-			Value: &idlcore.Literal_Collection{
-				Collection: &idlcore.LiteralCollection{
-					Literals: make([]*idlcore.Literal, 0, length),
-				},
-			},
-		}
-
-		outputLiterals[name] = outputLiteral
-	}
-
-	collection := outputLiteral.GetCollection()
-	collection.Literals = append(collection.Literals, literal)
-}
-
-func buildTaskExecutionEvent(ctx context.Context, nCtx interfaces.NodeExecutionContext, taskPhase idlcore.TaskExecution_Phase, taskPhaseVersion uint32, externalResources []*event.ExternalResourceInfo) (*event.TaskExecutionEvent, error) {
-	occurredAt, err := ptypes.TimestampProto(time.Now())
-	if err != nil {
-		return nil, err
-	}
-
-	nodeExecutionID := nCtx.NodeExecutionMetadata().GetNodeExecutionID()
-	workflowExecutionID := nodeExecutionID.ExecutionId
-	return &event.TaskExecutionEvent{
-		TaskId: &idlcore.Identifier{
-			ResourceType: idlcore.ResourceType_TASK,
-			Project:      workflowExecutionID.Project,
-			Domain:       workflowExecutionID.Domain,
-			Name:         nCtx.NodeID(),
-			Version:      "v1", // this value is irrelevant but necessary for the identifier to be valid
-		},
-		ParentNodeExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
-		RetryAttempt:          0, // ArrayNode will never retry 
-		Phase:                 taskPhase,
-		PhaseVersion:          taskPhaseVersion,
-		OccurredAt:            occurredAt,
-		Metadata: &event.TaskExecutionMetadata{
-			ExternalResources: externalResources,
-		},
-		TaskType:     "k8s-array",
-		EventVersion: 1,
-	}, nil
-}
-
-// TODO @hamersaw - what do we want for a subnode ID?
-func buildSubNodeID(nCtx interfaces.NodeExecutionContext, index int, retryAttempt uint32) string {
-	return fmt.Sprintf("%s-n%d-%d", nCtx.NodeID, index, retryAttempt)
-}
-
-func bytesFromK8sPluginState(pluginState k8s.PluginState) ([]byte, error) {
-	buffer := make([]byte, 0, task.MaxPluginStateSizeBytes)
-	bufferWriter := bytes.NewBuffer(buffer)
-
-	codec := codex.GobStateCodec{}
-	if err := codec.Encode(pluginState, bufferWriter); err != nil {
-		return nil, err
-	}
-
-	return bufferWriter.Bytes(), nil
-}
-
-func constructOutputReferences(ctx context.Context, nCtx interfaces.NodeExecutionContext, postfix...string) (storage.DataReference, storage.DataReference, error) {
-	subDataDir, err := nCtx.DataStore().ConstructReference(ctx, nCtx.NodeStatus().GetDataDir(), postfix...)
-	if err != nil {
-		return "", "", err
-	}
-
-	subOutputDir, err := nCtx.DataStore().ConstructReference(ctx, nCtx.NodeStatus().GetOutputDir(), postfix...)
-	if err != nil {
-		return "", "", err
-	}
-
-	return subDataDir, subOutputDir, nil
-}
-
-func isTerminalNodePhase(nodePhase v1alpha1.NodePhase) bool {
-	return nodePhase == v1alpha1.NodePhaseSucceeded || nodePhase == v1alpha1.NodePhaseFailed || nodePhase == v1alpha1.NodePhaseTimedOut ||
-		nodePhase == v1alpha1.NodePhaseSkipped || nodePhase == v1alpha1.NodePhaseRecovered
 }
