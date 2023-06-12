@@ -65,7 +65,7 @@ func NewHandlerFactory(ctx context.Context, executor interfaces.Node, workflowLa
 		return nil, err
 	}
 
-	arrayHandler, err := array.New(executor, scope)
+	arrayHandler, err := array.New(executor, eventConfig, scope)
 	if err != nil {
 		return nil, err
 	}

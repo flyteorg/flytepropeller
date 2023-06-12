@@ -15,6 +15,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/errorcollector"
 
+	"github.com/flyteorg/flytepropeller/events"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/compiler/validators"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
@@ -50,6 +51,7 @@ var (
 
 // arrayNodeHandler is a handle implementation for processing array nodes
 type arrayNodeHandler struct {
+	eventConfig                *config.EventConfig
 	metrics                    metrics
 	nodeExecutor               interfaces.Node
 	pluginStateBytesNotStarted []byte
@@ -81,9 +83,8 @@ func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecut
 		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
 
-			// TODO @hamersaw fix - do not process nodes that haven't started or are in a terminal state
-			//if nodes.IsNotyetStarted(nodePhase) || nodes.IsTerminalNodePhase(nodePhase) {
-			if nodePhase == v1alpha1.NodePhaseNotYetStarted || nodePhase == v1alpha1.NodePhaseSucceeded || nodePhase == v1alpha1.NodePhaseFailed || nodePhase == v1alpha1.NodePhaseTimedOut || nodePhase == v1alpha1.NodePhaseSkipped || nodePhase == v1alpha1.NodePhaseRecovered {
+			// do not process nodes that have not started or are in a terminal state
+			if nodePhase == v1alpha1.NodePhaseNotYetStarted || isTerminalNodePhase(nodePhase) {
 				continue
 			}
 
@@ -108,7 +109,7 @@ func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecut
 	}
 
 	if messageCollector.Length() > 0 {
-		return fmt.Errorf(messageCollector.Summary(512)) // TODO @hamersaw - make configurable
+		return fmt.Errorf(messageCollector.Summary(events.MaxErrorMessageLength))
 	}
 
 	// update aborted state for subnodes
@@ -117,8 +118,7 @@ func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecut
 		return err
 	}
 
-	// TODO @hamersaw - pass eventConfig correctly
-	if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, taskExecutionEvent, &config.EventConfig{}); err != nil {
+	if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, taskExecutionEvent, a.eventConfig); err != nil {
 		logger.Errorf(ctx, "ArrayNode event recording failed: [%s]", err.Error())
 		return err
 	}
@@ -138,8 +138,7 @@ func (a *arrayNodeHandler) Finalize(ctx context.Context, nCtx interfaces.NodeExe
 		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
 
-			// TODO @hamersaw fix - do not process nodes that haven't started
-			//if nodes.IsNotyetStarted(nodePhase) {
+			// do not process nodes that have not started
 			if nodePhase == v1alpha1.NodePhaseNotYetStarted {
 				continue
 			}
@@ -157,7 +156,7 @@ func (a *arrayNodeHandler) Finalize(ctx context.Context, nCtx interfaces.NodeExe
 	}
 
 	if messageCollector.Length() > 0 {
-		return fmt.Errorf(messageCollector.Summary(512)) // TODO @hamersaw - make configurable
+		return fmt.Errorf(messageCollector.Summary(events.MaxErrorMessageLength))
 	}
 
 	return nil
@@ -175,11 +174,12 @@ func (a *arrayNodeHandler) FinalizeRequired() bool {
 func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContext) (handler.Transition, error) {
 	arrayNode := nCtx.Node().GetArrayNode()
 	arrayNodeState := nCtx.NodeStateReader().GetArrayNodeState()
+	currentArrayNodePhase := arrayNodeState.Phase
 
 	var externalResources []*event.ExternalResourceInfo
 	taskPhaseVersion := arrayNodeState.TaskPhaseVersion
 
-	switch arrayNodeState.Phase {
+	switch currentArrayNodePhase {
 	case v1alpha1.ArrayNodePhaseNone:
 		// identify and validate array node input value lengths
 		literalMap, err := nCtx.InputReader().Get(ctx)
@@ -219,7 +219,9 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		}
 
 		for _, item := range []struct{arrayReference *bitarray.CompactArray; maxValue int}{
-				{arrayReference: &arrayNodeState.SubNodePhases, maxValue: len(core.Phases)-1}, // TODO @hamersaw - maxValue is for task phases
+			// we use NodePhaseRecovered for the `maxValue` of `SubNodePhases` because `Phase` is
+			// defined as an `iota` so it is impossible to programmatically get largest value
+			{arrayReference: &arrayNodeState.SubNodePhases, maxValue: int(v1alpha1.NodePhaseRecovered)}, 
 				{arrayReference: &arrayNodeState.SubNodeTaskPhases, maxValue: len(core.Phases)-1},
 				{arrayReference: &arrayNodeState.SubNodeRetryAttempts, maxValue: maxAttempts},
 				{arrayReference: &arrayNodeState.SubNodeSystemFailures, maxValue: maxAttempts},
@@ -253,9 +255,8 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
 
-			// TODO @hamersaw fix - do not process nodes in terminal state
-			//if nodes.IsTerminalNodePhase(nodePhase) {
-			if nodePhase == v1alpha1.NodePhaseSucceeded || nodePhase == v1alpha1.NodePhaseFailed || nodePhase == v1alpha1.NodePhaseTimedOut || nodePhase == v1alpha1.NodePhaseSkipped || nodePhase == v1alpha1.NodePhaseRecovered {
+			// do not process nodes in terminal state
+			if isTerminalNodePhase(nodePhase) {
 				continue
 			}
 
@@ -294,7 +295,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				}
 
 				for _, log := range taskExecutionEvent.Logs {
-					// TODO @hamersaw - do we need to add retryattempt?
+					// TODO @hamersaw - do we need to add retryAttempt to log name?
 					log.Name = fmt.Sprintf("%s-%d", log.Name, i)
 				}
 
@@ -311,7 +312,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			// update subNode state
 			arrayNodeState.SubNodePhases.SetItem(i, uint64(subNodeStatus.GetPhase()))
 			if subNodeStatus.GetTaskNodeStatus() == nil {
-				// TODO @hamersaw during retries we clear the GetTaskNodeStatus - so resetting task phase
+				// resetting task phase because during retries we clear the GetTaskNodeStatus
 				arrayNodeState.SubNodeTaskPhases.SetItem(i, uint64(0))
 			} else {
 				arrayNodeState.SubNodeTaskPhases.SetItem(i, uint64(subNodeStatus.GetTaskNodeStatus().GetPhase()))
@@ -327,13 +328,12 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		runningCount := 0
 		for _, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
-			//fmt.Printf("HAMERSAW - node %d phase %d\n", i, nodePhase)
 			switch nodePhase {
-			case v1alpha1.NodePhaseSucceeded, v1alpha1.NodePhaseRecovered: // TODO @hamersaw NodePhaseSkipped?
+			case v1alpha1.NodePhaseSucceeded, v1alpha1.NodePhaseRecovered, v1alpha1.NodePhaseSkipped:
 				successCount++
 			case v1alpha1.NodePhaseFailing:
 				failingCount++
-	 		case v1alpha1.NodePhaseFailed: // TODO @hamersaw NodePhaseTimedOut?
+			case v1alpha1.NodePhaseFailed, v1alpha1.NodePhaseTimedOut:
 				failedCount++
 			default:
 				runningCount++
@@ -348,10 +348,10 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			minSuccesses = int(math.Ceil(float64(*minSuccessRatio) * float64(minSuccesses)))
 		}
 
-		// if there is a failing node set the error message
+		// if there is a failing node set the error message if it has not been previous set
 		if failingCount > 0 && arrayNodeState.Error == nil {
 			arrayNodeState.Error = &idlcore.ExecutionError{
-				Message: messageCollector.Summary(512), // TODO @hamersaw - make configurable
+				Message: messageCollector.Summary(events.MaxErrorMessageLength),
 			}
 		}
 
@@ -418,8 +418,8 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				if err != nil {
 					return handler.UnknownTransition, err
 				} else if executionErr != nil {
-					// TODO @hamersaw handle executionErr
-					//return handler.UnknownTransition, executionErr
+					return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(),
+						"execution error ArrayNode output, bad state: %s", executionErr.String())
 				}
 
 				// copy individual subNode output literals into a collection of output literals
@@ -433,7 +433,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			Literals: outputLiterals,
 		}
 
-		//fmt.Printf("HAMERSAW - final outputs %+v\n", outputLiteralMap)
 		outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
 		if err := nCtx.DataStore().WriteProtobuf(ctx, outputFile, storage.Options{}, outputLiteralMap); err != nil {
 			return handler.UnknownTransition, err
@@ -447,27 +446,44 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			},
 		)), nil
 	default:
-		// TODO @hamersaw - fail
+		return handler.UnknownTransition, errors.Errorf(errors.IllegalStateError, nCtx.NodeID(), "invalid ArrayNode phase %+v", arrayNodeState.Phase)
 	}
 
 	// if there were changes to subnode status externalResources will be populated and must be
 	// reported to admin through a TaskExecutionEvent.
 	if len(externalResources) > 0 {
-		// TODO @hamersaw - determine node phase from ArrayNodePhase (ie. Queued, Running, Succeeded, Failed)
-		taskExecutionEvent, err := buildTaskExecutionEvent(ctx, nCtx, idlcore.TaskExecution_RUNNING, taskPhaseVersion, externalResources)
+		// determine task phase from ArrayNodePhase
+		taskPhase := idlcore.TaskExecution_UNDEFINED
+		switch currentArrayNodePhase {
+		case v1alpha1.ArrayNodePhaseNone:
+			taskPhase = idlcore.TaskExecution_QUEUED
+		case v1alpha1.ArrayNodePhaseExecuting:
+			taskPhase = idlcore.TaskExecution_RUNNING
+		case v1alpha1.ArrayNodePhaseSucceeding:
+			taskPhase = idlcore.TaskExecution_SUCCEEDED
+		case v1alpha1.ArrayNodePhaseFailing:
+			taskPhase = idlcore.TaskExecution_FAILED
+		}
+
+		// need to increment taskPhaseVersion if arrayNodeState.Phase does not change, otherwise
+		// reset to 0. by incrementing this always we report an event and ensure processing
+		// everytime the ArrayNode is evaluated. if this overhead becomes too large, we will need
+		// to revisit and only increment when any subnode state changes. 
+		if currentArrayNodePhase != arrayNodeState.Phase {
+			arrayNodeState.TaskPhaseVersion = 0
+		} else {
+			arrayNodeState.TaskPhaseVersion = taskPhaseVersion+1
+		}
+
+		taskExecutionEvent, err := buildTaskExecutionEvent(ctx, nCtx, taskPhase, taskPhaseVersion, externalResources)
 		if err != nil {
 			return handler.UnknownTransition, err
 		}
 
-		// TODO @hamersaw - pass eventConfig correctly
-		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, taskExecutionEvent, &config.EventConfig{}); err != nil {
+		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, taskExecutionEvent, a.eventConfig); err != nil {
 			logger.Errorf(ctx, "ArrayNode event recording failed: [%s]", err.Error())
 			return handler.UnknownTransition, err
 		}
-
-		// TODO @hamersaw - only need to increment if arrayNodeState.Phase does not change
-		//  if it does we can reset to 0
-		arrayNodeState.TaskPhaseVersion = taskPhaseVersion+1
 	}
 
 	// update array node status
@@ -485,7 +501,7 @@ func (a *arrayNodeHandler) Setup(_ context.Context, _ handler.SetupContext) erro
 }
 
 // New initializes a new arrayNodeHandler
-func New(nodeExecutor interfaces.Node, scope promutils.Scope) (handler.Node, error) {
+func New(nodeExecutor interfaces.Node, eventConfig *config.EventConfig, scope promutils.Scope) (handler.Node, error) {
 	// create k8s PluginState byte mocks to reuse instead of creating for each subNode evaluation
 	pluginStateBytesNotStarted, err := bytesFromK8sPluginState(k8s.PluginState{Phase: k8s.PluginPhaseNotStarted})
 	if err != nil {
@@ -499,6 +515,7 @@ func New(nodeExecutor interfaces.Node, scope promutils.Scope) (handler.Node, err
 
 	arrayScope := scope.NewSubScope("array")
 	return &arrayNodeHandler{
+		eventConfig:                eventConfig,
 		metrics:                    newMetrics(arrayScope),
 		nodeExecutor:               nodeExecutor,
 		pluginStateBytesNotStarted: pluginStateBytesNotStarted,
@@ -522,9 +539,8 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 
 	// if node has not yet started we automatically set to NodePhaseQueued to skip input resolution
 	if nodePhase == v1alpha1.NodePhaseNotYetStarted {
-		// TODO @hamersaw how does this work with fastcache?
-		// to supprt fastcache we'll need to override the bindings to BindingScalars for the input resolution on the nCtx
-		// that way we resolution is just reading a literal ... but does this still write a file then?!?
+		// TODO - to supprt fastcache we'll need to override the bindings to BindingScalars for the input resolution on the nCtx
+		// that way resolution is just reading a literal ... but does this still write a file then?!?
 		nodePhase = v1alpha1.NodePhaseQueued
 	}
 
@@ -536,10 +552,9 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 	subNodeSpec.Name = subNodeID
 
 	// TODO - if we want to support more plugin types we need to figure out the best way to store plugin state
-	//  currently just mocking based on node phase -> which works for all k8s plugins
+	// currently just mocking based on node phase -> which works for all k8s plugins
 	// we can not pre-allocated a bit array because max size is 256B and with 5k fanout node state = 1.28MB
 	pluginStateBytes := a.pluginStateBytesStarted
-	//if nodePhase == v1alpha1.NodePhaseQueued || nodePhase == v1alpha1.NodePhaseRetryableFailure {
 	if taskPhase == int(core.PhaseUndefined) || taskPhase == int(core.PhaseRetryableFailure) {
 		pluginStateBytes = a.pluginStateBytesNotStarted
 	}
@@ -554,9 +569,6 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 	} else {
 		subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
 	}*/
-	// TODO @hamersaw - this is a problem because cache lookups happen in NodePhaseQueued
-	// so the cache hit items will be written to the wrong location
-	//    can we just change flytekit appending the index onto the location?!?1
 	currentAttempt := uint32(arrayNodeState.SubNodeRetryAttempts.GetItem(subNodeIndex))
 	subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(subNodeIndex), strconv.Itoa(int(currentAttempt)))
 	if err != nil {
@@ -612,15 +624,15 @@ func buildTaskExecutionEvent(ctx context.Context, nCtx interfaces.NodeExecutionC
 		return nil, err
 	}
 
-	nodeExecutionId := nCtx.NodeExecutionMetadata().GetNodeExecutionID()
-	workflowExecutionId := nodeExecutionId.ExecutionId
+	nodeExecutionID := nCtx.NodeExecutionMetadata().GetNodeExecutionID()
+	workflowExecutionID := nodeExecutionID.ExecutionId
 	return &event.TaskExecutionEvent{
 		TaskId: &idlcore.Identifier{
 			ResourceType: idlcore.ResourceType_TASK,
-			Project:      workflowExecutionId.Project,
-			Domain:       workflowExecutionId.Domain,
+			Project:      workflowExecutionID.Project,
+			Domain:       workflowExecutionID.Domain,
 			Name:         nCtx.NodeID(),
-			Version:      "v1", // TODO @hamersaw - please
+			Version:      "v1", // this value is irrelevant but necessary for the identifier to be valid
 		},
 		ParentNodeExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
 		RetryAttempt:          0, // ArrayNode will never retry 
@@ -639,7 +651,6 @@ func buildTaskExecutionEvent(ctx context.Context, nCtx interfaces.NodeExecutionC
 func buildSubNodeID(nCtx interfaces.NodeExecutionContext, index int, retryAttempt uint32) string {
 	return fmt.Sprintf("%s-n%d-%d", nCtx.NodeID, index, retryAttempt)
 }
-
 
 func bytesFromK8sPluginState(pluginState k8s.PluginState) ([]byte, error) {
 	buffer := make([]byte, 0, task.MaxPluginStateSizeBytes)
@@ -665,4 +676,9 @@ func constructOutputReferences(ctx context.Context, nCtx interfaces.NodeExecutio
 	}
 
 	return subDataDir, subOutputDir, nil
+}
+
+func isTerminalNodePhase(nodePhase v1alpha1.NodePhase) bool {
+	return nodePhase == v1alpha1.NodePhaseSucceeded || nodePhase == v1alpha1.NodePhaseFailed || nodePhase == v1alpha1.NodePhaseTimedOut ||
+		nodePhase == v1alpha1.NodePhaseSkipped || nodePhase == v1alpha1.NodePhaseRecovered
 }
