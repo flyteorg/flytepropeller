@@ -251,21 +251,29 @@ func (a *adminLaunchPlanExecutor) syncItem(ctx context.Context, batch cache.Batc
 			continue
 		}
 
-		execData, err := a.adminClient.GetExecutionData(ctx, &admin.WorkflowExecutionGetDataRequest{
-			Id: &exec.WorkflowExecutionIdentifier,
-		})
-
-		if err != nil {
-			resp = append(resp, cache.ItemSyncResponse{
-				ID: obj.GetID(),
-				Item: executionCacheItem{
-					WorkflowExecutionIdentifier: exec.WorkflowExecutionIdentifier,
-					SyncError:                   err,
-				},
-				Action: cache.Update,
+		var outputs *core.LiteralMap
+		// Retrieve potential outputs only when the workflow succeeded.
+		// TODO: We can optimize further by only retrieving the outputs when the workflow has output variables in the
+		// 	interface.
+		if res.GetClosure().GetPhase() == core.WorkflowExecution_SUCCEEDED {
+			execData, err := a.adminClient.GetExecutionData(ctx, &admin.WorkflowExecutionGetDataRequest{
+				Id: &exec.WorkflowExecutionIdentifier,
 			})
 
-			continue
+			if err != nil {
+				resp = append(resp, cache.ItemSyncResponse{
+					ID: obj.GetID(),
+					Item: executionCacheItem{
+						WorkflowExecutionIdentifier: exec.WorkflowExecutionIdentifier,
+						SyncError:                   err,
+					},
+					Action: cache.Update,
+				})
+
+				continue
+			}
+
+			outputs = execData.GetFullOutputs()
 		}
 
 		// Update the cache with the retrieved status
@@ -274,7 +282,7 @@ func (a *adminLaunchPlanExecutor) syncItem(ctx context.Context, batch cache.Batc
 			Item: executionCacheItem{
 				WorkflowExecutionIdentifier: exec.WorkflowExecutionIdentifier,
 				ExecutionClosure:            res.Closure,
-				ExecutionOutputs:            execData.GetFullOutputs(),
+				ExecutionOutputs:            outputs,
 			},
 			Action: cache.Update,
 		})
