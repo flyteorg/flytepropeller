@@ -6,6 +6,8 @@ import (
 	context "context"
 
 	handler "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	interfaces "github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -22,7 +24,7 @@ func (_m Node_Abort) Return(_a0 error) *Node_Abort {
 	return &Node_Abort{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *Node) OnAbort(ctx context.Context, executionContext handler.NodeExecutionContext, reason string) *Node_Abort {
+func (_m *Node) OnAbort(ctx context.Context, executionContext interfaces.NodeExecutionContext, reason string) *Node_Abort {
 	c_call := _m.On("Abort", ctx, executionContext, reason)
 	return &Node_Abort{Call: c_call}
 }
@@ -33,11 +35,11 @@ func (_m *Node) OnAbortMatch(matchers ...interface{}) *Node_Abort {
 }
 
 // Abort provides a mock function with given fields: ctx, executionContext, reason
-func (_m *Node) Abort(ctx context.Context, executionContext handler.NodeExecutionContext, reason string) error {
+func (_m *Node) Abort(ctx context.Context, executionContext interfaces.NodeExecutionContext, reason string) error {
 	ret := _m.Called(ctx, executionContext, reason)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, handler.NodeExecutionContext, string) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interfaces.NodeExecutionContext, string) error); ok {
 		r0 = rf(ctx, executionContext, reason)
 	} else {
 		r0 = ret.Error(0)
@@ -54,7 +56,7 @@ func (_m Node_Finalize) Return(_a0 error) *Node_Finalize {
 	return &Node_Finalize{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *Node) OnFinalize(ctx context.Context, executionContext handler.NodeExecutionContext) *Node_Finalize {
+func (_m *Node) OnFinalize(ctx context.Context, executionContext interfaces.NodeExecutionContext) *Node_Finalize {
 	c_call := _m.On("Finalize", ctx, executionContext)
 	return &Node_Finalize{Call: c_call}
 }
@@ -65,11 +67,11 @@ func (_m *Node) OnFinalizeMatch(matchers ...interface{}) *Node_Finalize {
 }
 
 // Finalize provides a mock function with given fields: ctx, executionContext
-func (_m *Node) Finalize(ctx context.Context, executionContext handler.NodeExecutionContext) error {
+func (_m *Node) Finalize(ctx context.Context, executionContext interfaces.NodeExecutionContext) error {
 	ret := _m.Called(ctx, executionContext)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, handler.NodeExecutionContext) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interfaces.NodeExecutionContext) error); ok {
 		r0 = rf(ctx, executionContext)
 	} else {
 		r0 = ret.Error(0)
@@ -118,7 +120,7 @@ func (_m Node_Handle) Return(_a0 handler.Transition, _a1 error) *Node_Handle {
 	return &Node_Handle{Call: _m.Call.Return(_a0, _a1)}
 }
 
-func (_m *Node) OnHandle(ctx context.Context, executionContext handler.NodeExecutionContext) *Node_Handle {
+func (_m *Node) OnHandle(ctx context.Context, executionContext interfaces.NodeExecutionContext) *Node_Handle {
 	c_call := _m.On("Handle", ctx, executionContext)
 	return &Node_Handle{Call: c_call}
 }
@@ -129,18 +131,18 @@ func (_m *Node) OnHandleMatch(matchers ...interface{}) *Node_Handle {
 }
 
 // Handle provides a mock function with given fields: ctx, executionContext
-func (_m *Node) Handle(ctx context.Context, executionContext handler.NodeExecutionContext) (handler.Transition, error) {
+func (_m *Node) Handle(ctx context.Context, executionContext interfaces.NodeExecutionContext) (handler.Transition, error) {
 	ret := _m.Called(ctx, executionContext)
 
 	var r0 handler.Transition
-	if rf, ok := ret.Get(0).(func(context.Context, handler.NodeExecutionContext) handler.Transition); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interfaces.NodeExecutionContext) handler.Transition); ok {
 		r0 = rf(ctx, executionContext)
 	} else {
 		r0 = ret.Get(0).(handler.Transition)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, handler.NodeExecutionContext) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, interfaces.NodeExecutionContext) error); ok {
 		r1 = rf(ctx, executionContext)
 	} else {
 		r1 = ret.Error(1)

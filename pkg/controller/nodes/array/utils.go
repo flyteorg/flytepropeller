@@ -67,9 +67,9 @@ func buildTaskExecutionEvent(ctx context.Context, nCtx interfaces.NodeExecutionC
 	}, nil
 }
 
-// TODO @hamersaw - what do we want for a subNode ID?
 func buildSubNodeID(nCtx interfaces.NodeExecutionContext, index int, retryAttempt uint32) string {
-	return fmt.Sprintf("%s-n%d-%d", nCtx.NodeID, index, retryAttempt)
+	// TODO @hamersaw - what do we want for a subNode ID?
+	return fmt.Sprintf("%s-n%d-%d", nCtx.NodeID(), index, retryAttempt)
 }
 
 func bytesFromK8sPluginState(pluginState k8s.PluginState) ([]byte, error) {
