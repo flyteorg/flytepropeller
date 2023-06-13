@@ -490,12 +490,12 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 }
 
 // Setup handles any initialization requirements for this handler
-func (a *arrayNodeHandler) Setup(_ context.Context, _ handler.SetupContext) error {
+func (a *arrayNodeHandler) Setup(_ context.Context, _ interfaces.SetupContext) error {
 	return nil
 }
 
 // New initializes a new arrayNodeHandler
-func New(nodeExecutor interfaces.Node, eventConfig *config.EventConfig, scope promutils.Scope) (handler.Node, error) {
+func New(nodeExecutor interfaces.Node, eventConfig *config.EventConfig, scope promutils.Scope) (interfaces.NodeHandler, error) {
 	// create k8s PluginState byte mocks to reuse instead of creating for each subNode evaluation
 	pluginStateBytesNotStarted, err := bytesFromK8sPluginState(k8s.PluginState{Phase: k8s.PluginPhaseNotStarted})
 	if err != nil {

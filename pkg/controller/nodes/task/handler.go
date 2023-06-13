@@ -227,7 +227,7 @@ func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
 	return nil
 }
 
-func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
+func (t *Handler) Setup(ctx context.Context, sCtx interfaces.SetupContext) error {
 	tSCtx := t.newSetupContext(sCtx)
 
 	// Create a new base resource negotiator

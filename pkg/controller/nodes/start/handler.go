@@ -14,7 +14,7 @@ func (s startHandler) FinalizeRequired() bool {
 	return false
 }
 
-func (s startHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
+func (s startHandler) Setup(ctx context.Context, setupContext interfaces.SetupContext) error {
 	return nil
 }
 
@@ -30,6 +30,6 @@ func (s startHandler) Finalize(ctx context.Context, executionContext interfaces.
 	return nil
 }
 
-func New() handler.Node {
+func New() interfaces.NodeHandler {
 	return &startHandler{}
 }

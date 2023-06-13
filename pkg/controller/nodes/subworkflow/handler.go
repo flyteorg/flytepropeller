@@ -40,7 +40,7 @@ func (w *workflowNodeHandler) FinalizeRequired() bool {
 	return false
 }
 
-func (w *workflowNodeHandler) Setup(_ context.Context, _ handler.SetupContext) error {
+func (w *workflowNodeHandler) Setup(_ context.Context, _ interfaces.SetupContext) error {
 	return nil
 }
 
@@ -129,7 +129,7 @@ func (w *workflowNodeHandler) Finalize(ctx context.Context, _ interfaces.NodeExe
 	return nil
 }
 
-func New(executor interfaces.Node, workflowLauncher launchplan.Executor, recoveryClient recovery.Client, eventConfig *config.EventConfig, scope promutils.Scope) handler.Node {
+func New(executor interfaces.Node, workflowLauncher launchplan.Executor, recoveryClient recovery.Client, eventConfig *config.EventConfig, scope promutils.Scope) interfaces.NodeHandler {
 	workflowScope := scope.NewSubScope("workflow")
 	return &workflowNodeHandler{
 		subWfHandler: newSubworkflowHandler(executor, eventConfig),

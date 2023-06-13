@@ -31,7 +31,7 @@ import (
 const dynamicNodeID = "dynamic-node"
 
 type TaskNodeHandler interface {
-	handler.Node
+	interfaces.NodeHandler
 	ValidateOutputAndCacheAdd(ctx context.Context, nodeID v1alpha1.NodeID, i io.InputReader,
 		r io.OutputReader, outputCommitter io.OutputWriter, executionConfig v1alpha1.ExecutionConfig,
 		tr ioutils.SimpleTaskReader, m catalog.Metadata) (catalog.Status, *io.ExecutionError, error)
@@ -303,7 +303,7 @@ func (d dynamicNodeTaskNodeHandler) Finalize(ctx context.Context, nCtx interface
 	return nil
 }
 
-func New(underlying TaskNodeHandler, nodeExecutor interfaces.Node, launchPlanReader launchplan.Reader, eventConfig *config.EventConfig, scope promutils.Scope) handler.Node {
+func New(underlying TaskNodeHandler, nodeExecutor interfaces.Node, launchPlanReader launchplan.Reader, eventConfig *config.EventConfig, scope promutils.Scope) interfaces.NodeHandler {
 
 	return &dynamicNodeTaskNodeHandler{
 		TaskNodeHandler: underlying,

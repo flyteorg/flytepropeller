@@ -4,23 +4,26 @@ import (
 	"context"
 	"testing"
 
-	"github.com/flyteorg/flytepropeller/events"
 	eventmocks "github.com/flyteorg/flytepropeller/events/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	execmocks "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-	gatemocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes"
 	gatemocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/gate/mocks"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces/mocks"
 	recoverymocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/storage"
+
+	"github.com/stretchr/testify/assert"
+	//"github.com/stretchr/testify/mock"
 )
 
-func createArrayNodeExecutor(t *testing.T, ctx context.Context, scope promutils.Scope) (handler.Node, error) {
+func createArrayNodeHandler(t *testing.T, ctx context.Context, scope promutils.Scope) (interfaces.NodeHandler, error) {
 	// mock components
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
 	dataStore, err := storage.NewDataStore(&storage.Config{
@@ -28,19 +31,20 @@ func createArrayNodeExecutor(t *testing.T, ctx context.Context, scope promutils.
 	}, scope)
 	assert.NoError(t, err)
 	enqueueWorkflowFunc := func(workflowID v1alpha1.WorkflowID) {}
-	eventConfig := &events.EventConfig{}
-	mockEventSink = eventmocks.NewMockEventSink()
-	mockKubeClient = execmocks.NewFakeKubeClient()
-	mockRecoveryClient = &recoverymocks.Client{}
-	mockSignalClient = &gatemocks.SignalServiceClient{}
-	noopCatalogClient = catalog.NOOPCatalog{}
-	scope := promutils.NewTestScope()
+	eventConfig := &config.EventConfig{}
+	mockEventSink := eventmocks.NewMockEventSink()
+	mockHandlerFactory := &mocks.HandlerFactory{}
+	mockKubeClient := execmocks.NewFakeKubeClient()
+	mockRecoveryClient := &recoverymocks.Client{}
+	mockSignalClient := &gatemocks.SignalServiceClient{}
+	noopCatalogClient := catalog.NOOPCatalog{}
 
 	// create node executor
 	nodeExecutor, err := nodes.NewExecutor(ctx, config.GetConfig().NodeConfig, dataStore, enqueueWorkflowFunc, mockEventSink, adminClient,
-		adminClient, 10, "s3://bucket/", mockKubeClient, noopCatalogClient, mockRecoveryClient, eventConfig, "clusterID", mockSignalClient, scope)
+		adminClient, 10, "s3://bucket/", mockKubeClient, noopCatalogClient, mockRecoveryClient, eventConfig, "clusterID", mockSignalClient, mockHandlerFactory, scope)
 	assert.NoError(t, err)
 
+	// return ArrayNodeHandler
 	return New(nodeExecutor, eventConfig, scope)
 }
 
@@ -54,6 +58,12 @@ func TestFinalize(t *testing.T) {
 
 func TestHandleArrayNodePhaseNone(t *testing.T) {
 	ctx := context.Background()
+	scope := promutils.NewTestScope()
+
+	// initialize ArrayNodeHandler
+	arrayNodeHandler, err := createArrayNodeHandler(t, ctx, scope)
+	assert.NoError(t, err)
+
 	// TODO @hamersaw - complete
 }
 

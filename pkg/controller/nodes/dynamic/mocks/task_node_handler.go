@@ -168,7 +168,7 @@ func (_m TaskNodeHandler_Setup) Return(_a0 error) *TaskNodeHandler_Setup {
 	return &TaskNodeHandler_Setup{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *TaskNodeHandler) OnSetup(ctx context.Context, setupContext handler.SetupContext) *TaskNodeHandler_Setup {
+func (_m *TaskNodeHandler) OnSetup(ctx context.Context, setupContext interfaces.SetupContext) *TaskNodeHandler_Setup {
 	c_call := _m.On("Setup", ctx, setupContext)
 	return &TaskNodeHandler_Setup{Call: c_call}
 }
@@ -179,11 +179,11 @@ func (_m *TaskNodeHandler) OnSetupMatch(matchers ...interface{}) *TaskNodeHandle
 }
 
 // Setup provides a mock function with given fields: ctx, setupContext
-func (_m *TaskNodeHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
+func (_m *TaskNodeHandler) Setup(ctx context.Context, setupContext interfaces.SetupContext) error {
 	ret := _m.Called(ctx, setupContext)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, handler.SetupContext) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interfaces.SetupContext) error); ok {
 		r0 = rf(ctx, setupContext)
 	} else {
 		r0 = ret.Error(0)

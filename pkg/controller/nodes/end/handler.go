@@ -19,7 +19,7 @@ func (e endHandler) FinalizeRequired() bool {
 	return false
 }
 
-func (e endHandler) Setup(ctx context.Context, setupContext handler.SetupContext) error {
+func (e endHandler) Setup(ctx context.Context, setupContext interfaces.SetupContext) error {
 	return nil
 }
 
@@ -50,6 +50,6 @@ func (e endHandler) Finalize(_ context.Context, _ interfaces.NodeExecutionContex
 	return nil
 }
 
-func New() handler.Node {
+func New() interfaces.NodeHandler {
 	return &endHandler{}
 }

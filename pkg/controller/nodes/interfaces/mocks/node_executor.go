@@ -6,8 +6,6 @@ import (
 	context "context"
 
 	executors "github.com/flyteorg/flytepropeller/pkg/controller/executors"
-	handler "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
-
 	interfaces "github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 
 	mock "github.com/stretchr/testify/mock"
@@ -26,7 +24,7 @@ func (_m NodeExecutor_Abort) Return(_a0 error) *NodeExecutor_Abort {
 	return &NodeExecutor_Abort{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *NodeExecutor) OnAbort(ctx context.Context, h handler.Node, nCtx interfaces.NodeExecutionContext, reason string) *NodeExecutor_Abort {
+func (_m *NodeExecutor) OnAbort(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext, reason string) *NodeExecutor_Abort {
 	c_call := _m.On("Abort", ctx, h, nCtx, reason)
 	return &NodeExecutor_Abort{Call: c_call}
 }
@@ -37,11 +35,11 @@ func (_m *NodeExecutor) OnAbortMatch(matchers ...interface{}) *NodeExecutor_Abor
 }
 
 // Abort provides a mock function with given fields: ctx, h, nCtx, reason
-func (_m *NodeExecutor) Abort(ctx context.Context, h handler.Node, nCtx interfaces.NodeExecutionContext, reason string) error {
+func (_m *NodeExecutor) Abort(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext, reason string) error {
 	ret := _m.Called(ctx, h, nCtx, reason)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, handler.Node, interfaces.NodeExecutionContext, string) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interfaces.NodeHandler, interfaces.NodeExecutionContext, string) error); ok {
 		r0 = rf(ctx, h, nCtx, reason)
 	} else {
 		r0 = ret.Error(0)
@@ -58,7 +56,7 @@ func (_m NodeExecutor_Finalize) Return(_a0 error) *NodeExecutor_Finalize {
 	return &NodeExecutor_Finalize{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *NodeExecutor) OnFinalize(ctx context.Context, h handler.Node, nCtx interfaces.NodeExecutionContext) *NodeExecutor_Finalize {
+func (_m *NodeExecutor) OnFinalize(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext) *NodeExecutor_Finalize {
 	c_call := _m.On("Finalize", ctx, h, nCtx)
 	return &NodeExecutor_Finalize{Call: c_call}
 }
@@ -69,11 +67,11 @@ func (_m *NodeExecutor) OnFinalizeMatch(matchers ...interface{}) *NodeExecutor_F
 }
 
 // Finalize provides a mock function with given fields: ctx, h, nCtx
-func (_m *NodeExecutor) Finalize(ctx context.Context, h handler.Node, nCtx interfaces.NodeExecutionContext) error {
+func (_m *NodeExecutor) Finalize(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext) error {
 	ret := _m.Called(ctx, h, nCtx)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, handler.Node, interfaces.NodeExecutionContext) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interfaces.NodeHandler, interfaces.NodeExecutionContext) error); ok {
 		r0 = rf(ctx, h, nCtx)
 	} else {
 		r0 = ret.Error(0)
@@ -90,7 +88,7 @@ func (_m NodeExecutor_HandleNode) Return(_a0 interfaces.NodeStatus, _a1 error) *
 	return &NodeExecutor_HandleNode{Call: _m.Call.Return(_a0, _a1)}
 }
 
-func (_m *NodeExecutor) OnHandleNode(ctx context.Context, dag executors.DAGStructure, nCtx interfaces.NodeExecutionContext, h handler.Node) *NodeExecutor_HandleNode {
+func (_m *NodeExecutor) OnHandleNode(ctx context.Context, dag executors.DAGStructure, nCtx interfaces.NodeExecutionContext, h interfaces.NodeHandler) *NodeExecutor_HandleNode {
 	c_call := _m.On("HandleNode", ctx, dag, nCtx, h)
 	return &NodeExecutor_HandleNode{Call: c_call}
 }
@@ -101,18 +99,18 @@ func (_m *NodeExecutor) OnHandleNodeMatch(matchers ...interface{}) *NodeExecutor
 }
 
 // HandleNode provides a mock function with given fields: ctx, dag, nCtx, h
-func (_m *NodeExecutor) HandleNode(ctx context.Context, dag executors.DAGStructure, nCtx interfaces.NodeExecutionContext, h handler.Node) (interfaces.NodeStatus, error) {
+func (_m *NodeExecutor) HandleNode(ctx context.Context, dag executors.DAGStructure, nCtx interfaces.NodeExecutionContext, h interfaces.NodeHandler) (interfaces.NodeStatus, error) {
 	ret := _m.Called(ctx, dag, nCtx, h)
 
 	var r0 interfaces.NodeStatus
-	if rf, ok := ret.Get(0).(func(context.Context, executors.DAGStructure, interfaces.NodeExecutionContext, handler.Node) interfaces.NodeStatus); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, executors.DAGStructure, interfaces.NodeExecutionContext, interfaces.NodeHandler) interfaces.NodeStatus); ok {
 		r0 = rf(ctx, dag, nCtx, h)
 	} else {
 		r0 = ret.Get(0).(interfaces.NodeStatus)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, executors.DAGStructure, interfaces.NodeExecutionContext, handler.Node) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, executors.DAGStructure, interfaces.NodeExecutionContext, interfaces.NodeHandler) error); ok {
 		r1 = rf(ctx, dag, nCtx, h)
 	} else {
 		r1 = ret.Error(1)

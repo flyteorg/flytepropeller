@@ -33,7 +33,7 @@ func (b *branchHandler) FinalizeRequired() bool {
 	return false
 }
 
-func (b *branchHandler) Setup(ctx context.Context, _ handler.SetupContext) error {
+func (b *branchHandler) Setup(ctx context.Context, _ interfaces.SetupContext) error {
 	logger.Debugf(ctx, "BranchNode::Setup: nothing to do")
 	return nil
 }
@@ -258,7 +258,7 @@ func (b *branchHandler) Finalize(ctx context.Context, nCtx interfaces.NodeExecut
 	return b.nodeExecutor.FinalizeHandler(ctx, execContext, dag, nCtx.ContextualNodeLookup(), branchTakenNode)
 }
 
-func New(executor interfaces.Node, eventConfig *config.EventConfig, scope promutils.Scope) handler.Node {
+func New(executor interfaces.Node, eventConfig *config.EventConfig, scope promutils.Scope) interfaces.NodeHandler {
 	return &branchHandler{
 		nodeExecutor: executor,
 		m:            metrics{scope: scope},

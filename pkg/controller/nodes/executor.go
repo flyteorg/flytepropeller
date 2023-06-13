@@ -87,11 +87,11 @@ type nodeMetrics struct {
 
 // Implements the executors.Node interface
 type recursiveNodeExecutor struct {
-	nodeExecutor handler.NodeExecutor
+	nodeExecutor interfaces.NodeExecutor
 	nCtxBuilder interfaces.NodeExecutionContextBuilder
 
 	enqueueWorkflow                 v1alpha1.EnqueueWorkflow
-	nodeHandlerFactory              HandlerFactory
+	nodeHandlerFactory              interfaces.HandlerFactory
 	store                           *storage.DataStore
 	metrics                         *nodeMetrics
 }
@@ -446,7 +446,7 @@ func (c *recursiveNodeExecutor) AbortHandler(ctx context.Context, execContext ex
 func (c *recursiveNodeExecutor) Initialize(ctx context.Context) error {
 	logger.Infof(ctx, "Initializing Core Node Executor")
 	s := c.newSetupContext(ctx)
-	return c.nodeHandlerFactory.Setup(ctx, s)
+	return c.nodeHandlerFactory.Setup(ctx, c, s)
 }
 
 // TODO @hamersaw docs
@@ -458,7 +458,6 @@ func (c *recursiveNodeExecutor) WithNodeExecutionContextBuilder(nCtxBuilder inte
 	return &recursiveNodeExecutor{
 		nodeExecutor: c.nodeExecutor,
 		nCtxBuilder: nCtxBuilder,
-		// TODO @hamersaw fill out
 		enqueueWorkflow: c.enqueueWorkflow,
 		nodeHandlerFactory: c.nodeHandlerFactory,              
 		store: c.store,
@@ -834,7 +833,7 @@ func (c *nodeExecutor) isEligibleForRetry(nCtx interfaces.NodeExecutionContext, 
 	return
 }
 
-func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx interfaces.NodeExecutionContext, nodeStatus v1alpha1.ExecutableNodeStatus) (handler.PhaseInfo, error) {
+func (c *nodeExecutor) execute(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext, nodeStatus v1alpha1.ExecutableNodeStatus) (handler.PhaseInfo, error) {
 	logger.Debugf(ctx, "Executing node")
 	defer logger.Debugf(ctx, "Node execution round complete")
 
@@ -885,7 +884,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h handler.Node, nCtx interfa
 	return phase, nil
 }
 
-func (c *nodeExecutor) Abort(ctx context.Context, h handler.Node, nCtx interfaces.NodeExecutionContext, reason string) error {
+func (c *nodeExecutor) Abort(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext, reason string) error {
 	logger.Debugf(ctx, "Calling aborting & finalize")
 	if err := h.Abort(ctx, nCtx, reason); err != nil {
 		finalizeErr := h.Finalize(ctx, nCtx)
@@ -936,11 +935,11 @@ func (c *nodeExecutor) Abort(ctx context.Context, h handler.Node, nCtx interface
 	return nil
 }
 
-func (c *nodeExecutor) Finalize(ctx context.Context, h handler.Node, nCtx interfaces.NodeExecutionContext) error {
+func (c *nodeExecutor) Finalize(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext) error {
 	return h.Finalize(ctx, nCtx)
 }
 
-func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executors.DAGStructure, nCtx interfaces.NodeExecutionContext, _ handler.Node) (interfaces.NodeStatus, error) {
+func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executors.DAGStructure, nCtx interfaces.NodeExecutionContext, _ interfaces.NodeHandler) (interfaces.NodeStatus, error) {
 	logger.Debugf(ctx, "Node not yet started, running pre-execute")
 	defer logger.Debugf(ctx, "Node pre-execute completed")
 	occurredAt := time.Now()
@@ -998,7 +997,7 @@ func (c *nodeExecutor) handleNotYetStartedNode(ctx context.Context, dag executor
 	return interfaces.NodeStatusPending, nil
 }
 
-func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx interfaces.NodeExecutionContext, h handler.Node) (interfaces.NodeStatus, error) {
+func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx interfaces.NodeExecutionContext, h interfaces.NodeHandler) (interfaces.NodeStatus, error) {
 	nodeStatus := nCtx.NodeStatus()
 	currentPhase := nodeStatus.GetPhase()
 
@@ -1139,7 +1138,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx inter
 	return finalStatus, nil
 }
 
-func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx interfaces.NodeExecutionContext, h handler.Node) (interfaces.NodeStatus, error) {
+func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx interfaces.NodeExecutionContext, h interfaces.NodeHandler) (interfaces.NodeStatus, error) {
 	nodeStatus := nCtx.NodeStatus()
 	logger.Debugf(ctx, "node failed with retryable failure, aborting and finalizing, message: %s", nodeStatus.GetMessage())
 	if err := c.Abort(ctx, h, nCtx, nodeStatus.GetMessage()); err != nil {
@@ -1160,7 +1159,7 @@ func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx interfac
 	return interfaces.NodeStatusPending, nil
 }
 
-func (c *nodeExecutor) HandleNode(ctx context.Context, dag executors.DAGStructure, nCtx interfaces.NodeExecutionContext, h handler.Node) (interfaces.NodeStatus, error) {
+func (c *nodeExecutor) HandleNode(ctx context.Context, dag executors.DAGStructure, nCtx interfaces.NodeExecutionContext, h interfaces.NodeHandler) (interfaces.NodeStatus, error) {
 	logger.Debugf(ctx, "Handling Node [%s]", nCtx.NodeID())
 	defer logger.Debugf(ctx, "Completed node [%s]", nCtx.NodeID())
 
@@ -1245,9 +1244,9 @@ func (c *nodeExecutor) HandleNode(ctx context.Context, dag executors.DAGStructur
 }
 
 func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *storage.DataStore, enQWorkflow v1alpha1.EnqueueWorkflow, eventSink events.EventSink,
-	workflowLauncher launchplan.Executor, launchPlanReader launchplan.Reader, maxDatasetSize int64,
-	defaultRawOutputPrefix storage.DataReference, kubeClient executors.Client,
-	catalogClient catalog.Client, recoveryClient recovery.Client, eventConfig *config.EventConfig, clusterID string, signalClient service.SignalServiceClient, scope promutils.Scope) (interfaces.Node, error) {
+	workflowLauncher launchplan.Executor, launchPlanReader launchplan.Reader, maxDatasetSize int64, defaultRawOutputPrefix storage.DataReference, kubeClient executors.Client,
+	catalogClient catalog.Client, recoveryClient recovery.Client, eventConfig *config.EventConfig, clusterID string, signalClient service.SignalServiceClient,
+	nodeHandlerFactory interfaces.HandlerFactory, scope promutils.Scope) (interfaces.Node, error) {
 
 	// TODO we may want to make this configurable.
 	shardSelector, err := ioutils.NewBase36PrefixShardSelector(ctx)
@@ -1299,14 +1298,14 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 	}
 
 	exec := &recursiveNodeExecutor{
-		nodeExecutor: nodeExecutor,
-		nCtxBuilder:  nodeExecutor,
-
-		enqueueWorkflow:     enQWorkflow,
-		store:               store,
-		metrics: metrics,
+		nodeExecutor:       nodeExecutor,
+		nCtxBuilder:        nodeExecutor,
+		nodeHandlerFactory: nodeHandlerFactory,
+		enqueueWorkflow:    enQWorkflow,
+		store:              store,
+		metrics:            metrics,
 	}
-	nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, recoveryClient, eventConfig, clusterID, signalClient, nodeScope)
-	exec.nodeHandlerFactory = nodeHandlerFactory
+	/*nodeHandlerFactory, err := NewHandlerFactory(ctx, exec, workflowLauncher, launchPlanReader, kubeClient, catalogClient, recoveryClient, eventConfig, clusterID, signalClient, nodeScope)
+	exec.nodeHandlerFactory = nodeHandlerFactory*/
 	return exec, err
 }

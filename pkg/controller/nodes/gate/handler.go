@@ -206,12 +206,12 @@ func (g *gateNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecut
 }
 
 // Setup handles any initialization requirements for this handler
-func (g *gateNodeHandler) Setup(_ context.Context, _ handler.SetupContext) error {
+func (g *gateNodeHandler) Setup(_ context.Context, _ interfaces.SetupContext) error {
 	return nil
 }
 
 // New initializes a new gateNodeHandler
-func New(eventConfig *config.EventConfig, signalClient service.SignalServiceClient, scope promutils.Scope) handler.Node {
+func New(eventConfig *config.EventConfig, signalClient service.SignalServiceClient, scope promutils.Scope) interfaces.NodeHandler {
 	gateScope := scope.NewSubScope("gate")
 	return &gateNodeHandler{
 		signalClient: signalClient,

@@ -1,10 +1,10 @@
-package handler
+package interfaces
 
 import (
 	"context"
 
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/flyteorg/flytestdlib/promutils"
 )
 
@@ -13,13 +13,13 @@ import (
 // TODO @hamersaw - docs?!?1
 type NodeExecutor interface {
 	// TODO @hamersaw - BuildNodeExecutionContext should be here - removes need for another interface
-	HandleNode(ctx context.Context, dag executors.DAGStructure, nCtx interfaces.NodeExecutionContext, h Node) (interfaces.NodeStatus, error)
-	Abort(ctx context.Context, h Node, nCtx interfaces.NodeExecutionContext, reason string) error
-	Finalize(ctx context.Context, h Node, nCtx interfaces.NodeExecutionContext) error
+	HandleNode(ctx context.Context, dag executors.DAGStructure, nCtx NodeExecutionContext, h NodeHandler) (NodeStatus, error)
+	Abort(ctx context.Context, h NodeHandler, nCtx NodeExecutionContext, reason string) error
+	Finalize(ctx context.Context, h NodeHandler, nCtx NodeExecutionContext) error
 }
 
 // Interface that should be implemented for a node type.
-type Node interface {
+type NodeHandler interface {
 	// Method to indicate that finalize is required for this handler
 	FinalizeRequired() bool
 
@@ -27,14 +27,14 @@ type Node interface {
 	Setup(ctx context.Context, setupContext SetupContext) error
 
 	// Core method that should handle this node
-	Handle(ctx context.Context, executionContext interfaces.NodeExecutionContext) (Transition, error)
+	Handle(ctx context.Context, executionContext NodeExecutionContext) (handler.Transition, error)
 
 	// This method should be invoked to indicate the node needs to be aborted.
-	Abort(ctx context.Context, executionContext interfaces.NodeExecutionContext, reason string) error
+	Abort(ctx context.Context, executionContext NodeExecutionContext, reason string) error
 
 	// This method is always called before completing the node, if FinalizeRequired returns true.
 	// It is guaranteed that Handle -> (happens before) -> Finalize. Abort -> finalize may be repeated multiple times
-	Finalize(ctx context.Context, executionContext interfaces.NodeExecutionContext) error
+	Finalize(ctx context.Context, executionContext NodeExecutionContext) error
 }
 
 type SetupContext interface {
