@@ -284,11 +284,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			retryAttempt := subNodeStatus.GetAttempts()
 
 			for _, taskExecutionEvent := range arrayEventRecorder.TaskEvents() {
-				taskPhase := idlcore.TaskExecution_UNDEFINED
-				if taskNodeStatus := subNodeStatus.GetTaskNodeStatus(); taskNodeStatus != nil {
-					taskPhase = task.ToTaskEventPhase(core.Phase(taskNodeStatus.GetPhase()))
-				}
-
 				for _, log := range taskExecutionEvent.Logs {
 					log.Name = fmt.Sprintf("%s-%d", log.Name, i) // TODO @hamersaw - do we need to add retryAttempt to log name?
 				}
@@ -298,7 +293,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 					Index:        uint32(i),
 					Logs:         taskExecutionEvent.Logs,
 					RetryAttempt: retryAttempt,
-					Phase:        taskPhase,
+					Phase:        taskExecutionEvent.Phase,
 					CacheStatus:  cacheStatus,
 				})
 			}

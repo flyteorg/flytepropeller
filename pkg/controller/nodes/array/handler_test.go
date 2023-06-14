@@ -2,9 +2,11 @@ package array
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	idlcore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
 	eventmocks "github.com/flyteorg/flytepropeller/events/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
@@ -19,8 +21,10 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginmocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 
+	"github.com/flyteorg/flytestdlib/bitarray"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
@@ -30,17 +34,14 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func createArrayNodeHandler(t *testing.T, ctx context.Context, scope promutils.Scope) (interfaces.NodeHandler, error) {
+func createArrayNodeHandler(t *testing.T, ctx context.Context, nodeHandler interfaces.NodeHandler, dataStore *storage.DataStore, scope promutils.Scope) (interfaces.NodeHandler, error) {
 	// mock components
 	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
-	dataStore, err := storage.NewDataStore(&storage.Config{
-		Type: storage.TypeMemory,
-	}, scope)
-	assert.NoError(t, err)
 	enqueueWorkflowFunc := func(workflowID v1alpha1.WorkflowID) {}
 	eventConfig := &config.EventConfig{}
 	mockEventSink := eventmocks.NewMockEventSink()
 	mockHandlerFactory := &mocks.HandlerFactory{}
+	mockHandlerFactory.OnGetHandlerMatch(mock.Anything).Return(nodeHandler, nil)
 	mockKubeClient := execmocks.NewFakeKubeClient()
 	mockRecoveryClient := &recoverymocks.Client{}
 	mockSignalClient := &gatemocks.SignalServiceClient{}
@@ -55,18 +56,45 @@ func createArrayNodeHandler(t *testing.T, ctx context.Context, scope promutils.S
 	return New(nodeExecutor, eventConfig, scope)
 }
 
-func createNodeExecutionContext(t *testing.T, ctx context.Context, inputLiteralMap *idlcore.LiteralMap) (interfaces.NodeExecutionContext, error) {
+func createNodeExecutionContext(t *testing.T, ctx context.Context, dataStore *storage.DataStore, eventRecorder interfaces.EventRecorder, inputLiteralMap *idlcore.LiteralMap, arrayNodeState *interfaces.ArrayNodeState) (interfaces.NodeExecutionContext, error) {
 	nCtx := &mocks.NodeExecutionContext{}
 
+	// ContextualNodeLookup
+	nodeLookup := &execmocks.NodeLookup{}
+	nCtx.OnContextualNodeLookup().Return(nodeLookup)
+
+	// DataStore
+	nCtx.OnDataStore().Return(dataStore)
+
+	// ExecutionContext
+	executionContext := &execmocks.ExecutionContext{}
+	executionContext.OnGetEventVersion().Return(1)
+	executionContext.OnGetExecutionConfig().Return(
+		v1alpha1.ExecutionConfig{
+		})
+	executionContext.OnGetExecutionID().Return(
+		v1alpha1.ExecutionID{
+			&idlcore.WorkflowExecutionIdentifier{
+				Project: "project",
+				Domain:  "domain",
+				Name:    "name",
+			},
+		})
+	executionContext.OnGetLabels().Return(nil)
+	executionContext.OnGetRawOutputDataConfig().Return(v1alpha1.RawOutputDataConfig{})
+	executionContext.OnIsInterruptible().Return(false)
+	executionContext.OnGetParentInfo().Return(nil)
+	nCtx.OnExecutionContext().Return(executionContext)
+
 	// EventsRecorder
-	eventRecorder := &mocks.EventRecorder{}
-	eventRecorder.OnRecordTaskEventMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil) // TODO @hamersaw - should probably capture to validate
 	nCtx.OnEventsRecorder().Return(eventRecorder)
 
 	// InputReader
+	inputFilePaths := &pluginmocks.InputFilePaths{}
+	inputFilePaths.OnGetInputPath().Return(storage.DataReference("s3://bucket/input"))
 	nCtx.OnInputReader().Return(
 		newStaticInputReader(
-			&pluginmocks.InputFilePaths{},
+			inputFilePaths,
 			inputLiteralMap,
 		))
 
@@ -98,15 +126,22 @@ func createNodeExecutionContext(t *testing.T, ctx context.Context, inputLiteralM
 
 	// NodeStateReader
 	nodeStateReader := &mocks.NodeStateReader{}
-	nodeStateReader.OnGetArrayNodeState().Return(interfaces.ArrayNodeState{
-		Phase: v1alpha1.ArrayNodePhaseNone,
-	})
+	nodeStateReader.OnGetArrayNodeState().Return(*arrayNodeState)
 	nCtx.OnNodeStateReader().Return(nodeStateReader)
 
 	// NodeStateWriter
 	nodeStateWriter := &mocks.NodeStateWriter{}
-	nodeStateWriter.OnPutArrayNodeStateMatch(mock.Anything, mock.Anything).Return(nil) // TODO @hamersaw - should probably capture to validate
+	nodeStateWriter.OnPutArrayNodeStateMatch(mock.Anything, mock.Anything).Run(
+		func(args mock.Arguments) {
+			*arrayNodeState = args.Get(0).(interfaces.ArrayNodeState)
+		},
+	).Return(nil)
 	nCtx.OnNodeStateWriter().Return(nodeStateWriter)
+
+	// NodeStatus
+	nCtx.OnNodeStatus().Return(&v1alpha1.NodeStatus{
+		DataDir: storage.DataReference("s3://bucket/foo"),
+	})
 
 	return nCtx, nil
 }
@@ -122,22 +157,41 @@ func TestFinalize(t *testing.T) {
 func TestHandleArrayNodePhaseNone(t *testing.T) {
 	ctx := context.Background()
 	scope := promutils.NewTestScope()
+	dataStore, err := storage.NewDataStore(&storage.Config{
+		Type: storage.TypeMemory,
+	}, scope)
+	assert.NoError(t, err)
+	nodeHandler := &mocks.NodeHandler{}
 
 	// initialize ArrayNodeHandler
-	arrayNodeHandler, err := createArrayNodeHandler(t, ctx, scope)
+	arrayNodeHandler, err := createArrayNodeHandler(t, ctx, nodeHandler, dataStore, scope)
 	assert.NoError(t, err)
 
 	tests := []struct {
-		name string
-		inputValues map[string][]int64
-		expectedTransitionPhase handler.EPhase
+		name                           string
+		inputValues                    map[string][]int64
+		expectedArrayNodePhase         v1alpha1.ArrayNodePhase
+		expectedTransitionPhase        handler.EPhase
+		expectedExternalResourcePhases []idlcore.TaskExecution_Phase
 	}{
 		{
 			name: "Success",
 			inputValues: map[string][]int64{
 				"foo": []int64{1, 2},
 			},
+			expectedArrayNodePhase: v1alpha1.ArrayNodePhaseExecuting,
 			expectedTransitionPhase: handler.EPhaseRunning,
+			expectedExternalResourcePhases: []idlcore.TaskExecution_Phase{idlcore.TaskExecution_QUEUED, idlcore.TaskExecution_QUEUED},
+		},
+		{
+			name: "SuccessMultipleInputs",
+			inputValues: map[string][]int64{
+				"foo": []int64{1, 2, 3},
+				"bar": []int64{4, 5, 6},
+			},
+			expectedArrayNodePhase: v1alpha1.ArrayNodePhaseExecuting,
+			expectedTransitionPhase: handler.EPhaseRunning,
+			expectedExternalResourcePhases: []idlcore.TaskExecution_Phase{idlcore.TaskExecution_QUEUED, idlcore.TaskExecution_QUEUED, idlcore.TaskExecution_QUEUED},
 		},
 		{
 			name: "FailureDifferentInputListLengths",
@@ -145,15 +199,21 @@ func TestHandleArrayNodePhaseNone(t *testing.T) {
 				"foo": []int64{1, 2},
 				"bar": []int64{3},
 			},
+			expectedArrayNodePhase: v1alpha1.ArrayNodePhaseNone,
 			expectedTransitionPhase: handler.EPhaseFailed,
+			expectedExternalResourcePhases: nil,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// create NodeExecutionContext
+			eventRecorder := newArrayEventRecorder()
 			literalMap := convertMapToArrayLiterals(test.inputValues)
-			nCtx, err := createNodeExecutionContext(t, ctx, literalMap)
+			arrayNodeState := &interfaces.ArrayNodeState{
+				Phase: v1alpha1.ArrayNodePhaseNone,
+			}
+			nCtx, err := createNodeExecutionContext(t, ctx, dataStore, eventRecorder, literalMap, arrayNodeState)
 			assert.NoError(t, err)
 
 			// evaluate node
@@ -161,14 +221,191 @@ func TestHandleArrayNodePhaseNone(t *testing.T) {
 			assert.NoError(t, err)
 
 			// validate results
+			assert.Equal(t, test.expectedArrayNodePhase, arrayNodeState.Phase)
 			assert.Equal(t, test.expectedTransitionPhase, transition.Info().GetPhase())
-			// TODO @hamersaw - validate TaskExecutionEvent and ArrayNodeState
+
+			if len(test.expectedExternalResourcePhases) > 0 {
+				assert.Equal(t, 1, len(eventRecorder.taskEvents))
+
+				externalResources := eventRecorder.taskEvents[0].Metadata.GetExternalResources()
+				assert.Equal(t, len(test.expectedExternalResourcePhases), len(externalResources))
+				for i, expectedPhase := range test.expectedExternalResourcePhases {
+					assert.Equal(t, expectedPhase, externalResources[i].Phase)
+				}
+			} else {
+				assert.Equal(t, 0, len(eventRecorder.taskEvents))
+			}
 		})
 	}
 }
 
 func TestHandleArrayNodePhaseExecuting(t *testing.T) {
-	// TODO @hamersaw - complete
+	ctx := context.Background()
+
+	// initailize universal variables
+	inputMap := map[string][]int64{
+		"foo": []int64{0, 1},
+		"bar": []int64{2, 3},
+	}
+	literalMap := convertMapToArrayLiterals(inputMap)
+
+	size := -1
+	for _, v := range inputMap {
+		if size == -1 {
+			size = len(v)
+		} else if len(v) > size { // calculating size as largest input list
+			size = len(v)
+		}
+	}
+
+	tests := []struct {
+		name                           string
+		subNodePhases                  []v1alpha1.NodePhase
+		subNodeTaskPhases              []core.Phase
+		subNodeTransitions             []handler.Transition
+		expectedArrayNodePhase         v1alpha1.ArrayNodePhase
+		expectedTransitionPhase        handler.EPhase
+		expectedExternalResourcePhases []idlcore.TaskExecution_Phase
+	}{
+		{
+			name: "StartAllSubNodes",
+			subNodePhases: []v1alpha1.NodePhase{
+				v1alpha1.NodePhaseQueued,
+				v1alpha1.NodePhaseQueued,
+			},
+			subNodeTaskPhases: []core.Phase{
+				core.PhaseUndefined,
+				core.PhaseUndefined,
+			},
+			subNodeTransitions: []handler.Transition{
+				handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{})),
+				handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(&handler.ExecutionInfo{})),
+			},
+			expectedArrayNodePhase: v1alpha1.ArrayNodePhaseExecuting,
+			expectedTransitionPhase: handler.EPhaseRunning,
+			expectedExternalResourcePhases: []idlcore.TaskExecution_Phase{idlcore.TaskExecution_RUNNING, idlcore.TaskExecution_RUNNING},
+		},
+		// TODO @hamersaw - concurrency -> only start one node
+		{
+			name: "AllSubNodeSuccedeed",
+			subNodePhases: []v1alpha1.NodePhase{
+				v1alpha1.NodePhaseRunning,
+				v1alpha1.NodePhaseRunning,
+			},
+			subNodeTaskPhases: []core.Phase{
+				core.PhaseRunning,
+				core.PhaseRunning,
+			},
+			subNodeTransitions: []handler.Transition{
+				handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{})),
+				handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{})),
+			},
+			expectedArrayNodePhase: v1alpha1.ArrayNodePhaseSucceeding,
+			expectedTransitionPhase: handler.EPhaseRunning,
+			expectedExternalResourcePhases: []idlcore.TaskExecution_Phase{idlcore.TaskExecution_SUCCEEDED, idlcore.TaskExecution_SUCCEEDED},
+		},
+		// TODO @hamersaw - recording failure message
+		{
+			name: "OneSubNodeFailed",
+			subNodePhases: []v1alpha1.NodePhase{
+				v1alpha1.NodePhaseRunning,
+				v1alpha1.NodePhaseRunning,
+			},
+			subNodeTaskPhases: []core.Phase{
+				core.PhaseRunning,
+				core.PhaseRunning,
+			},
+			subNodeTransitions: []handler.Transition{
+				handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(0, "", "", &handler.ExecutionInfo{})),
+				handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoSuccess(&handler.ExecutionInfo{})),
+			},
+			expectedArrayNodePhase: v1alpha1.ArrayNodePhaseFailing,
+			expectedTransitionPhase: handler.EPhaseRunning,
+			expectedExternalResourcePhases: []idlcore.TaskExecution_Phase{idlcore.TaskExecution_FAILED, idlcore.TaskExecution_SUCCEEDED},
+		},
+		// TODO @hamersaw - min_successes / min_success_ratio
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			scope := promutils.NewTestScope()
+			dataStore, err := storage.NewDataStore(&storage.Config{
+				Type: storage.TypeMemory,
+			}, scope)
+			assert.NoError(t, err)
+
+			// configure SubNodePhases and SubNodeTaskPhases
+			arrayNodeState := &interfaces.ArrayNodeState{
+				Phase: v1alpha1.ArrayNodePhaseExecuting,
+			}
+			for _, item := range []struct{arrayReference *bitarray.CompactArray; maxValue int}{
+				{arrayReference: &arrayNodeState.SubNodePhases, maxValue: int(v1alpha1.NodePhaseRecovered)}, 
+					{arrayReference: &arrayNodeState.SubNodeTaskPhases, maxValue: len(core.Phases)-1},
+					{arrayReference: &arrayNodeState.SubNodeRetryAttempts, maxValue: 1},
+					{arrayReference: &arrayNodeState.SubNodeSystemFailures, maxValue: 1},
+				} {
+
+				*item.arrayReference, err = bitarray.NewCompactArray(uint(size), bitarray.Item(item.maxValue))
+				assert.NoError(t, err)
+			}
+
+			for i, nodePhase := range test.subNodePhases {
+				arrayNodeState.SubNodePhases.SetItem(i, bitarray.Item(nodePhase))
+			}
+			for i, taskPhase := range test.subNodeTaskPhases {
+				arrayNodeState.SubNodeTaskPhases.SetItem(i, bitarray.Item(taskPhase))
+			}
+
+			// create NodeExecutionContext
+			eventRecorder := newArrayEventRecorder()
+			nCtx, err := createNodeExecutionContext(t, ctx, dataStore, eventRecorder, literalMap, arrayNodeState)
+			assert.NoError(t, err)
+
+			// initialize ArrayNodeHandler
+			nodeHandler := &mocks.NodeHandler{}
+			nodeHandler.OnFinalizeRequired().Return(false)
+			for i, transition := range test.subNodeTransitions {
+				nodeID := fmt.Sprintf("%s-n%d", nCtx.NodeID(), i)
+				transitionPhase := test.expectedExternalResourcePhases[i]
+
+				nodeHandler.OnHandleMatch(mock.Anything, mock.MatchedBy(func(arrayNCtx interfaces.NodeExecutionContext) bool {
+					return arrayNCtx.NodeID() == nodeID  // match on NodeID using index to ensure each subNode is handled independently
+				})).Run(
+					func(args mock.Arguments) {
+						// mock sending TaskExecutionEvent from handler to show task state transition
+						taskExecutionEvent := &event.TaskExecutionEvent{
+							Phase: transitionPhase,
+						}
+
+						args.Get(1).(interfaces.NodeExecutionContext).EventsRecorder().RecordTaskEvent(ctx, taskExecutionEvent, &config.EventConfig{})
+					},
+				).Return(transition, nil)
+			}
+
+			arrayNodeHandler, err := createArrayNodeHandler(t, ctx, nodeHandler, dataStore, scope)
+			assert.NoError(t, err)
+
+			// evaluate node
+			transition, err := arrayNodeHandler.Handle(ctx, nCtx)
+			assert.NoError(t, err)
+
+			// validate results
+			assert.Equal(t, test.expectedArrayNodePhase, arrayNodeState.Phase)
+			assert.Equal(t, test.expectedTransitionPhase, transition.Info().GetPhase())
+
+			if len(test.expectedExternalResourcePhases) > 0 {
+				assert.Equal(t, 1, len(eventRecorder.taskEvents))
+
+				externalResources := eventRecorder.taskEvents[0].Metadata.GetExternalResources()
+				assert.Equal(t, len(test.expectedExternalResourcePhases), len(externalResources))
+				for i, expectedPhase := range test.expectedExternalResourcePhases {
+					assert.Equal(t, expectedPhase, externalResources[i].Phase)
+				}
+			} else {
+				assert.Equal(t, 0, len(eventRecorder.taskEvents))
+			}
+		})
+	}
 }
 
 func TestHandleArrayNodePhaseSucceeding(t *testing.T) {
@@ -187,7 +424,7 @@ func convertMapToArrayLiterals(values map[string][]int64) *idlcore.LiteralMap {
 	literalMap := make(map[string]*idlcore.Literal)
 	for k, v := range values {
 		// create LiteralCollection
-		literalList := make([]*idlcore.Literal, len(v))
+		literalList := make([]*idlcore.Literal, 0, len(v))
 		for _, x := range v {
 			literalList = append(literalList, &idlcore.Literal{
 				Value: &idlcore.Literal_Scalar{
