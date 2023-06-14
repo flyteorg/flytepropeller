@@ -328,6 +328,19 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 		}
 	}
 
+	spanFile := storage.DataReference(recovered.Closure.GetSpanUri())
+	if len(spanFile) > 0 {
+		metadata, err := nCtx.DataStore().Head(ctx, spanFile)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to check the existence of span file. Error: %v", err)
+			return handler.PhaseInfoUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to check the existence of span file.")
+		}
+		
+		if metadata.Exists() {
+			oi.SpanURI = &spanFile
+		}
+	}
+
 	if err := c.store.WriteProtobuf(ctx, outputFile, so, outputs); err != nil {
 		logger.Errorf(ctx, "Failed to write protobuf (metadata). Error [%v]", err)
 		return handler.PhaseInfoUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to store recovered node execution outputs")
