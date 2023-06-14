@@ -48,6 +48,7 @@ var (
 			InputUri: "input-uri",
 		},
 		DeckUri:      deckURI,
+		SpanUri:      spanURI,
 		OutputResult: &event.NodeExecutionEvent_OutputUri{OutputUri: ""},
 	}
 

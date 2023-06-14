@@ -169,7 +169,7 @@ func ToNodeExecutionEvent(nodeExecID *core.NodeExecutionIdentifier,
 		}
 
 		if eInfo.OutputInfo.SpanURI != nil {
-			defer logger.Debugf(context.TODO(), "For test only, Span URI:",eInfo.OutputInfo.SpanURI.String())
+			defer logger.Debugf(context.TODO(), "For test only, Span URI:", eInfo.OutputInfo.SpanURI.String())
 			nev.SpanUri = eInfo.OutputInfo.SpanURI.String()
 		}
 

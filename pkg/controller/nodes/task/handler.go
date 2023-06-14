@@ -520,7 +520,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 					return pluginTrns, regErrors.Wrapf(err, "failed to check existence of span file")
 				} else if exists {
 					spanURIValue := tCtx.ow.GetSpanPath()
-					spanURI	= &spanURIValue
+					spanURI = &spanURIValue
 				}
 			}
 			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), deckURI, spanURI,

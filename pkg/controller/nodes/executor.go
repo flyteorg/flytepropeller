@@ -335,7 +335,7 @@ func (c *nodeExecutor) attemptRecovery(ctx context.Context, nCtx handler.NodeExe
 			logger.Errorf(ctx, "Failed to check the existence of span file. Error: %v", err)
 			return handler.PhaseInfoUndefined, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "Failed to check the existence of span file.")
 		}
-		
+
 		if metadata.Exists() {
 			oi.SpanURI = &spanFile
 		}

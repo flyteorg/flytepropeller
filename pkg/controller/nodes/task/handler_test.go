@@ -517,6 +517,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 		})
 		nCtx.OnNodeStateReader().Return(nr)
 		nCtx.OnNodeStateWriter().Return(s)
+
 		return nCtx
 	}
 
@@ -956,6 +957,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			if tt.args.catalogFetch {
 				or := &ioMocks.OutputReader{}
 				or.OnDeckExistsMatch(mock.Anything).Return(true, nil)
+				or.OnSpanExistsMatch(mock.Anything).Return(true, nil)
 				or.OnReadMatch(mock.Anything).Return(&core.LiteralMap{}, nil, nil)
 				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewCatalogEntry(or, catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil)), nil)
 			} else {
@@ -1224,6 +1226,7 @@ func Test_task_Handle_Reservation(t *testing.T) {
 			if tt.args.catalogFetch {
 				or := &ioMocks.OutputReader{}
 				or.OnDeckExistsMatch(mock.Anything).Return(true, nil)
+				or.OnSpanExistsMatch(mock.Anything).Return(true, nil)
 				or.OnReadMatch(mock.Anything).Return(&core.LiteralMap{}, nil, nil)
 				c.OnGetMatch(mock.Anything, mock.Anything).Return(catalog.NewCatalogEntry(or, catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil)), nil)
 			} else {
