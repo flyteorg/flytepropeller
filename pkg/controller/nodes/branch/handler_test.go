@@ -26,7 +26,8 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	execMocks "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces/mocks"
 )
 
 var eventConfig = &config.EventConfig{
@@ -34,27 +35,34 @@ var eventConfig = &config.EventConfig{
 }
 
 type branchNodeStateHolder struct {
-	s handler.BranchNodeState
+	s interfaces.BranchNodeState
 }
 
-func (t *branchNodeStateHolder) PutTaskNodeState(s handler.TaskNodeState) error {
+func (t *branchNodeStateHolder) ClearNodeStatus() {
+}
+
+func (t *branchNodeStateHolder) PutTaskNodeState(s interfaces.TaskNodeState) error {
 	panic("not implemented")
 }
 
-func (t *branchNodeStateHolder) PutBranchNode(s handler.BranchNodeState) error {
+func (t *branchNodeStateHolder) PutBranchNode(s interfaces.BranchNodeState) error {
 	t.s = s
 	return nil
 }
 
-func (t branchNodeStateHolder) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
+func (t branchNodeStateHolder) PutWorkflowNodeState(s interfaces.WorkflowNodeState) error {
 	panic("not implemented")
 }
 
-func (t branchNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) error {
+func (t branchNodeStateHolder) PutDynamicNodeState(s interfaces.DynamicNodeState) error {
 	panic("not implemented")
 }
 
-func (t branchNodeStateHolder) PutGateNodeState(s handler.GateNodeState) error {
+func (t branchNodeStateHolder) PutGateNodeState(s interfaces.GateNodeState) error {
+	panic("not implemented")
+}
+
+func (t branchNodeStateHolder) PutArrayNodeState(s interfaces.ArrayNodeState) error {
 	panic("not implemented")
 }
 
@@ -71,7 +79,7 @@ func (parentInfo) CurrentAttempt() uint32 {
 
 func createNodeContext(phase v1alpha1.BranchNodePhase, childNodeID *v1alpha1.NodeID, n v1alpha1.ExecutableNode,
 	inputs *core.LiteralMap, nl *execMocks.NodeLookup, eCtx executors.ExecutionContext) (*mocks.NodeExecutionContext, *branchNodeStateHolder) {
-	branchNodeState := handler.BranchNodeState{
+	branchNodeState := interfaces.BranchNodeState{
 		FinalizedNodeID: childNodeID,
 		Phase:           phase,
 	}
@@ -119,7 +127,7 @@ func createNodeContext(phase v1alpha1.BranchNodePhase, childNodeID *v1alpha1.Nod
 	nCtx.OnEnqueueOwnerFunc().Return(nil)
 
 	nr := &mocks.NodeStateReader{}
-	nr.OnGetBranchNode().Return(handler.BranchNodeState{
+	nr.OnGetBranchNodeState().Return(interfaces.BranchNodeState{
 		FinalizedNodeID: childNodeID,
 		Phase:           phase,
 	})
@@ -151,7 +159,7 @@ func TestBranchHandler_RecurseDownstream(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		ns              executors.NodeStatus
+		ns              interfaces.NodeStatus
 		err             error
 		nodeStatus      *mocks2.ExecutableNodeStatus
 		branchTakenNode v1alpha1.ExecutableNode
@@ -160,17 +168,17 @@ func TestBranchHandler_RecurseDownstream(t *testing.T) {
 		childPhase      v1alpha1.NodePhase
 		upstreamNodeID  string
 	}{
-		{"upstreamNodeExists", executors.NodeStatusPending, nil,
+		{"upstreamNodeExists", interfaces.NodeStatusPending, nil,
 			&mocks2.ExecutableNodeStatus{}, bn, false, handler.EPhaseRunning, v1alpha1.NodePhaseQueued, "n2"},
-		{"childNodeError", executors.NodeStatusUndefined, fmt.Errorf("err"),
+		{"childNodeError", interfaces.NodeStatusUndefined, fmt.Errorf("err"),
 			&mocks2.ExecutableNodeStatus{}, bn, true, handler.EPhaseUndefined, v1alpha1.NodePhaseFailed, ""},
-		{"childPending", executors.NodeStatusPending, nil,
+		{"childPending", interfaces.NodeStatusPending, nil,
 			&mocks2.ExecutableNodeStatus{}, bn, false, handler.EPhaseRunning, v1alpha1.NodePhaseQueued, ""},
-		{"childStillRunning", executors.NodeStatusRunning, nil,
+		{"childStillRunning", interfaces.NodeStatusRunning, nil,
 			&mocks2.ExecutableNodeStatus{}, bn, false, handler.EPhaseRunning, v1alpha1.NodePhaseRunning, ""},
-		{"childFailure", executors.NodeStatusFailed(expectedError), nil,
+		{"childFailure", interfaces.NodeStatusFailed(expectedError), nil,
 			&mocks2.ExecutableNodeStatus{}, bn, false, handler.EPhaseFailed, v1alpha1.NodePhaseFailed, ""},
-		{"childComplete", executors.NodeStatusComplete, nil,
+		{"childComplete", interfaces.NodeStatusComplete, nil,
 			&mocks2.ExecutableNodeStatus{}, bn, false, handler.EPhaseSuccess, v1alpha1.NodePhaseSucceeded, ""},
 	}
 	for _, test := range tests {
@@ -188,7 +196,7 @@ func TestBranchHandler_RecurseDownstream(t *testing.T) {
 			nCtx, _ := createNodeContext(v1alpha1.BranchNodeNotYetEvaluated, &childNodeID, n, nil, mockNodeLookup, eCtx)
 			newParentInfo, _ := common.CreateParentInfo(parentInfo{}, nCtx.NodeID(), nCtx.CurrentAttempt())
 			expectedExecContext := executors.NewExecutionContextWithParentInfo(nCtx.ExecutionContext(), newParentInfo)
-			mockNodeExecutor := &execMocks.Node{}
+			mockNodeExecutor := &mocks.Node{}
 			mockNodeExecutor.OnRecursiveNodeHandlerMatch(
 				mock.Anything, // ctx
 				mock.MatchedBy(func(e executors.ExecutionContext) bool { return assert.Equal(t, e, expectedExecContext) }),
@@ -295,7 +303,7 @@ func TestBranchHandler_AbortNode(t *testing.T) {
 	assert.NotNil(t, w)
 
 	t.Run("NoBranchNode", func(t *testing.T) {
-		mockNodeExecutor := &execMocks.Node{}
+		mockNodeExecutor := &mocks.Node{}
 		mockNodeExecutor.OnAbortHandlerMatch(mock.Anything,
 			mock.Anything,
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("err"))
@@ -308,7 +316,7 @@ func TestBranchHandler_AbortNode(t *testing.T) {
 	})
 
 	t.Run("BranchNodeSuccess", func(t *testing.T) {
-		mockNodeExecutor := &execMocks.Node{}
+		mockNodeExecutor := &mocks.Node{}
 		mockNodeLookup := &execMocks.NodeLookup{}
 		mockNodeLookup.OnToNodeMatch(mock.Anything).Return(nil, nil)
 		eCtx := &execMocks.ExecutionContext{}
@@ -329,7 +337,7 @@ func TestBranchHandler_AbortNode(t *testing.T) {
 
 func TestBranchHandler_Initialize(t *testing.T) {
 	ctx := context.TODO()
-	mockNodeExecutor := &execMocks.Node{}
+	mockNodeExecutor := &mocks.Node{}
 	branch := New(mockNodeExecutor, eventConfig, promutils.NewTestScope())
 	assert.NoError(t, branch.Setup(ctx, nil))
 }
@@ -337,7 +345,7 @@ func TestBranchHandler_Initialize(t *testing.T) {
 // TODO incomplete test suite, add more
 func TestBranchHandler_HandleNode(t *testing.T) {
 	ctx := context.TODO()
-	mockNodeExecutor := &execMocks.Node{}
+	mockNodeExecutor := &mocks.Node{}
 	branch := New(mockNodeExecutor, eventConfig, promutils.NewTestScope())
 	childNodeID := "child"
 	childDatadir := v1alpha1.DataReference("test")

@@ -26,37 +26,45 @@ import (
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	execMocks "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
-	mocks3 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
+	mocks3 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan/mocks"
 )
 
 type workflowNodeStateHolder struct {
-	s handler.WorkflowNodeState
+	s interfaces.WorkflowNodeState
 }
 
 var eventConfig = &config.EventConfig{
 	RawOutputPolicy: config.RawOutputPolicyReference,
 }
 
-func (t *workflowNodeStateHolder) PutTaskNodeState(s handler.TaskNodeState) error {
+func (t *workflowNodeStateHolder) ClearNodeStatus() {
+}
+
+func (t *workflowNodeStateHolder) PutTaskNodeState(s interfaces.TaskNodeState) error {
 	panic("not implemented")
 }
 
-func (t workflowNodeStateHolder) PutBranchNode(s handler.BranchNodeState) error {
+func (t workflowNodeStateHolder) PutBranchNode(s interfaces.BranchNodeState) error {
 	panic("not implemented")
 }
 
-func (t *workflowNodeStateHolder) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
+func (t *workflowNodeStateHolder) PutWorkflowNodeState(s interfaces.WorkflowNodeState) error {
 	t.s = s
 	return nil
 }
 
-func (t workflowNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) error {
+func (t workflowNodeStateHolder) PutDynamicNodeState(s interfaces.DynamicNodeState) error {
 	panic("not implemented")
 }
 
-func (t workflowNodeStateHolder) PutGateNodeState(s handler.GateNodeState) error {
+func (t workflowNodeStateHolder) PutGateNodeState(s interfaces.GateNodeState) error {
+	panic("not implemented")
+}
+
+func (t workflowNodeStateHolder) PutArrayNodeState(s interfaces.ArrayNodeState) error {
 	panic("not implemented")
 }
 
@@ -68,7 +76,7 @@ var wfExecID = &core.WorkflowExecutionIdentifier{
 
 func createNodeContextWithVersion(phase v1alpha1.WorkflowNodePhase, n v1alpha1.ExecutableNode, s v1alpha1.ExecutableNodeStatus, version v1alpha1.EventVersion) *mocks3.NodeExecutionContext {
 
-	wfNodeState := handler.WorkflowNodeState{}
+	wfNodeState := interfaces.WorkflowNodeState{}
 	state := &workflowNodeStateHolder{s: wfNodeState}
 
 	nm := &mocks3.NodeExecutionMetadata{}
@@ -101,7 +109,7 @@ func createNodeContextWithVersion(phase v1alpha1.WorkflowNodePhase, n v1alpha1.E
 	nCtx.OnNodeStatus().Return(s)
 
 	nr := &mocks3.NodeStateReader{}
-	nr.OnGetWorkflowNodeState().Return(handler.WorkflowNodeState{
+	nr.OnGetWorkflowNodeState().Return(interfaces.WorkflowNodeState{
 		Phase: phase,
 	})
 	nCtx.OnNodeStateReader().Return(nr)

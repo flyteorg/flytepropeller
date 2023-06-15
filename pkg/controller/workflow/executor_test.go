@@ -32,6 +32,7 @@ import (
 	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
 	eventMocks "github.com/flyteorg/flytepropeller/events/mocks"
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
+	nodemocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/fakeplugins"
 
@@ -726,7 +727,7 @@ func TestWorkflowExecutor_HandleAbortedWorkflow(t *testing.T) {
 
 	t.Run("user-initiated-fail", func(t *testing.T) {
 
-		nodeExec := &mocks2.Node{}
+		nodeExec := &nodemocks.Node{}
 		wExec := &workflowExecutor{
 			nodeExecutor: nodeExec,
 			metrics:      newMetrics(promutils.NewTestScope()),
@@ -756,7 +757,7 @@ func TestWorkflowExecutor_HandleAbortedWorkflow(t *testing.T) {
 	t.Run("user-initiated-success", func(t *testing.T) {
 
 		var evs []*event.WorkflowExecutionEvent
-		nodeExec := &mocks2.Node{}
+		nodeExec := &nodemocks.Node{}
 		wfRecorder := &eventMocks.WorkflowEventRecorder{}
 		wfRecorder.On("RecordWorkflowEvent", mock.Anything, mock.MatchedBy(func(ev *event.WorkflowExecutionEvent) bool {
 			assert.Equal(t, testClusterID, ev.ProducerId)
@@ -798,7 +799,7 @@ func TestWorkflowExecutor_HandleAbortedWorkflow(t *testing.T) {
 	t.Run("user-initiated-attempts-exhausted", func(t *testing.T) {
 
 		var evs []*event.WorkflowExecutionEvent
-		nodeExec := &mocks2.Node{}
+		nodeExec := &nodemocks.Node{}
 		wfRecorder := &eventMocks.WorkflowEventRecorder{}
 		wfRecorder.OnRecordWorkflowEventMatch(mock.Anything, mock.MatchedBy(func(ev *event.WorkflowExecutionEvent) bool {
 			assert.Equal(t, testClusterID, ev.ProducerId)
@@ -839,7 +840,7 @@ func TestWorkflowExecutor_HandleAbortedWorkflow(t *testing.T) {
 
 	t.Run("failure-abort-success", func(t *testing.T) {
 		var evs []*event.WorkflowExecutionEvent
-		nodeExec := &mocks2.Node{}
+		nodeExec := &nodemocks.Node{}
 		wfRecorder := &eventMocks.WorkflowEventRecorder{}
 		wfRecorder.OnRecordWorkflowEventMatch(mock.Anything, mock.MatchedBy(func(ev *event.WorkflowExecutionEvent) bool {
 			assert.Equal(t, testClusterID, ev.ProducerId)
@@ -877,7 +878,7 @@ func TestWorkflowExecutor_HandleAbortedWorkflow(t *testing.T) {
 
 	t.Run("failure-abort-failed", func(t *testing.T) {
 
-		nodeExec := &mocks2.Node{}
+		nodeExec := &nodemocks.Node{}
 		wExec := &workflowExecutor{
 			nodeExecutor: nodeExec,
 			metrics:      newMetrics(promutils.NewTestScope()),
