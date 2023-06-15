@@ -1655,16 +1655,17 @@ func TestNodeExecutor_AbortHandler(t *testing.T) {
 		incompatibleClusterErr := fakeNodeEventRecorder{&eventsErr.EventError{Code: eventsErr.AlreadyExists, Cause: fmt.Errorf("err")}}
 
 		hf := &nodemocks.HandlerFactory{}
-		exec.nodeHandlerFactory = hf
 		h := &nodemocks.NodeHandler{}
 		h.OnAbortMatch(mock.Anything, mock.Anything, "aborting").Return(nil)
 		h.OnFinalizeMatch(mock.Anything, mock.Anything).Return(nil)
 		hf.OnGetHandlerMatch(v1alpha1.NodeKindStart).Return(h, nil)
 
+		nodeExecutor := &nodeExecutor{
+			nodeRecorder: incompatibleClusterErr,
+		}
 		nExec := recursiveNodeExecutor{
-			nodeExecutor: &nodeExecutor{
-				nodeRecorder:       incompatibleClusterErr,
-			},
+			nodeExecutor:       nodeExecutor,
+			nCtxBuilder:        nodeExecutor,
 			nodeHandlerFactory: hf,
 		}
 

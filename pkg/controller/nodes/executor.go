@@ -409,6 +409,45 @@ func (c *recursiveNodeExecutor) AbortHandler(ctx context.Context, execContext ex
 		if err != nil {
 			return err
 		}
+
+		// TODO @hamersaw - need to fix this shouldn't need to decompose nodeExecutor to send event
+		if nodeExec, ok := c.nodeExecutor.(*nodeExecutor); ok {
+			nodeExecutionID := &core.NodeExecutionIdentifier{
+				ExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID().ExecutionId,
+				NodeId:      nCtx.NodeExecutionMetadata().GetNodeExecutionID().NodeId,
+			}
+			if nCtx.ExecutionContext().GetEventVersion() != v1alpha1.EventVersion0 {
+				currentNodeUniqueID, err := common.GenerateUniqueID(nCtx.ExecutionContext().GetParentInfo(), nodeExecutionID.NodeId)
+				if err != nil {
+					return err
+				}
+				nodeExecutionID.NodeId = currentNodeUniqueID
+			}
+
+			//err := c.IdempotentRecordEvent(ctx, &event.NodeExecutionEvent{
+			err = nCtx.EventsRecorder().RecordNodeEvent(ctx, &event.NodeExecutionEvent{
+				Id:         nodeExecutionID,
+				Phase:      core.NodeExecution_ABORTED,
+				OccurredAt: ptypes.TimestampNow(),
+				OutputResult: &event.NodeExecutionEvent_Error{
+					Error: &core.ExecutionError{
+						Code:    "NodeAborted",
+						Message: reason,
+					},
+				},
+				ProducerId: nodeExec.clusterID,
+				ReportedAt: ptypes.TimestampNow(),
+			}, nodeExec.eventConfig)
+			if err != nil && !eventsErr.IsNotFound(err) && !eventsErr.IsEventIncompatibleClusterError(err) {
+				if errors2.IsCausedBy(err, errors.IllegalStateError) {
+					logger.Debugf(ctx, "Failed to record abort event due to illegal state transition. Ignoring the error. Error: %v", err)
+				} else {
+					logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
+					return errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
+				}
+			}
+		}
+		return nil
 	} else if nodePhase == v1alpha1.NodePhaseSucceeded || nodePhase == v1alpha1.NodePhaseSkipped || nodePhase == v1alpha1.NodePhaseRecovered {
 		// Abort downstream nodes
 		downstreamNodes, err := dag.FromNode(currentNode.GetID())
@@ -894,45 +933,7 @@ func (c *nodeExecutor) Abort(ctx context.Context, h interfaces.NodeHandler, nCtx
 		return err
 	}
 
-	if err := h.Finalize(ctx, nCtx); err != nil {
-		return err
-	}
-
-	nodeExecutionID := &core.NodeExecutionIdentifier{
-		ExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID().ExecutionId,
-		NodeId:      nCtx.NodeExecutionMetadata().GetNodeExecutionID().NodeId,
-	}
-	if nCtx.ExecutionContext().GetEventVersion() != v1alpha1.EventVersion0 {
-		currentNodeUniqueID, err := common.GenerateUniqueID(nCtx.ExecutionContext().GetParentInfo(), nodeExecutionID.NodeId)
-		if err != nil {
-			return err
-		}
-		nodeExecutionID.NodeId = currentNodeUniqueID
-	}
-
-	//err := c.IdempotentRecordEvent(ctx, &event.NodeExecutionEvent{
-	err := nCtx.EventsRecorder().RecordNodeEvent(ctx, &event.NodeExecutionEvent{
-		Id:         nodeExecutionID,
-		Phase:      core.NodeExecution_ABORTED,
-		OccurredAt: ptypes.TimestampNow(),
-		OutputResult: &event.NodeExecutionEvent_Error{
-			Error: &core.ExecutionError{
-				Code:    "NodeAborted",
-				Message: reason,
-			},
-		},
-		ProducerId: c.clusterID,
-		ReportedAt: ptypes.TimestampNow(),
-	}, c.eventConfig)
-	if err != nil && !eventsErr.IsNotFound(err) && !eventsErr.IsEventIncompatibleClusterError(err) {
-		if errors2.IsCausedBy(err, errors.IllegalStateError) {
-			logger.Debugf(ctx, "Failed to record abort event due to illegal state transition. Ignoring the error. Error: %v", err)
-		} else {
-			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
-			return errors.Wrapf(errors.EventRecordingFailed, nCtx.NodeID(), err, "failed to record node event")
-		}
-	}
-	return nil
+	return h.Finalize(ctx, nCtx)
 }
 
 func (c *nodeExecutor) Finalize(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext) error {
