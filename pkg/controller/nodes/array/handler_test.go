@@ -593,7 +593,79 @@ func TestHandleArrayNodePhaseSucceeding(t *testing.T) {
 }
 
 func TestHandleArrayNodePhaseFailing(t *testing.T) {
-	// TODO @hamersaw - complete
+	ctx := context.Background()
+	scope := promutils.NewTestScope()
+	dataStore, err := storage.NewDataStore(&storage.Config{
+		Type: storage.TypeMemory,
+	}, scope)
+	assert.NoError(t, err)
+
+	nodeHandler := &mocks.NodeHandler{}
+	nodeHandler.OnAbortMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	nodeHandler.OnFinalizeMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	// initialize ArrayNodeHandler
+	arrayNodeHandler, err := createArrayNodeHandler(t, ctx, nodeHandler, dataStore, scope)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name                    string
+		subNodePhases           []v1alpha1.NodePhase
+		expectedArrayNodePhase  v1alpha1.ArrayNodePhase
+		expectedTransitionPhase handler.EPhase
+		expectedAbortCalls      int
+	}{
+		{
+			name: "Success",
+			subNodePhases: []v1alpha1.NodePhase{
+				v1alpha1.NodePhaseRunning,
+				v1alpha1.NodePhaseSucceeded,
+				v1alpha1.NodePhaseFailed,
+			},
+			expectedArrayNodePhase: v1alpha1.ArrayNodePhaseFailing,
+			expectedTransitionPhase: handler.EPhaseFailed,
+			expectedAbortCalls: 1,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// initialize ArrayNodeState
+			arrayNodeState := &interfaces.ArrayNodeState{
+				Phase: v1alpha1.ArrayNodePhaseFailing,
+			}
+
+			for _, item := range []struct{arrayReference *bitarray.CompactArray; maxValue int}{
+				{arrayReference: &arrayNodeState.SubNodePhases, maxValue: int(v1alpha1.NodePhaseRecovered)}, 
+					{arrayReference: &arrayNodeState.SubNodeTaskPhases, maxValue: len(core.Phases)-1},
+					{arrayReference: &arrayNodeState.SubNodeRetryAttempts, maxValue: 1},
+					{arrayReference: &arrayNodeState.SubNodeSystemFailures, maxValue: 1},
+				} {
+
+				*item.arrayReference, err = bitarray.NewCompactArray(uint(len(test.subNodePhases)), bitarray.Item(item.maxValue))
+				assert.NoError(t, err)
+			}
+
+			for i, nodePhase := range test.subNodePhases {
+				arrayNodeState.SubNodePhases.SetItem(i, bitarray.Item(nodePhase))
+			}
+
+			// create NodeExecutionContext
+			eventRecorder := newArrayEventRecorder()
+			literalMap := &idlcore.LiteralMap{}
+			nCtx, err := createNodeExecutionContext(t, ctx, dataStore, eventRecorder, nil, literalMap, &arrayNodeSpec, arrayNodeState)
+			assert.NoError(t, err)
+
+			// evaluate node
+			transition, err := arrayNodeHandler.Handle(ctx, nCtx)
+			assert.NoError(t, err)
+
+			// validate results
+			assert.Equal(t, test.expectedArrayNodePhase, arrayNodeState.Phase)
+			assert.Equal(t, test.expectedTransitionPhase, transition.Info().GetPhase())
+			nodeHandler.AssertNumberOfCalls(t, "Abort", test.expectedAbortCalls)
+		})
+	}
 }
 
 func init() {
