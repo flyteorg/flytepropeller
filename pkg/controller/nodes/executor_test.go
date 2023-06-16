@@ -1357,10 +1357,10 @@ func TestNodeExecutor_RecursiveNodeHandler_BranchNode(t *testing.T) {
 func Test_nodeExecutor_RecordTransitionLatency(t *testing.T) {
 	testScope := promutils.NewTestScope()
 	type fields struct {
-		enqueueWorkflow    v1alpha1.EnqueueWorkflow
-		store              *storage.DataStore
-		nodeRecorder       events.NodeEventRecorder
-		metrics            *nodeMetrics
+		enqueueWorkflow v1alpha1.EnqueueWorkflow
+		store           *storage.DataStore
+		nodeRecorder    events.NodeEventRecorder
+		metrics         *nodeMetrics
 	}
 	type args struct {
 		w          v1alpha1.ExecutableWorkflow
@@ -1401,10 +1401,10 @@ func Test_nodeExecutor_RecordTransitionLatency(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &nodeExecutor{
-				enqueueWorkflow:    tt.fields.enqueueWorkflow,
-				store:              tt.fields.store,
-				nodeRecorder:       tt.fields.nodeRecorder,
-				metrics:            tt.fields.metrics,
+				enqueueWorkflow: tt.fields.enqueueWorkflow,
+				store:           tt.fields.store,
+				nodeRecorder:    tt.fields.nodeRecorder,
+				metrics:         tt.fields.metrics,
 			}
 			c.RecordTransitionLatency(context.TODO(), tt.args.w, tt.args.w, tt.args.node, tt.args.nodeStatus)
 

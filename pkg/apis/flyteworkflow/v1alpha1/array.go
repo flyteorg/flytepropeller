@@ -1,10 +1,7 @@
 package v1alpha1
 
-import (
-)
-
 type ArrayNodeSpec struct {
-	SubNodeSpec     *NodeSpec 
+	SubNodeSpec     *NodeSpec
 	Parallelism     uint32
 	MinSuccesses    *uint32
 	MinSuccessRatio *float32

@@ -38,7 +38,7 @@ func appendLiteral(name string, literal *idlcore.Literal, outputLiterals map[str
 	collection.Literals = append(collection.Literals, literal)
 }
 
-func buildTaskExecutionEvent(ctx context.Context, nCtx interfaces.NodeExecutionContext, taskPhase idlcore.TaskExecution_Phase, taskPhaseVersion uint32, externalResources []*event.ExternalResourceInfo) (*event.TaskExecutionEvent, error) {
+func buildTaskExecutionEvent(_ context.Context, nCtx interfaces.NodeExecutionContext, taskPhase idlcore.TaskExecution_Phase, taskPhaseVersion uint32, externalResources []*event.ExternalResourceInfo) (*event.TaskExecutionEvent, error) {
 	occurredAt, err := ptypes.TimestampProto(time.Now())
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func buildTaskExecutionEvent(ctx context.Context, nCtx interfaces.NodeExecutionC
 			Version:      "v1", // this value is irrelevant but necessary for the identifier to be valid
 		},
 		ParentNodeExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID(),
-		RetryAttempt:          0, // ArrayNode will never retry 
+		RetryAttempt:          0, // ArrayNode will never retry
 		Phase:                 taskPhase,
 		PhaseVersion:          taskPhaseVersion,
 		OccurredAt:            occurredAt,
@@ -84,7 +84,7 @@ func bytesFromK8sPluginState(pluginState k8s.PluginState) ([]byte, error) {
 	return bufferWriter.Bytes(), nil
 }
 
-func constructOutputReferences(ctx context.Context, nCtx interfaces.NodeExecutionContext, postfix...string) (storage.DataReference, storage.DataReference, error) {
+func constructOutputReferences(ctx context.Context, nCtx interfaces.NodeExecutionContext, postfix ...string) (storage.DataReference, storage.DataReference, error) {
 	subDataDir, err := nCtx.DataStore().ConstructReference(ctx, nCtx.NodeStatus().GetDataDir(), postfix...)
 	if err != nil {
 		return "", "", err

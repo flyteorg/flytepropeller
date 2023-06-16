@@ -172,10 +172,10 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		}
 
 		switch successCriteria := arrayNode.SuccessCriteria.(type) {
-		case *core.ArrayNode_MinSuccesses: 
-			nodeSpec.ArrayNode.MinSuccesses = &successCriteria.MinSuccesses;
+		case *core.ArrayNode_MinSuccesses:
+			nodeSpec.ArrayNode.MinSuccesses = &successCriteria.MinSuccesses
 		case *core.ArrayNode_MinSuccessRatio:
-			nodeSpec.ArrayNode.MinSuccessRatio = &successCriteria.MinSuccessRatio;
+			nodeSpec.ArrayNode.MinSuccessRatio = &successCriteria.MinSuccessRatio
 		}
 
 		// TODO @hamersaw hack - should not be necessary, should be set in flytekit

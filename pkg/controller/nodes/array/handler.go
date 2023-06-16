@@ -86,6 +86,9 @@ func (a *arrayNodeHandler) Abort(ctx context.Context, nCtx interfaces.NodeExecut
 			// create array contexts
 			arrayNodeExecutor, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, _, _, err :=
 				a.buildArrayNodeContext(ctx, nCtx, &arrayNodeState, arrayNode, i, &currentParallelism)
+			if err != nil {
+				return err
+			}
 
 			// abort subNode
 			err = arrayNodeExecutor.AbortHandler(ctx, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, reason)
@@ -141,6 +144,9 @@ func (a *arrayNodeHandler) Finalize(ctx context.Context, nCtx interfaces.NodeExe
 			// create array contexts
 			arrayNodeExecutor, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, _, _, err :=
 				a.buildArrayNodeContext(ctx, nCtx, &arrayNodeState, arrayNode, i, &currentParallelism)
+			if err != nil {
+				return err
+			}
 
 			// finalize subNode
 			err = arrayNodeExecutor.FinalizeHandler(ctx, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec)
@@ -160,7 +166,7 @@ func (a *arrayNodeHandler) Finalize(ctx context.Context, nCtx interfaces.NodeExe
 // FinalizeRequired defines whether or not this handler requires finalize to be called on node
 // completion
 func (a *arrayNodeHandler) FinalizeRequired() bool {
-	 // must return true because we can't determine if finalize is required for the subNode
+	// must return true because we can't determine if finalize is required for the subNode
 	return true
 }
 
@@ -213,14 +219,17 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			maxAttempts = *subNodeSpec.GetRetryStrategy().MinAttempts
 		}
 
-		for _, item := range []struct{arrayReference *bitarray.CompactArray; maxValue int}{
+		for _, item := range []struct {
+			arrayReference *bitarray.CompactArray
+			maxValue       int
+		}{
 			// we use NodePhaseRecovered for the `maxValue` of `SubNodePhases` because `Phase` is
 			// defined as an `iota` so it is impossible to programmatically get largest value
-			{arrayReference: &arrayNodeState.SubNodePhases, maxValue: int(v1alpha1.NodePhaseRecovered)}, 
-				{arrayReference: &arrayNodeState.SubNodeTaskPhases, maxValue: len(core.Phases)-1},
-				{arrayReference: &arrayNodeState.SubNodeRetryAttempts, maxValue: maxAttempts},
-				{arrayReference: &arrayNodeState.SubNodeSystemFailures, maxValue: maxAttempts},
-			} {
+			{arrayReference: &arrayNodeState.SubNodePhases, maxValue: int(v1alpha1.NodePhaseRecovered)},
+			{arrayReference: &arrayNodeState.SubNodeTaskPhases, maxValue: len(core.Phases) - 1},
+			{arrayReference: &arrayNodeState.SubNodeRetryAttempts, maxValue: maxAttempts},
+			{arrayReference: &arrayNodeState.SubNodeSystemFailures, maxValue: maxAttempts},
+		} {
 
 			*item.arrayReference, err = bitarray.NewCompactArray(uint(size), bitarray.Item(item.maxValue))
 			if err != nil {
@@ -258,6 +267,9 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			// create array contexts
 			arrayNodeExecutor, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec, subNodeStatus, arrayEventRecorder, err :=
 				a.buildArrayNodeContext(ctx, nCtx, &arrayNodeState, arrayNode, i, &currentParallelism)
+			if err != nil {
+				return handler.UnknownTransition, err
+			}
 
 			// execute subNode
 			_, err = arrayNodeExecutor.RecursiveNodeHandler(ctx, arrayExecutionContext, arrayDAGStructure, arrayNodeLookup, subNodeSpec)
@@ -344,7 +356,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			}
 		}
 
-		if len(arrayNodeState.SubNodePhases.GetItems()) - failedCount < minSuccesses {
+		if len(arrayNodeState.SubNodePhases.GetItems())-failedCount < minSuccesses {
 			// no chance to reach the mininum number of successes
 			arrayNodeState.Phase = v1alpha1.ArrayNodePhaseFailing
 		} else if successCount >= minSuccesses && runningCount == 0 {
@@ -385,8 +397,8 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 					outputVariables = task.CoreTask().Interface.Outputs.Variables
 				}
 
-				// append nil literal for all ouput variables
-				for name, _ := range outputVariables {
+				// append nil literal for all output variables
+				for name := range outputVariables {
 					appendLiteral(name, nilLiteral, outputLiterals, len(arrayNodeState.SubNodePhases.GetItems()))
 				}
 			} else {
@@ -457,11 +469,11 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 		// need to increment taskPhaseVersion if arrayNodeState.Phase does not change, otherwise
 		// reset to 0. by incrementing this always we report an event and ensure processing
 		// everytime the ArrayNode is evaluated. if this overhead becomes too large, we will need
-		// to revisit and only increment when any subNode state changes. 
+		// to revisit and only increment when any subNode state changes.
 		if currentArrayNodePhase != arrayNodeState.Phase {
 			arrayNodeState.TaskPhaseVersion = 0
 		} else {
-			arrayNodeState.TaskPhaseVersion = taskPhaseVersion+1
+			arrayNodeState.TaskPhaseVersion = taskPhaseVersion + 1
 		}
 
 		taskExecutionEvent, err := buildTaskExecutionEvent(ctx, nCtx, taskPhase, taskPhaseVersion, externalResources)
@@ -565,13 +577,13 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 	}
 
 	subNodeStatus := &v1alpha1.NodeStatus{
-		Phase:     nodePhase,
-		DataDir:   subDataDir,
-		OutputDir: subOutputDir,
-		Attempts:  currentAttempt,
+		Phase:          nodePhase,
+		DataDir:        subDataDir,
+		OutputDir:      subOutputDir,
+		Attempts:       currentAttempt,
 		SystemFailures: uint32(arrayNodeState.SubNodeSystemFailures.GetItem(subNodeIndex)),
 		TaskNodeStatus: &v1alpha1.TaskNodeStatus{
-			Phase: taskPhase,
+			Phase:       taskPhase,
 			PluginState: pluginStateBytes,
 		},
 	}

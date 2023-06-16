@@ -27,7 +27,7 @@ func (a *arrayExecutionContext) CurrentParallelism() uint32 {
 }
 
 func (a *arrayExecutionContext) IncrementParallelism() uint32 {
-	*a.currentParallelism = *a.currentParallelism+1
+	*a.currentParallelism = *a.currentParallelism + 1
 	return *a.currentParallelism
 }
 
@@ -38,7 +38,6 @@ func newArrayExecutionContext(executionContext executors.ExecutionContext, subNo
 	}
 	executionConfig.EnvironmentVariables[JobIndexVarName] = FlyteK8sArrayIndexVarName
 	executionConfig.EnvironmentVariables[FlyteK8sArrayIndexVarName] = strconv.Itoa(subNodeIndex)
-	
 	executionConfig.MaxParallelism = maxParallelism
 
 	return &arrayExecutionContext{

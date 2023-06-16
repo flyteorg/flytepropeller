@@ -87,13 +87,12 @@ type nodeMetrics struct {
 
 // Implements the executors.Node interface
 type recursiveNodeExecutor struct {
-	nodeExecutor interfaces.NodeExecutor
-	nCtxBuilder interfaces.NodeExecutionContextBuilder
-
-	enqueueWorkflow                 v1alpha1.EnqueueWorkflow
-	nodeHandlerFactory              interfaces.HandlerFactory
-	store                           *storage.DataStore
-	metrics                         *nodeMetrics
+	nodeExecutor       interfaces.NodeExecutor
+	nCtxBuilder        interfaces.NodeExecutionContextBuilder
+	enqueueWorkflow    v1alpha1.EnqueueWorkflow
+	nodeHandlerFactory interfaces.HandlerFactory
+	store              *storage.DataStore
+	metrics            *nodeMetrics
 }
 
 func (c *recursiveNodeExecutor) SetInputsForStartNode(ctx context.Context, execContext executors.ExecutionContext, dag executors.DAGStructureWithStartNode, nl executors.NodeLookup, inputs *core.LiteralMap) (interfaces.NodeStatus, error) {
@@ -161,7 +160,6 @@ func IsMaxParallelismAchieved(ctx context.Context, currentNode v1alpha1.Executab
 	}
 	return false
 }
-
 
 // RecursiveNodeHandler This is the entrypoint of executing a node in a workflow. A workflow consists of nodes, that are
 // nested within other nodes. The system follows an actor model, where the parent nodes control the execution of nested nodes
@@ -495,12 +493,12 @@ func (c *recursiveNodeExecutor) GetNodeExecutionContextBuilder() interfaces.Node
 
 func (c *recursiveNodeExecutor) WithNodeExecutionContextBuilder(nCtxBuilder interfaces.NodeExecutionContextBuilder) interfaces.Node {
 	return &recursiveNodeExecutor{
-		nodeExecutor: c.nodeExecutor,
-		nCtxBuilder: nCtxBuilder,
-		enqueueWorkflow: c.enqueueWorkflow,
-		nodeHandlerFactory: c.nodeHandlerFactory,              
-		store: c.store,
-		metrics: c.metrics,
+		nodeExecutor:       c.nodeExecutor,
+		nCtxBuilder:        nCtxBuilder,
+		enqueueWorkflow:    c.enqueueWorkflow,
+		nodeHandlerFactory: c.nodeHandlerFactory,
+		store:              c.store,
+		metrics:            c.metrics,
 	}
 }
 
@@ -515,12 +513,12 @@ type nodeExecutor struct {
 	interruptibleFailureThreshold   uint32
 	maxDatasetSizeBytes             int64
 	maxNodeRetriesForSystemFailures uint32
-	metrics *nodeMetrics
+	metrics                         *nodeMetrics
 	nodeRecorder                    events.NodeEventRecorder
 	outputResolver                  OutputResolver
-	recoveryClient recovery.Client
+	recoveryClient                  recovery.Client
 	shardSelector                   ioutils.ShardSelector
-	store   *storage.DataStore
+	store                           *storage.DataStore
 	taskRecorder                    events.TaskEventRecorder
 }
 
@@ -1284,18 +1282,18 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		defaultActiveDeadline:           nodeConfig.DefaultDeadlines.DefaultNodeActiveDeadline.Duration,
 		defaultDataSandbox:              defaultRawOutputPrefix,
 		defaultExecutionDeadline:        nodeConfig.DefaultDeadlines.DefaultNodeExecutionDeadline.Duration,
-		enqueueWorkflow:     enQWorkflow,
+		enqueueWorkflow:                 enQWorkflow,
 		eventConfig:                     eventConfig,
 		interruptibleFailureThreshold:   uint32(nodeConfig.InterruptibleFailureThreshold),
-		maxDatasetSizeBytes: maxDatasetSize,
+		maxDatasetSizeBytes:             maxDatasetSize,
 		maxNodeRetriesForSystemFailures: uint32(nodeConfig.MaxNodeRetriesOnSystemFailures),
-		metrics: metrics,
-		nodeRecorder:        events.NewNodeEventRecorder(eventSink, nodeScope, store),
+		metrics:                         metrics,
+		nodeRecorder:                    events.NewNodeEventRecorder(eventSink, nodeScope, store),
 		outputResolver:                  NewRemoteFileOutputResolver(store),
 		recoveryClient:                  recoveryClient,
 		shardSelector:                   shardSelector,
-		store: store,
-		taskRecorder:        events.NewTaskEventRecorder(eventSink, scope.NewSubScope("task"), store),
+		store:                           store,
+		taskRecorder:                    events.NewTaskEventRecorder(eventSink, scope.NewSubScope("task"), store),
 	}
 
 	exec := &recursiveNodeExecutor{

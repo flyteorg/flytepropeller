@@ -16,8 +16,8 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 	nodeerrors "github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 	"github.com/flyteorg/flytepropeller/pkg/utils"
 
 	"github.com/flyteorg/flytestdlib/logger"
@@ -127,7 +127,6 @@ type nodeExecContext struct {
 	tr                  interfaces.TaskReader
 	md                  interfaces.NodeExecutionMetadata
 	eventRecorder       interfaces.EventRecorder
-	//er                  events.TaskEventRecorder
 	inputs              io.InputReader
 	node                v1alpha1.ExecutableNode
 	nodeStatus          v1alpha1.ExecutableNodeStatus
@@ -240,11 +239,11 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 	md.nodeLabels = nodeLabels
 
 	return &nodeExecContext{
-		md:                  md,
-		store:               store,
-		node:                node,
-		nodeStatus:          nodeStatus,
-		inputs:              inputs,
+		md:         md,
+		store:      store,
+		node:       node,
+		nodeStatus: nodeStatus,
+		inputs:     inputs,
 		eventRecorder: &eventRecorder{
 			taskEventRecorder: taskEventRecorder,
 			nodeEventRecorder: nodeEventRecorder,

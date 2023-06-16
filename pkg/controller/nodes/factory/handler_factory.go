@@ -85,12 +85,12 @@ func NewHandlerFactory(ctx context.Context, workflowLauncher launchplan.Executor
 	return &handlerFactory{
 		workflowLauncher: workflowLauncher,
 		launchPlanReader: launchPlanReader,
-		kubeClient: 	  kubeClient,
+		kubeClient:       kubeClient,
 		catalogClient:    catalogClient,
 		recoveryClient:   recoveryClient,
-		eventConfig:	  eventConfig,
+		eventConfig:      eventConfig,
 		clusterID:        clusterID,
-		signalClient:	  signalClient,
-		scope:			  scope,
+		signalClient:     signalClient,
+		scope:            scope,
 	}, nil
 }

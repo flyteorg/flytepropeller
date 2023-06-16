@@ -32,9 +32,9 @@ func (a *arrayNodeLookup) GetNodeExecutionStatus(ctx context.Context, id v1alpha
 
 func newArrayNodeLookup(nodeLookup executors.NodeLookup, subNodeID v1alpha1.NodeID, subNodeSpec *v1alpha1.NodeSpec, subNodeStatus *v1alpha1.NodeStatus) arrayNodeLookup {
 	return arrayNodeLookup{
-		NodeLookup:     nodeLookup,
-		subNodeID:      subNodeID,
-		subNodeSpec:    subNodeSpec,
-		subNodeStatus:  subNodeStatus,
+		NodeLookup:    nodeLookup,
+		subNodeID:     subNodeID,
+		subNodeSpec:   subNodeSpec,
+		subNodeStatus: subNodeStatus,
 	}
 }

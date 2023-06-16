@@ -3,8 +3,8 @@ package array
 import (
 	"context"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
@@ -107,7 +107,6 @@ func (a *arrayTaskReader) Read(ctx context.Context) (*core.TaskTemplate, error) 
 	}
 	return taskTemplate, nil
 }
-
 
 type arrayNodeExecutionContext struct {
 	interfaces.NodeExecutionContext

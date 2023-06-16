@@ -39,7 +39,7 @@ func (a *arrayNodeExecutionContextBuilder) BuildNodeExecutionContext(ctx context
 }
 
 func newArrayNodeExecutionContextBuilder(nCtxBuilder interfaces.NodeExecutionContextBuilder, subNodeID v1alpha1.NodeID,
-	subNodeIndex int, subNodeStatus *v1alpha1.NodeStatus, inputReader io.InputReader, eventRecorder interfaces.EventRecorder,  
+	subNodeIndex int, subNodeStatus *v1alpha1.NodeStatus, inputReader io.InputReader, eventRecorder interfaces.EventRecorder,
 	currentParallelism *uint32, maxParallelism uint32) interfaces.NodeExecutionContextBuilder {
 
 	return &arrayNodeExecutionContextBuilder{
