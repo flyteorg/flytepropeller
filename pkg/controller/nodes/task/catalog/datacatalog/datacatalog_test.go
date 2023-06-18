@@ -432,7 +432,7 @@ func TestCatalog_Put(t *testing.T) {
 		).Return(&datacatalog.AddTagResponse{}, nil)
 		newKey := sampleKey
 		newKey.InputReader = ir
-		or := ioutils.NewInMemoryOutputReader(sampleParameters, nil, nil, nil)
+		or := ioutils.NewInMemoryOutputReaderWithSpan(sampleParameters, nil, nil, nil)
 		s, err := discovery.Put(ctx, newKey, or, catalog.Metadata{
 			WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{
 				Name: "test",
@@ -523,7 +523,7 @@ func TestCatalog_Put(t *testing.T) {
 		).Return(&datacatalog.AddTagResponse{}, nil)
 		newKey := sampleKey
 		newKey.InputReader = ir
-		or := ioutils.NewInMemoryOutputReader(sampleParameters, nil, nil, nil)
+		or := ioutils.NewInMemoryOutputReaderWithSpan(sampleParameters, nil, nil, nil)
 		s, err := discovery.Put(ctx, newKey, or, catalog.Metadata{
 			WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{
 				Name: "test",
@@ -590,7 +590,7 @@ func TestCatalog_Update(t *testing.T) {
 
 		newKey := sampleKey
 		newKey.InputReader = ir
-		or := ioutils.NewInMemoryOutputReader(sampleParameters, nil, nil, nil)
+		or := ioutils.NewInMemoryOutputReaderWithSpan(sampleParameters, nil, nil, nil)
 		s, err := discovery.Update(ctx, newKey, or, catalog.Metadata{
 			WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{
 				Name:    taskID.NodeExecutionId.ExecutionId.Name,
@@ -680,7 +680,7 @@ func TestCatalog_Update(t *testing.T) {
 
 		newKey := sampleKey
 		newKey.InputReader = ir
-		or := ioutils.NewInMemoryOutputReader(sampleParameters, nil, nil, nil)
+		or := ioutils.NewInMemoryOutputReaderWithSpan(sampleParameters, nil, nil, nil)
 		s, err := discovery.Update(ctx, newKey, or, catalog.Metadata{
 			WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{
 				Name:    taskID.NodeExecutionId.ExecutionId.Name,
@@ -726,7 +726,7 @@ func TestCatalog_Update(t *testing.T) {
 
 		newKey := sampleKey
 		newKey.InputReader = ir
-		or := ioutils.NewInMemoryOutputReader(sampleParameters, nil, nil, nil)
+		or := ioutils.NewInMemoryOutputReaderWithSpan(sampleParameters, nil, nil, nil)
 		s, err := discovery.Update(ctx, newKey, or, catalog.Metadata{
 			WorkflowExecutionIdentifier: &core.WorkflowExecutionIdentifier{
 				Name: "test",
