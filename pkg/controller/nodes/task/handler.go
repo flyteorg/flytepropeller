@@ -157,9 +157,14 @@ func (p *pluginRequestedTransition) FinalTaskEvent(input ToTaskExecutionEventInp
 }
 
 func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference, deckPath *storage.DataReference, taskMetadata *event.TaskNodeMetadata) {
-	p.execInfo.OutputInfo = &handler.OutputInfo{
-		OutputURI: outputPath,
-		DeckURI:   deckPath,
+	if p.execInfo.OutputInfo == nil {
+		p.execInfo.OutputInfo = &handler.OutputInfo{
+			OutputURI: outputPath,
+			DeckURI:   deckPath,
+		}
+	} else {
+		p.execInfo.OutputInfo.OutputURI = outputPath
+		p.execInfo.OutputInfo.DeckURI = deckPath
 	}
 
 	p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
@@ -183,7 +188,22 @@ func (p *pluginRequestedTransition) FinalTransition(ctx context.Context) (handle
 	}
 
 	logger.Debugf(ctx, "Task still running")
-	return handler.DoTransition(p.ttype, handler.PhaseInfoRunning(nil)), nil
+	return handler.DoTransition(p.ttype, handler.PhaseInfoRunning(&p.execInfo)), nil
+}
+
+func (p *pluginRequestedTransition) AddDeckURI(tCtx *taskExecutionContext) {
+	var deckURI *storage.DataReference
+
+	deckURIValue := tCtx.ow.GetDeckPath()
+	deckURI = &deckURIValue
+	if p.execInfo.OutputInfo == nil {
+		p.execInfo.OutputInfo = &handler.OutputInfo{
+			DeckURI: deckURI,
+		}
+	} else {
+		p.execInfo.OutputInfo.DeckURI = deckURI
+	}
+
 }
 
 // The plugin interface available especially for testing.
@@ -461,6 +481,9 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 			taskMetric.taskFailed.Inc(ctx)
 		}
 	}
+
+	// No matter what state we observed, we always add the deck URI to pluginTrnsv to support real time deck.
+	pluginTrns.AddDeckURI(tCtx)
 
 	switch pluginTrns.pInfo.Phase() {
 	case pluginCore.PhaseSuccess:
