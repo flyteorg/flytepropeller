@@ -466,7 +466,6 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		}
 	}
 
-	logger.Debugf(ctx, " Plugin [%s] transitioned to phase [%s]", ts.PluginPhase, pluginTrns.pInfo.Phase())
 	if pluginTrns.pInfo.Phase() == ts.PluginPhase {
 		if pluginTrns.pInfo.Version() == ts.PluginPhaseVersion {
 			logger.Debugf(ctx, "p+Version previously seen .. no event will be sent")
@@ -502,10 +501,10 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		}
 	}
 
-	// Regardless of the observed state, we always add the deck URI to support real-time deck functionality. The deck should be accessible even if the task is running or has failed.
-	// Since there is no way to determine when the user calls the deck (uploads the deck.html to remote storage), it's possible that the deck URI may not exist in remote storage yet or will never be exist.
-	// It is console's responsibility to handle the case when the deck URI actually does not exist.
-	// It is also console's responsibility to not access the deck URI if deck is not enabled as propeller can not know if deck is enabled or not.
+	// Regardless of the observed phase, we always add the DeckUri to support real-time deck functionality.
+	// The deck should be accessible even if the task is still running or has failed.
+	// It's possible that the deck URI may not exist in remote storage yet or will never be exist.
+	// So, it is console's responsibility to handle the case when the deck URI actually does not exist.
 	pluginTrns.AddDeckURI(ctx, tCtx)
 
 	switch pluginTrns.pInfo.Phase() {
@@ -522,6 +521,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		// we will not check for outputs or call onTaskSuccess. The reason is that outputs have not yet been materialized.
 		// Output for the parent node will only get generated after the subtasks complete. We have to wait for the completion
 		// the dynamic.handler will call onTaskSuccess for the parent node
+
 		f, err := NewRemoteFutureFileReader(ctx, tCtx.ow.GetOutputPrefixPath(), tCtx.DataStore())
 		if err != nil {
 			return nil, regErrors.Wrapf(err, "failed to create remote file reader")
