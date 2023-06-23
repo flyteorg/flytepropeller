@@ -83,10 +83,10 @@ func getPluginMetricKey(pluginID, taskType string) string {
 	return taskType + "_" + pluginID
 }
 
-func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference, deckPath *storage.DataReference, entry catalog.Entry) {
+func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference, entry catalog.Entry) {
 	p.ttype = handler.TransitionTypeEphemeral
 	p.pInfo = pluginCore.PhaseInfoSuccess(nil)
-	p.ObserveSuccess(outputPath, deckPath, &event.TaskNodeMetadata{CacheStatus: entry.GetStatus().GetCacheStatus(), CatalogKey: entry.GetStatus().GetMetadata()})
+	p.ObserveSuccess(outputPath, &event.TaskNodeMetadata{CacheStatus: entry.GetStatus().GetCacheStatus(), CatalogKey: entry.GetStatus().GetMetadata()})
 }
 
 func (p *pluginRequestedTransition) PopulateCacheInfo(entry catalog.Entry) {
@@ -156,15 +156,13 @@ func (p *pluginRequestedTransition) FinalTaskEvent(input ToTaskExecutionEventInp
 	return ToTaskExecutionEvent(input)
 }
 
-func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference, deckPath *storage.DataReference, taskMetadata *event.TaskNodeMetadata) {
+func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference, taskMetadata *event.TaskNodeMetadata) {
 	if p.execInfo.OutputInfo == nil {
 		p.execInfo.OutputInfo = &handler.OutputInfo{
 			OutputURI: outputPath,
-			DeckURI:   deckPath,
 		}
 	} else {
 		p.execInfo.OutputInfo.OutputURI = outputPath
-		p.execInfo.OutputInfo.DeckURI = deckPath
 	}
 
 	p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
@@ -191,6 +189,7 @@ func (p *pluginRequestedTransition) FinalTransition(ctx context.Context) (handle
 	return handler.DoTransition(p.ttype, handler.PhaseInfoRunning(&p.execInfo)), nil
 }
 
+// AddDeckURI incorporates the deck URI into the plugin execution info regardless of whether the URI exists in remote storage or not.
 func (p *pluginRequestedTransition) AddDeckURI(tCtx *taskExecutionContext) {
 	var deckURI *storage.DataReference
 
@@ -204,6 +203,12 @@ func (p *pluginRequestedTransition) AddDeckURI(tCtx *taskExecutionContext) {
 		p.execInfo.OutputInfo.DeckURI = deckURI
 	}
 
+}
+
+func (p *pluginRequestedTransition) RemoveDeckURI() {
+	if p.execInfo.OutputInfo != nil {
+		p.execInfo.OutputInfo.DeckURI = nil
+	}
 }
 
 // The plugin interface available especially for testing.
@@ -482,7 +487,10 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 		}
 	}
 
-	// No matter what state we observed, we always add the deck URI to pluginTrnsv to support real time deck.
+	// Regardless of the observed state, we always add the deck URI to support real-time deck functionality. The deck should be accessible even if the task fails.
+	// Since there is no way to determine when the user calls the deck (uploads the deck.html to remote storage), it's possible that the deck URI may not exist in remote storage yet or will never be exist.
+	// It is console's responsibility to handle the case when the deck URI actually does not exist.
+	// It is also console's responsibility to not access the deck URI if deck is not enabled as propeller can not know if deck is enabled or not.
 	pluginTrns.AddDeckURI(tCtx)
 
 	switch pluginTrns.pInfo.Phase() {
@@ -525,18 +533,17 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 					CheckpointUri: tCtx.ow.GetCheckpointPrefix().String(),
 				})
 		} else {
-			var deckURI *storage.DataReference
 			if tCtx.ow.GetReader() != nil {
 				exists, err := tCtx.ow.GetReader().DeckExists(ctx)
 				if err != nil {
 					logger.Errorf(ctx, "Failed to check deck file existence. Error: %v", err)
 					return pluginTrns, regErrors.Wrapf(err, "failed to check existence of deck file")
-				} else if exists {
-					deckURIValue := tCtx.ow.GetDeckPath()
-					deckURI = &deckURIValue
+				} else if !exists {
+					// This is to prevent the console from potentially checking the deck URI that does not exist after the task has succeeded.
+					pluginTrns.RemoveDeckURI()
 				}
 			}
-			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), deckURI,
+			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(),
 				&event.TaskNodeMetadata{
 					CacheStatus:   cacheStatus.GetCacheStatus(),
 					CatalogKey:    cacheStatus.GetMetadata(),
@@ -640,7 +647,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 					return handler.UnknownTransition, err
 				}
 
-				pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), nil, entry)
+				pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), entry)
 			} else {
 				logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
 				pluginTrns.PopulateCacheInfo(entry)
