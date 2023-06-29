@@ -214,7 +214,6 @@ const (
 	ArrayNodePhaseExecuting
 	ArrayNodePhaseFailing
 	ArrayNodePhaseSucceeding
-	// TODO @hamersaw - need more phases
 )
 
 type ArrayNodeStatus struct {
