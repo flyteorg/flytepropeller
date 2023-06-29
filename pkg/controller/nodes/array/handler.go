@@ -564,6 +564,7 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 	// index. however when we check completion status we need to manually append index - so in all cases
 	// where the node phase is not Queued (ie. task handler will launch task and init flytekit params) we
 	// append the subtask index.
+	// TODO @hamersaw - verify this has been fixed in flytekit for arraynode implementation
 	/*var subDataDir, subOutputDir storage.DataReference
 	if nodePhase == v1alpha1.NodePhaseQueued {
 		subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx)

@@ -75,6 +75,7 @@ func createNodeExecutionContext(dataStore *storage.DataStore, eventRecorder inte
 
 	// ContextualNodeLookup
 	nodeLookup := &execmocks.NodeLookup{}
+	nodeLookup.OnFromNodeMatch(mock.Anything).Return(nil, nil)
 	nCtx.OnContextualNodeLookup().Return(nodeLookup)
 
 	// DataStore
@@ -248,6 +249,7 @@ func TestAbort(t *testing.T) {
 			err := arrayNodeHandler.Abort(ctx, nCtx, "foo")
 			assert.NoError(t, err)
 
+			nodeHandler.AssertNumberOfCalls(t, "Abort", len(test.expectedExternalResourcePhases))
 			if len(test.expectedExternalResourcePhases) > 0 {
 				assert.Equal(t, 1, len(eventRecorder.taskEvents))
 
@@ -264,7 +266,89 @@ func TestAbort(t *testing.T) {
 }
 
 func TestFinalize(t *testing.T) {
-	// TODO @hamersaw - complete
+	ctx := context.Background()
+	scope := promutils.NewTestScope()
+	dataStore, err := storage.NewDataStore(&storage.Config{
+		Type: storage.TypeMemory,
+	}, scope)
+	assert.NoError(t, err)
+
+	nodeHandler := &mocks.NodeHandler{}
+	nodeHandler.OnFinalizeMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	// initialize ArrayNodeHandler
+	arrayNodeHandler, err := createArrayNodeHandler(ctx, t, nodeHandler, dataStore, scope)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name                  string
+		inputMap              map[string][]int64
+		subNodePhases         []v1alpha1.NodePhase
+		subNodeTaskPhases     []core.Phase
+		expectedFinalizeCalls int
+	}{
+		{
+			name: "Success",
+			inputMap: map[string][]int64{
+				"foo": []int64{0, 1, 2},
+			},
+			subNodePhases:         []v1alpha1.NodePhase{v1alpha1.NodePhaseSucceeded, v1alpha1.NodePhaseRunning, v1alpha1.NodePhaseNotYetStarted},
+			subNodeTaskPhases:     []core.Phase{core.PhaseSuccess, core.PhaseRunning, core.PhaseUndefined},
+			expectedFinalizeCalls: 1,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// initailize universal variables
+			literalMap := convertMapToArrayLiterals(test.inputMap)
+
+			size := -1
+			for _, v := range test.inputMap {
+				if size == -1 {
+					size = len(v)
+				} else if len(v) > size { // calculating size as largest input list
+					size = len(v)
+				}
+			}
+
+			// initialize ArrayNodeState
+			arrayNodeState := &interfaces.ArrayNodeState{
+				Phase: v1alpha1.ArrayNodePhaseFailing,
+			}
+			for _, item := range []struct {
+				arrayReference *bitarray.CompactArray
+				maxValue       int
+			}{
+				{arrayReference: &arrayNodeState.SubNodePhases, maxValue: int(v1alpha1.NodePhaseRecovered)},
+				{arrayReference: &arrayNodeState.SubNodeTaskPhases, maxValue: len(core.Phases) - 1},
+				{arrayReference: &arrayNodeState.SubNodeRetryAttempts, maxValue: 1},
+				{arrayReference: &arrayNodeState.SubNodeSystemFailures, maxValue: 1},
+			} {
+
+				*item.arrayReference, err = bitarray.NewCompactArray(uint(size), bitarray.Item(item.maxValue))
+				assert.NoError(t, err)
+			}
+
+			for i, nodePhase := range test.subNodePhases {
+				arrayNodeState.SubNodePhases.SetItem(i, bitarray.Item(nodePhase))
+			}
+			for i, taskPhase := range test.subNodeTaskPhases {
+				arrayNodeState.SubNodeTaskPhases.SetItem(i, bitarray.Item(taskPhase))
+			}
+
+			// create NodeExecutionContext
+			eventRecorder := newArrayEventRecorder()
+			nCtx := createNodeExecutionContext(dataStore, eventRecorder, nil, literalMap, &arrayNodeSpec, arrayNodeState)
+
+			// evaluate node
+			err := arrayNodeHandler.Finalize(ctx, nCtx)
+			assert.NoError(t, err)
+
+			// validate
+			nodeHandler.AssertNumberOfCalls(t, "Finalize", test.expectedFinalizeCalls)
+		})
+	}
 }
 
 func TestHandleArrayNodePhaseNone(t *testing.T) {
