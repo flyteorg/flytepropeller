@@ -118,7 +118,7 @@ func generateTaskSignatureHash(ctx context.Context, taskInterface core.TypedInte
 func GenerateArtifactTagName(ctx context.Context, inputs *core.LiteralMap) (string, error) {
 	hashString, err := catalog.HashLiteralMap(ctx, inputs)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	tag := fmt.Sprintf("%s-%s", cachedTaskTag, hashString)
 	return tag, nil
