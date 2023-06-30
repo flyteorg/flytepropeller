@@ -30,7 +30,7 @@ import (
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	flyteMocks "github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	nodeMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/codex"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
@@ -113,7 +113,7 @@ func TestHandler_newTaskExecutionContext(t *testing.T) {
 	codex := codex.GobStateCodec{}
 	assert.NoError(t, codex.Encode(test{A: a}, st))
 	nr := &nodeMocks.NodeStateReader{}
-	nr.OnGetTaskNodeState().Return(interfaces.TaskNodeState{
+	nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
 		PluginState: st.Bytes(),
 	})
 	nCtx.OnNodeStateReader().Return(nr)
@@ -432,7 +432,7 @@ func TestComputePreviousCheckpointPath(t *testing.T) {
 	nCtx.OnDataStore().Return(ds)
 	nCtx.OnNodeExecutionMetadata().Return(nm)
 	reader := &nodeMocks.NodeStateReader{}
-	reader.OnGetTaskNodeState().Return(interfaces.TaskNodeState{})
+	reader.OnGetTaskNodeState().Return(handler.TaskNodeState{})
 	nCtx.OnNodeStateReader().Return(reader)
 
 	t.Run("attempt-0-nCtx", func(t *testing.T) {
@@ -464,7 +464,7 @@ func TestComputePreviousCheckpointPath_Recovery(t *testing.T) {
 	nCtx.OnDataStore().Return(ds)
 	nCtx.OnNodeExecutionMetadata().Return(nm)
 	reader := &nodeMocks.NodeStateReader{}
-	reader.OnGetTaskNodeState().Return(interfaces.TaskNodeState{
+	reader.OnGetTaskNodeState().Return(handler.TaskNodeState{
 		PreviousNodeExecutionCheckpointURI: storage.DataReference("s3://sandbox/x/prevname-n1-0/_flytecheckpoints"),
 	})
 	nCtx.OnNodeStateReader().Return(reader)

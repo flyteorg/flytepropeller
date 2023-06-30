@@ -24,7 +24,7 @@ import (
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	mocks4 "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	mocks6 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/dynamic/mocks"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces/mocks"
 	mocks5 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan/mocks"
 )
@@ -135,7 +135,7 @@ func Test_dynamicNodeHandler_buildContextualDynamicWorkflow_withLaunchPlans(t *t
 		w.OnGetExecutionStatus().Return(ws)
 
 		r := &mocks.NodeStateReader{}
-		r.OnGetDynamicNodeState().Return(interfaces.DynamicNodeState{
+		r.OnGetDynamicNodeState().Return(handler.DynamicNodeState{
 			Phase: v1alpha1.DynamicNodePhaseExecuting,
 		})
 		nCtx.OnNodeStateReader().Return(r)

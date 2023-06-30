@@ -1,85 +1,30 @@
 package interfaces
 
 import (
-	"time"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
-	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-
-	"github.com/flyteorg/flytestdlib/bitarray"
-	"github.com/flyteorg/flytestdlib/storage"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 )
 
-// This is the legacy state structure that gets translated to node status
-// TODO eventually we could just convert this to be binary node state encoded into the node status
-
-type TaskNodeState struct {
-	PluginPhase                        pluginCore.Phase
-	PluginPhaseVersion                 uint32
-	PluginState                        []byte
-	PluginStateVersion                 uint32
-	LastPhaseUpdatedAt                 time.Time
-	PreviousNodeExecutionCheckpointURI storage.DataReference
-	CleanupOnFailure                   bool
-}
-
-type BranchNodeState struct {
-	FinalizedNodeID *v1alpha1.NodeID
-	Phase           v1alpha1.BranchNodePhase
-}
-
-type DynamicNodePhase uint8
-
-type DynamicNodeState struct {
-	Phase  v1alpha1.DynamicNodePhase
-	Reason string
-	Error  *core.ExecutionError
-}
-
-type WorkflowNodeState struct {
-	Phase v1alpha1.WorkflowNodePhase
-	Error *core.ExecutionError
-}
-
-type GateNodeState struct {
-	Phase     v1alpha1.GateNodePhase
-	StartedAt time.Time
-}
-
-type ArrayNodeState struct {
-	Phase                 v1alpha1.ArrayNodePhase
-	TaskPhaseVersion      uint32
-	Error                 *core.ExecutionError
-	SubNodePhases         bitarray.CompactArray
-	SubNodeTaskPhases     bitarray.CompactArray
-	SubNodeRetryAttempts  bitarray.CompactArray
-	SubNodeSystemFailures bitarray.CompactArray
-}
-
 type NodeStateWriter interface {
-	PutTaskNodeState(s TaskNodeState) error
-	PutBranchNode(s BranchNodeState) error
-	PutDynamicNodeState(s DynamicNodeState) error
-	PutWorkflowNodeState(s WorkflowNodeState) error
-	PutGateNodeState(s GateNodeState) error
-	PutArrayNodeState(s ArrayNodeState) error
+	PutTaskNodeState(s handler.TaskNodeState) error
+	PutBranchNode(s handler.BranchNodeState) error
+	PutDynamicNodeState(s handler.DynamicNodeState) error
+	PutWorkflowNodeState(s handler.WorkflowNodeState) error
+	PutGateNodeState(s handler.GateNodeState) error
+	PutArrayNodeState(s handler.ArrayNodeState) error
 	ClearNodeStatus()
 }
 
 type NodeStateReader interface {
 	HasTaskNodeState() bool
-	GetTaskNodeState() TaskNodeState
+	GetTaskNodeState() handler.TaskNodeState
 	HasBranchNodeState() bool
-	GetBranchNodeState() BranchNodeState
+	GetBranchNodeState() handler.BranchNodeState
 	HasDynamicNodeState() bool
-	GetDynamicNodeState() DynamicNodeState
+	GetDynamicNodeState() handler.DynamicNodeState
 	HasWorkflowNodeState() bool
-	GetWorkflowNodeState() WorkflowNodeState
+	GetWorkflowNodeState() handler.WorkflowNodeState
 	HasGateNodeState() bool
-	GetGateNodeState() GateNodeState
+	GetGateNodeState() handler.GateNodeState
 	HasArrayNodeState() bool
-	GetArrayNodeState() ArrayNodeState
+	GetArrayNodeState() handler.ArrayNodeState
 }

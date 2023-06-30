@@ -77,7 +77,7 @@ func (s *subworkflowHandler) handleSubWorkflow(ctx context.Context, nCtx interfa
 	}
 
 	if state.HasFailed() {
-		workflowNodeState := interfaces.WorkflowNodeState{
+		workflowNodeState := handler.WorkflowNodeState{
 			Phase: v1alpha1.WorkflowNodePhaseFailing,
 			Error: state.Err,
 		}

@@ -69,7 +69,7 @@ func createArrayNodeHandler(ctx context.Context, t *testing.T, nodeHandler inter
 }
 
 func createNodeExecutionContext(dataStore *storage.DataStore, eventRecorder interfaces.EventRecorder, outputVariables []string,
-	inputLiteralMap *idlcore.LiteralMap, arrayNodeSpec *v1alpha1.NodeSpec, arrayNodeState *interfaces.ArrayNodeState) interfaces.NodeExecutionContext {
+	inputLiteralMap *idlcore.LiteralMap, arrayNodeSpec *v1alpha1.NodeSpec, arrayNodeState *handler.ArrayNodeState) interfaces.NodeExecutionContext {
 
 	nCtx := &mocks.NodeExecutionContext{}
 
@@ -154,7 +154,7 @@ func createNodeExecutionContext(dataStore *storage.DataStore, eventRecorder inte
 	nodeStateWriter := &mocks.NodeStateWriter{}
 	nodeStateWriter.OnPutArrayNodeStateMatch(mock.Anything, mock.Anything).Run(
 		func(args mock.Arguments) {
-			*arrayNodeState = args.Get(0).(interfaces.ArrayNodeState)
+			*arrayNodeState = args.Get(0).(handler.ArrayNodeState)
 		},
 	).Return(nil)
 	nCtx.OnNodeStateWriter().Return(nodeStateWriter)
@@ -217,7 +217,7 @@ func TestAbort(t *testing.T) {
 			}
 
 			// initialize ArrayNodeState
-			arrayNodeState := &interfaces.ArrayNodeState{
+			arrayNodeState := &handler.ArrayNodeState{
 				Phase: v1alpha1.ArrayNodePhaseFailing,
 			}
 			for _, item := range []struct {
@@ -313,7 +313,7 @@ func TestFinalize(t *testing.T) {
 			}
 
 			// initialize ArrayNodeState
-			arrayNodeState := &interfaces.ArrayNodeState{
+			arrayNodeState := &handler.ArrayNodeState{
 				Phase: v1alpha1.ArrayNodePhaseFailing,
 			}
 			for _, item := range []struct {
@@ -407,7 +407,7 @@ func TestHandleArrayNodePhaseNone(t *testing.T) {
 			// create NodeExecutionContext
 			eventRecorder := newArrayEventRecorder()
 			literalMap := convertMapToArrayLiterals(test.inputValues)
-			arrayNodeState := &interfaces.ArrayNodeState{
+			arrayNodeState := &handler.ArrayNodeState{
 				Phase: v1alpha1.ArrayNodePhaseNone,
 			}
 			nCtx := createNodeExecutionContext(dataStore, eventRecorder, nil, literalMap, &arrayNodeSpec, arrayNodeState)
@@ -569,7 +569,7 @@ func TestHandleArrayNodePhaseExecuting(t *testing.T) {
 			assert.NoError(t, err)
 
 			// initialize ArrayNodeState
-			arrayNodeState := &interfaces.ArrayNodeState{
+			arrayNodeState := &handler.ArrayNodeState{
 				Phase: v1alpha1.ArrayNodePhaseExecuting,
 			}
 			for _, item := range []struct {
@@ -697,7 +697,7 @@ func TestHandleArrayNodePhaseSucceeding(t *testing.T) {
 			retryAttempts, err := bitarray.NewCompactArray(uint(len(test.subNodePhases)), bitarray.Item(1))
 			assert.NoError(t, err)
 
-			arrayNodeState := &interfaces.ArrayNodeState{
+			arrayNodeState := &handler.ArrayNodeState{
 				Phase:                v1alpha1.ArrayNodePhaseSucceeding,
 				SubNodePhases:        subNodePhases,
 				SubNodeRetryAttempts: retryAttempts,
@@ -807,7 +807,7 @@ func TestHandleArrayNodePhaseFailing(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// initialize ArrayNodeState
-			arrayNodeState := &interfaces.ArrayNodeState{
+			arrayNodeState := &handler.ArrayNodeState{
 				Phase: v1alpha1.ArrayNodePhaseFailing,
 			}
 

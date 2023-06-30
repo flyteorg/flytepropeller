@@ -379,7 +379,7 @@ func (t Handler) fetchPluginTaskMetrics(pluginID, taskType string) (*taskMetrics
 	return t.taskMetricsMap[metricNameKey], nil
 }
 
-func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *taskExecutionContext, ts interfaces.TaskNodeState) (*pluginRequestedTransition, error) {
+func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *taskExecutionContext, ts handler.TaskNodeState) (*pluginRequestedTransition, error) {
 	pluginTrns := &pluginRequestedTransition{}
 
 	trns, err := func() (trns pluginCore.Transition, err error) {
@@ -750,7 +750,7 @@ func (t Handler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContex
 	}
 
 	// STEP 6: Persist the plugin state
-	err = nCtx.NodeStateWriter().PutTaskNodeState(interfaces.TaskNodeState{
+	err = nCtx.NodeStateWriter().PutTaskNodeState(handler.TaskNodeState{
 		PluginState:                        pluginTrns.pluginState,
 		PluginStateVersion:                 pluginTrns.pluginStateVersion,
 		PluginPhase:                        pluginTrns.pInfo.Phase(),

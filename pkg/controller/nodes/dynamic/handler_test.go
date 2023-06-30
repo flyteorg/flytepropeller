@@ -36,34 +36,34 @@ import (
 )
 
 type dynamicNodeStateHolder struct {
-	s interfaces.DynamicNodeState
+	s handler.DynamicNodeState
 }
 
 func (t *dynamicNodeStateHolder) ClearNodeStatus() {
 }
 
-func (t *dynamicNodeStateHolder) PutTaskNodeState(s interfaces.TaskNodeState) error {
+func (t *dynamicNodeStateHolder) PutTaskNodeState(s handler.TaskNodeState) error {
 	panic("not implemented")
 }
 
-func (t dynamicNodeStateHolder) PutBranchNode(s interfaces.BranchNodeState) error {
+func (t dynamicNodeStateHolder) PutBranchNode(s handler.BranchNodeState) error {
 	panic("not implemented")
 }
 
-func (t dynamicNodeStateHolder) PutWorkflowNodeState(s interfaces.WorkflowNodeState) error {
+func (t dynamicNodeStateHolder) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
 	panic("not implemented")
 }
 
-func (t *dynamicNodeStateHolder) PutDynamicNodeState(s interfaces.DynamicNodeState) error {
+func (t *dynamicNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) error {
 	t.s = s
 	return nil
 }
 
-func (t dynamicNodeStateHolder) PutGateNodeState(s interfaces.GateNodeState) error {
+func (t dynamicNodeStateHolder) PutGateNodeState(s handler.GateNodeState) error {
 	panic("not implemented")
 }
 
-func (t dynamicNodeStateHolder) PutArrayNodeState(s interfaces.ArrayNodeState) error {
+func (t dynamicNodeStateHolder) PutArrayNodeState(s handler.ArrayNodeState) error {
 	panic("not implemented")
 }
 
@@ -148,7 +148,7 @@ func Test_dynamicNodeHandler_Handle_Parent(t *testing.T) {
 		nCtx.OnDataStore().Return(dataStore)
 
 		r := &nodeMocks.NodeStateReader{}
-		r.OnGetDynamicNodeState().Return(interfaces.DynamicNodeState{})
+		r.OnGetDynamicNodeState().Return(handler.DynamicNodeState{})
 		nCtx.OnNodeStateReader().Return(r)
 		return nCtx
 	}
@@ -289,7 +289,7 @@ func Test_dynamicNodeHandler_Handle_ParentFinalize(t *testing.T) {
 		nCtx.OnDataStore().Return(dataStore)
 
 		r := &nodeMocks.NodeStateReader{}
-		r.On("GetDynamicNodeState").Return(interfaces.DynamicNodeState{
+		r.On("GetDynamicNodeState").Return(handler.DynamicNodeState{
 			Phase: v1alpha1.DynamicNodePhaseParentFinalizing,
 		})
 		nCtx.OnNodeStateReader().Return(r)
@@ -300,7 +300,7 @@ func Test_dynamicNodeHandler_Handle_ParentFinalize(t *testing.T) {
 	t.Run("parent-finalize-success", func(t *testing.T) {
 		nCtx := createNodeContext("test")
 		s := &dynamicNodeStateHolder{
-			s: interfaces.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalizing},
+			s: handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalizing},
 		}
 		nCtx.OnNodeStateWriter().Return(s)
 		f, err := nCtx.DataStore().ConstructReference(context.TODO(), nCtx.NodeStatus().GetDataDir(), "futures.pb")
@@ -320,7 +320,7 @@ func Test_dynamicNodeHandler_Handle_ParentFinalize(t *testing.T) {
 	t.Run("parent-finalize-error", func(t *testing.T) {
 		nCtx := createNodeContext("test")
 		s := &dynamicNodeStateHolder{
-			s: interfaces.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalizing},
+			s: handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalizing},
 		}
 		nCtx.OnNodeStateWriter().Return(s)
 		f, err := nCtx.DataStore().ConstructReference(context.TODO(), nCtx.NodeStatus().GetDataDir(), "futures.pb")
@@ -513,7 +513,7 @@ func Test_dynamicNodeHandler_Handle_SubTaskV1(t *testing.T) {
 		w.OnGetExecutionStatus().Return(ws)
 
 		r := &nodeMocks.NodeStateReader{}
-		r.OnGetDynamicNodeState().Return(interfaces.DynamicNodeState{
+		r.OnGetDynamicNodeState().Return(handler.DynamicNodeState{
 			Phase: v1alpha1.DynamicNodePhaseExecuting,
 		})
 		nCtx.OnNodeStateReader().Return(r)
@@ -746,7 +746,7 @@ func Test_dynamicNodeHandler_Handle_SubTask(t *testing.T) {
 		w.OnGetExecutionStatus().Return(ws)
 
 		r := &nodeMocks.NodeStateReader{}
-		r.OnGetDynamicNodeState().Return(interfaces.DynamicNodeState{
+		r.OnGetDynamicNodeState().Return(handler.DynamicNodeState{
 			Phase: v1alpha1.DynamicNodePhaseExecuting,
 		})
 		nCtx.OnNodeStateReader().Return(r)
@@ -870,7 +870,7 @@ func TestDynamicNodeTaskNodeHandler_Finalize(t *testing.T) {
 	ctx := context.TODO()
 
 	t.Run("dynamicnodephase-none", func(t *testing.T) {
-		s := interfaces.DynamicNodeState{
+		s := handler.DynamicNodeState{
 			Phase:  v1alpha1.DynamicNodePhaseNone,
 			Reason: "",
 		}
@@ -997,7 +997,7 @@ func TestDynamicNodeTaskNodeHandler_Finalize(t *testing.T) {
 		w.OnGetExecutionStatus().Return(ws)
 
 		r := &nodeMocks.NodeStateReader{}
-		r.OnGetDynamicNodeState().Return(interfaces.DynamicNodeState{
+		r.OnGetDynamicNodeState().Return(handler.DynamicNodeState{
 			Phase: v1alpha1.DynamicNodePhaseExecuting,
 		})
 		nCtx.OnNodeStateReader().Return(r)

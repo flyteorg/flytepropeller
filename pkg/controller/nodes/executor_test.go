@@ -2192,12 +2192,12 @@ func TestRecover(t *testing.T) {
 		nCtx.OnDataStore().Return(storageClient)
 
 		reader := &nodemocks.NodeStateReader{}
-		reader.OnGetDynamicNodeState().Return(interfaces.DynamicNodeState{})
+		reader.OnGetDynamicNodeState().Return(handler.DynamicNodeState{})
 		nCtx.OnNodeStateReader().Return(reader)
 
 		writer := &nodemocks.NodeStateWriter{}
 		writer.OnPutDynamicNodeStateMatch(mock.Anything).Run(func(args mock.Arguments) {
-			state := args.Get(0).(interfaces.DynamicNodeState)
+			state := args.Get(0).(handler.DynamicNodeState)
 			assert.Equal(t, v1alpha1.DynamicNodePhaseParentFinalized, state.Phase)
 		}).Return(nil)
 		nCtx.OnNodeStateWriter().Return(writer)
@@ -2413,11 +2413,11 @@ func TestRecover(t *testing.T) {
 		}
 
 		reader := &nodemocks.NodeStateReader{}
-		reader.OnGetTaskNodeState().Return(interfaces.TaskNodeState{})
+		reader.OnGetTaskNodeState().Return(handler.TaskNodeState{})
 		nCtx.OnNodeStateReader().Return(reader)
 		writer := &nodemocks.NodeStateWriter{}
 		writer.OnPutTaskNodeStateMatch(mock.Anything).Run(func(args mock.Arguments) {
-			state := args.Get(0).(interfaces.TaskNodeState)
+			state := args.Get(0).(handler.TaskNodeState)
 			assert.Equal(t, state.PreviousNodeExecutionCheckpointURI.String(), "prev path")
 		}).Return(nil)
 		nCtx.OnNodeStateWriter().Return(writer)

@@ -17,7 +17,6 @@ import (
 	executormocks "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/gate/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 	nodeMocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces/mocks"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
@@ -123,7 +122,7 @@ func createNodeExecutionContext(gateNode *v1alpha1.GateNodeSpec) *nodeMocks.Node
 	nCtx.OnInputReader().Return(inputReader)
 
 	r := &nodeMocks.NodeStateReader{}
-	r.OnGetGateNodeState().Return(interfaces.GateNodeState{})
+	r.OnGetGateNodeState().Return(handler.GateNodeState{})
 	nCtx.OnNodeStateReader().Return(r)
 
 	w := &nodeMocks.NodeStateWriter{}

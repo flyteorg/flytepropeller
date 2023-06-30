@@ -35,34 +35,34 @@ var eventConfig = &config.EventConfig{
 }
 
 type branchNodeStateHolder struct {
-	s interfaces.BranchNodeState
+	s handler.BranchNodeState
 }
 
 func (t *branchNodeStateHolder) ClearNodeStatus() {
 }
 
-func (t *branchNodeStateHolder) PutTaskNodeState(s interfaces.TaskNodeState) error {
+func (t *branchNodeStateHolder) PutTaskNodeState(s handler.TaskNodeState) error {
 	panic("not implemented")
 }
 
-func (t *branchNodeStateHolder) PutBranchNode(s interfaces.BranchNodeState) error {
+func (t *branchNodeStateHolder) PutBranchNode(s handler.BranchNodeState) error {
 	t.s = s
 	return nil
 }
 
-func (t branchNodeStateHolder) PutWorkflowNodeState(s interfaces.WorkflowNodeState) error {
+func (t branchNodeStateHolder) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
 	panic("not implemented")
 }
 
-func (t branchNodeStateHolder) PutDynamicNodeState(s interfaces.DynamicNodeState) error {
+func (t branchNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) error {
 	panic("not implemented")
 }
 
-func (t branchNodeStateHolder) PutGateNodeState(s interfaces.GateNodeState) error {
+func (t branchNodeStateHolder) PutGateNodeState(s handler.GateNodeState) error {
 	panic("not implemented")
 }
 
-func (t branchNodeStateHolder) PutArrayNodeState(s interfaces.ArrayNodeState) error {
+func (t branchNodeStateHolder) PutArrayNodeState(s handler.ArrayNodeState) error {
 	panic("not implemented")
 }
 
@@ -79,7 +79,7 @@ func (parentInfo) CurrentAttempt() uint32 {
 
 func createNodeContext(phase v1alpha1.BranchNodePhase, childNodeID *v1alpha1.NodeID, n v1alpha1.ExecutableNode,
 	inputs *core.LiteralMap, nl *execMocks.NodeLookup, eCtx executors.ExecutionContext) (*mocks.NodeExecutionContext, *branchNodeStateHolder) {
-	branchNodeState := interfaces.BranchNodeState{
+	branchNodeState := handler.BranchNodeState{
 		FinalizedNodeID: childNodeID,
 		Phase:           phase,
 	}
@@ -127,7 +127,7 @@ func createNodeContext(phase v1alpha1.BranchNodePhase, childNodeID *v1alpha1.Nod
 	nCtx.OnEnqueueOwnerFunc().Return(nil)
 
 	nr := &mocks.NodeStateReader{}
-	nr.OnGetBranchNodeState().Return(interfaces.BranchNodeState{
+	nr.OnGetBranchNodeState().Return(handler.BranchNodeState{
 		FinalizedNodeID: childNodeID,
 		Phase:           phase,
 	})

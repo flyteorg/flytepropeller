@@ -63,7 +63,7 @@ type dynamicNodeTaskNodeHandler struct {
 	eventConfig  *config.EventConfig
 }
 
-func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevState interfaces.DynamicNodeState, nCtx interfaces.NodeExecutionContext) (handler.Transition, interfaces.DynamicNodeState, error) {
+func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevState handler.DynamicNodeState, nCtx interfaces.NodeExecutionContext) (handler.Transition, handler.DynamicNodeState, error) {
 	// It seems parent node is still running, lets call handle for parent node
 	trns, err := d.TaskNodeHandler.Handle(ctx, nCtx)
 	if err != nil {
@@ -85,7 +85,7 @@ func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevSt
 			// directly to record, and then progress the dynamically generated workflow.
 			logger.Infof(ctx, "future file detected, assuming dynamic node")
 			// There is a futures file, so we need to continue running the node with the modified state
-			return trns.WithInfo(handler.PhaseInfoRunning(trns.Info().GetInfo())), interfaces.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalizing}, nil
+			return trns.WithInfo(handler.PhaseInfoRunning(trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalizing}, nil
 		}
 	}
 
@@ -94,7 +94,7 @@ func (d dynamicNodeTaskNodeHandler) handleParentNode(ctx context.Context, prevSt
 }
 
 func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, nCtx interfaces.NodeExecutionContext) (
-	handler.Transition, interfaces.DynamicNodeState, error) {
+	handler.Transition, handler.DynamicNodeState, error) {
 	// The first time this is called we go ahead and evaluate the dynamic node to build the workflow. We then cache
 	// this workflow definition and send it to be persisted by flyteadmin so that users can observe the structure.
 	dCtx, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
@@ -102,9 +102,9 @@ func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, 
 		if stdErrors.IsCausedBy(err, utils.ErrorCodeUser) {
 			return handler.DoTransition(handler.TransitionTypeEphemeral,
 				handler.PhaseInfoFailure(core.ExecutionError_USER, "DynamicWorkflowBuildFailed", err.Error(), nil),
-			), interfaces.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: err.Error()}, nil
+			), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: err.Error()}, nil
 		}
-		return handler.Transition{}, interfaces.DynamicNodeState{}, err
+		return handler.Transition{}, handler.DynamicNodeState{}, err
 	}
 	taskNodeInfoMetadata := &event.TaskNodeMetadata{}
 	if dCtx.subWorkflowClosure != nil && dCtx.subWorkflowClosure.Primary != nil && dCtx.subWorkflowClosure.Primary.Template != nil {
@@ -115,7 +115,7 @@ func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, 
 		}
 	}
 
-	nextState := interfaces.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}
+	nextState := handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseExecuting}
 	return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoDynamicRunning(&handler.ExecutionInfo{
 		TaskNodeInfo: &handler.TaskNodeInfo{
 			TaskNodeMetadata: taskNodeInfoMetadata,
@@ -123,16 +123,16 @@ func (d dynamicNodeTaskNodeHandler) produceDynamicWorkflow(ctx context.Context, 
 	})), nextState, nil
 }
 
-func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, nCtx interfaces.NodeExecutionContext, prevState interfaces.DynamicNodeState) (handler.Transition, interfaces.DynamicNodeState, error) {
+func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, nCtx interfaces.NodeExecutionContext, prevState handler.DynamicNodeState) (handler.Transition, handler.DynamicNodeState, error) {
 	dCtx, err := d.buildContextualDynamicWorkflow(ctx, nCtx)
 	if err != nil {
 		if stdErrors.IsCausedBy(err, utils.ErrorCodeUser) {
 			return handler.DoTransition(handler.TransitionTypeEphemeral,
 				handler.PhaseInfoFailure(core.ExecutionError_USER, "DynamicWorkflowBuildFailed", err.Error(), nil),
-			), interfaces.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: err.Error()}, nil
+			), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: err.Error()}, nil
 		}
 		// Mostly a system error or unknown
-		return handler.Transition{}, interfaces.DynamicNodeState{}, err
+		return handler.Transition{}, handler.DynamicNodeState{}, err
 	}
 
 	trns, newState, err := d.progressDynamicWorkflow(ctx, dCtx.execContext, dCtx.subWorkflow, dCtx.nodeLookup, nCtx, prevState)
@@ -158,10 +158,10 @@ func (d dynamicNodeTaskNodeHandler) handleDynamicSubNodes(ctx context.Context, n
 
 		if ee != nil {
 			if ee.IsRecoverable {
-				return trns.WithInfo(handler.PhaseInfoRetryableFailureErr(ee.ExecutionError, trns.Info().GetInfo())), interfaces.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
+				return trns.WithInfo(handler.PhaseInfoRetryableFailureErr(ee.ExecutionError, trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
 			}
 
-			return trns.WithInfo(handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().GetInfo())), interfaces.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
+			return trns.WithInfo(handler.PhaseInfoFailureErr(ee.ExecutionError, trns.Info().GetInfo())), handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseFailing, Reason: ee.ExecutionError.String()}, nil
 		}
 		taskNodeInfoMetadata := &event.TaskNodeMetadata{CacheStatus: status.GetCacheStatus(), CatalogKey: status.GetMetadata()}
 		trns = trns.WithInfo(trns.Info().WithInfo(&handler.ExecutionInfo{
@@ -210,7 +210,7 @@ func (d dynamicNodeTaskNodeHandler) Handle(ctx context.Context, nCtx interfaces.
 		if err := d.finalizeParentNode(ctx, nCtx); err != nil {
 			return handler.UnknownTransition, err
 		}
-		newState = interfaces.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalized}
+		newState = handler.DynamicNodeState{Phase: v1alpha1.DynamicNodePhaseParentFinalized}
 		trns = handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoRunning(trns.Info().GetInfo()))
 	case v1alpha1.DynamicNodePhaseParentFinalized:
 		trns, newState, err = d.produceDynamicWorkflow(ctx, nCtx)

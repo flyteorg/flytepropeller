@@ -364,34 +364,34 @@ func (f *fakeBufferedEventRecorder) RecordNodeEvent(ctx context.Context, ev *eve
 }
 
 type taskNodeStateHolder struct {
-	s interfaces.TaskNodeState
+	s handler.TaskNodeState
 }
 
 func (t *taskNodeStateHolder) ClearNodeStatus() {
 }
 
-func (t *taskNodeStateHolder) PutTaskNodeState(s interfaces.TaskNodeState) error {
+func (t *taskNodeStateHolder) PutTaskNodeState(s handler.TaskNodeState) error {
 	t.s = s
 	return nil
 }
 
-func (t taskNodeStateHolder) PutBranchNode(s interfaces.BranchNodeState) error {
+func (t taskNodeStateHolder) PutBranchNode(s handler.BranchNodeState) error {
 	panic("not implemented")
 }
 
-func (t taskNodeStateHolder) PutWorkflowNodeState(s interfaces.WorkflowNodeState) error {
+func (t taskNodeStateHolder) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
 	panic("not implemented")
 }
 
-func (t taskNodeStateHolder) PutDynamicNodeState(s interfaces.DynamicNodeState) error {
+func (t taskNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState) error {
 	panic("not implemented")
 }
 
-func (t taskNodeStateHolder) PutGateNodeState(s interfaces.GateNodeState) error {
+func (t taskNodeStateHolder) PutGateNodeState(s handler.GateNodeState) error {
 	panic("not implemented")
 }
 
-func (t taskNodeStateHolder) PutArrayNodeState(s interfaces.ArrayNodeState) error {
+func (t taskNodeStateHolder) PutArrayNodeState(s handler.ArrayNodeState) error {
 	panic("not implemented")
 }
 
@@ -519,7 +519,7 @@ func Test_task_Handle_NoCatalog(t *testing.T) {
 		cod := codex.GobStateCodec{}
 		assert.NoError(t, cod.Encode(pluginResp, st))
 		nr := &nodeMocks.NodeStateReader{}
-		nr.OnGetTaskNodeState().Return(interfaces.TaskNodeState{
+		nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
 			PluginState:        st.Bytes(),
 			PluginPhase:        pluginPhase,
 			PluginPhaseVersion: pluginVer,
@@ -867,7 +867,7 @@ func Test_task_Handle_Catalog(t *testing.T) {
 			OutputExists: true,
 		}, st))
 		nr := &nodeMocks.NodeStateReader{}
-		nr.OnGetTaskNodeState().Return(interfaces.TaskNodeState{
+		nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
 			PluginState: st.Bytes(),
 		})
 		nCtx.OnNodeStateReader().Return(nr)
@@ -1225,7 +1225,7 @@ func Test_task_Handle_Reservation(t *testing.T) {
 				Phase:        pluginCore.PhaseSuccess,
 				OutputExists: true,
 			}, st))
-			nr.OnGetTaskNodeState().Return(interfaces.TaskNodeState{
+			nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
 				PluginPhase: tt.args.pluginPhase,
 				PluginState: st.Bytes(),
 			})
@@ -1355,7 +1355,7 @@ func Test_task_Abort(t *testing.T) {
 		cod := codex.GobStateCodec{}
 		assert.NoError(t, cod.Encode(test{A: a}, st))
 		nr := &nodeMocks.NodeStateReader{}
-		nr.OnGetTaskNodeState().Return(interfaces.TaskNodeState{
+		nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
 			PluginState: st.Bytes(),
 		})
 		nCtx.OnNodeStateReader().Return(nr)
@@ -1517,7 +1517,7 @@ func Test_task_Abort_v1(t *testing.T) {
 		cod := codex.GobStateCodec{}
 		assert.NoError(t, cod.Encode(test{A: a}, st))
 		nr := &nodeMocks.NodeStateReader{}
-		nr.OnGetTaskNodeState().Return(interfaces.TaskNodeState{
+		nr.OnGetTaskNodeState().Return(handler.TaskNodeState{
 			PluginState: st.Bytes(),
 		})
 		nCtx.OnNodeStateReader().Return(nr)
@@ -1703,7 +1703,7 @@ func Test_task_Finalize(t *testing.T) {
 		cod := codex.GobStateCodec{}
 		assert.NoError(t, cod.Encode(test{A: a}, st))
 		nr := &nodeMocks.NodeStateReader{}
-		nr.On("GetTaskNodeState").Return(interfaces.TaskNodeState{
+		nr.On("GetTaskNodeState").Return(handler.TaskNodeState{
 			PluginState: st.Bytes(),
 		})
 		nCtx.On("NodeStateReader").Return(nr)

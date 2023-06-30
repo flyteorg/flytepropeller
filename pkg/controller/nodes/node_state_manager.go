@@ -6,45 +6,45 @@ import (
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
 )
 
 type nodeStateManager struct {
 	nodeStatus v1alpha1.ExecutableNodeStatus
-	t          *interfaces.TaskNodeState
-	b          *interfaces.BranchNodeState
-	d          *interfaces.DynamicNodeState
-	w          *interfaces.WorkflowNodeState
-	g          *interfaces.GateNodeState
-	a          *interfaces.ArrayNodeState
+	t          *handler.TaskNodeState
+	b          *handler.BranchNodeState
+	d          *handler.DynamicNodeState
+	w          *handler.WorkflowNodeState
+	g          *handler.GateNodeState
+	a          *handler.ArrayNodeState
 }
 
-func (n *nodeStateManager) PutTaskNodeState(s interfaces.TaskNodeState) error {
+func (n *nodeStateManager) PutTaskNodeState(s handler.TaskNodeState) error {
 	n.t = &s
 	return nil
 }
 
-func (n *nodeStateManager) PutBranchNode(s interfaces.BranchNodeState) error {
+func (n *nodeStateManager) PutBranchNode(s handler.BranchNodeState) error {
 	n.b = &s
 	return nil
 }
 
-func (n *nodeStateManager) PutDynamicNodeState(s interfaces.DynamicNodeState) error {
+func (n *nodeStateManager) PutDynamicNodeState(s handler.DynamicNodeState) error {
 	n.d = &s
 	return nil
 }
 
-func (n *nodeStateManager) PutWorkflowNodeState(s interfaces.WorkflowNodeState) error {
+func (n *nodeStateManager) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
 	n.w = &s
 	return nil
 }
 
-func (n *nodeStateManager) PutGateNodeState(s interfaces.GateNodeState) error {
+func (n *nodeStateManager) PutGateNodeState(s handler.GateNodeState) error {
 	n.g = &s
 	return nil
 }
 
-func (n *nodeStateManager) PutArrayNodeState(s interfaces.ArrayNodeState) error {
+func (n *nodeStateManager) PutArrayNodeState(s handler.ArrayNodeState) error {
 	n.a = &s
 	return nil
 }
@@ -73,14 +73,14 @@ func (n *nodeStateManager) HasArrayNodeState() bool {
 	return n.a != nil
 }
 
-func (n nodeStateManager) GetTaskNodeState() interfaces.TaskNodeState {
+func (n nodeStateManager) GetTaskNodeState() handler.TaskNodeState {
 	if n.t != nil {
 		return *n.t
 	}
 
 	tn := n.nodeStatus.GetTaskNodeStatus()
 	if tn != nil {
-		return interfaces.TaskNodeState{
+		return handler.TaskNodeState{
 			PluginPhase:                        pluginCore.Phase(tn.GetPhase()),
 			PluginPhaseVersion:                 tn.GetPhaseVersion(),
 			PluginStateVersion:                 tn.GetPluginStateVersion(),
@@ -90,16 +90,16 @@ func (n nodeStateManager) GetTaskNodeState() interfaces.TaskNodeState {
 			CleanupOnFailure:                   tn.GetCleanupOnFailure(),
 		}
 	}
-	return interfaces.TaskNodeState{}
+	return handler.TaskNodeState{}
 }
 
-func (n nodeStateManager) GetBranchNodeState() interfaces.BranchNodeState {
+func (n nodeStateManager) GetBranchNodeState() handler.BranchNodeState {
 	if n.b != nil {
 		return *n.b
 	}
 
 	bn := n.nodeStatus.GetBranchStatus()
-	bs := interfaces.BranchNodeState{}
+	bs := handler.BranchNodeState{}
 	if bn != nil {
 		bs.Phase = bn.GetPhase()
 		bs.FinalizedNodeID = bn.GetFinalizedNode()
@@ -107,13 +107,13 @@ func (n nodeStateManager) GetBranchNodeState() interfaces.BranchNodeState {
 	return bs
 }
 
-func (n nodeStateManager) GetDynamicNodeState() interfaces.DynamicNodeState {
+func (n nodeStateManager) GetDynamicNodeState() handler.DynamicNodeState {
 	if n.d != nil {
 		return *n.d
 	}
 
 	dn := n.nodeStatus.GetDynamicNodeStatus()
-	ds := interfaces.DynamicNodeState{}
+	ds := handler.DynamicNodeState{}
 	if dn != nil {
 		ds.Phase = dn.GetDynamicNodePhase()
 		ds.Reason = dn.GetDynamicNodeReason()
@@ -123,13 +123,13 @@ func (n nodeStateManager) GetDynamicNodeState() interfaces.DynamicNodeState {
 	return ds
 }
 
-func (n nodeStateManager) GetWorkflowNodeState() interfaces.WorkflowNodeState {
+func (n nodeStateManager) GetWorkflowNodeState() handler.WorkflowNodeState {
 	if n.w != nil {
 		return *n.w
 	}
 
 	wn := n.nodeStatus.GetWorkflowNodeStatus()
-	ws := interfaces.WorkflowNodeState{}
+	ws := handler.WorkflowNodeState{}
 	if wn != nil {
 		ws.Phase = wn.GetWorkflowNodePhase()
 		ws.Error = wn.GetExecutionError()
@@ -137,26 +137,26 @@ func (n nodeStateManager) GetWorkflowNodeState() interfaces.WorkflowNodeState {
 	return ws
 }
 
-func (n nodeStateManager) GetGateNodeState() interfaces.GateNodeState {
+func (n nodeStateManager) GetGateNodeState() handler.GateNodeState {
 	if n.g != nil {
 		return *n.g
 	}
 
 	gn := n.nodeStatus.GetGateNodeStatus()
-	gs := interfaces.GateNodeState{}
+	gs := handler.GateNodeState{}
 	if gn != nil {
 		gs.Phase = gn.GetGateNodePhase()
 	}
 	return gs
 }
 
-func (n nodeStateManager) GetArrayNodeState() interfaces.ArrayNodeState {
+func (n nodeStateManager) GetArrayNodeState() handler.ArrayNodeState {
 	if n.a != nil {
 		return *n.a
 	}
 
 	an := n.nodeStatus.GetArrayNodeStatus()
-	as := interfaces.ArrayNodeState{}
+	as := handler.ArrayNodeState{}
 	if an != nil {
 		as.Phase = an.GetArrayNodePhase()
 		as.Error = an.GetExecutionError()

@@ -57,7 +57,7 @@ func (b *branchHandler) HandleBranchNode(ctx context.Context, branchNode v1alpha
 			return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.IllegalStateError, errMsg, nil)), nil
 		}
 
-		branchNodeState := interfaces.BranchNodeState{FinalizedNodeID: finalNodeID, Phase: v1alpha1.BranchNodeSuccess}
+		branchNodeState := handler.BranchNodeState{FinalizedNodeID: finalNodeID, Phase: v1alpha1.BranchNodeSuccess}
 		err = nCtx.NodeStateWriter().PutBranchNode(branchNodeState)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to store BranchNode state, err :%s", err.Error())

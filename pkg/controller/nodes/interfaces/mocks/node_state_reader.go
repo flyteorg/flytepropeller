@@ -3,7 +3,8 @@
 package mocks
 
 import (
-	interfaces "github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
+	handler "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -16,7 +17,7 @@ type NodeStateReader_GetArrayNodeState struct {
 	*mock.Call
 }
 
-func (_m NodeStateReader_GetArrayNodeState) Return(_a0 interfaces.ArrayNodeState) *NodeStateReader_GetArrayNodeState {
+func (_m NodeStateReader_GetArrayNodeState) Return(_a0 handler.ArrayNodeState) *NodeStateReader_GetArrayNodeState {
 	return &NodeStateReader_GetArrayNodeState{Call: _m.Call.Return(_a0)}
 }
 
@@ -31,14 +32,14 @@ func (_m *NodeStateReader) OnGetArrayNodeStateMatch(matchers ...interface{}) *No
 }
 
 // GetArrayNodeState provides a mock function with given fields:
-func (_m *NodeStateReader) GetArrayNodeState() interfaces.ArrayNodeState {
+func (_m *NodeStateReader) GetArrayNodeState() handler.ArrayNodeState {
 	ret := _m.Called()
 
-	var r0 interfaces.ArrayNodeState
-	if rf, ok := ret.Get(0).(func() interfaces.ArrayNodeState); ok {
+	var r0 handler.ArrayNodeState
+	if rf, ok := ret.Get(0).(func() handler.ArrayNodeState); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(interfaces.ArrayNodeState)
+		r0 = ret.Get(0).(handler.ArrayNodeState)
 	}
 
 	return r0
@@ -48,7 +49,7 @@ type NodeStateReader_GetBranchNodeState struct {
 	*mock.Call
 }
 
-func (_m NodeStateReader_GetBranchNodeState) Return(_a0 interfaces.BranchNodeState) *NodeStateReader_GetBranchNodeState {
+func (_m NodeStateReader_GetBranchNodeState) Return(_a0 handler.BranchNodeState) *NodeStateReader_GetBranchNodeState {
 	return &NodeStateReader_GetBranchNodeState{Call: _m.Call.Return(_a0)}
 }
 
@@ -63,14 +64,14 @@ func (_m *NodeStateReader) OnGetBranchNodeStateMatch(matchers ...interface{}) *N
 }
 
 // GetBranchNodeState provides a mock function with given fields:
-func (_m *NodeStateReader) GetBranchNodeState() interfaces.BranchNodeState {
+func (_m *NodeStateReader) GetBranchNodeState() handler.BranchNodeState {
 	ret := _m.Called()
 
-	var r0 interfaces.BranchNodeState
-	if rf, ok := ret.Get(0).(func() interfaces.BranchNodeState); ok {
+	var r0 handler.BranchNodeState
+	if rf, ok := ret.Get(0).(func() handler.BranchNodeState); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(interfaces.BranchNodeState)
+		r0 = ret.Get(0).(handler.BranchNodeState)
 	}
 
 	return r0
@@ -80,7 +81,7 @@ type NodeStateReader_GetDynamicNodeState struct {
 	*mock.Call
 }
 
-func (_m NodeStateReader_GetDynamicNodeState) Return(_a0 interfaces.DynamicNodeState) *NodeStateReader_GetDynamicNodeState {
+func (_m NodeStateReader_GetDynamicNodeState) Return(_a0 handler.DynamicNodeState) *NodeStateReader_GetDynamicNodeState {
 	return &NodeStateReader_GetDynamicNodeState{Call: _m.Call.Return(_a0)}
 }
 
@@ -95,14 +96,14 @@ func (_m *NodeStateReader) OnGetDynamicNodeStateMatch(matchers ...interface{}) *
 }
 
 // GetDynamicNodeState provides a mock function with given fields:
-func (_m *NodeStateReader) GetDynamicNodeState() interfaces.DynamicNodeState {
+func (_m *NodeStateReader) GetDynamicNodeState() handler.DynamicNodeState {
 	ret := _m.Called()
 
-	var r0 interfaces.DynamicNodeState
-	if rf, ok := ret.Get(0).(func() interfaces.DynamicNodeState); ok {
+	var r0 handler.DynamicNodeState
+	if rf, ok := ret.Get(0).(func() handler.DynamicNodeState); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(interfaces.DynamicNodeState)
+		r0 = ret.Get(0).(handler.DynamicNodeState)
 	}
 
 	return r0
@@ -112,7 +113,7 @@ type NodeStateReader_GetGateNodeState struct {
 	*mock.Call
 }
 
-func (_m NodeStateReader_GetGateNodeState) Return(_a0 interfaces.GateNodeState) *NodeStateReader_GetGateNodeState {
+func (_m NodeStateReader_GetGateNodeState) Return(_a0 handler.GateNodeState) *NodeStateReader_GetGateNodeState {
 	return &NodeStateReader_GetGateNodeState{Call: _m.Call.Return(_a0)}
 }
 
@@ -127,14 +128,14 @@ func (_m *NodeStateReader) OnGetGateNodeStateMatch(matchers ...interface{}) *Nod
 }
 
 // GetGateNodeState provides a mock function with given fields:
-func (_m *NodeStateReader) GetGateNodeState() interfaces.GateNodeState {
+func (_m *NodeStateReader) GetGateNodeState() handler.GateNodeState {
 	ret := _m.Called()
 
-	var r0 interfaces.GateNodeState
-	if rf, ok := ret.Get(0).(func() interfaces.GateNodeState); ok {
+	var r0 handler.GateNodeState
+	if rf, ok := ret.Get(0).(func() handler.GateNodeState); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(interfaces.GateNodeState)
+		r0 = ret.Get(0).(handler.GateNodeState)
 	}
 
 	return r0
@@ -144,7 +145,7 @@ type NodeStateReader_GetTaskNodeState struct {
 	*mock.Call
 }
 
-func (_m NodeStateReader_GetTaskNodeState) Return(_a0 interfaces.TaskNodeState) *NodeStateReader_GetTaskNodeState {
+func (_m NodeStateReader_GetTaskNodeState) Return(_a0 handler.TaskNodeState) *NodeStateReader_GetTaskNodeState {
 	return &NodeStateReader_GetTaskNodeState{Call: _m.Call.Return(_a0)}
 }
 
@@ -159,14 +160,14 @@ func (_m *NodeStateReader) OnGetTaskNodeStateMatch(matchers ...interface{}) *Nod
 }
 
 // GetTaskNodeState provides a mock function with given fields:
-func (_m *NodeStateReader) GetTaskNodeState() interfaces.TaskNodeState {
+func (_m *NodeStateReader) GetTaskNodeState() handler.TaskNodeState {
 	ret := _m.Called()
 
-	var r0 interfaces.TaskNodeState
-	if rf, ok := ret.Get(0).(func() interfaces.TaskNodeState); ok {
+	var r0 handler.TaskNodeState
+	if rf, ok := ret.Get(0).(func() handler.TaskNodeState); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(interfaces.TaskNodeState)
+		r0 = ret.Get(0).(handler.TaskNodeState)
 	}
 
 	return r0
@@ -176,7 +177,7 @@ type NodeStateReader_GetWorkflowNodeState struct {
 	*mock.Call
 }
 
-func (_m NodeStateReader_GetWorkflowNodeState) Return(_a0 interfaces.WorkflowNodeState) *NodeStateReader_GetWorkflowNodeState {
+func (_m NodeStateReader_GetWorkflowNodeState) Return(_a0 handler.WorkflowNodeState) *NodeStateReader_GetWorkflowNodeState {
 	return &NodeStateReader_GetWorkflowNodeState{Call: _m.Call.Return(_a0)}
 }
 
@@ -191,14 +192,14 @@ func (_m *NodeStateReader) OnGetWorkflowNodeStateMatch(matchers ...interface{}) 
 }
 
 // GetWorkflowNodeState provides a mock function with given fields:
-func (_m *NodeStateReader) GetWorkflowNodeState() interfaces.WorkflowNodeState {
+func (_m *NodeStateReader) GetWorkflowNodeState() handler.WorkflowNodeState {
 	ret := _m.Called()
 
-	var r0 interfaces.WorkflowNodeState
-	if rf, ok := ret.Get(0).(func() interfaces.WorkflowNodeState); ok {
+	var r0 handler.WorkflowNodeState
+	if rf, ok := ret.Get(0).(func() handler.WorkflowNodeState); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(interfaces.WorkflowNodeState)
+		r0 = ret.Get(0).(handler.WorkflowNodeState)
 	}
 
 	return r0

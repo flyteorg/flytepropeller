@@ -3,7 +3,8 @@
 package mocks
 
 import (
-	interfaces "github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
+	handler "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -25,7 +26,7 @@ func (_m NodeStateWriter_PutArrayNodeState) Return(_a0 error) *NodeStateWriter_P
 	return &NodeStateWriter_PutArrayNodeState{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *NodeStateWriter) OnPutArrayNodeState(s interfaces.ArrayNodeState) *NodeStateWriter_PutArrayNodeState {
+func (_m *NodeStateWriter) OnPutArrayNodeState(s handler.ArrayNodeState) *NodeStateWriter_PutArrayNodeState {
 	c_call := _m.On("PutArrayNodeState", s)
 	return &NodeStateWriter_PutArrayNodeState{Call: c_call}
 }
@@ -36,11 +37,11 @@ func (_m *NodeStateWriter) OnPutArrayNodeStateMatch(matchers ...interface{}) *No
 }
 
 // PutArrayNodeState provides a mock function with given fields: s
-func (_m *NodeStateWriter) PutArrayNodeState(s interfaces.ArrayNodeState) error {
+func (_m *NodeStateWriter) PutArrayNodeState(s handler.ArrayNodeState) error {
 	ret := _m.Called(s)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(interfaces.ArrayNodeState) error); ok {
+	if rf, ok := ret.Get(0).(func(handler.ArrayNodeState) error); ok {
 		r0 = rf(s)
 	} else {
 		r0 = ret.Error(0)
@@ -57,7 +58,7 @@ func (_m NodeStateWriter_PutBranchNode) Return(_a0 error) *NodeStateWriter_PutBr
 	return &NodeStateWriter_PutBranchNode{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *NodeStateWriter) OnPutBranchNode(s interfaces.BranchNodeState) *NodeStateWriter_PutBranchNode {
+func (_m *NodeStateWriter) OnPutBranchNode(s handler.BranchNodeState) *NodeStateWriter_PutBranchNode {
 	c_call := _m.On("PutBranchNode", s)
 	return &NodeStateWriter_PutBranchNode{Call: c_call}
 }
@@ -68,11 +69,11 @@ func (_m *NodeStateWriter) OnPutBranchNodeMatch(matchers ...interface{}) *NodeSt
 }
 
 // PutBranchNode provides a mock function with given fields: s
-func (_m *NodeStateWriter) PutBranchNode(s interfaces.BranchNodeState) error {
+func (_m *NodeStateWriter) PutBranchNode(s handler.BranchNodeState) error {
 	ret := _m.Called(s)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(interfaces.BranchNodeState) error); ok {
+	if rf, ok := ret.Get(0).(func(handler.BranchNodeState) error); ok {
 		r0 = rf(s)
 	} else {
 		r0 = ret.Error(0)
@@ -89,7 +90,7 @@ func (_m NodeStateWriter_PutDynamicNodeState) Return(_a0 error) *NodeStateWriter
 	return &NodeStateWriter_PutDynamicNodeState{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *NodeStateWriter) OnPutDynamicNodeState(s interfaces.DynamicNodeState) *NodeStateWriter_PutDynamicNodeState {
+func (_m *NodeStateWriter) OnPutDynamicNodeState(s handler.DynamicNodeState) *NodeStateWriter_PutDynamicNodeState {
 	c_call := _m.On("PutDynamicNodeState", s)
 	return &NodeStateWriter_PutDynamicNodeState{Call: c_call}
 }
@@ -100,11 +101,11 @@ func (_m *NodeStateWriter) OnPutDynamicNodeStateMatch(matchers ...interface{}) *
 }
 
 // PutDynamicNodeState provides a mock function with given fields: s
-func (_m *NodeStateWriter) PutDynamicNodeState(s interfaces.DynamicNodeState) error {
+func (_m *NodeStateWriter) PutDynamicNodeState(s handler.DynamicNodeState) error {
 	ret := _m.Called(s)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(interfaces.DynamicNodeState) error); ok {
+	if rf, ok := ret.Get(0).(func(handler.DynamicNodeState) error); ok {
 		r0 = rf(s)
 	} else {
 		r0 = ret.Error(0)
@@ -121,7 +122,7 @@ func (_m NodeStateWriter_PutGateNodeState) Return(_a0 error) *NodeStateWriter_Pu
 	return &NodeStateWriter_PutGateNodeState{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *NodeStateWriter) OnPutGateNodeState(s interfaces.GateNodeState) *NodeStateWriter_PutGateNodeState {
+func (_m *NodeStateWriter) OnPutGateNodeState(s handler.GateNodeState) *NodeStateWriter_PutGateNodeState {
 	c_call := _m.On("PutGateNodeState", s)
 	return &NodeStateWriter_PutGateNodeState{Call: c_call}
 }
@@ -132,11 +133,11 @@ func (_m *NodeStateWriter) OnPutGateNodeStateMatch(matchers ...interface{}) *Nod
 }
 
 // PutGateNodeState provides a mock function with given fields: s
-func (_m *NodeStateWriter) PutGateNodeState(s interfaces.GateNodeState) error {
+func (_m *NodeStateWriter) PutGateNodeState(s handler.GateNodeState) error {
 	ret := _m.Called(s)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(interfaces.GateNodeState) error); ok {
+	if rf, ok := ret.Get(0).(func(handler.GateNodeState) error); ok {
 		r0 = rf(s)
 	} else {
 		r0 = ret.Error(0)
@@ -153,7 +154,7 @@ func (_m NodeStateWriter_PutTaskNodeState) Return(_a0 error) *NodeStateWriter_Pu
 	return &NodeStateWriter_PutTaskNodeState{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *NodeStateWriter) OnPutTaskNodeState(s interfaces.TaskNodeState) *NodeStateWriter_PutTaskNodeState {
+func (_m *NodeStateWriter) OnPutTaskNodeState(s handler.TaskNodeState) *NodeStateWriter_PutTaskNodeState {
 	c_call := _m.On("PutTaskNodeState", s)
 	return &NodeStateWriter_PutTaskNodeState{Call: c_call}
 }
@@ -164,11 +165,11 @@ func (_m *NodeStateWriter) OnPutTaskNodeStateMatch(matchers ...interface{}) *Nod
 }
 
 // PutTaskNodeState provides a mock function with given fields: s
-func (_m *NodeStateWriter) PutTaskNodeState(s interfaces.TaskNodeState) error {
+func (_m *NodeStateWriter) PutTaskNodeState(s handler.TaskNodeState) error {
 	ret := _m.Called(s)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(interfaces.TaskNodeState) error); ok {
+	if rf, ok := ret.Get(0).(func(handler.TaskNodeState) error); ok {
 		r0 = rf(s)
 	} else {
 		r0 = ret.Error(0)
@@ -185,7 +186,7 @@ func (_m NodeStateWriter_PutWorkflowNodeState) Return(_a0 error) *NodeStateWrite
 	return &NodeStateWriter_PutWorkflowNodeState{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *NodeStateWriter) OnPutWorkflowNodeState(s interfaces.WorkflowNodeState) *NodeStateWriter_PutWorkflowNodeState {
+func (_m *NodeStateWriter) OnPutWorkflowNodeState(s handler.WorkflowNodeState) *NodeStateWriter_PutWorkflowNodeState {
 	c_call := _m.On("PutWorkflowNodeState", s)
 	return &NodeStateWriter_PutWorkflowNodeState{Call: c_call}
 }
@@ -196,11 +197,11 @@ func (_m *NodeStateWriter) OnPutWorkflowNodeStateMatch(matchers ...interface{}) 
 }
 
 // PutWorkflowNodeState provides a mock function with given fields: s
-func (_m *NodeStateWriter) PutWorkflowNodeState(s interfaces.WorkflowNodeState) error {
+func (_m *NodeStateWriter) PutWorkflowNodeState(s handler.WorkflowNodeState) error {
 	ret := _m.Called(s)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(interfaces.WorkflowNodeState) error); ok {
+	if rf, ok := ret.Get(0).(func(handler.WorkflowNodeState) error); ok {
 		r0 = rf(s)
 	} else {
 		r0 = ret.Error(0)
