@@ -284,3 +284,42 @@ func Test_NodeContextDefaultInterruptible(t *testing.T) {
 		verifyNodeExecContext(t, execContext, nodeLookup, false)
 	})
 }
+
+// TODO @hamersaw - get working
+/*func Test_NodeContext_IdempotentRecordEvent(t *testing.T) {
+	noErrRecorder := fakeNodeEventRecorder{}
+	alreadyExistsError := fakeNodeEventRecorder{&eventsErr.EventError{Code: eventsErr.AlreadyExists, Cause: fmt.Errorf("err")}}
+	inTerminalError := fakeNodeEventRecorder{&eventsErr.EventError{Code: eventsErr.EventAlreadyInTerminalStateError, Cause: fmt.Errorf("err")}}
+	otherError := fakeNodeEventRecorder{&eventsErr.EventError{Code: eventsErr.ResourceExhausted, Cause: fmt.Errorf("err")}}
+
+	tests := []struct {
+		name    string
+		rec     events.NodeEventRecorder
+		p       core.NodeExecution_Phase
+		wantErr bool
+	}{
+		{"aborted-success", noErrRecorder, core.NodeExecution_ABORTED, false},
+		{"aborted-failure", otherError, core.NodeExecution_ABORTED, true},
+		{"aborted-already", alreadyExistsError, core.NodeExecution_ABORTED, false},
+		{"aborted-terminal", inTerminalError, core.NodeExecution_ABORTED, false},
+		{"running-terminal", inTerminalError, core.NodeExecution_RUNNING, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &recursiveNodeExecutor{
+				nodeRecorder: tt.rec,
+				eventConfig: &config.EventConfig{
+					RawOutputPolicy: config.RawOutputPolicyReference,
+				},
+			}
+			ev := &event.NodeExecutionEvent{
+				Id:         &core.NodeExecutionIdentifier{},
+				Phase:      tt.p,
+				ProducerId: "propeller",
+			}
+			if err := c.IdempotentRecordEvent(context.TODO(), ev); (err != nil) != tt.wantErr {
+				t.Errorf("IdempotentRecordEvent() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}*/

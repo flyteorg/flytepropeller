@@ -318,7 +318,6 @@ func (c *nodeExecutor) BuildNodeExecutionContext(ctx context.Context, executionC
 		interruptible,
 		c.interruptibleFailureThreshold,
 		c.maxDatasetSizeBytes,
-		//&taskEventRecorder{TaskEventRecorder: c.taskRecorder},
 		c.taskRecorder,
 		c.nodeRecorder,
 		tr,

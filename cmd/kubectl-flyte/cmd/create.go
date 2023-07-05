@@ -212,12 +212,6 @@ func (c *CreateOpts) createWorkflowFromProto() error {
 		}
 	}
 
-	// TODO @hamersaw temp
-	flyteWf.ExecutionID.Project = "flytesnacks"
-	flyteWf.ExecutionID.Domain = "development"
-	flyteWf.Labels["project"] = "flytesnacks"
-	flyteWf.Labels["domain"] = "development"
-
 	if c.dryRun {
 		fmt.Printf("Dry Run mode enabled. Printing the compiled workflow.\n")
 		j, err := json.Marshal(flyteWf)

@@ -85,7 +85,8 @@ type nodeMetrics struct {
 	NodeInputGatherLatency labeled.StopWatch
 }
 
-// Implements the executors.Node interface
+// recursiveNodeExector implements the executors.Node interfaces and is the starting point for
+// executing any node in the workflow.
 type recursiveNodeExecutor struct {
 	nodeExecutor       interfaces.NodeExecutor
 	nCtxBuilder        interfaces.NodeExecutionContextBuilder
@@ -486,11 +487,12 @@ func (c *recursiveNodeExecutor) Initialize(ctx context.Context) error {
 	return c.nodeHandlerFactory.Setup(ctx, c, s)
 }
 
-// TODO @hamersaw docs
+// GetNodeExecutionContextBuilder returns the current NodeExecutionContextBuilder
 func (c *recursiveNodeExecutor) GetNodeExecutionContextBuilder() interfaces.NodeExecutionContextBuilder {
 	return c.nCtxBuilder
 }
 
+// WithNodeExecutionContextBuilder returns a new Node with the given NodeExecutionContextBuilder
 func (c *recursiveNodeExecutor) WithNodeExecutionContextBuilder(nCtxBuilder interfaces.NodeExecutionContextBuilder) interfaces.Node {
 	return &recursiveNodeExecutor{
 		nodeExecutor:       c.nodeExecutor,
@@ -502,7 +504,7 @@ func (c *recursiveNodeExecutor) WithNodeExecutionContextBuilder(nCtxBuilder inte
 	}
 }
 
-// TODO @hamersaw nodeExecutor goes here and write docs
+// nodeExecutor implements the NodeExecutor interface and is responsible for executing a single node.
 type nodeExecutor struct {
 	clusterID                       string
 	defaultActiveDeadline           time.Duration

@@ -89,12 +89,14 @@ type Node interface {
 	// This method should be used to initialize Node executor
 	Initialize(ctx context.Context) error
 
-	// TODO @hamersaw - docs
+	// GetNodeExecutionContextBuilder returns the current NodeExecutionContextBuilder
 	GetNodeExecutionContextBuilder() NodeExecutionContextBuilder
+
+	// WithNodeExecutionContextBuilder returns a new Node with the given NodeExecutionContextBuilder
 	WithNodeExecutionContextBuilder(NodeExecutionContextBuilder) Node
 }
 
-// TODO @hamersaw - docs
+// NodeExecutionContextBuilder defines how a NodeExecutionContext is built
 type NodeExecutionContextBuilder interface {
 	BuildNodeExecutionContext(ctx context.Context, executionContext executors.ExecutionContext,
 		nl executors.NodeLookup, currentNodeID v1alpha1.NodeID) (NodeExecutionContext, error)
