@@ -12,7 +12,6 @@ import (
 
 // NodeExecutor defines the interface for handling a single Flyte Node of any Node type.
 type NodeExecutor interface {
-	// TODO @hamersaw - BuildNodeExecutionContext should be here - removes need for another interface
 	HandleNode(ctx context.Context, dag executors.DAGStructure, nCtx NodeExecutionContext, h NodeHandler) (NodeStatus, error)
 	Abort(ctx context.Context, h NodeHandler, nCtx NodeExecutionContext, reason string) error
 	Finalize(ctx context.Context, h NodeHandler, nCtx NodeExecutionContext) error

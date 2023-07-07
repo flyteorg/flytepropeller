@@ -179,10 +179,6 @@ func (e nodeExecContext) InputReader() io.InputReader {
 	return e.inputs
 }
 
-/*func (e nodeExecContext) EventsRecorder() events.TaskEventRecorder {
-	return e.er
-}*/
-
 func (e nodeExecContext) EventsRecorder() interfaces.EventRecorder {
 	return e.eventRecorder
 }
