@@ -35,12 +35,17 @@ func (t TaskReader) GetTaskID() *core.Identifier {
 	return &core.Identifier{Project: "p", Domain: "d", Name: "task-name"}
 }
 
-type fakeNodeEventRecorder struct {
-	err error
+type fakeEventRecorder struct {
+	nodeErr error
+	taskErr error
 }
 
-func (f fakeNodeEventRecorder) RecordNodeEvent(ctx context.Context, event *event.NodeExecutionEvent, eventConfig *config.EventConfig) error {
-	return f.err
+func (f fakeEventRecorder) RecordNodeEvent(ctx context.Context, event *event.NodeExecutionEvent, eventConfig *config.EventConfig) error {
+	return f.nodeErr
+}
+
+func (f fakeEventRecorder) RecordTaskEvent(ctx context.Context, event *event.TaskExecutionEvent, eventConfig *config.EventConfig) error {
+	return f.taskErr
 }
 
 type parentInfo struct {
@@ -301,10 +306,10 @@ func Test_NodeContextDefaultInterruptible(t *testing.T) {
 }
 
 func Test_NodeContext_RecordNodeEvent(t *testing.T) {
-	noErrRecorder := fakeNodeEventRecorder{}
-	alreadyExistsError := fakeNodeEventRecorder{&eventsErr.EventError{Code: eventsErr.AlreadyExists, Cause: fmt.Errorf("err")}}
-	inTerminalError := fakeNodeEventRecorder{&eventsErr.EventError{Code: eventsErr.EventAlreadyInTerminalStateError, Cause: fmt.Errorf("err")}}
-	otherError := fakeNodeEventRecorder{&eventsErr.EventError{Code: eventsErr.ResourceExhausted, Cause: fmt.Errorf("err")}}
+	noErrRecorder := fakeEventRecorder{}
+	alreadyExistsError := fakeEventRecorder{nodeErr: &eventsErr.EventError{Code: eventsErr.AlreadyExists, Cause: fmt.Errorf("err")}}
+	inTerminalError := fakeEventRecorder{nodeErr: &eventsErr.EventError{Code: eventsErr.EventAlreadyInTerminalStateError, Cause: fmt.Errorf("err")}}
+	otherError := fakeEventRecorder{nodeErr: &eventsErr.EventError{Code: eventsErr.ResourceExhausted, Cause: fmt.Errorf("err")}}
 
 	tests := []struct {
 		name    string
@@ -331,6 +336,41 @@ func Test_NodeContext_RecordNodeEvent(t *testing.T) {
 			}
 			if err := eventRecorder.RecordNodeEvent(context.TODO(), ev, &config.EventConfig{}); (err != nil) != tt.wantErr {
 				t.Errorf("RecordNodeEvent() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_NodeContext_RecordTaskEvent(t1 *testing.T) {
+	noErrRecorder := fakeEventRecorder{}
+	alreadyExistsError := fakeEventRecorder{taskErr: &eventsErr.EventError{Code: eventsErr.AlreadyExists, Cause: fmt.Errorf("err")}}
+	inTerminalError := fakeEventRecorder{taskErr: &eventsErr.EventError{Code: eventsErr.EventAlreadyInTerminalStateError, Cause: fmt.Errorf("err")}}
+	otherError := fakeEventRecorder{taskErr: &eventsErr.EventError{Code: eventsErr.ResourceExhausted, Cause: fmt.Errorf("err")}}
+
+	tests := []struct {
+		name    string
+		rec     events.TaskEventRecorder
+		p       core.TaskExecution_Phase
+		wantErr bool
+	}{
+		{"aborted-success", noErrRecorder, core.TaskExecution_ABORTED, false},
+		{"aborted-failure", otherError, core.TaskExecution_ABORTED, true},
+		{"aborted-already", alreadyExistsError, core.TaskExecution_ABORTED, false},
+		{"aborted-terminal", inTerminalError, core.TaskExecution_ABORTED, false},
+		{"running-terminal", inTerminalError, core.TaskExecution_RUNNING, true},
+	}
+	for _, tt := range tests {
+		t1.Run(tt.name, func(t1 *testing.T) {
+			t := &eventRecorder{
+				taskEventRecorder: tt.rec,
+			}
+			ev := &event.TaskExecutionEvent{
+				Phase: tt.p,
+			}
+			if err := t.RecordTaskEvent(context.TODO(), ev, &config.EventConfig{
+				RawOutputPolicy: config.RawOutputPolicyReference,
+			}); (err != nil) != tt.wantErr {
+				t1.Errorf("RecordTaskEvent() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

@@ -1652,7 +1652,7 @@ func TestNodeExecutor_AbortHandler(t *testing.T) {
 		ns.OnGetDataDir().Return(storage.DataReference("s3:/foo"))
 		nl.OnGetNodeExecutionStatusMatch(mock.Anything, id).Return(ns)
 		nl.OnGetNode(id).Return(n, true)
-		incompatibleClusterErr := fakeNodeEventRecorder{&eventsErr.EventError{Code: eventsErr.AlreadyExists, Cause: fmt.Errorf("err")}}
+		incompatibleClusterErr := fakeEventRecorder{nodeErr: &eventsErr.EventError{Code: eventsErr.AlreadyExists, Cause: fmt.Errorf("err")}}
 
 		hf := &nodemocks.HandlerFactory{}
 		h := &nodemocks.NodeHandler{}
