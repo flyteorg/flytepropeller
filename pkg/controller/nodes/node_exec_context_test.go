@@ -2,22 +2,29 @@ package nodes
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
+	"github.com/flyteorg/flytepropeller/events"
+	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
+	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
+
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/flyteorg/flytestdlib/storage"
-	"github.com/stretchr/testify/assert"
 
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
+	"github.com/stretchr/testify/assert"
 )
 
 type TaskReader struct{}
@@ -26,6 +33,14 @@ func (t TaskReader) Read(ctx context.Context) (*core.TaskTemplate, error) { retu
 func (t TaskReader) GetTaskType() v1alpha1.TaskType                       { return "" }
 func (t TaskReader) GetTaskID() *core.Identifier {
 	return &core.Identifier{Project: "p", Domain: "d", Name: "task-name"}
+}
+
+type fakeNodeEventRecorder struct {
+	err error
+}
+
+func (f fakeNodeEventRecorder) RecordNodeEvent(ctx context.Context, event *event.NodeExecutionEvent, eventConfig *config.EventConfig) error {
+	return f.err
 }
 
 type parentInfo struct {
@@ -285,8 +300,7 @@ func Test_NodeContextDefaultInterruptible(t *testing.T) {
 	})
 }
 
-// TODO @hamersaw - get working
-/*func Test_NodeContext_IdempotentRecordEvent(t *testing.T) {
+func Test_NodeContext_RecordNodeEvent(t *testing.T) {
 	noErrRecorder := fakeNodeEventRecorder{}
 	alreadyExistsError := fakeNodeEventRecorder{&eventsErr.EventError{Code: eventsErr.AlreadyExists, Cause: fmt.Errorf("err")}}
 	inTerminalError := fakeNodeEventRecorder{&eventsErr.EventError{Code: eventsErr.EventAlreadyInTerminalStateError, Cause: fmt.Errorf("err")}}
@@ -306,20 +320,18 @@ func Test_NodeContextDefaultInterruptible(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &recursiveNodeExecutor{
-				nodeRecorder: tt.rec,
-				eventConfig: &config.EventConfig{
-					RawOutputPolicy: config.RawOutputPolicyReference,
-				},
+			eventRecorder := &eventRecorder{
+				nodeEventRecorder: tt.rec,
 			}
+				
 			ev := &event.NodeExecutionEvent{
 				Id:         &core.NodeExecutionIdentifier{},
 				Phase:      tt.p,
 				ProducerId: "propeller",
 			}
-			if err := c.IdempotentRecordEvent(context.TODO(), ev); (err != nil) != tt.wantErr {
-				t.Errorf("IdempotentRecordEvent() error = %v, wantErr %v", err, tt.wantErr)
+			if err := eventRecorder.RecordNodeEvent(context.TODO(), ev, &config.EventConfig{}); (err != nil) != tt.wantErr {
+				t.Errorf("RecordNodeEvent() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
-}*/
+}

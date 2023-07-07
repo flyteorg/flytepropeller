@@ -553,10 +553,8 @@ func (t Handler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContex
 	ts := nCtx.NodeStateReader().GetTaskNodeState()
 
 	pluginTrns := &pluginRequestedTransition{}
-
-	// TODO @hamersaw - does this introduce issues in cache hits?!?!
-	// need to make sure the plugin transition does not block other workflows from progressing
 	defer func() {
+		// increment parallelism if the final pluginTrns is not in a terminal state
 		if pluginTrns != nil && !pluginTrns.pInfo.Phase().IsTerminal() {
 			eCtx := nCtx.ExecutionContext()
 			logger.Infof(ctx, "Parallelism now set to [%d].", eCtx.IncrementParallelism())
