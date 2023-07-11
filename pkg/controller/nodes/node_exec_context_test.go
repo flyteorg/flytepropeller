@@ -328,7 +328,7 @@ func Test_NodeContext_RecordNodeEvent(t *testing.T) {
 			eventRecorder := &eventRecorder{
 				nodeEventRecorder: tt.rec,
 			}
-				
+
 			ev := &event.NodeExecutionEvent{
 				Id:         &core.NodeExecutionIdentifier{},
 				Phase:      tt.p,

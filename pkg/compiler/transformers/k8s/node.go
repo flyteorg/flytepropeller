@@ -164,7 +164,7 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 			return nil, ok
 		}
 
-		// TODO @hamersaw - complete
+		// build ArrayNode
 		nodeSpec.Kind = v1alpha1.NodeKindArray
 		nodeSpec.ArrayNode = &v1alpha1.ArrayNodeSpec{
 			SubNodeSpec: subNodeSpecs[0],
