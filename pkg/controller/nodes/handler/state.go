@@ -34,9 +34,10 @@ type BranchNodeState struct {
 type DynamicNodePhase uint8
 
 type DynamicNodeState struct {
-	Phase  v1alpha1.DynamicNodePhase
-	Reason string
-	Error  *core.ExecutionError
+	Phase              v1alpha1.DynamicNodePhase
+	Reason             string
+	Error              *core.ExecutionError
+	IsFailurePermanent bool
 }
 
 type WorkflowNodeState struct {

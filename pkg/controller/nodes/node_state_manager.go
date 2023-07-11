@@ -118,6 +118,7 @@ func (n nodeStateManager) GetDynamicNodeState() handler.DynamicNodeState {
 		ds.Phase = dn.GetDynamicNodePhase()
 		ds.Reason = dn.GetDynamicNodeReason()
 		ds.Error = dn.GetExecutionError()
+		ds.IsFailurePermanent = dn.GetIsFailurePermanent()
 	}
 
 	return ds

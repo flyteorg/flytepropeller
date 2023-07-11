@@ -253,6 +253,7 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n interfaces.N
 		t.SetDynamicNodePhase(nd.Phase)
 		t.SetDynamicNodeReason(nd.Reason)
 		t.SetExecutionError(nd.Error)
+		t.SetIsFailurePermanent(nd.IsFailurePermanent)
 	}
 
 	// Update branch node status
