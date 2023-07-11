@@ -156,7 +156,7 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 		arrayNode := n.GetArrayNode()
 
 		// since we set retries=1 on the node it's not using the task-level retries
-		arrayNode.Node.Metadata.Retries = nil // TODO @hamersaw - should probably set node-level retires to task in flytekit
+		//arrayNode.Node.Metadata.Retries = nil // TODO @hamersaw - should probably set node-level retires to task in flytekit
 
 		// build subNodeSpecs
 		subNodeSpecs, ok := buildNodeSpec(arrayNode.Node, tasks, errs)

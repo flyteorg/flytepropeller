@@ -154,7 +154,35 @@ func ValidateUnderlyingInterface(w c.WorkflowBuilder, node c.NodeBuilder, errs e
 			errs.Collect(errors.NewNoConditionFound(node.GetId()))
 		}
 	case *core.Node_ArrayNode:
-		// TODO @hamersaw complete
+		arrayNode := node.GetArrayNode()
+		underlyingNodeBuilder := w.GetOrCreateNodeBuilder(arrayNode.Node)
+		if underlyingIface, ok := ValidateUnderlyingInterface(w, underlyingNodeBuilder, errs.NewScope()); ok {
+			// wrap all input and output variables in a collection type
+			iface = &core.TypedInterface{
+				Inputs:  &core.VariableMap{Variables: map[string]*core.Variable{}},
+				Outputs: &core.VariableMap{Variables: map[string]*core.Variable{}},
+			}
+
+			for name, binding := range underlyingIface.GetInputs().Variables {
+				iface.Inputs.Variables[name] = &core.Variable{
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_CollectionType{
+							CollectionType: binding.GetType(),
+						},
+					},
+				}
+			}
+
+			for name, binding := range underlyingIface.GetOutputs().Variables {
+				iface.Outputs.Variables[name] = &core.Variable{
+					Type: &core.LiteralType{
+						Type: &core.LiteralType_CollectionType{
+							CollectionType: binding.GetType(),
+						},
+					},
+				}
+			}
+		}
 	default:
 		errs.Collect(errors.NewValueRequiredErr(node.GetId(), "Target"))
 	}
