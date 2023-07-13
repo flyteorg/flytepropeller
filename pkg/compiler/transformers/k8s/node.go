@@ -155,9 +155,6 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 	case *core.Node_ArrayNode:
 		arrayNode := n.GetArrayNode()
 
-		// since we set retries=1 on the node it's not using the task-level retries
-		//arrayNode.Node.Metadata.Retries = nil // TODO @hamersaw - should probably set node-level retires to task in flytekit
-
 		// build subNodeSpecs
 		subNodeSpecs, ok := buildNodeSpec(arrayNode.Node, tasks, errs)
 		if !ok {
@@ -176,14 +173,6 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 			nodeSpec.ArrayNode.MinSuccesses = &successCriteria.MinSuccesses
 		case *core.ArrayNode_MinSuccessRatio:
 			nodeSpec.ArrayNode.MinSuccessRatio = &successCriteria.MinSuccessRatio
-		}
-
-		// TODO @hamersaw hack - should not be necessary, should be set in flytekit
-		for _, binding := range nodeSpec.InputBindings {
-			switch b := binding.Binding.Binding.Value.(type) {
-			case *core.BindingData_Promise:
-				b.Promise.NodeId = "start-node"
-			}
 		}
 	default:
 		if n.GetId() == v1alpha1.StartNodeID {
