@@ -1,6 +1,7 @@
 package validators
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -455,31 +456,8 @@ func TestValidateUnderlyingInterface(t *testing.T) {
 		// compute arrayNode interface
 		errs := errors.NewCompileErrors()
 		arrayNodeIface, ifaceOk := ValidateUnderlyingInterface(&wfBuilder, &nodeBuilder, errs.NewScope())
-		assertNonEmptyInterface(t, iface, ifaceOk, errs)
-
-		// assert arrayNodeIFace is a collection wrapper of iface
-		assert.Len(t, arrayNodeIface.Inputs.Variables, len(iface.Inputs.Variables))
-		for name, variable := range iface.Inputs.Variables {
-			arrayNodeVariable := arrayNodeIface.Inputs.Variables[name]
-			assert.NotNil(t, arrayNodeVariable)
-
-			collectionType, ok := arrayNodeVariable.Type.GetType().(*core.LiteralType_CollectionType)
-			assert.True(t, ok)
-
-			assert.Equal(t, variable.Type, collectionType.CollectionType)
-		}
-
-		assert.Len(t, arrayNodeIface.Outputs.Variables, len(iface.Outputs.Variables))
-		for name, variable := range iface.Outputs.Variables {
-			arrayNodeVariable := arrayNodeIface.Outputs.Variables[name]
-			assert.NotNil(t, arrayNodeVariable)
-
-			collectionType, ok := arrayNodeVariable.Type.GetType().(*core.LiteralType_CollectionType)
-			assert.True(t, ok)
-
-			assert.Equal(t, variable.Type, collectionType.CollectionType)
-		}
-
+		assertNonEmptyInterface(t, arrayNodeIface, ifaceOk, errs)
+		assert.True(t, reflect.DeepEqual(arrayNodeIface, iface))
 	})
 }
 
