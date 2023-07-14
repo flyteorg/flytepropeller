@@ -24,8 +24,8 @@ func (_m NodeExecutor_Abort) Return(_a0 error) *NodeExecutor_Abort {
 	return &NodeExecutor_Abort{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *NodeExecutor) OnAbort(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext, reason string) *NodeExecutor_Abort {
-	c_call := _m.On("Abort", ctx, h, nCtx, reason)
+func (_m *NodeExecutor) OnAbort(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext, reason string, finalTransition bool) *NodeExecutor_Abort {
+	c_call := _m.On("Abort", ctx, h, nCtx, reason, finalTransition)
 	return &NodeExecutor_Abort{Call: c_call}
 }
 
@@ -34,13 +34,13 @@ func (_m *NodeExecutor) OnAbortMatch(matchers ...interface{}) *NodeExecutor_Abor
 	return &NodeExecutor_Abort{Call: c_call}
 }
 
-// Abort provides a mock function with given fields: ctx, h, nCtx, reason
-func (_m *NodeExecutor) Abort(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext, reason string) error {
-	ret := _m.Called(ctx, h, nCtx, reason)
+// Abort provides a mock function with given fields: ctx, h, nCtx, reason, finalTransition
+func (_m *NodeExecutor) Abort(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext, reason string, finalTransition bool) error {
+	ret := _m.Called(ctx, h, nCtx, reason, finalTransition)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, interfaces.NodeHandler, interfaces.NodeExecutionContext, string) error); ok {
-		r0 = rf(ctx, h, nCtx, reason)
+	if rf, ok := ret.Get(0).(func(context.Context, interfaces.NodeHandler, interfaces.NodeExecutionContext, string, bool) error); ok {
+		r0 = rf(ctx, h, nCtx, reason, finalTransition)
 	} else {
 		r0 = ret.Error(0)
 	}
