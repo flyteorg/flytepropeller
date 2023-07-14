@@ -404,8 +404,7 @@ func (c *recursiveNodeExecutor) AbortHandler(ctx context.Context, execContext ex
 			return err
 		}
 		// Abort this node
-		err = c.nodeExecutor.Abort(ctx, h, nCtx, reason)
-		return err
+		return c.nodeExecutor.Abort(ctx, h, nCtx, reason, true)
 	} else if nodePhase == v1alpha1.NodePhaseSucceeded || nodePhase == v1alpha1.NodePhaseSkipped || nodePhase == v1alpha1.NodePhaseRecovered {
 		// Abort downstream nodes
 		downstreamNodes, err := dag.FromNode(currentNode.GetID())
@@ -882,7 +881,7 @@ func (c *nodeExecutor) execute(ctx context.Context, h interfaces.NodeHandler, nC
 	return phase, nil
 }
 
-func (c *nodeExecutor) Abort(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext, reason string) error {
+func (c *nodeExecutor) Abort(ctx context.Context, h interfaces.NodeHandler, nCtx interfaces.NodeExecutionContext, reason string, finalTransition bool) error {
 	logger.Debugf(ctx, "Calling aborting & finalize")
 	if err := h.Abort(ctx, nCtx, reason); err != nil {
 		finalizeErr := h.Finalize(ctx, nCtx)
@@ -896,9 +895,8 @@ func (c *nodeExecutor) Abort(ctx context.Context, h interfaces.NodeHandler, nCtx
 		return err
 	}
 
-	// only send event if node is in non-terminal phase
-	phase := nCtx.NodeStatus().GetPhase()
-	if phase != v1alpha1.NodePhaseNotYetStarted && canHandleNode(phase) {
+	// only send event if this is the final transition for this node
+	if finalTransition {
 		nodeExecutionID := &core.NodeExecutionIdentifier{
 			ExecutionId: nCtx.NodeExecutionMetadata().GetNodeExecutionID().ExecutionId,
 			NodeId:      nCtx.NodeExecutionMetadata().GetNodeExecutionID().NodeId,
@@ -1140,7 +1138,7 @@ func (c *nodeExecutor) handleQueuedOrRunningNode(ctx context.Context, nCtx inter
 func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx interfaces.NodeExecutionContext, h interfaces.NodeHandler) (interfaces.NodeStatus, error) {
 	nodeStatus := nCtx.NodeStatus()
 	logger.Debugf(ctx, "node failed with retryable failure, aborting and finalizing, message: %s", nodeStatus.GetMessage())
-	if err := c.Abort(ctx, h, nCtx, nodeStatus.GetMessage()); err != nil {
+	if err := c.Abort(ctx, h, nCtx, nodeStatus.GetMessage(), false); err != nil {
 		return interfaces.NodeStatusUndefined, err
 	}
 
@@ -1180,7 +1178,7 @@ func (c *nodeExecutor) HandleNode(ctx context.Context, dag executors.DAGStructur
 
 	if currentPhase == v1alpha1.NodePhaseFailing {
 		logger.Debugf(ctx, "node failing")
-		if err := c.Abort(ctx, h, nCtx, "node failing"); err != nil {
+		if err := c.Abort(ctx, h, nCtx, "node failing", false); err != nil {
 			return interfaces.NodeStatusUndefined, err
 		}
 		nodeStatus.UpdatePhase(v1alpha1.NodePhaseFailed, metav1.Now(), nodeStatus.GetMessage(), nodeStatus.GetExecutionError())
@@ -1193,7 +1191,7 @@ func (c *nodeExecutor) HandleNode(ctx context.Context, dag executors.DAGStructur
 
 	if currentPhase == v1alpha1.NodePhaseTimingOut {
 		logger.Debugf(ctx, "node timing out")
-		if err := c.Abort(ctx, h, nCtx, "node timed out"); err != nil {
+		if err := c.Abort(ctx, h, nCtx, "node timed out", false); err != nil {
 			return interfaces.NodeStatusUndefined, err
 		}
 

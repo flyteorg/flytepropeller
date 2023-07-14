@@ -1590,7 +1590,7 @@ func Test_nodeExecutor_abort(t *testing.T) {
 			called = true
 		}).Return(nil)
 
-		err := exec.Abort(ctx, h, nCtx, "testing")
+		err := exec.Abort(ctx, h, nCtx, "testing", false)
 		assert.Equal(t, "test error", err.Error())
 		assert.True(t, called)
 	})
@@ -1604,7 +1604,7 @@ func Test_nodeExecutor_abort(t *testing.T) {
 			called = true
 		}).Return(errors.New("finalize error"))
 
-		err := exec.Abort(ctx, h, nCtx, "testing")
+		err := exec.Abort(ctx, h, nCtx, "testing", false)
 		assert.Equal(t, "0: test error\r\n1: finalize error\r\n", err.Error())
 		assert.True(t, called)
 	})
@@ -1618,7 +1618,7 @@ func Test_nodeExecutor_abort(t *testing.T) {
 			called = true
 		}).Return(nil)
 
-		err := exec.Abort(ctx, h, nCtx, "testing")
+		err := exec.Abort(ctx, h, nCtx, "testing", false)
 		assert.NoError(t, err)
 		assert.True(t, called)
 	})
