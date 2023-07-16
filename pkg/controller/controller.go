@@ -364,6 +364,9 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		logger.Errorf(ctx, "failed to event recorder %v", err)
 		return nil, errors.Wrapf(err, "failed to initialize resource lock.")
 	}
+
+	logger.Debugf(ctx, "Initialized eventRecorder")
+
 	controller := &Controller{
 		metrics:    newControllerMetrics(scope),
 		recorder:   eventRecorder,
@@ -376,6 +379,8 @@ func New(ctx context.Context, cfg *config.Config, kubeclientset kubernetes.Inter
 		logger.Errorf(ctx, "failed to initialize resource lock.")
 		return nil, errors.Wrapf(err, "failed to initialize resource lock.")
 	}
+
+	logger.Debugf(ctx, "Initialized resources lock")
 
 	if lock != nil {
 		logger.Infof(ctx, "Creating leader elector for the controller.")
