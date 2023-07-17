@@ -244,7 +244,6 @@ func newNodeExecContext(_ context.Context, store *storage.DataStore, execContext
 			taskEventRecorder: taskEventRecorder,
 			nodeEventRecorder: nodeEventRecorder,
 		},
-		//er:                  er,
 		maxDatasetSizeBytes: maxDatasetSize,
 		tr:                  tr,
 		nsm:                 nsm,

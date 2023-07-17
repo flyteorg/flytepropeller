@@ -297,7 +297,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 
 			for _, taskExecutionEvent := range arrayEventRecorder.TaskEvents() {
 				for _, log := range taskExecutionEvent.Logs {
-					log.Name = fmt.Sprintf("%s-%d", log.Name, i) // TODO @hamersaw - do we need to add retryAttempt to log name?
+					log.Name = fmt.Sprintf("%s-%d", log.Name, i)
 				}
 
 				externalResources = append(externalResources, &event.ExternalResourceInfo{
@@ -412,7 +412,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 				// checkpoint paths are not computed here because this function is only called when writing
 				// existing cached outputs. if this functionality changes this will need to be revisited.
 				outputPaths := ioutils.NewCheckpointRemoteFilePaths(ctx, nCtx.DataStore(), subOutputDir, ioutils.NewRawOutputPaths(ctx, subDataDir), "")
-				reader := ioutils.NewRemoteFileOutputReader(ctx, nCtx.DataStore(), outputPaths, int64(999999999)) // TODO @hamersaw - use max-output-size
+				reader := ioutils.NewRemoteFileOutputReader(ctx, nCtx.DataStore(), outputPaths, int64(nCtx.MaxDatasetSizeBytes()))
 
 				// read outputs
 				outputs, executionErr, err := reader.Read(ctx)
@@ -560,17 +560,7 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 		pluginStateBytes = a.pluginStateBytesNotStarted
 	}
 
-	// we set subDataDir and subOutputDir to the node dirs because flytekit automatically appends subtask
-	// index. however when we check completion status we need to manually append index - so in all cases
-	// where the node phase is not Queued (ie. task handler will launch task and init flytekit params) we
-	// append the subtask index.
-	// TODO @hamersaw - verify this has been fixed in flytekit for arraynode implementation
-	/*var subDataDir, subOutputDir storage.DataReference
-	if nodePhase == v1alpha1.NodePhaseQueued {
-		subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx)
-	} else {
-		subDataDir, subOutputDir, err = constructOutputReferences(ctx, nCtx, strconv.Itoa(i))
-	}*/
+	// construct output references
 	currentAttempt := uint32(arrayNodeState.SubNodeRetryAttempts.GetItem(subNodeIndex))
 	subDataDir, subOutputDir, err := constructOutputReferences(ctx, nCtx, strconv.Itoa(subNodeIndex), strconv.Itoa(int(currentAttempt)))
 	if err != nil {

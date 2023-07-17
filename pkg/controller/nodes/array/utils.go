@@ -68,7 +68,6 @@ func buildTaskExecutionEvent(_ context.Context, nCtx interfaces.NodeExecutionCon
 }
 
 func buildSubNodeID(nCtx interfaces.NodeExecutionContext, index int, retryAttempt uint32) string {
-	// TODO @hamersaw - what do we want for a subNode ID?
 	return fmt.Sprintf("%s-n%d-%d", nCtx.NodeID(), index, retryAttempt)
 }
 
