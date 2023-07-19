@@ -72,6 +72,7 @@ func createNodeExecutionContext(dataStore *storage.DataStore, eventRecorder inte
 	inputLiteralMap *idlcore.LiteralMap, arrayNodeSpec *v1alpha1.NodeSpec, arrayNodeState *handler.ArrayNodeState) interfaces.NodeExecutionContext {
 
 	nCtx := &mocks.NodeExecutionContext{}
+	nCtx.OnMaxDatasetSizeBytes().Return(9999999)
 
 	// ContextualNodeLookup
 	nodeLookup := &execmocks.NodeLookup{}
