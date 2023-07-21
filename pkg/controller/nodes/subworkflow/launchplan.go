@@ -67,14 +67,15 @@ func (l *launchPlanHandler) StartLaunchPlan(ctx context.Context, nCtx handler.No
 	}
 
 	launchCtx := launchplan.LaunchContext{
-		ParentNodeExecution: parentNodeExecutionID,
-		MaxParallelism:      nCtx.ExecutionContext().GetExecutionConfig().MaxParallelism,
-		SecurityContext:     nCtx.ExecutionContext().GetSecurityContext(),
-		RawOutputDataConfig: nCtx.ExecutionContext().GetRawOutputDataConfig().RawOutputDataConfig,
-		Labels:              nCtx.ExecutionContext().GetLabels(),
-		Annotations:         nCtx.ExecutionContext().GetAnnotations(),
-		Interruptible:       nCtx.ExecutionContext().GetExecutionConfig().Interruptible,
-		OverwriteCache:      nCtx.ExecutionContext().GetExecutionConfig().OverwriteCache,
+		ParentNodeExecution:  parentNodeExecutionID,
+		MaxParallelism:       nCtx.ExecutionContext().GetExecutionConfig().MaxParallelism,
+		SecurityContext:      nCtx.ExecutionContext().GetSecurityContext(),
+		RawOutputDataConfig:  nCtx.ExecutionContext().GetRawOutputDataConfig().RawOutputDataConfig,
+		Labels:               nCtx.ExecutionContext().GetLabels(),
+		Annotations:          nCtx.ExecutionContext().GetAnnotations(),
+		Interruptible:        nCtx.ExecutionContext().GetExecutionConfig().Interruptible,
+		OverwriteCache:       nCtx.ExecutionContext().GetExecutionConfig().OverwriteCache,
+		EnvironmentVariables: nCtx.ExecutionContext().GetExecutionConfig().EnvironmentVariables,
 	}
 
 	if nCtx.ExecutionContext().GetExecutionConfig().RecoveryExecution.WorkflowExecutionIdentifier != nil {
@@ -156,7 +157,7 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 		return handler.DoTransition(handler.TransitionTypeEphemeral, handler.PhaseInfoFailure(core.ExecutionError_SYSTEM, errors.RuntimeExecutionError, "failed to create unique ID", nil)), nil
 	}
 
-	wfStatusClosure, err := l.launchPlan.GetStatus(ctx, childID)
+	wfStatusClosure, outputs, err := l.launchPlan.GetStatus(ctx, childID)
 	if err != nil {
 		if launchplan.IsNotFound(err) { // NotFound
 			errorCode, _ := errors.GetErrorCode(err)
@@ -198,22 +199,11 @@ func (l *launchPlanHandler) CheckLaunchPlanStatus(ctx context.Context, nCtx hand
 		// TODO do we need to massage the output to match the alias or is the alias resolution done at the downstream consumer
 		// nCtx.Node().GetOutputAlias()
 		var oInfo *handler.OutputInfo
-		if wfStatusClosure.GetOutputs() != nil {
+		if outputs != nil {
 			outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
-			if wfStatusClosure.GetOutputs().GetUri() != "" {
-				uri := wfStatusClosure.GetOutputs().GetUri()
-				store := nCtx.DataStore()
-				err := store.CopyRaw(ctx, storage.DataReference(uri), outputFile, storage.Options{})
-				if err != nil {
-					logger.Warnf(ctx, "remote output for launchplan execution was not found, uri [%s], err %s", uri, err.Error())
-					return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "remote output for launchplan execution was not found, uri [%s]", uri)
-				}
-			} else {
-				childOutput := wfStatusClosure.GetOutputs().GetValues()
-				if err := nCtx.DataStore().WriteProtobuf(ctx, outputFile, storage.Options{}, childOutput); err != nil {
-					logger.Debugf(ctx, "failed to write data to Storage, err: %v", err.Error())
-					return handler.UnknownTransition, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "failed to copy outputs for child workflow")
-				}
+			if err := nCtx.DataStore().WriteProtobuf(ctx, outputFile, storage.Options{}, outputs); err != nil {
+				logger.Debugf(ctx, "failed to write data to Storage, err: %v", err.Error())
+				return handler.UnknownTransition, errors.Wrapf(errors.CausedByError, nCtx.NodeID(), err, "failed to copy outputs for child workflow")
 			}
 
 			oInfo = &handler.OutputInfo{OutputURI: outputFile}
