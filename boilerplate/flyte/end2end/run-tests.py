@@ -26,7 +26,8 @@ FLYTESNACKS_WORKFLOW_GROUPS: Mapping[str, List[Tuple[str, dict]]] = {
         ("basics.lp.go_greet", {"day_of_week": "5", "number": 3, "am": True}),
     ],
     "core": [
-        ("basics.deck.wf", {}),
+        # TODO: basics.deck.wf expects an image that contains plotly and other deck dependencies
+        # ("basics.deck.wf", {}),
         # The chain_workflows example in flytesnacks expects to be running in a sandbox.
         # ("control_flow.chain_entities.chain_workflows_wf", {}),
         ("control_flow.dynamics.wf", {"s1": "Pear", "s2": "Earth"}),
