@@ -31,7 +31,7 @@ jobs:
   endtoend:
     name: End2End Test
     needs: [ docker-build ]
-    uses: flyteorg/flytetools/.github/workflows/end2end.yml@master
+    uses: flyteorg/flytetools/.github/workflows/end2end.yml@register-p0-tests
     with:
       cache_key: ${{ needs.docker-build.outputs.cache_key }}
       priorities: "P0"
