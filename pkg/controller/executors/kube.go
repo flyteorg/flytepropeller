@@ -6,6 +6,7 @@ import (
 
 	"github.com/flyteorg/flytestdlib/fastcheck"
 	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/telemetryutils"
 
 	"k8s.io/client-go/rest"
 
@@ -69,6 +70,7 @@ func (f *FallbackClientBuilder) WithUncached(objs ...client.Object) ClientBuilde
 }
 
 func (f FallbackClientBuilder) Build(cache cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
+	// TODO @hamersaw - wrap client and cache in telemetryutils.K8sClientWrapper
 	c, err := client.New(config, options)
 	if err != nil {
 		return nil, err
@@ -79,6 +81,8 @@ func (f FallbackClientBuilder) Build(cache cache.Cache, config *rest.Config, opt
 		return nil, err
 	}
 
+	c = telemetryutils.WrapK8sClient(c)
+	cache = telemetryutils.WrapK8sCache(cache)
 	return client.NewDelegatingClient(client.NewDelegatingClientInput{
 		Client: c,
 		CacheReader: fallbackClientReader{

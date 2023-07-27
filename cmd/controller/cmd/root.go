@@ -19,6 +19,7 @@ import (
 	"github.com/flyteorg/flytestdlib/profutils"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/telemetryutils"
 	"github.com/flyteorg/flytestdlib/version"
 
 	"github.com/spf13/cobra"
@@ -117,6 +118,15 @@ func executeRootCmd(baseCtx context.Context, cfg *config2.Config) error {
 	logger.Infof(context.TODO(), "setting metrics keys to %+v", keys)
 	if len(keys) > 0 {
 		labeled.SetMetricKeys(keys...)
+	}
+
+	// register opentelementry tracer providers
+	for _, serviceName := range []string{telemetryutils.AdminClientTracer, telemetryutils.BlobstoreClientTracer,
+		telemetryutils.DataCatalogClientTracer, telemetryutils.FlytePropellerTracer, telemetryutils.K8sClientTracer} {
+		if err := telemetryutils.RegisterTracerProvider(serviceName, telemetryutils.GetConfig()); err != nil {
+			logger.Errorf(ctx, "Failed to create telemetry tracer provider. %v", err)
+			return err
+		}
 	}
 
 	// Add the propeller subscope because the MetricsPrefix only has "flyte:" to get uniform collection of metrics.

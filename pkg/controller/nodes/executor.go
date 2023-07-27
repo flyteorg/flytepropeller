@@ -47,8 +47,12 @@ import (
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/flyteorg/flytestdlib/storage"
+	"github.com/flyteorg/flytestdlib/telemetryutils"
 
 	"github.com/golang/protobuf/ptypes"
+
+	//"go.opentelemetry.io/otel/attribute"
+	//"go.opentelemetry.io/otel/trace"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -739,6 +743,9 @@ func (c *nodeExecutor) handleRetryableFailure(ctx context.Context, nCtx *nodeExe
 func (c *nodeExecutor) handleNode(ctx context.Context, dag executors.DAGStructure, nCtx *nodeExecContext, h handler.Node) (executors.NodeStatus, error) {
 	logger.Debugf(ctx, "Handling Node [%s]", nCtx.NodeID())
 	defer logger.Debugf(ctx, "Completed node [%s]", nCtx.NodeID())
+
+	ctx, span := telemetryutils.NewSpan(ctx, telemetryutils.FlytePropellerTracer, "pkg.controller.nodes.NodeExecutor/handleNode")
+	defer span.End()
 
 	nodeStatus := nCtx.NodeStatus()
 	currentPhase := nodeStatus.GetPhase()
