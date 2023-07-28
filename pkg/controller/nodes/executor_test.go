@@ -2545,3 +2545,7 @@ func (e existsMetadata) Exists() bool {
 func (e existsMetadata) Size() int64 {
 	return int64(1)
 }
+
+func (e existsMetadata) Etag() string {
+	return ""
+}
