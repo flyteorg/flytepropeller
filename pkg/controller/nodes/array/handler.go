@@ -136,8 +136,8 @@ func (a *arrayNodeHandler) Finalize(ctx context.Context, nCtx interfaces.NodeExe
 		for i, nodePhaseUint64 := range arrayNodeState.SubNodePhases.GetItems() {
 			nodePhase := v1alpha1.NodePhase(nodePhaseUint64)
 
-			// do not process nodes that have not started
-			if nodePhase == v1alpha1.NodePhaseNotYetStarted {
+			// do not process nodes that have not started or are in a terminal state
+			if nodePhase == v1alpha1.NodePhaseNotYetStarted || isTerminalNodePhase(nodePhase) {
 				continue
 			}
 
@@ -524,6 +524,11 @@ func New(nodeExecutor interfaces.Node, eventConfig *config.EventConfig, scope pr
 	}, nil
 }
 
+// buildArrayNodeContext creates a custom environment to execute the ArrayNode subnode. This is uniquely required for
+// the arrayNodeHandler because we require the same node execution entrypoint (ie. recursiveNodeExecutor.RecursiveNodeHandler)
+// but need many different execution details, for example setting input values as a singular item rather than a collection,
+// injecting environment variables for flytekit maptask execution, aggregating eventing so that rather than tracking state for
+// each subnode individually it sends a single event for the whole ArrayNode, and many more.
 func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx interfaces.NodeExecutionContext, arrayNodeState *handler.ArrayNodeState, arrayNode v1alpha1.ExecutableArrayNode, subNodeIndex int, currentParallelism *uint32) (
 	interfaces.Node, executors.ExecutionContext, executors.DAGStructure, executors.NodeLookup, *v1alpha1.NodeSpec, *v1alpha1.NodeStatus, *arrayEventRecorder, error) {
 
