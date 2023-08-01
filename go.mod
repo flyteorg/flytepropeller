@@ -151,7 +151,8 @@ replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.5.11-0.2
 
 // go mod edit -replace github.com/flyteorg/flytestdlib=github.com/gvashishtha/flytestdlib@master
 // go mod tidy
-// docker build . --platform=linux/amd64
+// go mod edit -replace github.com/flyteorg/stow=github.com/gvashishtha/stow@78e3158
+// docker build . --platform=linux/amd64 -t gvashishthaanduril/flyteadmin:propeller --push
 
 replace github.com/flyteorg/flytestdlib => github.com/gvashishtha/flytestdlib v0.0.0-20230801174554-0c6829454663
 
