@@ -460,10 +460,10 @@ github.com/grpc-ecosystem/grpc-gateway v1.9.0/go.mod h1:vNeuVxBJEsws4ogUvrchl83t
 github.com/grpc-ecosystem/grpc-gateway v1.9.5/go.mod h1:vNeuVxBJEsws4ogUvrchl83t/GYV9WGTSLVdBhOQFDY=
 github.com/grpc-ecosystem/grpc-gateway v1.16.0 h1:gmcG1KaJ57LophUzW0Hy8NmPhnMZb4M0+kPpLofRdBo=
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
-github.com/gvashishtha/flytestdlib v0.0.0-20230801165833-03dae132de95 h1:XWVmKXmmVKYgiPSmRS5GZRbnMEa+vKMfmaFJ8cv6jQw=
-github.com/gvashishtha/flytestdlib v0.0.0-20230801165833-03dae132de95/go.mod h1:IOXyup7HvVrrl0777f2gSXaUz7GtliMRZ0eKwZeXVKs=
-github.com/gvashishtha/stow v0.0.0-20220715154935-e9c5e6f473ac h1:eD194E3bkX1snzlmpx+WHFx5M1dNJHG7mNb381OIjXE=
-github.com/gvashishtha/stow v0.0.0-20220715154935-e9c5e6f473ac/go.mod h1:5dfBitPM004dwaZdoVylVjxFT4GWAgI0ghAndhNUzCo=
+github.com/gvashishtha/flytestdlib v0.0.0-20230801174554-0c6829454663 h1:1ZtbLbEZkl+8OM1Sja5kJCvZcPxnjXPh1wKjfEsGJx0=
+github.com/gvashishtha/flytestdlib v0.0.0-20230801174554-0c6829454663/go.mod h1:YZ57JiBs7bcFbamJjo71TRNNoQixFiUeUQuVdlrIS/Q=
+github.com/gvashishtha/stow v0.0.0-20230801152247-78e3158c973a h1:yBGRj4q92GPOH2Vq+FCV4SED/PlKyItBLdAPKMfDytY=
+github.com/gvashishtha/stow v0.0.0-20230801152247-78e3158c973a/go.mod h1:5dfBitPM004dwaZdoVylVjxFT4GWAgI0ghAndhNUzCo=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
 github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=

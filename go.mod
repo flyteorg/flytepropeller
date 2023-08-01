@@ -149,10 +149,10 @@ replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazo
 
 replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.5.11-0.20230614183933-d56d4d37bf34
 
-replace github.com/flyteorg/stow => github.com/gvashishtha/stow v0.0.0-20220715154935-e9c5e6f473ac
-
 // go mod edit -replace github.com/flyteorg/flytestdlib=github.com/gvashishtha/flytestdlib@master
 // go mod tidy
 // docker build . --platform=linux/amd64
 
-replace github.com/flyteorg/flytestdlib => github.com/gvashishtha/flytestdlib v0.0.0-20230801165833-03dae132de95
+replace github.com/flyteorg/flytestdlib => github.com/gvashishtha/flytestdlib v0.0.0-20230801174554-0c6829454663
+
+replace github.com/flyteorg/stow => github.com/gvashishtha/stow v0.0.0-20230801152247-78e3158c973a
