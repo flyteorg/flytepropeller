@@ -6,39 +6,39 @@ import (
 	"runtime/debug"
 	"time"
 
-	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
-
-	"github.com/flyteorg/flytepropeller/pkg/utils"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	pluginMachinery "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	pluginK8s "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
+
+	eventsErr "github.com/flyteorg/flytepropeller/events/errors"
+	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	controllerConfig "github.com/flyteorg/flytepropeller/pkg/controller/config"
+	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/config"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager"
+	rmConfig "github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
+	"github.com/flyteorg/flytepropeller/pkg/utils"
+
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/flyteorg/flytestdlib/storage"
+
 	"github.com/golang/protobuf/ptypes"
+
 	regErrors "github.com/pkg/errors"
-
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager"
-	rmConfig "github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/resourcemanager/config"
-
-	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/config"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/secretmanager"
 )
 
 const pluginContextKey = contextutils.Key("plugin")
@@ -197,7 +197,6 @@ type Handler struct {
 	kubeClient      pluginCore.KubeClient
 	secretManager   pluginCore.SecretManager
 	resourceManager resourcemanager.BaseResourceManager
-	barrierCache    *barrier
 	cfg             *config.Config
 	pluginScope     promutils.Scope
 	eventConfig     *controllerConfig.EventConfig
@@ -218,7 +217,7 @@ func (t *Handler) setDefault(ctx context.Context, p pluginCore.Plugin) error {
 	return nil
 }
 
-func (t *Handler) Setup(ctx context.Context, sCtx handler.SetupContext) error {
+func (t *Handler) Setup(ctx context.Context, sCtx interfaces.SetupContext) error {
 	tSCtx := t.newSetupContext(sCtx)
 
 	// Create a new base resource negotiator
@@ -518,7 +517,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 	return pluginTrns, nil
 }
 
-func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) (handler.Transition, error) {
+func (t Handler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContext) (handler.Transition, error) {
 	ttype := nCtx.TaskReader().GetTaskType()
 	ctx = contextutils.WithTaskType(ctx, ttype)
 	p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
@@ -534,6 +533,14 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	ts := nCtx.NodeStateReader().GetTaskNodeState()
 
 	pluginTrns := &pluginRequestedTransition{}
+	defer func() {
+		// increment parallelism if the final pluginTrns is not in a terminal state
+		if pluginTrns != nil && !pluginTrns.pInfo.Phase().IsTerminal() {
+			eCtx := nCtx.ExecutionContext()
+			logger.Infof(ctx, "Parallelism now set to [%d].", eCtx.IncrementParallelism())
+		}
+	}()
+
 	// We will start with the assumption that catalog is disabled
 	pluginTrns.PopulateCacheInfo(catalog.NewFailedCatalogEntry(catalog.NewStatus(core.CatalogCacheStatus_CACHE_DISABLED, nil)))
 
@@ -560,48 +567,22 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		}
 	}
 
-	barrierTick := uint32(0)
 	occurredAt := time.Now()
 	// STEP 2: If no cache-hit and not transitioning to PhaseWaitingForCache, then lets invoke the plugin and wait for a transition out of undefined
 	if pluginTrns.execInfo.TaskNodeInfo == nil || (pluginTrns.pInfo.Phase() != pluginCore.PhaseWaitingForCache &&
 		pluginTrns.execInfo.TaskNodeInfo.TaskNodeMetadata.CacheStatus != core.CatalogCacheStatus_CACHE_HIT) {
-		prevBarrier := t.barrierCache.GetPreviousBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
-		// Lets start with the current barrierTick (the value to be stored) same as the barrierTick in the cache
-		barrierTick = prevBarrier.BarrierClockTick
-		// Lets check if this value in cache is less than or equal to one in the store
-		if barrierTick <= ts.BarrierClockTick {
-			var err error
-			pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
-			if err != nil {
-				return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
-			}
-			if pluginTrns.IsPreviouslyObserved() {
-				logger.Debugf(ctx, "No state change for Task, previously observed same transition. Short circuiting.")
-				return pluginTrns.FinalTransition(ctx)
-			}
-			// Now no matter what we should update the barrierTick (stored in state)
-			// This is because the state is ahead of the inmemory representation
-			// This can happen in the case where the process restarted or the barrier cache got reset
-			barrierTick = ts.BarrierClockTick
-			// Now if the transition is of type barrier, lets tick the clock by one from the prev known value
-			// store that in the cache
-			if pluginTrns.ttype == handler.TransitionTypeBarrier {
-				logger.Infof(ctx, "Barrier transition observed for Plugin [%s], TaskExecID [%s]. recording: [%s]", p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), pluginTrns.pInfo.String())
-				barrierTick = barrierTick + 1
-				t.barrierCache.RecordBarrierTransition(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), BarrierTransition{
-					BarrierClockTick: barrierTick,
-					CallLog: PluginCallLog{
-						PluginTransition: pluginTrns,
-					},
-				})
 
+		var err error
+		pluginTrns, err = t.invokePlugin(ctx, p, tCtx, ts)
+		if err != nil {
+			return handler.UnknownTransition, errors.Wrapf(errors.RuntimeExecutionError, nCtx.NodeID(), err, "failed during plugin execution")
+		}
+		if pluginTrns.IsPreviouslyObserved() {
+			if !pluginTrns.pInfo.Phase().IsTerminal() {
+				logger.Infof(ctx, "Parallelism now set to [%d].", nCtx.ExecutionContext().IncrementParallelism())
 			}
-		} else {
-			// Barrier tick will remain to be the one in cache.
-			// Now it may happen that the cache may get reset before we store the barrier tick
-			// this will cause us to lose that information and potentially replaying.
-			logger.Infof(ctx, "Replaying Barrier transition for cache tick [%d] < stored tick [%d], Plugin [%s], TaskExecID [%s]. recording: [%s]", barrierTick, ts.BarrierClockTick, p.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), prevBarrier.CallLog.PluginTransition.pInfo.String())
-			pluginTrns = prevBarrier.CallLog.PluginTransition
+			logger.Debugf(ctx, "No state change for Task, previously observed same transition. Short circuiting.")
+			return pluginTrns.FinalTransition(ctx)
 		}
 	}
 
@@ -677,9 +658,9 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 		PluginStateVersion:                 pluginTrns.pluginStateVersion,
 		PluginPhase:                        pluginTrns.pInfo.Phase(),
 		PluginPhaseVersion:                 pluginTrns.pInfo.Version(),
-		BarrierClockTick:                   barrierTick,
 		LastPhaseUpdatedAt:                 time.Now(),
 		PreviousNodeExecutionCheckpointURI: ts.PreviousNodeExecutionCheckpointURI,
+		CleanupOnFailure:                   ts.CleanupOnFailure || pluginTrns.pInfo.CleanupOnFailure(),
 	})
 	if err != nil {
 		logger.Errorf(ctx, "Failed to store TaskNode state, err :%s", err.Error())
@@ -687,8 +668,7 @@ func (t Handler) Handle(ctx context.Context, nCtx handler.NodeExecutionContext) 
 	}
 
 	if !pluginTrns.pInfo.Phase().IsTerminal() {
-		eCtx := nCtx.ExecutionContext()
-		logger.Infof(ctx, "Parallelism now set to [%d].", eCtx.IncrementParallelism())
+		logger.Infof(ctx, "Parallelism now set to [%d].", nCtx.ExecutionContext().IncrementParallelism())
 	}
 	return pluginTrns.FinalTransition(ctx)
 }
@@ -771,11 +751,12 @@ func (t *Handler) ValidateOutput(ctx context.Context, nodeID v1alpha1.NodeID, i 
 	return nil, nil
 }
 
-func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, reason string) error {
-	currentPhase := nCtx.NodeStateReader().GetTaskNodeState().PluginPhase
+func (t Handler) Abort(ctx context.Context, nCtx interfaces.NodeExecutionContext, reason string) error {
+	taskNodeState := nCtx.NodeStateReader().GetTaskNodeState()
+	currentPhase := taskNodeState.PluginPhase
 	logger.Debugf(ctx, "Abort invoked with phase [%v]", currentPhase)
 
-	if currentPhase.IsTerminal() {
+	if currentPhase.IsTerminal() && !(currentPhase.IsFailure() && taskNodeState.CleanupOnFailure) {
 		logger.Debugf(ctx, "Returning immediately from Abort since task is already in terminal phase.", currentPhase)
 		return nil
 	}
@@ -836,7 +817,7 @@ func (t Handler) Abort(ctx context.Context, nCtx handler.NodeExecutionContext, r
 	return nil
 }
 
-func (t Handler) Finalize(ctx context.Context, nCtx handler.NodeExecutionContext) error {
+func (t Handler) Finalize(ctx context.Context, nCtx interfaces.NodeExecutionContext) error {
 	logger.Debugf(ctx, "Finalize invoked.")
 	ttype := nCtx.TaskReader().GetTaskType()
 	p, err := t.ResolvePlugin(ctx, ttype, nCtx.ExecutionContext().GetExecutionConfig())
@@ -895,7 +876,6 @@ func New(ctx context.Context, kubeClient executors.Client, client catalog.Client
 		asyncCatalog:    async,
 		resourceManager: nil,
 		secretManager:   secretmanager.NewFileEnvSecretManager(secretmanager.GetConfig()),
-		barrierCache:    newLRUBarrier(ctx, cfg.BarrierConfig),
 		cfg:             cfg,
 		eventConfig:     eventConfig,
 		clusterID:       clusterID,

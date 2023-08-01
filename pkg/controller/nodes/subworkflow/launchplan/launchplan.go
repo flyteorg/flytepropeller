@@ -25,9 +25,12 @@ type LaunchContext struct {
 	// MaxParallelism
 	MaxParallelism uint32
 	// RawOutputDataConfig
-	RawOutputDataConfig *admin.RawOutputDataConfig
-	Annotations         map[string]string
-	Labels              map[string]string
+	RawOutputDataConfig  *admin.RawOutputDataConfig
+	Annotations          map[string]string
+	Labels               map[string]string
+	Interruptible        *bool
+	OverwriteCache       bool
+	EnvironmentVariables map[string]string
 }
 
 // Executor interface to be implemented by the remote system that can allow workflow launching capabilities
@@ -36,7 +39,7 @@ type Executor interface {
 	Launch(ctx context.Context, launchCtx LaunchContext, executionID *core.WorkflowExecutionIdentifier, launchPlanRef *core.Identifier, inputs *core.LiteralMap) error
 
 	// GetStatus retrieves status of a LaunchPlan execution
-	GetStatus(ctx context.Context, executionID *core.WorkflowExecutionIdentifier) (*admin.ExecutionClosure, error)
+	GetStatus(ctx context.Context, executionID *core.WorkflowExecutionIdentifier) (*admin.ExecutionClosure, *core.LiteralMap, error)
 
 	// Kill a remote execution
 	Kill(ctx context.Context, executionID *core.WorkflowExecutionIdentifier, reason string) error

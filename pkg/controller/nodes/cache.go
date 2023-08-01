@@ -16,6 +16,7 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/common"
 	nodeserrors "github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task"
 
 	"github.com/flyteorg/flytestdlib/logger"
@@ -30,7 +31,7 @@ import (
 // computeCatalogReservationOwnerID constructs a unique identifier which includes the nodes
 // parent information, node ID, and retry attempt number. This is used to uniquely identify a task
 // when the cache reservation API to serialize cached executions.
-func computeCatalogReservationOwnerID(nCtx *nodeExecContext) (string, error) {
+func computeCatalogReservationOwnerID(nCtx interfaces.NodeExecutionContext) (string, error) {
 	currentNodeUniqueID, err := common.GenerateUniqueID(nCtx.ExecutionContext().GetParentInfo(), nCtx.NodeID())
 	if err != nil {
 		return "", err
@@ -79,7 +80,7 @@ func updatePhaseCacheInfo(phaseInfo handler.PhaseInfo, cacheStatus *catalog.Stat
 
 // CheckCatalogCache uses the handler and contexts to check if cached outputs for the current node
 // exist. If the exist, this function also copies the outputs to this node.
-func (n *nodeExecutor) CheckCatalogCache(ctx context.Context, nCtx *nodeExecContext, cacheHandler handler.CacheableNode) (catalog.Entry, error) {
+func (n *nodeExecutor) CheckCatalogCache(ctx context.Context, nCtx interfaces.NodeExecutionContext, cacheHandler interfaces.CacheableNodeHandler) (catalog.Entry, error) {
 	// Check if the outputs file already exists. Since processing downstream nodes is performed
 	// immediately following a cache hit, any failures will result in performing this operation
 	// again during the following node evaluation. In the scenario that outputs were already
@@ -148,8 +149,8 @@ func (n *nodeExecutor) CheckCatalogCache(ctx context.Context, nCtx *nodeExecCont
 // GetOrExtendCatalogReservation attempts to acquire an artifact reservation if the task is
 // cachable and cache serializable. If the reservation already exists for this owner, the
 // reservation is extended.
-func (n *nodeExecutor) GetOrExtendCatalogReservation(ctx context.Context, nCtx *nodeExecContext,
-	cacheHandler handler.CacheableNode, heartbeatInterval time.Duration) (catalog.ReservationEntry, error) {
+func (n *nodeExecutor) GetOrExtendCatalogReservation(ctx context.Context, nCtx interfaces.NodeExecutionContext,
+	cacheHandler interfaces.CacheableNodeHandler, heartbeatInterval time.Duration) (catalog.ReservationEntry, error) {
 
 	catalogKey, err := cacheHandler.GetCatalogKey(ctx, nCtx)
 	if err != nil {
@@ -185,8 +186,8 @@ func (n *nodeExecutor) GetOrExtendCatalogReservation(ctx context.Context, nCtx *
 // ReleaseCatalogReservation attempts to release an artifact reservation if the task is cachable
 // and cache serializable. If the reservation does not exist for this owner (e.x. it never existed
 // or has been acquired by another owner) this call is still successful.
-func (n *nodeExecutor) ReleaseCatalogReservation(ctx context.Context, nCtx *nodeExecContext,
-	cacheHandler handler.CacheableNode) (catalog.ReservationEntry, error) {
+func (n *nodeExecutor) ReleaseCatalogReservation(ctx context.Context, nCtx interfaces.NodeExecutionContext,
+	cacheHandler interfaces.CacheableNodeHandler) (catalog.ReservationEntry, error) {
 
 	catalogKey, err := cacheHandler.GetCatalogKey(ctx, nCtx)
 	if err != nil {
@@ -213,7 +214,7 @@ func (n *nodeExecutor) ReleaseCatalogReservation(ctx context.Context, nCtx *node
 
 // WriteCatalogCache relays the outputs of this node to the cache. This allows future executions
 // to reuse these data to avoid recomputation.
-func (n *nodeExecutor) WriteCatalogCache(ctx context.Context, nCtx *nodeExecContext, cacheHandler handler.CacheableNode) (catalog.Status, error) {
+func (n *nodeExecutor) WriteCatalogCache(ctx context.Context, nCtx interfaces.NodeExecutionContext, cacheHandler interfaces.CacheableNodeHandler) (catalog.Status, error) {
 	catalogKey, err := cacheHandler.GetCatalogKey(ctx, nCtx)
 	if err != nil {
 		return catalog.NewStatus(core.CatalogCacheStatus_CACHE_DISABLED, nil), errors.Wrapf(err, "failed to initialize the catalogKey")

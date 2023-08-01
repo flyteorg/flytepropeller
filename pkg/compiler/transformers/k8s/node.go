@@ -45,8 +45,6 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 
 		if n.GetTaskNode().Overrides != nil && n.GetTaskNode().Overrides.Resources != nil {
 			resources = n.GetTaskNode().Overrides.Resources
-		} else {
-			resources = getResources(task)
 		}
 	}
 
@@ -153,6 +151,28 @@ func buildNodeSpec(n *core.Node, tasks []*core.CompiledTask, errs errors.Compile
 					SleepCondition: gateNode.GetSleep(),
 				},
 			}
+		}
+	case *core.Node_ArrayNode:
+		arrayNode := n.GetArrayNode()
+
+		// build subNodeSpecs
+		subNodeSpecs, ok := buildNodeSpec(arrayNode.Node, tasks, errs)
+		if !ok {
+			return nil, ok
+		}
+
+		// build ArrayNode
+		nodeSpec.Kind = v1alpha1.NodeKindArray
+		nodeSpec.ArrayNode = &v1alpha1.ArrayNodeSpec{
+			SubNodeSpec: subNodeSpecs[0],
+			Parallelism: arrayNode.Parallelism,
+		}
+
+		switch successCriteria := arrayNode.SuccessCriteria.(type) {
+		case *core.ArrayNode_MinSuccesses:
+			nodeSpec.ArrayNode.MinSuccesses = &successCriteria.MinSuccesses
+		case *core.ArrayNode_MinSuccessRatio:
+			nodeSpec.ArrayNode.MinSuccessRatio = &successCriteria.MinSuccessRatio
 		}
 	default:
 		if n.GetId() == v1alpha1.StartNodeID {

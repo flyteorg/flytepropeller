@@ -7,13 +7,13 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	errors2 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
-func (t *Handler) GetCatalogKey(ctx context.Context, nCtx handler.NodeExecutionContext) (catalog.Key, error) {
+func (t *Handler) GetCatalogKey(ctx context.Context, nCtx interfaces.NodeExecutionContext) (catalog.Key, error) {
 	// read task template
 	taskTemplatePath, err := ioutils.GetTaskTemplatePath(ctx, nCtx.DataStore(), nCtx.NodeStatus().GetDataDir())
 	if err != nil {
@@ -35,7 +35,7 @@ func (t *Handler) GetCatalogKey(ctx context.Context, nCtx handler.NodeExecutionC
 	}, nil
 }
 
-func (t *Handler) IsCacheable(ctx context.Context, nCtx handler.NodeExecutionContext) (bool, bool, error) {
+func (t *Handler) IsCacheable(ctx context.Context, nCtx interfaces.NodeExecutionContext) (bool, bool, error) {
 	// check if plugin has caching disabled
 	ttype := nCtx.TaskReader().GetTaskType()
 	ctx = contextutils.WithTaskType(ctx, ttype)

@@ -26,7 +26,7 @@ import (
 	mocks2 "github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
 	execMocks "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
-	mocks3 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
+	mocks3 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan/mocks"
 )
@@ -37,6 +37,9 @@ type workflowNodeStateHolder struct {
 
 var eventConfig = &config.EventConfig{
 	RawOutputPolicy: config.RawOutputPolicyReference,
+}
+
+func (t *workflowNodeStateHolder) ClearNodeStatus() {
 }
 
 func (t *workflowNodeStateHolder) PutTaskNodeState(s handler.TaskNodeState) error {
@@ -57,6 +60,10 @@ func (t workflowNodeStateHolder) PutDynamicNodeState(s handler.DynamicNodeState)
 }
 
 func (t workflowNodeStateHolder) PutGateNodeState(s handler.GateNodeState) error {
+	panic("not implemented")
+}
+
+func (t workflowNodeStateHolder) PutArrayNodeState(s handler.ArrayNodeState) error {
 	panic("not implemented")
 }
 
@@ -250,7 +257,7 @@ func TestWorkflowNodeHandler_CheckNodeStatus(t *testing.T) {
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_RUNNING,
-		}, nil)
+		}, &core.LiteralMap{}, nil)
 
 		nCtx := createNodeContext(v1alpha1.WorkflowNodePhaseExecuting, mockNode, mockNodeStatus)
 		s, err := h.Handle(ctx, nCtx)
@@ -271,7 +278,7 @@ func TestWorkflowNodeHandler_CheckNodeStatus(t *testing.T) {
 			}),
 		).Return(&admin.ExecutionClosure{
 			Phase: core.WorkflowExecution_RUNNING,
-		}, nil)
+		}, &core.LiteralMap{}, nil)
 
 		nCtx := createNodeContextV1(v1alpha1.WorkflowNodePhaseExecuting, mockNode, mockNodeStatus)
 		s, err := h.Handle(ctx, nCtx)

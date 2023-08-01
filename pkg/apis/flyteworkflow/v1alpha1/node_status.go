@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/bitarray"
+	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/storage"
 
-	"github.com/flyteorg/flytestdlib/logger"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -96,9 +96,10 @@ const (
 
 type DynamicNodeStatus struct {
 	MutableStruct
-	Phase  DynamicNodePhase `json:"phase,omitempty"`
-	Reason string           `json:"reason,omitempty"`
-	Error  *ExecutionError  `json:"error,omitempty"`
+	Phase              DynamicNodePhase `json:"phase,omitempty"`
+	Reason             string           `json:"reason,omitempty"`
+	Error              *ExecutionError  `json:"error,omitempty"`
+	IsFailurePermanent bool             `json:"permFailure,omitempty"`
 }
 
 func (in *DynamicNodeStatus) GetDynamicNodePhase() DynamicNodePhase {
@@ -114,6 +115,10 @@ func (in *DynamicNodeStatus) GetExecutionError() *core.ExecutionError {
 		return nil
 	}
 	return in.Error.ExecutionError
+}
+
+func (in *DynamicNodeStatus) GetIsFailurePermanent() bool {
+	return in.IsFailurePermanent
 }
 
 func (in *DynamicNodeStatus) SetDynamicNodeReason(reason string) {
@@ -135,6 +140,13 @@ func (in *DynamicNodeStatus) SetExecutionError(err *core.ExecutionError) {
 		in.Error = &ExecutionError{ExecutionError: err}
 	} else {
 		in.Error = nil
+	}
+}
+
+func (in *DynamicNodeStatus) SetIsFailurePermanent(isFailurePermanent bool) {
+	if in.IsFailurePermanent != isFailurePermanent {
+		in.SetDirty()
+		in.IsFailurePermanent = isFailurePermanent
 	}
 }
 
@@ -207,6 +219,103 @@ func (in *GateNodeStatus) SetGateNodePhase(phase GateNodePhase) {
 	}
 }
 
+type ArrayNodePhase int
+
+const (
+	ArrayNodePhaseNone ArrayNodePhase = iota
+	ArrayNodePhaseExecuting
+	ArrayNodePhaseFailing
+	ArrayNodePhaseSucceeding
+)
+
+type ArrayNodeStatus struct {
+	MutableStruct
+	Phase                 ArrayNodePhase        `json:"phase,omitempty"`
+	ExecutionError        *core.ExecutionError  `json:"executionError,omitempty"`
+	SubNodePhases         bitarray.CompactArray `json:"subphase,omitempty"`
+	SubNodeTaskPhases     bitarray.CompactArray `json:"subtphase,omitempty"`
+	SubNodeRetryAttempts  bitarray.CompactArray `json:"subattempts,omitempty"`
+	SubNodeSystemFailures bitarray.CompactArray `json:"subsysfailures,omitempty"`
+	TaskPhaseVersion      uint32                `json:"taskPhaseVersion,omitempty"`
+}
+
+func (in *ArrayNodeStatus) GetArrayNodePhase() ArrayNodePhase {
+	return in.Phase
+}
+
+func (in *ArrayNodeStatus) SetArrayNodePhase(phase ArrayNodePhase) {
+	if in.Phase != phase {
+		in.SetDirty()
+		in.Phase = phase
+	}
+}
+
+func (in *ArrayNodeStatus) GetExecutionError() *core.ExecutionError {
+	return in.ExecutionError
+}
+
+func (in *ArrayNodeStatus) SetExecutionError(executionError *core.ExecutionError) {
+	if in.ExecutionError != executionError {
+		in.SetDirty()
+		in.ExecutionError = executionError
+	}
+}
+
+func (in *ArrayNodeStatus) GetSubNodePhases() bitarray.CompactArray {
+	return in.SubNodePhases
+}
+
+func (in *ArrayNodeStatus) SetSubNodePhases(subNodePhases bitarray.CompactArray) {
+	if in.SubNodePhases != subNodePhases {
+		in.SetDirty()
+		in.SubNodePhases = subNodePhases
+	}
+}
+
+func (in *ArrayNodeStatus) GetSubNodeTaskPhases() bitarray.CompactArray {
+	return in.SubNodeTaskPhases
+}
+
+func (in *ArrayNodeStatus) SetSubNodeTaskPhases(subNodeTaskPhases bitarray.CompactArray) {
+	if in.SubNodeTaskPhases != subNodeTaskPhases {
+		in.SetDirty()
+		in.SubNodeTaskPhases = subNodeTaskPhases
+	}
+}
+
+func (in *ArrayNodeStatus) GetSubNodeRetryAttempts() bitarray.CompactArray {
+	return in.SubNodeRetryAttempts
+}
+
+func (in *ArrayNodeStatus) SetSubNodeRetryAttempts(subNodeRetryAttempts bitarray.CompactArray) {
+	if in.SubNodeRetryAttempts != subNodeRetryAttempts {
+		in.SetDirty()
+		in.SubNodeRetryAttempts = subNodeRetryAttempts
+	}
+}
+
+func (in *ArrayNodeStatus) GetSubNodeSystemFailures() bitarray.CompactArray {
+	return in.SubNodeSystemFailures
+}
+
+func (in *ArrayNodeStatus) SetSubNodeSystemFailures(subNodeSystemFailures bitarray.CompactArray) {
+	if in.SubNodeSystemFailures != subNodeSystemFailures {
+		in.SetDirty()
+		in.SubNodeSystemFailures = subNodeSystemFailures
+	}
+}
+
+func (in *ArrayNodeStatus) GetTaskPhaseVersion() uint32 {
+	return in.TaskPhaseVersion
+}
+
+func (in *ArrayNodeStatus) SetTaskPhaseVersion(taskPhaseVersion uint32) {
+	if in.TaskPhaseVersion != taskPhaseVersion {
+		in.SetDirty()
+		in.TaskPhaseVersion = taskPhaseVersion
+	}
+}
+
 type NodeStatus struct {
 	MutableStruct
 	Phase                NodePhase     `json:"phase,omitempty"`
@@ -235,6 +344,7 @@ type NodeStatus struct {
 	TaskNodeStatus    *TaskNodeStatus    `json:",omitempty"`
 	DynamicNodeStatus *DynamicNodeStatus `json:"dynamicNodeStatus,omitempty"`
 	GateNodeStatus    *GateNodeStatus    `json:"gateNodeStatus,omitempty"`
+	ArrayNodeStatus   *ArrayNodeStatus   `json:"arrayNodeStatus,omitempty"`
 	// In case of Failing/Failed Phase, an execution error can be optionally associated with the Node
 	Error *ExecutionError `json:"error,omitempty"`
 
@@ -247,7 +357,9 @@ func (in *NodeStatus) IsDirty() bool {
 		(in.TaskNodeStatus != nil && in.TaskNodeStatus.IsDirty()) ||
 		(in.DynamicNodeStatus != nil && in.DynamicNodeStatus.IsDirty()) ||
 		(in.WorkflowNodeStatus != nil && in.WorkflowNodeStatus.IsDirty()) ||
-		(in.BranchStatus != nil && in.BranchStatus.IsDirty())
+		(in.BranchStatus != nil && in.BranchStatus.IsDirty()) ||
+		(in.GateNodeStatus != nil && in.GateNodeStatus.IsDirty()) ||
+		(in.ArrayNodeStatus != nil && in.ArrayNodeStatus.IsDirty())
 	if isDirty {
 		return true
 	}
@@ -315,6 +427,13 @@ func (in *NodeStatus) GetGateNodeStatus() MutableGateNodeStatus {
 	return in.GateNodeStatus
 }
 
+func (in *NodeStatus) GetArrayNodeStatus() MutableArrayNodeStatus {
+	if in.ArrayNodeStatus == nil {
+		return nil
+	}
+	return in.ArrayNodeStatus
+}
+
 func (in NodeStatus) VisitNodeStatuses(visitor NodeStatusVisitFn) {
 	for n, s := range in.SubNodeStatus {
 		visitor(n, s)
@@ -350,6 +469,11 @@ func (in *NodeStatus) ClearSubNodeStatus() {
 
 func (in *NodeStatus) ClearGateNodeStatus() {
 	in.GateNodeStatus = nil
+	in.SetDirty()
+}
+
+func (in *NodeStatus) ClearArrayNodeStatus() {
+	in.ArrayNodeStatus = nil
 	in.SetDirty()
 }
 
@@ -457,6 +581,17 @@ func (in *NodeStatus) GetOrCreateGateNodeStatus() MutableGateNodeStatus {
 	}
 
 	return in.GateNodeStatus
+}
+
+func (in *NodeStatus) GetOrCreateArrayNodeStatus() MutableArrayNodeStatus {
+	if in.ArrayNodeStatus == nil {
+		in.SetDirty()
+		in.ArrayNodeStatus = &ArrayNodeStatus{
+			MutableStruct: MutableStruct{},
+		}
+	}
+
+	return in.ArrayNodeStatus
 }
 
 func (in *NodeStatus) UpdatePhase(p NodePhase, occurredAt metav1.Time, reason string, err *core.ExecutionError) {
@@ -765,6 +900,7 @@ type TaskNodeStatus struct {
 	BarrierClockTick                    uint32        `json:"tick,omitempty"`
 	LastPhaseUpdatedAt                  time.Time     `json:"updAt,omitempty"`
 	PreviousNodeExecutionCheckpointPath DataReference `json:"checkpointPath,omitempty"`
+	CleanupOnFailure                    bool          `json:"clean,omitempty"`
 }
 
 func (in *TaskNodeStatus) GetBarrierClockTick() uint32 {
@@ -792,6 +928,11 @@ func (in *TaskNodeStatus) SetLastPhaseUpdatedAt(updatedAt time.Time) {
 
 func (in *TaskNodeStatus) SetPluginStateVersion(v uint32) {
 	in.PluginStateVersion = v
+	in.SetDirty()
+}
+
+func (in *TaskNodeStatus) SetCleanupOnFailure(cleanupOnFailure bool) {
+	in.CleanupOnFailure = cleanupOnFailure
 	in.SetDirty()
 }
 
@@ -827,6 +968,10 @@ func (in TaskNodeStatus) GetPreviousNodeExecutionCheckpointPath() DataReference 
 
 func (in TaskNodeStatus) GetPhaseVersion() uint32 {
 	return in.PhaseVersion
+}
+
+func (in TaskNodeStatus) GetCleanupOnFailure() bool {
+	return in.CleanupOnFailure
 }
 
 func (in *TaskNodeStatus) UpdatePhase(phase int, phaseVersion uint32) {

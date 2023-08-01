@@ -5,21 +5,25 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/flyteorg/flytestdlib/cache"
-	"golang.org/x/time/rate"
-	"k8s.io/client-go/util/workqueue"
-
-	"github.com/flyteorg/flytestdlib/errors"
-
-	"github.com/flyteorg/flytestdlib/logger"
-
-	"github.com/flyteorg/flytestdlib/promutils"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+
+	"github.com/flyteorg/flytestdlib/cache"
+	stdErr "github.com/flyteorg/flytestdlib/errors"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/promutils"
+
+	evtErr "github.com/flyteorg/flytepropeller/events/errors"
+
+	"github.com/golang/protobuf/ptypes/wrappers"
+
+	"golang.org/x/time/rate"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"k8s.io/client-go/util/workqueue"
 )
 
 var isRecovery = true
@@ -40,6 +44,7 @@ type executionCacheItem struct {
 	core.WorkflowExecutionIdentifier
 	ExecutionClosure *admin.ExecutionClosure
 	SyncError        error
+	ExecutionOutputs *core.LiteralMap
 }
 
 func (e executionCacheItem) ID() string {
@@ -61,11 +66,11 @@ func (a *adminLaunchPlanExecutor) handleLaunchError(ctx context.Context, isRecov
 			logger.Errorf(ctx, "Failed to add ExecID [%v] to auto refresh cache", executionID)
 		}
 
-		return errors.Wrapf(RemoteErrorAlreadyExists, err, "ExecID %s already exists", executionID.Name)
+		return stdErr.Wrapf(RemoteErrorAlreadyExists, err, "ExecID %s already exists", executionID.Name)
 	case codes.DataLoss, codes.DeadlineExceeded, codes.Internal, codes.Unknown, codes.Canceled:
-		return errors.Wrapf(RemoteErrorSystem, err, "failed to launch workflow [%s], system error", launchPlanRef.Name)
+		return stdErr.Wrapf(RemoteErrorSystem, err, "failed to launch workflow [%s], system error", launchPlanRef.Name)
 	default:
-		return errors.Wrapf(RemoteErrorUser, err, "failed to launch workflow")
+		return stdErr.Wrapf(RemoteErrorUser, err, "failed to launch workflow")
 	}
 }
 
@@ -90,6 +95,21 @@ func (a *adminLaunchPlanExecutor) Launch(ctx context.Context, launchCtx LaunchCo
 		}
 	}
 
+	var interruptible *wrappers.BoolValue
+	if launchCtx.Interruptible != nil {
+		interruptible = &wrappers.BoolValue{
+			Value: *launchCtx.Interruptible,
+		}
+	}
+
+	environmentVariables := make([]*core.KeyValuePair, 0, len(launchCtx.EnvironmentVariables))
+	for k, v := range launchCtx.EnvironmentVariables {
+		environmentVariables = append(environmentVariables, &core.KeyValuePair{
+			Key:   k,
+			Value: v,
+		})
+	}
+
 	req := &admin.ExecutionCreateRequest{
 		Project: executionID.Project,
 		Domain:  executionID.Domain,
@@ -108,6 +128,9 @@ func (a *adminLaunchPlanExecutor) Launch(ctx context.Context, launchCtx LaunchCo
 			SecurityContext:     &launchCtx.SecurityContext,
 			MaxParallelism:      int32(launchCtx.MaxParallelism),
 			RawOutputDataConfig: launchCtx.RawOutputDataConfig,
+			Interruptible:       interruptible,
+			OverwriteCache:      launchCtx.OverwriteCache,
+			Envs:                &admin.Envs{Values: environmentVariables},
 		},
 	}
 
@@ -127,19 +150,19 @@ func (a *adminLaunchPlanExecutor) Launch(ctx context.Context, launchCtx LaunchCo
 	return nil
 }
 
-func (a *adminLaunchPlanExecutor) GetStatus(ctx context.Context, executionID *core.WorkflowExecutionIdentifier) (*admin.ExecutionClosure, error) {
+func (a *adminLaunchPlanExecutor) GetStatus(ctx context.Context, executionID *core.WorkflowExecutionIdentifier) (*admin.ExecutionClosure, *core.LiteralMap, error) {
 	if executionID == nil {
-		return nil, fmt.Errorf("nil executionID")
+		return nil, nil, fmt.Errorf("nil executionID")
 	}
 
 	obj, err := a.cache.GetOrCreate(executionID.String(), executionCacheItem{WorkflowExecutionIdentifier: *executionID})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	item := obj.(executionCacheItem)
 
-	return item.ExecutionClosure, item.SyncError
+	return item.ExecutionClosure, item.ExecutionOutputs, item.SyncError
 }
 
 func (a *adminLaunchPlanExecutor) GetLaunchPlan(ctx context.Context, launchPlanRef *core.Identifier) (*admin.LaunchPlan, error) {
@@ -154,9 +177,9 @@ func (a *adminLaunchPlanExecutor) GetLaunchPlan(ctx context.Context, launchPlanR
 	lp, err := a.adminClient.GetLaunchPlan(ctx, &getObjectRequest)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			return nil, errors.Wrapf(RemoteErrorNotFound, err, "No launch plan retrieved from Admin")
+			return nil, stdErr.Wrapf(RemoteErrorNotFound, err, "No launch plan retrieved from Admin")
 		}
-		return nil, errors.Wrapf(RemoteErrorSystem, err, "Could not fetch launch plan definition from Admin")
+		return nil, stdErr.Wrapf(RemoteErrorSystem, err, "Could not fetch launch plan definition from Admin")
 	}
 
 	return lp, nil
@@ -172,7 +195,13 @@ func (a *adminLaunchPlanExecutor) Kill(ctx context.Context, executionID *core.Wo
 		if status.Code(err) == codes.NotFound {
 			return nil
 		}
-		return errors.Wrapf(RemoteErrorSystem, err, "system error")
+
+		err = evtErr.WrapError(err)
+		if evtErr.IsEventAlreadyInTerminalStateError(err) {
+			return nil
+		}
+
+		return stdErr.Wrapf(RemoteErrorSystem, err, "system error")
 	}
 	return nil
 }
@@ -207,12 +236,12 @@ func (a *adminLaunchPlanExecutor) syncItem(ctx context.Context, batch cache.Batc
 
 		res, err := a.adminClient.GetExecution(ctx, req)
 		if err != nil {
-			// TODO: Define which error codes are system errors (and return the error) vs user errors.
+			// TODO: Define which error codes are system errors (and return the error) vs user stdErr.
 
 			if status.Code(err) == codes.NotFound {
-				err = errors.Wrapf(RemoteErrorNotFound, err, "execID [%s] not found on remote", exec.WorkflowExecutionIdentifier.Name)
+				err = stdErr.Wrapf(RemoteErrorNotFound, err, "execID [%s] not found on remote", exec.WorkflowExecutionIdentifier.Name)
 			} else {
-				err = errors.Wrapf(RemoteErrorSystem, err, "system error")
+				err = stdErr.Wrapf(RemoteErrorSystem, err, "system error")
 			}
 
 			resp = append(resp, cache.ItemSyncResponse{
@@ -227,12 +256,38 @@ func (a *adminLaunchPlanExecutor) syncItem(ctx context.Context, batch cache.Batc
 			continue
 		}
 
+		var outputs *core.LiteralMap
+		// Retrieve potential outputs only when the workflow succeeded.
+		// TODO: We can optimize further by only retrieving the outputs when the workflow has output variables in the
+		// 	interface.
+		if res.GetClosure().GetPhase() == core.WorkflowExecution_SUCCEEDED {
+			execData, err := a.adminClient.GetExecutionData(ctx, &admin.WorkflowExecutionGetDataRequest{
+				Id: &exec.WorkflowExecutionIdentifier,
+			})
+
+			if err != nil {
+				resp = append(resp, cache.ItemSyncResponse{
+					ID: obj.GetID(),
+					Item: executionCacheItem{
+						WorkflowExecutionIdentifier: exec.WorkflowExecutionIdentifier,
+						SyncError:                   err,
+					},
+					Action: cache.Update,
+				})
+
+				continue
+			}
+
+			outputs = execData.GetFullOutputs()
+		}
+
 		// Update the cache with the retrieved status
 		resp = append(resp, cache.ItemSyncResponse{
 			ID: obj.GetID(),
 			Item: executionCacheItem{
 				WorkflowExecutionIdentifier: exec.WorkflowExecutionIdentifier,
 				ExecutionClosure:            res.Closure,
+				ExecutionOutputs:            outputs,
 			},
 			Action: cache.Update,
 		})

@@ -93,22 +93,6 @@ func TestBuildNodeSpec(t *testing.T) {
 		mustBuild(t, n, 1, errs.NewScope())
 	})
 
-	t.Run("Task with resources", func(t *testing.T) {
-		expectedCPU := resource.MustParse("10Mi")
-		n.Node.Target = &core.Node_TaskNode{
-			TaskNode: &core.TaskNode{
-				Reference: &core.TaskNode_ReferenceId{
-					ReferenceId: &core.Identifier{Name: "ref_2"},
-				},
-			},
-		}
-
-		spec := mustBuild(t, n, 1, errs.NewScope())
-		assert.NotNil(t, spec.Resources)
-		assert.NotNil(t, spec.Resources.Requests.Cpu())
-		assert.Equal(t, expectedCPU.Value(), spec.Resources.Requests.Cpu().Value())
-	})
-
 	t.Run("node with resource overrides", func(t *testing.T) {
 		expectedCPU := resource.MustParse("20Mi")
 		n.Node.Target = &core.Node_TaskNode{
@@ -253,6 +237,29 @@ func TestBuildNodeSpec(t *testing.T) {
 					Sleep: &core.SleepCondition{
 						Duration: durationpb.New(time.Minute),
 					},
+				},
+			},
+		}
+
+		mustBuild(t, n, 1, errs.NewScope())
+	})
+
+	t.Run("ArrayNode", func(t *testing.T) {
+		n.Node.Target = &core.Node_ArrayNode{
+			ArrayNode: &core.ArrayNode{
+				Node: &core.Node{
+					Id: "foo",
+					Target: &core.Node_TaskNode{
+						TaskNode: &core.TaskNode{
+							Reference: &core.TaskNode_ReferenceId{
+								ReferenceId: &core.Identifier{Name: "ref_1"},
+							},
+						},
+					},
+				},
+				Parallelism: 10,
+				SuccessCriteria: &core.ArrayNode_MinSuccessRatio{
+					MinSuccessRatio: 0.5,
 				},
 			},
 		}
