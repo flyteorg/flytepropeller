@@ -711,6 +711,7 @@ func (t Handler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContex
 		if err != nil {
 			return handler.UnknownTransition, err
 		}
+		logger.Infof(ctx, "Recording buffered event [%s]", evInfo.Reason)
 		if err := nCtx.EventsRecorder().RecordTaskEvent(ctx, evInfo, t.eventConfig); err != nil {
 			logger.Errorf(ctx, "Event recording failed for Plugin [%s], eventPhase [%s], error :%s", p.GetID(), evInfo.Phase.String(), err.Error())
 			// Check for idempotency

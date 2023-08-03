@@ -12,7 +12,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	pluginsUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	compiler "github.com/flyteorg/flytepropeller/pkg/compiler/transformers/k8s"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/backoff"
@@ -99,12 +99,13 @@ type PluginManager struct {
 	// Per namespace-resource
 	backOffController    *backoff.Controller
 	resourceLevelMonitor *ResourceLevelMonitor
+	eventWatcher         EventWatcher
 }
 
 func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o client.Object, cfg *config.K8sPluginConfig) {
 	o.SetNamespace(taskCtx.GetNamespace())
-	o.SetAnnotations(utils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
-	o.SetLabels(utils.UnionMaps(cfg.DefaultLabels, o.GetLabels(), utils.CopyMap(taskCtx.GetLabels())))
+	o.SetAnnotations(pluginsUtils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(), pluginsUtils.CopyMap(taskCtx.GetAnnotations())))
+	o.SetLabels(pluginsUtils.UnionMaps(cfg.DefaultLabels, o.GetLabels(), pluginsUtils.CopyMap(taskCtx.GetLabels())))
 	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
 
 	if !e.plugin.GetProperties().DisableInjectOwnerReferences {
@@ -117,7 +118,7 @@ func (e *PluginManager) AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetad
 	}
 
 	if errs := validation.IsDNS1123Subdomain(o.GetName()); len(errs) > 0 {
-		o.SetName(utils.ConvertToDNS1123SubdomainCompatibleString(o.GetName()))
+		o.SetName(pluginsUtils.ConvertToDNS1123SubdomainCompatibleString(o.GetName()))
 	}
 }
 
@@ -284,6 +285,23 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 		return pluginsCore.UnknownTransition, err
 	}
 
+	// Add events since last update
+	recentEvents := e.eventWatcher.List(nsName, k8sPluginState.LastEventUpdate)
+	version := p.Version()
+	lastEventUpdate := k8sPluginState.LastEventUpdate
+	for _, event := range recentEvents {
+		logger.Infof(ctx, "Observed event [%s:%s] for object [%s]", event.Reason, event.Note, nsName.String())
+		tCtx.EventsRecorder().RecordRaw(ctx, pluginsCore.PhaseInfoWithTaskInfo(
+			p.Phase(), version, event.Note, &pluginsCore.TaskInfo{OccurredAt: &event.CreationTimestamp.Time},
+		))
+		version += 1
+		lastEventUpdate = event.CreationTimestamp.Time
+		// TODO: figure out how to convey last update time
+	}
+	p = p.WithVersion(version)
+	// TODO: what if no TaskInfo?
+	p.Info().LastEventUpdate = &lastEventUpdate
+
 	if p.Phase() == pluginsCore.PhaseSuccess {
 		var opReader io.OutputReader
 		if pCtx.ow == nil {
@@ -353,13 +371,16 @@ func (e PluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutio
 				Reason:       transition.Info().Reason(),
 			},
 		}
+		if transition.Info().Info() != nil && transition.Info().Info().LastEventUpdate != nil {
+			newPluginState.K8sPluginState.LastEventUpdate = *transition.Info().Info().LastEventUpdate
+		}
 
 		if err := tCtx.PluginStateWriter().Put(pluginStateVersion, &newPluginState); err != nil {
 			return pluginsCore.UnknownTransition, err
 		}
 	}
 
-	return transition, err
+	return transition, nil
 }
 
 func (e PluginManager) Abort(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) error {
@@ -551,8 +572,13 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	droppedUpdateCount := labeled.NewCounter("informer_update_dropped", "Update events from informer that have the same resource version", metricsScope)
 	genericCount := labeled.NewCounter("informer_generic", "Generic events from informer", metricsScope)
 
+	gvk, err := getPluginGvk(entry.ResourceToWatch)
+	if err != nil {
+		return nil, err
+	}
+
 	enqueueOwner := iCtx.EnqueueOwner()
-	err := src.Start(
+	err = src.Start(
 		ctx,
 		// Handlers
 		handler.Funcs{
@@ -617,16 +643,20 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		return nil, err
 	}
 
+	// TODO: make configurable and/or fail open
+	// TODO: cache subset of event info we need?
+	// TODO: move logic to plugins or keep here? if plugins, where do we init?
+	eventWatcher, err := NewEventWatcher(ctx, gvk)
+	if err != nil {
+		return nil, err
+	}
+
 	// Construct the collector that will emit a gauge indicating current levels of the resource that this K8s plugin operates on
-	gvk, err := getPluginGvk(entry.ResourceToWatch)
+	pluginInformer, err := getPluginSharedInformer(ctx, kubeClient, entry.ResourceToWatch)
 	if err != nil {
 		return nil, err
 	}
-	sharedInformer, err := getPluginSharedInformer(ctx, kubeClient, entry.ResourceToWatch)
-	if err != nil {
-		return nil, err
-	}
-	rm := monitorIndex.GetOrCreateResourceLevelMonitor(ctx, metricsScope, sharedInformer, gvk)
+	rm := monitorIndex.GetOrCreateResourceLevelMonitor(ctx, metricsScope, pluginInformer, gvk)
 	// Start the poller and gauge emitter
 	rm.RunCollectorOnce(ctx)
 
@@ -637,6 +667,7 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		metrics:              newPluginMetrics(metricsScope),
 		kubeClient:           kubeClient,
 		resourceLevelMonitor: rm,
+		eventWatcher:         eventWatcher,
 	}, nil
 }
 
