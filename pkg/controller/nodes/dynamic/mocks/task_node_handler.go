@@ -129,7 +129,7 @@ func (_m TaskNodeHandler_GetCatalogKey) Return(_a0 catalog.Key, _a1 error) *Task
 	return &TaskNodeHandler_GetCatalogKey{Call: _m.Call.Return(_a0, _a1)}
 }
 
-func (_m *TaskNodeHandler) OnGetCatalogKey(ctx context.Context, executionContext handler.NodeExecutionContext) *TaskNodeHandler_GetCatalogKey {
+func (_m *TaskNodeHandler) OnGetCatalogKey(ctx context.Context, executionContext interfaces.NodeExecutionContext) *TaskNodeHandler_GetCatalogKey {
 	c_call := _m.On("GetCatalogKey", ctx, executionContext)
 	return &TaskNodeHandler_GetCatalogKey{Call: c_call}
 }
@@ -140,18 +140,18 @@ func (_m *TaskNodeHandler) OnGetCatalogKeyMatch(matchers ...interface{}) *TaskNo
 }
 
 // GetCatalogKey provides a mock function with given fields: ctx, executionContext
-func (_m *TaskNodeHandler) GetCatalogKey(ctx context.Context, executionContext handler.NodeExecutionContext) (catalog.Key, error) {
+func (_m *TaskNodeHandler) GetCatalogKey(ctx context.Context, executionContext interfaces.NodeExecutionContext) (catalog.Key, error) {
 	ret := _m.Called(ctx, executionContext)
 
 	var r0 catalog.Key
-	if rf, ok := ret.Get(0).(func(context.Context, handler.NodeExecutionContext) catalog.Key); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interfaces.NodeExecutionContext) catalog.Key); ok {
 		r0 = rf(ctx, executionContext)
 	} else {
 		r0 = ret.Get(0).(catalog.Key)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, handler.NodeExecutionContext) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, interfaces.NodeExecutionContext) error); ok {
 		r1 = rf(ctx, executionContext)
 	} else {
 		r1 = ret.Error(1)
@@ -207,7 +207,7 @@ func (_m TaskNodeHandler_IsCacheable) Return(_a0 bool, _a1 bool, _a2 error) *Tas
 	return &TaskNodeHandler_IsCacheable{Call: _m.Call.Return(_a0, _a1, _a2)}
 }
 
-func (_m *TaskNodeHandler) OnIsCacheable(ctx context.Context, executionContext handler.NodeExecutionContext) *TaskNodeHandler_IsCacheable {
+func (_m *TaskNodeHandler) OnIsCacheable(ctx context.Context, executionContext interfaces.NodeExecutionContext) *TaskNodeHandler_IsCacheable {
 	c_call := _m.On("IsCacheable", ctx, executionContext)
 	return &TaskNodeHandler_IsCacheable{Call: c_call}
 }
@@ -218,25 +218,25 @@ func (_m *TaskNodeHandler) OnIsCacheableMatch(matchers ...interface{}) *TaskNode
 }
 
 // IsCacheable provides a mock function with given fields: ctx, executionContext
-func (_m *TaskNodeHandler) IsCacheable(ctx context.Context, executionContext handler.NodeExecutionContext) (bool, bool, error) {
+func (_m *TaskNodeHandler) IsCacheable(ctx context.Context, executionContext interfaces.NodeExecutionContext) (bool, bool, error) {
 	ret := _m.Called(ctx, executionContext)
 
 	var r0 bool
-	if rf, ok := ret.Get(0).(func(context.Context, handler.NodeExecutionContext) bool); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interfaces.NodeExecutionContext) bool); ok {
 		r0 = rf(ctx, executionContext)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
 	var r1 bool
-	if rf, ok := ret.Get(1).(func(context.Context, handler.NodeExecutionContext) bool); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, interfaces.NodeExecutionContext) bool); ok {
 		r1 = rf(ctx, executionContext)
 	} else {
 		r1 = ret.Get(1).(bool)
 	}
 
 	var r2 error
-	if rf, ok := ret.Get(2).(func(context.Context, handler.NodeExecutionContext) error); ok {
+	if rf, ok := ret.Get(2).(func(context.Context, interfaces.NodeExecutionContext) error); ok {
 		r2 = rf(ctx, executionContext)
 	} else {
 		r2 = ret.Error(2)
