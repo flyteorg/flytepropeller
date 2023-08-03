@@ -2607,7 +2607,7 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 		}
 	}
 
-	setupNodeExecutor := func(t *testing.T, catalogClient pluginscatalog.Client, dataStore *storage.DataStore, mockHandler handler.CacheableNode, testScope promutils.Scope) *nodeExecutor {
+	setupNodeExecutor := func(t *testing.T, catalogClient pluginscatalog.Client, dataStore *storage.DataStore, mockHandler interfaces.CacheableNodeHandler, testScope promutils.Scope) interfaces.Node {
 		ctx := context.TODO()
 
 		// create mocks
@@ -2625,18 +2625,12 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 		testClusterID := "cluster1"
 
 		// initialize node executor
-		nodeExecutorInterface, err := NewExecutor(ctx, nodeConfig, dataStore, enqueueWorkflow, mockEventSink,
-			adminClient, adminClient, maxDatasetSize, rawOutputPrefix, fakeKubeClient, catalogClient,
-			recoveryClient, eventConfig, testClusterID, signalClient, testScope)
-		assert.NoError(t, err)
-
-		nodeExecutor, ok := nodeExecutorInterface.(*nodeExecutor)
-		assert.True(t, ok)
-
-		// setup node handler
-		mockHandlerFactory := &mocks2.HandlerFactory{}
+		mockHandlerFactory := &nodemocks.HandlerFactory{}
 		mockHandlerFactory.OnGetHandler(v1alpha1.NodeKindTask).Return(mockHandler, nil)
-		nodeExecutor.nodeHandlerFactory = mockHandlerFactory
+		nodeExecutor, err := NewExecutor(ctx, nodeConfig, dataStore, enqueueWorkflow, mockEventSink,
+			adminClient, adminClient, maxDatasetSize, rawOutputPrefix, fakeKubeClient, catalogClient,
+			recoveryClient, eventConfig, testClusterID, signalClient, mockHandlerFactory, testScope)
+		assert.NoError(t, err)
 
 		return nodeExecutor
 	}
@@ -2743,14 +2737,14 @@ func TestNodeExecutor_RecursiveNodeHandler_Cache(t *testing.T) {
 			catalogClient.OnGetOrExtendReservationMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 				Return(&datacatalog.Reservation{OwnerId: test.cacheReservationOwnerID}, nil)
 
-			mockHandler := &nodeHandlerMocks.CacheableNode{}
+			mockHandler := &nodemocks.CacheableNodeHandler{}
 			mockHandler.OnIsCacheableMatch(
 				mock.Anything,
-				mock.MatchedBy(func(nCtx handler.NodeExecutionContext) bool { return nCtx.NodeID() == currentNodeID }),
+				mock.MatchedBy(func(nCtx interfaces.NodeExecutionContext) bool { return nCtx.NodeID() == currentNodeID }),
 			).Return(test.cacheable, test.cacheSerializable, nil)
 			mockHandler.OnIsCacheableMatch(
 				mock.Anything,
-				mock.MatchedBy(func(nCtx handler.NodeExecutionContext) bool { return nCtx.NodeID() == downstreamNodeID }),
+				mock.MatchedBy(func(nCtx interfaces.NodeExecutionContext) bool { return nCtx.NodeID() == downstreamNodeID }),
 			).Return(false, false, nil)
 			mockHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).
 				Return(pluginscatalog.Key{Identifier: core.Identifier{Name: currentNodeID}}, nil)

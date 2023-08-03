@@ -10,21 +10,19 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
 
-	eventsmocks "github.com/flyteorg/flytepropeller/events/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1"
 	"github.com/flyteorg/flytepropeller/pkg/apis/flyteworkflow/v1alpha1/mocks"
-	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	executorsmocks "github.com/flyteorg/flytepropeller/pkg/controller/executors/mocks"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler"
-	handlermocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/handler/mocks"
-	recoverymocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery/mocks"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces"
+	interfacesmocks "github.com/flyteorg/flytepropeller/pkg/controller/nodes/interfaces/mocks"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	catalogmocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog/mocks"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/flyteorg/flytestdlib/promutils/labeled"
 	"github.com/flyteorg/flytestdlib/storage"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -70,7 +68,7 @@ func setupCacheableNodeExecutionContext(dataStore *storage.DataStore, taskTempla
 	mockExecutionContext := &executorsmocks.ExecutionContext{}
 	mockExecutionContext.OnGetParentInfoMatch(mock.Anything).Return(mockParentInfo)
 
-	mockNodeExecutionMetadata := &handlermocks.NodeExecutionMetadata{}
+	mockNodeExecutionMetadata := &interfacesmocks.NodeExecutionMetadata{}
 	mockNodeExecutionMetadata.OnGetOwnerID().Return(
 		types.NamespacedName{
 			Name: parentUniqueID,
@@ -82,7 +80,7 @@ func setupCacheableNodeExecutionContext(dataStore *storage.DataStore, taskTempla
 		},
 	)
 
-	var taskReader handler.TaskReader
+	var taskReader interfaces.TaskReader
 	if taskTemplate != nil {
 		taskReader = mockTaskReader{
 			taskTemplate: taskTemplate,
@@ -97,33 +95,6 @@ func setupCacheableNodeExecutionContext(dataStore *storage.DataStore, taskTempla
 		store:      dataStore,
 		tr:         taskReader,
 	}
-}
-
-func setupCacheableNodeExecutor(t *testing.T, catalogClient catalog.Client, dataStore *storage.DataStore, testScope promutils.Scope) *nodeExecutor {
-	ctx := context.TODO()
-
-	adminClient := launchplan.NewFailFastLaunchPlanExecutor()
-	enqueueWorkflow := func(workflowID v1alpha1.WorkflowID) {}
-	eventConfig := &config.EventConfig{
-		RawOutputPolicy: config.RawOutputPolicyReference,
-	}
-	fakeKubeClient := executorsmocks.NewFakeKubeClient()
-	maxDatasetSize := int64(10)
-	mockEventSink := eventsmocks.NewMockEventSink()
-	nodeConfig := config.GetConfig().NodeConfig
-	rawOutputPrefix := storage.DataReference("s3://bucket/")
-	recoveryClient := &recoverymocks.Client{}
-	testClusterID := "cluster1"
-
-	nodeExecutorInterface, err := NewExecutor(ctx, nodeConfig, dataStore, enqueueWorkflow, mockEventSink,
-		adminClient, adminClient, maxDatasetSize, rawOutputPrefix, fakeKubeClient, catalogClient,
-		recoveryClient, eventConfig, testClusterID, signalClient, testScope.NewSubScope("node_executor"))
-	assert.NoError(t, err)
-
-	nodeExecutor, ok := nodeExecutorInterface.(*nodeExecutor)
-	assert.True(t, ok)
-
-	return nodeExecutor
 }
 
 func TestComputeCatalogReservationOwnerID(t *testing.T) {
@@ -240,8 +211,20 @@ func TestCheckCatalogCache(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			testScope := promutils.NewTestScope()
+			metrics := &nodeMetrics{
+				catalogHitCount:                labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", testScope),
+				catalogMissCount:               labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", testScope),
+				catalogSkipCount:               labeled.NewCounter("discovery_skip_count", "Task cached skipped in Discovery", testScope),
+				catalogPutSuccessCount:         labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", testScope),
+				catalogPutFailureCount:         labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", testScope),
+				catalogGetFailureCount:         labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", testScope),
+				reservationGetFailureCount:     labeled.NewCounter("reservation_get_failure_count", "Reservation GetOrExtend failure count", testScope),
+				reservationGetSuccessCount:     labeled.NewCounter("reservation_get_success_count", "Reservation GetOrExtend success count", testScope),
+				reservationReleaseFailureCount: labeled.NewCounter("reservation_release_failure_count", "Reservation Release failure count", testScope),
+				reservationReleaseSuccessCount: labeled.NewCounter("reservation_release_success_count", "Reservation Release success count", testScope),
+			}
 
-			cacheableHandler := &handlermocks.CacheableNode{}
+			cacheableHandler := &interfacesmocks.CacheableNodeHandler{}
 			cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(test.catalogKey, nil)
 
 			catalogClient := &catalogmocks.Client{}
@@ -255,7 +238,10 @@ func TestCheckCatalogCache(t *testing.T) {
 			)
 			assert.NoError(t, err)
 
-			nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, dataStore, testScope)
+			nodeExecutor := &nodeExecutor{
+				catalog: catalogClient,
+				metrics: metrics,
+			}
 			nCtx := setupCacheableNodeExecutionContext(dataStore, nil)
 
 			if test.preWriteOutputFile {
@@ -304,8 +290,20 @@ func TestGetOrExtendCatalogReservation(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			testScope := promutils.NewTestScope()
+			metrics := &nodeMetrics{
+				catalogHitCount:                labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", testScope),
+				catalogMissCount:               labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", testScope),
+				catalogSkipCount:               labeled.NewCounter("discovery_skip_count", "Task cached skipped in Discovery", testScope),
+				catalogPutSuccessCount:         labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", testScope),
+				catalogPutFailureCount:         labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", testScope),
+				catalogGetFailureCount:         labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", testScope),
+				reservationGetFailureCount:     labeled.NewCounter("reservation_get_failure_count", "Reservation GetOrExtend failure count", testScope),
+				reservationGetSuccessCount:     labeled.NewCounter("reservation_get_success_count", "Reservation GetOrExtend success count", testScope),
+				reservationReleaseFailureCount: labeled.NewCounter("reservation_release_failure_count", "Reservation Release failure count", testScope),
+				reservationReleaseSuccessCount: labeled.NewCounter("reservation_release_success_count", "Reservation Release success count", testScope),
+			}
 
-			cacheableHandler := &handlermocks.CacheableNode{}
+			cacheableHandler := &interfacesmocks.CacheableNodeHandler{}
 			cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(catalog.Key{}, nil)
 
 			catalogClient := &catalogmocks.Client{}
@@ -316,7 +314,10 @@ func TestGetOrExtendCatalogReservation(t *testing.T) {
 				nil,
 			)
 
-			nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, nil, testScope)
+			nodeExecutor := &nodeExecutor{
+				catalog: catalogClient,
+				metrics: metrics,
+			}
 			nCtx := setupCacheableNodeExecutionContext(nil, &core.TaskTemplate{})
 
 			// execute catalog cache check
@@ -350,14 +351,29 @@ func TestReleaseCatalogReservation(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			testScope := promutils.NewTestScope()
+			metrics := &nodeMetrics{
+				catalogHitCount:                labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", testScope),
+				catalogMissCount:               labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", testScope),
+				catalogSkipCount:               labeled.NewCounter("discovery_skip_count", "Task cached skipped in Discovery", testScope),
+				catalogPutSuccessCount:         labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", testScope),
+				catalogPutFailureCount:         labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", testScope),
+				catalogGetFailureCount:         labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", testScope),
+				reservationGetFailureCount:     labeled.NewCounter("reservation_get_failure_count", "Reservation GetOrExtend failure count", testScope),
+				reservationGetSuccessCount:     labeled.NewCounter("reservation_get_success_count", "Reservation GetOrExtend success count", testScope),
+				reservationReleaseFailureCount: labeled.NewCounter("reservation_release_failure_count", "Reservation Release failure count", testScope),
+				reservationReleaseSuccessCount: labeled.NewCounter("reservation_release_success_count", "Reservation Release success count", testScope),
+			}
 
-			cacheableHandler := &handlermocks.CacheableNode{}
+			cacheableHandler := &interfacesmocks.CacheableNodeHandler{}
 			cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(catalog.Key{}, nil)
 
 			catalogClient := &catalogmocks.Client{}
 			catalogClient.OnReleaseReservationMatch(mock.Anything, mock.Anything, mock.Anything).Return(test.releaseError)
 
-			nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, nil, testScope)
+			nodeExecutor := &nodeExecutor{
+				catalog: catalogClient,
+				metrics: metrics,
+			}
 			nCtx := setupCacheableNodeExecutionContext(nil, &core.TaskTemplate{})
 
 			// execute catalog cache check
@@ -409,8 +425,20 @@ func TestWriteCatalogCache(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			testScope := promutils.NewTestScope()
+			metrics := &nodeMetrics{
+				catalogHitCount:                labeled.NewCounter("discovery_hit_count", "Task cached in Discovery", testScope),
+				catalogMissCount:               labeled.NewCounter("discovery_miss_count", "Task not cached in Discovery", testScope),
+				catalogSkipCount:               labeled.NewCounter("discovery_skip_count", "Task cached skipped in Discovery", testScope),
+				catalogPutSuccessCount:         labeled.NewCounter("discovery_put_success_count", "Discovery Put success count", testScope),
+				catalogPutFailureCount:         labeled.NewCounter("discovery_put_failure_count", "Discovery Put failure count", testScope),
+				catalogGetFailureCount:         labeled.NewCounter("discovery_get_failure_count", "Discovery Get faillure count", testScope),
+				reservationGetFailureCount:     labeled.NewCounter("reservation_get_failure_count", "Reservation GetOrExtend failure count", testScope),
+				reservationGetSuccessCount:     labeled.NewCounter("reservation_get_success_count", "Reservation GetOrExtend success count", testScope),
+				reservationReleaseFailureCount: labeled.NewCounter("reservation_release_failure_count", "Reservation Release failure count", testScope),
+				reservationReleaseSuccessCount: labeled.NewCounter("reservation_release_success_count", "Reservation Release success count", testScope),
+			}
 
-			cacheableHandler := &handlermocks.CacheableNode{}
+			cacheableHandler := &interfacesmocks.CacheableNodeHandler{}
 			cacheableHandler.OnGetCatalogKeyMatch(mock.Anything, mock.Anything).Return(test.catalogKey, nil)
 
 			catalogClient := &catalogmocks.Client{}
@@ -424,7 +452,10 @@ func TestWriteCatalogCache(t *testing.T) {
 			)
 			assert.NoError(t, err)
 
-			nodeExecutor := setupCacheableNodeExecutor(t, catalogClient, dataStore, testScope)
+			nodeExecutor := &nodeExecutor{
+				catalog: catalogClient,
+				metrics: metrics,
+			}
 			nCtx := setupCacheableNodeExecutionContext(dataStore, &core.TaskTemplate{})
 
 			// execute catalog cache check

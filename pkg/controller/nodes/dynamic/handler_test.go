@@ -525,12 +525,11 @@ func Test_dynamicNodeHandler_Handle_SubTaskV1(t *testing.T) {
 	}
 
 	type args struct {
-		s                interfaces.NodeStatus
-		isErr            bool
-		dj               *core.DynamicJobSpec
-		validErr         *io.ExecutionError
-		validCacheStatus *catalog.Status
-		generateOutputs  bool
+		s               interfaces.NodeStatus
+		isErr           bool
+		dj              *core.DynamicJobSpec
+		validErr        *io.ExecutionError
+		generateOutputs bool
 	}
 	type want struct {
 		p     handler.EPhase
@@ -545,7 +544,7 @@ func Test_dynamicNodeHandler_Handle_SubTaskV1(t *testing.T) {
 	}{
 		{"error", args{isErr: true, dj: createDynamicJobSpec()}, want{isErr: true}},
 		{"success", args{s: interfaces.NodeStatusSuccess, dj: createDynamicJobSpec()}, want{p: handler.EPhaseDynamicRunning, phase: v1alpha1.DynamicNodePhaseExecuting}},
-		{"complete", args{s: interfaces.NodeStatusComplete, dj: createDynamicJobSpec(), generateOutputs: true, validCacheStatus: &validCachePopulatedStatus}, want{p: handler.EPhaseSuccess, phase: v1alpha1.DynamicNodePhaseExecuting, info: execInfoWithTaskNodeMeta}},
+		{"complete", args{s: interfaces.NodeStatusComplete, dj: createDynamicJobSpec(), generateOutputs: true}, want{p: handler.EPhaseSuccess, phase: v1alpha1.DynamicNodePhaseExecuting, info: execInfoOutputOnly}},
 		{"complete-no-outputs", args{s: interfaces.NodeStatusComplete, dj: createDynamicJobSpec(), generateOutputs: false}, want{p: handler.EPhaseRetryableFailure, phase: v1alpha1.DynamicNodePhaseFailing}},
 		{"complete-valid-error-retryable", args{s: interfaces.NodeStatusComplete, dj: createDynamicJobSpec(), validErr: &io.ExecutionError{IsRecoverable: true}, generateOutputs: true}, want{p: handler.EPhaseRetryableFailure, phase: v1alpha1.DynamicNodePhaseFailing, info: execInfoOutputOnly}},
 		{"complete-valid-error", args{s: interfaces.NodeStatusComplete, dj: createDynamicJobSpec(), validErr: &io.ExecutionError{}, generateOutputs: true}, want{p: handler.EPhaseFailed, phase: v1alpha1.DynamicNodePhaseFailing, info: execInfoOutputOnly}},
