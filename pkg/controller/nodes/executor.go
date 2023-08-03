@@ -477,7 +477,6 @@ func (c *recursiveNodeExecutor) WithNodeExecutionContextBuilder(nCtxBuilder inte
 
 // nodeExecutor implements the NodeExecutor interface and is responsible for executing a single node.
 type nodeExecutor struct {
-	asyncCatalog                    catalog.AsyncClient
 	catalog                         catalog.Client
 	clusterID                       string
 	defaultActiveDeadline           time.Duration
@@ -1422,15 +1421,6 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 		return nil, err
 	}
 
-	async, err := catalog.NewAsyncClient(catalogClient, *catalog.GetConfig(), scope.NewSubScope("async_catalog"))
-	if err != nil {
-		return nil, err
-	}
-
-	if err = async.Start(ctx); err != nil {
-		return nil, err
-	}
-
 	nodeScope := scope.NewSubScope("node")
 	metrics := &nodeMetrics{
 		Scope:                          nodeScope,
@@ -1466,7 +1456,6 @@ func NewExecutor(ctx context.Context, nodeConfig config.NodeConfig, store *stora
 	}
 
 	nodeExecutor := &nodeExecutor{
-		asyncCatalog:                    async,
 		catalog:                         catalogClient,
 		clusterID:                       clusterID,
 		defaultActiveDeadline:           nodeConfig.DefaultDeadlines.DefaultNodeActiveDeadline.Duration,
