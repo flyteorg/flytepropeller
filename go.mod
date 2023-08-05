@@ -8,7 +8,7 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/flyteorg/flyteidl v1.5.10
 	github.com/flyteorg/flyteplugins v1.1.8
-	github.com/flyteorg/flytestdlib v1.0.20
+	github.com/flyteorg/flytestdlib v1.0.22
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/go-test/deep v1.0.7
@@ -74,7 +74,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
-	github.com/flyteorg/stow v0.3.6 // indirect
+	github.com/flyteorg/stow v0.3.7 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
@@ -148,12 +148,3 @@ require (
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
 
 replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.5.11-0.20230614183933-d56d4d37bf34
-
-// go mod edit -replace github.com/flyteorg/flytestdlib=github.com/gvashishtha/flytestdlib@master
-// go mod tidy
-// go mod edit -replace github.com/flyteorg/stow=github.com/gvashishtha/stow@78e3158
-// docker build . --platform=linux/amd64 -t gvashishthaanduril/flyteadmin:propeller --push
-
-replace github.com/flyteorg/flytestdlib => github.com/gvashishtha/flytestdlib v0.0.0-20230801174554-0c6829454663
-
-replace github.com/flyteorg/stow => github.com/gvashishtha/stow v0.0.0-20230801152247-78e3158c973a
