@@ -549,9 +549,11 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 	subNodeID := fmt.Sprintf("%s-n%d", nCtx.NodeID(), subNodeIndex)
 	subNodeSpec.ID = subNodeID
 	subNodeSpec.Name = subNodeID
-	subNodeSpec.InputBindings = nil // TODO @hamersaw - mock input bindings to nil to bypass input resolution
-	// alternatively we could mock the input bindings to BindingScalars to bypass input resolution
-	// and mock the datastore to bypass writign input resolution - this seems easier
+	// mock the input bindings for the subNode to nil to bypass input resolution in the
+	// `nodeExecutor.preExecute` function. this is required because this function is the entrypoint
+	// for initial cache lookups. an alternative solution would be to mock the datastore to bypass
+	// writing the inputFile.
+	subNodeSpec.InputBindings = nil
 
 	// TODO - if we want to support more plugin types we need to figure out the best way to store plugin state
 	// currently just mocking based on node phase -> which works for all k8s plugins

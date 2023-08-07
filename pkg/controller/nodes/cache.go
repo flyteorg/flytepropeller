@@ -81,22 +81,6 @@ func updatePhaseCacheInfo(phaseInfo handler.PhaseInfo, cacheStatus *catalog.Stat
 // CheckCatalogCache uses the handler and contexts to check if cached outputs for the current node
 // exist. If the exist, this function also copies the outputs to this node.
 func (n *nodeExecutor) CheckCatalogCache(ctx context.Context, nCtx interfaces.NodeExecutionContext, cacheHandler interfaces.CacheableNodeHandler) (catalog.Entry, error) {
-	// TODO @hamersaw - we don't need this anymore since we're not auto handleDownstream?
-	/*// Check if the outputs file already exists. Since processing downstream nodes is performed
-	// immediately following a cache hit, any failures will result in performing this operation
-	// again during the following node evaluation. In the scenario that outputs were already
-	// written we report a cache hit to ensure correctness in node evaluations.
-	outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
-	metadata, err := nCtx.DataStore().Head(ctx, outputFile)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to check the existence of outputs file. err: '%v'", err)
-		return catalog.Entry{}, errors.Wrapf(err, "failed to check the existence of deck file.")
-	}
-
-	if metadata.Exists() {
-		return catalog.NewCatalogEntry(nil, catalog.NewStatus(core.CatalogCacheStatus_CACHE_HIT, nil)), nil
-	}*/
-
 	catalogKey, err := cacheHandler.GetCatalogKey(ctx, nCtx)
 	if err != nil {
 		return catalog.Entry{}, errors.Wrapf(err, "failed to initialize the catalogKey")
