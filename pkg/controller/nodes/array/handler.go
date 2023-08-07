@@ -543,19 +543,15 @@ func (a *arrayNodeHandler) buildArrayNodeContext(ctx context.Context, nCtx inter
 
 	inputReader := newStaticInputReader(nCtx.InputReader(), inputLiteralMap)
 
-	// if node has not yet started we automatically set to NodePhaseQueued to skip input resolution
-	if nodePhase == v1alpha1.NodePhaseNotYetStarted {
-		// TODO - to supprt fastcache we'll need to override the bindings to BindingScalars for the input resolution on the nCtx
-		// that way resolution is just reading a literal ... but does this still write a file then?!?
-		nodePhase = v1alpha1.NodePhaseQueued
-	}
-
 	// wrap node lookup
 	subNodeSpec := *arrayNode.GetSubNodeSpec()
 
 	subNodeID := fmt.Sprintf("%s-n%d", nCtx.NodeID(), subNodeIndex)
 	subNodeSpec.ID = subNodeID
 	subNodeSpec.Name = subNodeID
+	subNodeSpec.InputBindings = nil // TODO @hamersaw - mock input bindings to nil to bypass input resolution
+	// alternatively we could mock the input bindings to BindingScalars to bypass input resolution
+	// and mock the datastore to bypass writign input resolution - this seems easier
 
 	// TODO - if we want to support more plugin types we need to figure out the best way to store plugin state
 	// currently just mocking based on node phase -> which works for all k8s plugins

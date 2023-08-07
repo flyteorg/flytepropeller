@@ -138,6 +138,7 @@ func (n *nodeExecutor) CheckCatalogCache(ctx context.Context, nCtx interfaces.No
 			return catalog.Entry{}, nodeserrors.Errorf(nodeserrors.IllegalStateError, nCtx.NodeID(), "execution error from a cache output, bad state: %s", ee.String())
 		}
 
+		outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
 		if err := nCtx.DataStore().WriteProtobuf(ctx, outputFile, storage.Options{}, o); err != nil {
 			logger.Errorf(ctx, "failed to write cached value to datastore, err: %s", err.Error())
 			return catalog.Entry{}, err

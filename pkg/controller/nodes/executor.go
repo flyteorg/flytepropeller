@@ -512,40 +512,6 @@ func (c *nodeExecutor) RecordTransitionLatency(ctx context.Context, dag executor
 	}
 }
 
-/*func (c *nodeExecutor) IdempotentRecordEvent(ctx context.Context, nodeEvent *event.NodeExecutionEvent) error {
-	if nodeEvent == nil {
-		return fmt.Errorf("event recording attempt of Nil Node execution event")
-	}
-
-	if nodeEvent.Id == nil {
-		return fmt.Errorf("event recording attempt of with nil node Event ID")
-	}
-
-	logger.Infof(ctx, "Recording NodeEvent [%s] phase[%s]", nodeEvent.GetId().String(), nodeEvent.Phase.String())
-	err := c.nodeRecorder.RecordNodeEvent(ctx, nodeEvent, c.eventConfig)
-	if err != nil {
-		if nodeEvent.GetId().NodeId == v1alpha1.EndNodeID {
-			return nil
-		}
-
-		if eventsErr.IsAlreadyExists(err) {
-			logger.Infof(ctx, "Node event phase: %s, nodeId %s already exist",
-				nodeEvent.Phase.String(), nodeEvent.GetId().NodeId)
-			return nil
-		} else if eventsErr.IsEventAlreadyInTerminalStateError(err) {
-			if IsTerminalNodePhase(nodeEvent.Phase) {
-				// Event was trying to record a different terminal phase for an already terminal event. ignoring.
-				logger.Infof(ctx, "Node event phase: %s, nodeId %s already in terminal phase. err: %s",
-					nodeEvent.Phase.String(), nodeEvent.GetId().NodeId, err.Error())
-				return nil
-			}
-			logger.Warningf(ctx, "Failed to record nodeEvent, error [%s]", err.Error())
-			return errors.Wrapf(errors.IllegalStateError, nodeEvent.Id.NodeId, err, "phase mis-match mismatch between propeller and control plane; Trying to record Node p: %s", nodeEvent.Phase)
-		}
-	}
-	return err
-}*/
-
 func (c *nodeExecutor) recoverInputs(ctx context.Context, nCtx interfaces.NodeExecutionContext,
 	recovered *admin.NodeExecution, recoveredData *admin.NodeExecutionGetDataResponse) (*core.LiteralMap, error) {
 
