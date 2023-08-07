@@ -148,7 +148,6 @@ func TestCheckCatalogCache(t *testing.T) {
 		cacheError          error
 		catalogKey          catalog.Key
 		expectedCacheStatus core.CatalogCacheStatus
-		preWriteOutputFile  bool
 		assertOutputFile    bool
 		outputFileExists    bool
 	}{
@@ -158,7 +157,6 @@ func TestCheckCatalogCache(t *testing.T) {
 			status.Error(codes.NotFound, ""),
 			catalog.Key{},
 			core.CatalogCacheStatus_CACHE_MISS,
-			false,
 			false,
 			false,
 		},
@@ -179,7 +177,6 @@ func TestCheckCatalogCache(t *testing.T) {
 				},
 			},
 			core.CatalogCacheStatus_CACHE_HIT,
-			false,
 			true,
 			true,
 		},
@@ -192,19 +189,8 @@ func TestCheckCatalogCache(t *testing.T) {
 			nil,
 			catalog.Key{},
 			core.CatalogCacheStatus_CACHE_HIT,
-			false,
 			true,
 			false,
-		},
-		{
-			"OutputsAlreadyExist",
-			catalog.Entry{},
-			nil,
-			catalog.Key{},
-			core.CatalogCacheStatus_CACHE_HIT,
-			true,
-			true,
-			true,
 		},
 	}
 
@@ -243,13 +229,6 @@ func TestCheckCatalogCache(t *testing.T) {
 				metrics: metrics,
 			}
 			nCtx := setupCacheableNodeExecutionContext(dataStore, nil)
-
-			if test.preWriteOutputFile {
-				// write mock data to outputs
-				outputFile := v1alpha1.GetOutputsFile(nCtx.NodeStatus().GetOutputDir())
-				err = nCtx.DataStore().WriteProtobuf(context.TODO(), outputFile, storage.Options{}, &core.LiteralMap{})
-				assert.NoError(t, err)
-			}
 
 			// execute catalog cache check
 			cacheEntry, err := nodeExecutor.CheckCatalogCache(context.TODO(), nCtx, cacheableHandler)
