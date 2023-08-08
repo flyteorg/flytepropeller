@@ -295,6 +295,18 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 
 			retryAttempt := subNodeStatus.GetAttempts()
 
+			// fastcache will not emit task events for cache hits. we need to manually detect a
+			// transition to `SUCCEEDED` and add an `ExternalResourceInfo` for it.
+			if cacheStatus == idlcore.CatalogCacheStatus_CACHE_HIT && len(arrayEventRecorder.TaskEvents()) == 0 {
+				externalResources = append(externalResources, &event.ExternalResourceInfo{
+					ExternalId:   buildSubNodeID(nCtx, i, retryAttempt),
+					Index:        uint32(i),
+					RetryAttempt: retryAttempt,
+					Phase:        idlcore.TaskExecution_SUCCEEDED,
+					CacheStatus:  cacheStatus,
+				})
+			}
+
 			for _, taskExecutionEvent := range arrayEventRecorder.TaskEvents() {
 				for _, log := range taskExecutionEvent.Logs {
 					log.Name = fmt.Sprintf("%s-%d", log.Name, i)
@@ -476,6 +488,7 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			arrayNodeState.TaskPhaseVersion = taskPhaseVersion + 1
 		}
 
+		fmt.Printf("HAMERSAW - sending event with taskPhase %+v and version %d\n", taskPhase, taskPhaseVersion)
 		taskExecutionEvent, err := buildTaskExecutionEvent(ctx, nCtx, taskPhase, taskPhaseVersion, externalResources)
 		if err != nil {
 			return handler.UnknownTransition, err
