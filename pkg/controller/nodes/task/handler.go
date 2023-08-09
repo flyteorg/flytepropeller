@@ -83,10 +83,10 @@ func getPluginMetricKey(pluginID, taskType string) string {
 	return taskType + "_" + pluginID
 }
 
-func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference, deckPath *storage.DataReference, entry catalog.Entry) {
+func (p *pluginRequestedTransition) CacheHit(outputPath storage.DataReference, deckPath *storage.DataReference, spanPath *storage.DataReference, entry catalog.Entry) {
 	p.ttype = handler.TransitionTypeEphemeral
 	p.pInfo = pluginCore.PhaseInfoSuccess(nil)
-	p.ObserveSuccess(outputPath, deckPath, &event.TaskNodeMetadata{CacheStatus: entry.GetStatus().GetCacheStatus(), CatalogKey: entry.GetStatus().GetMetadata()})
+	p.ObserveSuccess(outputPath, deckPath, spanPath, &event.TaskNodeMetadata{CacheStatus: entry.GetStatus().GetCacheStatus(), CatalogKey: entry.GetStatus().GetMetadata()})
 }
 
 func (p *pluginRequestedTransition) PopulateCacheInfo(entry catalog.Entry) {
@@ -156,10 +156,11 @@ func (p *pluginRequestedTransition) FinalTaskEvent(input ToTaskExecutionEventInp
 	return ToTaskExecutionEvent(input)
 }
 
-func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference, deckPath *storage.DataReference, taskMetadata *event.TaskNodeMetadata) {
+func (p *pluginRequestedTransition) ObserveSuccess(outputPath storage.DataReference, deckPath *storage.DataReference, spanPath *storage.DataReference, taskMetadata *event.TaskNodeMetadata) {
 	p.execInfo.OutputInfo = &handler.OutputInfo{
 		OutputURI: outputPath,
 		DeckURI:   deckPath,
+		SpanURI:   spanPath,
 	}
 
 	p.execInfo.TaskNodeInfo = &handler.TaskNodeInfo{
@@ -503,6 +504,7 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 				})
 		} else {
 			var deckURI *storage.DataReference
+			var spanURI *storage.DataReference
 			if tCtx.ow.GetReader() != nil {
 				exists, err := tCtx.ow.GetReader().DeckExists(ctx)
 				if err != nil {
@@ -512,8 +514,16 @@ func (t Handler) invokePlugin(ctx context.Context, p pluginCore.Plugin, tCtx *ta
 					deckURIValue := tCtx.ow.GetDeckPath()
 					deckURI = &deckURIValue
 				}
+				exists, err = tCtx.ow.GetReader().SpanExists(ctx)
+				if err != nil {
+					logger.Errorf(ctx, "Failed to check span file existence. Error: %v", err)
+					return pluginTrns, regErrors.Wrapf(err, "failed to check existence of span file")
+				} else if exists {
+					spanURIValue := tCtx.ow.GetSpanPath()
+					spanURI = &spanURIValue
+				}
 			}
-			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), deckURI,
+			pluginTrns.ObserveSuccess(tCtx.ow.GetOutputPath(), deckURI, spanURI,
 				&event.TaskNodeMetadata{
 					CacheStatus:   cacheStatus.GetCacheStatus(),
 					CatalogKey:    cacheStatus.GetMetadata(),
@@ -625,7 +635,7 @@ func (t Handler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContex
 					return handler.UnknownTransition, err
 				}
 
-				pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), nil, entry)
+				pluginTrns.CacheHit(tCtx.ow.GetOutputPath(), nil, nil, entry)
 			} else {
 				logger.Infof(ctx, "No CacheHIT. Status [%s]", entry.GetStatus().GetCacheStatus().String())
 				pluginTrns.PopulateCacheInfo(entry)

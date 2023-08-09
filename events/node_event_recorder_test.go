@@ -24,6 +24,7 @@ func getReferenceNodeEv() *event.NodeExecutionEvent {
 			OutputUri: referenceURI,
 		},
 		DeckUri: deckURI,
+		SpanUri: spanURI,
 	}
 }
 
@@ -34,6 +35,7 @@ func getRawOutputNodeEv() *event.NodeExecutionEvent {
 			OutputData: outputData,
 		},
 		DeckUri: deckURI,
+		SpanUri: spanURI,
 	}
 }
 
@@ -82,6 +84,7 @@ func TestRecordNodeEvent_Success_InlineOutputs(t *testing.T) {
 	}
 	err := recorder.RecordNodeEvent(ctx, getReferenceNodeEv(), inlineEventConfig)
 	assert.Equal(t, deckURI, nodeEvent.DeckUri)
+	assert.Equal(t, spanURI, nodeEvent.SpanUri)
 	assert.NoError(t, err)
 }
 

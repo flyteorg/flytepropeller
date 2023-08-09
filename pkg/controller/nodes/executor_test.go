@@ -56,6 +56,7 @@ var signalClient = &gatemocks.SignalServiceClient{}
 const taskID = "tID"
 const inputsPath = "inputs.pb"
 const deckPath = "out/deck.html"
+const spanPath = "out/span.pb"
 const outputsPath = "out/outputs.pb"
 const testClusterID = "C1"
 
@@ -2074,6 +2075,7 @@ func TestRecover(t *testing.T) {
 						OutputUri: "outputuri.pb",
 					},
 					DeckUri: deckPath,
+					SpanUri: spanPath,
 				},
 			}, nil)
 
@@ -2086,6 +2088,8 @@ func TestRecover(t *testing.T) {
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
 		metadata := existsMetadata{}
 		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckPath)).
+			Return(&metadata, nil)
+		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(spanPath)).
 			Return(&metadata, nil)
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
 			return reference.String() == inputsPath || reference.String() == outputsPath
@@ -2221,6 +2225,7 @@ func TestRecover(t *testing.T) {
 						},
 					},
 					DeckUri: deckPath,
+					SpanUri: spanPath,
 				},
 			}, nil)
 
@@ -2252,6 +2257,8 @@ func TestRecover(t *testing.T) {
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
 		metadata := existsMetadata{}
 		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckPath)).
+			Return(&metadata, nil)
+		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(spanPath)).
 			Return(&metadata, nil)
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
 			return reference.String() == inputsPath || reference.String() == outputsPath
@@ -2305,6 +2312,7 @@ func TestRecover(t *testing.T) {
 						},
 					},
 					DeckUri: deckPath,
+					SpanUri: spanPath,
 				},
 			}, nil)
 
@@ -2317,6 +2325,8 @@ func TestRecover(t *testing.T) {
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
 		metadata := existsMetadata{}
 		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckPath)).
+			Return(&metadata, nil)
+		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(spanPath)).
 			Return(&metadata, nil)
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
 			return reference.String() == inputsPath || reference.String() == outputsPath
@@ -2388,6 +2398,7 @@ func TestRecover(t *testing.T) {
 						OutputUri: "outputuri.pb",
 					},
 					DeckUri: deckPath,
+					SpanUri: spanPath,
 				},
 			}, nil)
 
@@ -2400,7 +2411,8 @@ func TestRecover(t *testing.T) {
 		metadata := existsMetadata{}
 		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckPath)).
 			Return(&metadata, nil)
-
+		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(spanPath)).
+			Return(&metadata, nil)
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
 			return reference.String() == inputsPath || reference.String() == outputsPath
 		}), mock.Anything,
@@ -2434,6 +2446,7 @@ func TestRecover(t *testing.T) {
 						OutputUri: "outputuri.pb",
 					},
 					DeckUri: deckPath,
+					SpanUri: spanPath,
 				},
 			}, nil)
 
@@ -2445,6 +2458,8 @@ func TestRecover(t *testing.T) {
 		mockPBStore := &storageMocks.ComposedProtobufStore{}
 		metadata := existsMetadata{}
 		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(deckPath)).
+			Return(&metadata, nil)
+		mockPBStore.OnHeadMatch(mock.MatchedBy(func(ctx context.Context) bool { return true }), storage.DataReference(spanPath)).
 			Return(&metadata, nil)
 		mockPBStore.On("WriteProtobuf", mock.Anything, mock.MatchedBy(func(reference storage.DataReference) bool {
 			return reference.String() == inputsPath || reference.String() == outputsPath

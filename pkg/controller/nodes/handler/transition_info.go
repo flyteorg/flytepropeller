@@ -58,6 +58,7 @@ type ArrayNodeInfo struct {
 type OutputInfo struct {
 	OutputURI storage.DataReference
 	DeckURI   *storage.DataReference
+	SpanURI   *storage.DataReference
 }
 
 type ExecutionInfo struct {
