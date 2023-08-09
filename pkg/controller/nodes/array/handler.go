@@ -488,7 +488,6 @@ func (a *arrayNodeHandler) Handle(ctx context.Context, nCtx interfaces.NodeExecu
 			arrayNodeState.TaskPhaseVersion = taskPhaseVersion + 1
 		}
 
-		fmt.Printf("HAMERSAW - sending event with taskPhase %+v and version %d\n", taskPhase, taskPhaseVersion)
 		taskExecutionEvent, err := buildTaskExecutionEvent(ctx, nCtx, taskPhase, taskPhaseVersion, externalResources)
 		if err != nil {
 			return handler.UnknownTransition, err
