@@ -145,9 +145,11 @@ func executeRootCmd(baseCtx context.Context, cfg *config2.Config) error {
 	}
 
 	handlers := map[string]http.Handler{
-		"/k8smetrics": promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{
-			ErrorHandling: promhttp.HTTPErrorOnError,
-		})
+		"/k8smetrics": promhttp.HandlerFor(metrics.Registry,
+			promhttp.HandlerOpts{
+				ErrorHandling: promhttp.HTTPErrorOnError,
+			},
+		),
 	}
 
 	g, childCtx := errgroup.WithContext(ctx)
