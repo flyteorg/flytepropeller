@@ -73,7 +73,7 @@ func buildTaskExecutionEvent(_ context.Context, nCtx interfaces.NodeExecutionCon
 			ExternalResources: externalResources,
 		},
 		TaskType:     "k8s-array",
-		EventVersion: nCtx.ExecutionContext().GetEventVersion(),
+		EventVersion: int32(nCtx.ExecutionContext().GetEventVersion()),
 	}, nil
 }
 
