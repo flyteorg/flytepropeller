@@ -5,10 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/errors"
-	"github.com/flyteorg/flytepropeller/pkg/controller/config"
-	"github.com/flyteorg/flytepropeller/pkg/utils"
-	"github.com/flyteorg/flytestdlib/logger"
 	eventsv1 "k8s.io/api/events/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -16,6 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
 	informerEventsv1 "k8s.io/client-go/informers/events/v1"
+	"k8s.io/client-go/kubernetes"
+
+	"github.com/flyteorg/flytestdlib/logger"
 )
 
 type EventWatcher interface {
@@ -94,16 +93,12 @@ func (e *eventWatcher) List(objectNsName types.NamespacedName, createdAfter time
 	return result
 }
 
-func NewEventWatcher(ctx context.Context, gvk schema.GroupVersionKind) (EventWatcher, error) {
-	kubeClient, _, err := utils.GetKubeConfig(ctx, config.GetConfig())
-	if err != nil {
-		return nil, errors.Wrapf(errors.PluginInitializationFailed, err, "failed to get kube client")
-	}
+func NewEventWatcher(ctx context.Context, gvk schema.GroupVersionKind, kubeClientset kubernetes.Interface) (EventWatcher, error) {
 	objectSelector := func(opts *metav1.ListOptions) {
 		opts.FieldSelector = fields.OneTermEqualSelector("regarding.kind", gvk.Kind).String()
 	}
 	eventInformer := informers.NewSharedInformerFactoryWithOptions(
-		kubeClient, 0, informers.WithTweakListOptions(objectSelector)).Events().V1().Events()
+		kubeClientset, 0, informers.WithTweakListOptions(objectSelector)).Events().V1().Events()
 	watcher := &eventWatcher{
 		informer:     eventInformer,
 		objectEvents: make(map[types.NamespacedName]eventSet),
