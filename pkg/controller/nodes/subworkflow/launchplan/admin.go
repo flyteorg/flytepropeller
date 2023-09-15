@@ -47,6 +47,10 @@ type executionCacheItem struct {
 	ExecutionOutputs *core.LiteralMap
 }
 
+func (e executionCacheItem) IsTerminal() bool {
+	return e.ExecutionClosure.Phase == core.WorkflowExecution_ABORTED || e.ExecutionClosure.Phase == core.WorkflowExecution_FAILED || e.ExecutionClosure.Phase == core.WorkflowExecution_SUCCEEDED
+}
+
 func (e executionCacheItem) ID() string {
 	return e.String()
 }
