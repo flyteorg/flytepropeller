@@ -48,6 +48,9 @@ type executionCacheItem struct {
 }
 
 func (e executionCacheItem) IsTerminal() bool {
+	if e.ExecutionClosure == nil {
+		return false
+	}
 	return e.ExecutionClosure.Phase == core.WorkflowExecution_ABORTED || e.ExecutionClosure.Phase == core.WorkflowExecution_FAILED || e.ExecutionClosure.Phase == core.WorkflowExecution_SUCCEEDED
 }
 
