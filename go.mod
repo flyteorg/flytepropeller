@@ -147,6 +147,7 @@ require (
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
 
-replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.5.11-0.20230614183933-d56d4d37bf34
+// TODO: update version references once dependent PRs are merged
+replace github.com/flyteorg/flyteidl => /Users/andrew/dev/flyteorg/flyteidl
 
 replace github.com/flyteorg/flyteplugins => /Users/andrew/dev/flyteorg/flyteplugins

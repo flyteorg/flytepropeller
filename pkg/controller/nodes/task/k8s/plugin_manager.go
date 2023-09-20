@@ -352,19 +352,19 @@ func (e PluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutio
 	// Add events since last update
 	version := transition.Info().Version()
 	lastEventUpdate := pluginState.LastEventUpdate
-	if o != nil {
+	if e.eventWatcher != nil && o != nil {
 		nsName := k8stypes.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
 		recentEvents := e.eventWatcher.List(nsName, lastEventUpdate)
-		for _, event := range recentEvents {
-			logger.Infof(ctx, "Observed event [%s:%s] for object [%s]", event.Reason, event.Note, nsName.String())
-			tCtx.EventsRecorder().RecordRaw(ctx, pluginsCore.PhaseInfoWithTaskInfo(
-				transition.Info().Phase(),
-				version,
-				event.Note,
-				&pluginsCore.TaskInfo{OccurredAt: &event.CreationTimestamp.Time},
-			))
+		if len(recentEvents) > 0 {
+			taskInfo := transition.Info().Info()
+			taskInfo.AdditionalReasons = make([]pluginsCore.ReasonInfo, 0, len(recentEvents))
+			for _, event := range recentEvents {
+				taskInfo.AdditionalReasons = append(taskInfo.AdditionalReasons,
+					pluginsCore.ReasonInfo{Reason: event.Note, OccurredAt: &event.CreatedAt})
+				lastEventUpdate = event.CreatedAt
+			}
+			// Bump the version to ensure newly added events are picked up
 			version += 1
-			lastEventUpdate = event.CreationTimestamp.Time
 		}
 	}
 
@@ -639,11 +639,12 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		return nil, err
 	}
 
-	// TODO: make configurable and/or fail open
-	// TODO: cache subset of event info we need?
-	eventWatcher, err := NewEventWatcher(ctx, gvk, kubeClientset)
-	if err != nil {
-		return nil, err
+	var eventWatcher EventWatcher
+	if config.GetK8sPluginConfig().SendObjectEvents {
+		eventWatcher, err = NewEventWatcher(ctx, gvk, kubeClientset)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Construct the collector that will emit a gauge indicating current levels of the resource that this K8s plugin operates on

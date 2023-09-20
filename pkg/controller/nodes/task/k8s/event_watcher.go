@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"sort"
+	"sync"
 	"time"
 
 	eventsv1 "k8s.io/api/events/v1"
@@ -18,77 +19,84 @@ import (
 )
 
 type EventWatcher interface {
-	List(objectNsName types.NamespacedName, createdAfter time.Time) []*eventsv1.Event
+	List(objectNsName types.NamespacedName, createdAfter time.Time) []*EventInfo
 }
 
 type eventWatcher struct {
-	ctx          context.Context
-	informer     informerEventsv1.EventInformer
-	objectEvents map[types.NamespacedName]eventSet
+	informer    informerEventsv1.EventInformer
+	objectCache sync.Map
 }
 
-type eventSet map[types.NamespacedName]*eventsv1.Event
+type objectEvents struct {
+	mu         sync.RWMutex
+	eventInfos map[types.NamespacedName]*EventInfo
+}
+
+// EventInfo stores detail about the event and the timestamp of the first occurrence.
+// All other fields are thrown away to conserve space.
+type EventInfo struct {
+	Reason     string
+	Note       string
+	CreatedAt  time.Time
+	RecordedAt time.Time
+}
 
 func (e *eventWatcher) OnAdd(obj interface{}) {
 	event := obj.(*eventsv1.Event)
 	objectNsName := types.NamespacedName{Namespace: event.Regarding.Namespace, Name: event.Regarding.Name}
 	eventNsName := types.NamespacedName{Namespace: event.Namespace, Name: event.Name}
-	events, ok := e.objectEvents[objectNsName]
-	if !ok {
-		events = make(eventSet)
-		e.objectEvents[objectNsName] = events
+	v, _ := e.objectCache.LoadOrStore(objectNsName, &objectEvents{
+		eventInfos: map[types.NamespacedName]*EventInfo{},
+	})
+	objEvents := v.(*objectEvents)
+	objEvents.mu.Lock()
+	defer objEvents.mu.Unlock()
+	objEvents.eventInfos[eventNsName] = &EventInfo{
+		Reason:     event.Reason,
+		Note:       event.Note,
+		CreatedAt:  event.CreationTimestamp.Time,
+		RecordedAt: time.Now(),
 	}
-	if _, ok := events[eventNsName]; ok {
-		logger.Warnf(e.ctx, "Event add [%s/%s] received for object [%s/%s] that already exists in the cache",
-			event.Namespace, event.Name, event.Regarding.Namespace, event.Regarding.Name)
-	}
-	events[eventNsName] = event
 }
 
 func (e *eventWatcher) OnUpdate(_, newObj interface{}) {
-	event := newObj.(*eventsv1.Event)
-	objectNsName := types.NamespacedName{Namespace: event.Regarding.Namespace, Name: event.Regarding.Name}
-	eventNsName := types.NamespacedName{Namespace: event.Namespace, Name: event.Name}
-	events, ok := e.objectEvents[objectNsName]
-	if !ok {
-		logger.Warn(e.ctx, "Event update [%s/%s] received for object [%s/%s] that does not exist in the cache",
-			event.Namespace, event.Name, event.Regarding.Namespace, event.Regarding.Name)
-		events = make(eventSet)
-		e.objectEvents[objectNsName] = events
-	}
-	events[eventNsName] = event
+	// Dropping event updates since we only care about the creation
 }
 
 func (e *eventWatcher) OnDelete(obj interface{}) {
 	event := obj.(*eventsv1.Event)
 	objectNsName := types.NamespacedName{Namespace: event.Regarding.Namespace, Name: event.Regarding.Name}
 	eventNsName := types.NamespacedName{Namespace: event.Namespace, Name: event.Name}
-	events, ok := e.objectEvents[objectNsName]
-	if !ok {
-		logger.Warn(e.ctx, "Event delete [%s/%s] received for object [%s/%s] that does not exist in the cache",
-			event.Namespace, event.Name, event.Regarding.Namespace, event.Regarding.Name)
-		return
-	}
-	delete(events, eventNsName)
-	if len(events) == 0 {
-		delete(e.objectEvents, objectNsName)
+	v, _ := e.objectCache.LoadOrStore(objectNsName, &objectEvents{})
+	objEvents := v.(*objectEvents)
+	objEvents.mu.Lock()
+	defer objEvents.mu.Unlock()
+	delete(objEvents.eventInfos, eventNsName)
+	if len(objEvents.eventInfos) == 0 {
+		e.objectCache.Delete(objectNsName)
 	}
 }
 
 // List returns all events for the given object that were created after the given time, sorted by creation time.
-func (e *eventWatcher) List(objectNsName types.NamespacedName, createdAfter time.Time) []*eventsv1.Event {
-	events, ok := e.objectEvents[objectNsName]
-	if !ok {
-		return []*eventsv1.Event{}
+func (e *eventWatcher) List(objectNsName types.NamespacedName, createdAfter time.Time) []*EventInfo {
+	v, _ := e.objectCache.Load(objectNsName)
+	if v == nil {
+		return []*EventInfo{}
 	}
-	result := make([]*eventsv1.Event, 0, len(events))
-	for _, event := range events {
-		if event.CreationTimestamp.Time.After(createdAfter) {
-			result = append(result, event)
+	objEvents := v.(*objectEvents)
+	objEvents.mu.RLock()
+	defer objEvents.mu.RUnlock()
+	// This logic assumes that cardinality of events per object is relatively low, so iterating over them to find
+	// recent ones and sorting the results is not too expensive.
+	result := make([]*EventInfo, 0, len(objEvents.eventInfos))
+	for _, eventInfo := range objEvents.eventInfos {
+		if eventInfo.CreatedAt.After(createdAfter) {
+			result = append(result, eventInfo)
 		}
 	}
 	sort.SliceStable(result, func(i, j int) bool {
-		return result[i].CreationTimestamp.Time.Before(result[j].CreationTimestamp.Time)
+		return result[i].CreatedAt.Before(result[j].CreatedAt) ||
+			(result[i].CreatedAt.Equal(result[j].CreatedAt) && result[i].RecordedAt.Before(result[j].RecordedAt))
 	})
 	return result
 }
@@ -100,8 +108,7 @@ func NewEventWatcher(ctx context.Context, gvk schema.GroupVersionKind, kubeClien
 	eventInformer := informers.NewSharedInformerFactoryWithOptions(
 		kubeClientset, 0, informers.WithTweakListOptions(objectSelector)).Events().V1().Events()
 	watcher := &eventWatcher{
-		informer:     eventInformer,
-		objectEvents: make(map[types.NamespacedName]eventSet),
+		informer: eventInformer,
 	}
 	eventInformer.Informer().AddEventHandler(watcher)
 
