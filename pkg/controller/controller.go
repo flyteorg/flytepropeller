@@ -25,11 +25,11 @@ import (
 	"github.com/flyteorg/flytepropeller/pkg/controller/config"
 	"github.com/flyteorg/flytepropeller/pkg/controller/executors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes"
+	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/catalog"
 	errors3 "github.com/flyteorg/flytepropeller/pkg/controller/nodes/errors"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/factory"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/recovery"
 	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/subworkflow/launchplan"
-	"github.com/flyteorg/flytepropeller/pkg/controller/nodes/task/catalog"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflow"
 	"github.com/flyteorg/flytepropeller/pkg/controller/workflowstore"
 	leader "github.com/flyteorg/flytepropeller/pkg/leaderelection"
@@ -598,9 +598,7 @@ func StartController(ctx context.Context, cfg *config.Config, defaultNamespace s
 	}
 
 	go flyteworkflowInformerFactory.Start(ctx.Done())
-	if flyteK8sConfig.GetK8sPluginConfig().DefaultPodTemplateName != "" {
-		go informerFactory.Start(ctx.Done())
-	}
+	go informerFactory.Start(ctx.Done())
 
 	if err = c.Run(ctx); err != nil {
 		return errors.Wrapf(err, "Error running FlytePropeller.")

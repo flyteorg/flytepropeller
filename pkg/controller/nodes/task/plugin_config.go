@@ -16,6 +16,8 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
+const AgentServiceKey = "agent-service"
+
 var once sync.Once
 
 func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPluginConfig, pr PluginRegistryIface,
@@ -25,8 +27,9 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 	}
 
 	// Register the GRPC plugin after the config is loaded
-	once.Do(func() { agent.RegisterAgentPlugin() })
 	pluginsConfigMeta, err := cfg.GetEnabledPlugins()
+	once.Do(func() { agent.RegisterAgentPlugin() })
+
 	if err != nil {
 		return nil, nil, err
 	}

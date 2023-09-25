@@ -47,6 +47,13 @@ type executionCacheItem struct {
 	ExecutionOutputs *core.LiteralMap
 }
 
+func (e executionCacheItem) IsTerminal() bool {
+	if e.ExecutionClosure == nil {
+		return false
+	}
+	return e.ExecutionClosure.Phase == core.WorkflowExecution_ABORTED || e.ExecutionClosure.Phase == core.WorkflowExecution_FAILED || e.ExecutionClosure.Phase == core.WorkflowExecution_SUCCEEDED
+}
+
 func (e executionCacheItem) ID() string {
 	return e.String()
 }
@@ -192,11 +199,11 @@ func (a *adminLaunchPlanExecutor) Kill(ctx context.Context, executionID *core.Wo
 	}
 	_, err := a.adminClient.TerminateExecution(ctx, req)
 	if err != nil {
-		if status.Code(err) == codes.NotFound {
+		err := evtErr.WrapError(err)
+		if evtErr.IsNotFound(err) {
 			return nil
 		}
 
-		err = evtErr.WrapError(err)
 		if evtErr.IsEventAlreadyInTerminalStateError(err) {
 			return nil
 		}
