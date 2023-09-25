@@ -364,7 +364,7 @@ func (e PluginManager) Handle(ctx context.Context, tCtx pluginsCore.TaskExecutio
 				lastEventUpdate = event.CreatedAt
 			}
 			// Bump the version to ensure newly added events are picked up
-			version += 1
+			version++
 		}
 	}
 
