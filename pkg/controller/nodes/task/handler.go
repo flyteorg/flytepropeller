@@ -534,13 +534,6 @@ func (t Handler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContex
 	ts := nCtx.NodeStateReader().GetTaskNodeState()
 
 	pluginTrns := &pluginRequestedTransition{}
-	defer func() {
-		// increment parallelism if the final pluginTrns is not in a terminal state
-		if pluginTrns != nil && !pluginTrns.pInfo.Phase().IsTerminal() {
-			eCtx := nCtx.ExecutionContext()
-			logger.Infof(ctx, "Parallelism now set to [%d].", eCtx.IncrementParallelism())
-		}
-	}()
 
 	// We will start with the assumption that catalog is disabled
 	pluginTrns.PopulateCacheInfo(catalog.NewFailedCatalogEntry(catalog.NewStatus(core.CatalogCacheStatus_CACHE_DISABLED, nil)))
@@ -695,6 +688,10 @@ func (t Handler) Handle(ctx context.Context, nCtx interfaces.NodeExecutionContex
 		return handler.UnknownTransition, err
 	}
 
+	if pluginTrns != nil && !pluginTrns.pInfo.Phase().IsTerminal() {
+		eCtx := nCtx.ExecutionContext()
+		logger.Infof(ctx, "Parallelism now set to [%d].", eCtx.IncrementParallelism())
+	}
 	return pluginTrns.FinalTransition(ctx)
 }
 
