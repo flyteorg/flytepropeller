@@ -242,6 +242,7 @@ func UpdateNodeStatus(np v1alpha1.NodePhase, p handler.PhaseInfo, n interfaces.N
 		t.SetLastPhaseUpdatedAt(nt.LastPhaseUpdatedAt)
 		t.SetPluginState(nt.PluginState)
 		t.SetPluginStateVersion(nt.PluginStateVersion)
+		t.SetBarrierClockTick(nt.BarrierClockTick)
 		t.SetPreviousNodeExecutionCheckpointPath(nt.PreviousNodeExecutionCheckpointURI)
 		t.SetCleanupOnFailure(nt.CleanupOnFailure)
 	}
