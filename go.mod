@@ -6,8 +6,8 @@ require (
 	github.com/DiSiqueira/GoTree v1.0.1-0.20180907134536-53a8e837f295
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/fatih/color v1.13.0
-	github.com/flyteorg/flyteidl v1.5.13
-	github.com/flyteorg/flyteplugins v1.1.29
+	github.com/flyteorg/flyteidl v1.5.21
+	github.com/flyteorg/flyteplugins v1.1.31
 	github.com/flyteorg/flytestdlib v1.0.24
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-redis/redis v6.15.7+incompatible
@@ -146,8 +146,3 @@ require (
 )
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
-
-// TODO: update version references once dependent PRs are merged
-replace github.com/flyteorg/flyteidl => github.com/andrewwdye/flyteidl v0.0.0-20230921054948-85b9c706f792
-
-replace github.com/flyteorg/flyteplugins => github.com/andrewwdye/flyteplugins v0.0.0-20230921062216-736c1e51c35b
