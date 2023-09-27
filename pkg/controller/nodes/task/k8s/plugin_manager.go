@@ -568,13 +568,8 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 	droppedUpdateCount := labeled.NewCounter("informer_update_dropped", "Update events from informer that have the same resource version", metricsScope)
 	genericCount := labeled.NewCounter("informer_generic", "Generic events from informer", metricsScope)
 
-	gvk, err := getPluginGvk(entry.ResourceToWatch)
-	if err != nil {
-		return nil, err
-	}
-
 	enqueueOwner := iCtx.EnqueueOwner()
-	err = src.Start(
+	err := src.Start(
 		ctx,
 		// Handlers
 		handler.Funcs{
@@ -641,13 +636,18 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 
 	var eventWatcher EventWatcher
 	if config.GetK8sPluginConfig().SendObjectEvents {
-		eventWatcher, err = NewEventWatcher(ctx, gvk, kubeClientset)
+		eventWatcher, err = NewEventWatcher(ctx, entry.ResourceToWatch, kubeClientset)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// Construct the collector that will emit a gauge indicating current levels of the resource that this K8s plugin operates on
+	gvk, err := getPluginGvk(entry.ResourceToWatch)
+	if err != nil {
+		return nil, err
+	}
+
 	pluginInformer, err := getPluginSharedInformer(ctx, kubeClient, entry.ResourceToWatch)
 	if err != nil {
 		return nil, err

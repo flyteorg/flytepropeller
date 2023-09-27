@@ -9,7 +9,7 @@ import (
 	eventsv1 "k8s.io/api/events/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
 	informerEventsv1 "k8s.io/client-go/informers/events/v1"
@@ -22,6 +22,11 @@ type EventWatcher interface {
 	List(objectNsName types.NamespacedName, createdAfter time.Time) []*EventInfo
 }
 
+// eventWatcher is a simple wrapper around the informer that keeps track of outstanding object events.
+// Event lifetime is controlled by kube-apiserver (see --event-ttl flag) and defaults to one hour. As a result,
+// the cache size is bounded by the number of event objects created in the last hour (or otherwise configured ttl).
+// Note that cardinality of per object events is relatively low (10s), while they may occur repeatedly. For example
+// the ImagePullBackOff event may continue to fire, but this is only backed by a single event.
 type eventWatcher struct {
 	informer    informerEventsv1.EventInformer
 	objectCache sync.Map
@@ -101,9 +106,10 @@ func (e *eventWatcher) List(objectNsName types.NamespacedName, createdAfter time
 	return result
 }
 
-func NewEventWatcher(ctx context.Context, gvk schema.GroupVersionKind, kubeClientset kubernetes.Interface) (EventWatcher, error) {
+func NewEventWatcher(ctx context.Context, obj runtime.Object, kubeClientset kubernetes.Interface) (EventWatcher, error) {
+	kind := obj.GetObjectKind().GroupVersionKind().Kind
 	objectSelector := func(opts *metav1.ListOptions) {
-		opts.FieldSelector = fields.OneTermEqualSelector("regarding.kind", gvk.Kind).String()
+		opts.FieldSelector = fields.OneTermEqualSelector("regarding.kind", kind).String()
 	}
 	eventInformer := informers.NewSharedInformerFactoryWithOptions(
 		kubeClientset, 0, informers.WithTweakListOptions(objectSelector)).Events().V1().Events()
@@ -113,7 +119,7 @@ func NewEventWatcher(ctx context.Context, gvk schema.GroupVersionKind, kubeClien
 	eventInformer.Informer().AddEventHandler(watcher)
 
 	go eventInformer.Informer().Run(ctx.Done())
-	logger.Debugf(ctx, "Started informer for [%s] events", gvk.Kind)
+	logger.Debugf(ctx, "Started informer for [%s] events", kind)
 
 	return watcher, nil
 }
