@@ -28,7 +28,7 @@ func WranglePluginsAndGenerateFinalList(ctx context.Context, cfg *config.TaskPlu
 
 	// Register the GRPC plugin after the config is loaded
 	pluginsConfigMeta, err := cfg.GetEnabledPlugins()
-	once.Do(func() { agent.RegisterAgentPlugin() })
+	once.Do(func() { agent.RegisterAgentPlugin(pluginsConfigMeta.AllDefaultForTaskTypes[AgentServiceKey]) })
 
 	if err != nil {
 		return nil, nil, err

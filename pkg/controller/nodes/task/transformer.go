@@ -128,15 +128,15 @@ func ToTaskExecutionEvent(input ToTaskExecutionEventInputs) (*event.TaskExecutio
 		}
 	}
 
-	var reasons []*event.BatchedReason
+	var reasons []*event.EventReason
 	if len(input.Info.Reason()) > 0 {
-		reasons = append(reasons, &event.BatchedReason{
+		reasons = append(reasons, &event.EventReason{
 			Reason:     input.Info.Reason(),
 			OccurredAt: occurredAt,
 		})
 	}
 	for _, reasonInfo := range input.Info.Info().AdditionalReasons {
-		reasons = append(reasons, &event.BatchedReason{
+		reasons = append(reasons, &event.EventReason{
 			Reason:     reasonInfo.Reason,
 			OccurredAt: timestamppb.New(*reasonInfo.OccurredAt),
 		})
