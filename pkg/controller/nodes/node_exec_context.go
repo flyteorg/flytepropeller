@@ -309,7 +309,7 @@ func (c *nodeExecutor) BuildNodeExecutionContext(ctx context.Context, executionC
 		}
 	} else {
 		// Else a node is not considered interruptible if the system failures have exceeded the configured threshold
-		if interruptible && isAboveInterruptibleFailureThreshold(s.GetSystemFailures(), c.maxNodeRetriesForSystemFailures, c.interruptibleFailureThreshold) {
+		if interruptible && isAboveInterruptibleFailureThreshold(s.GetSystemFailures(), c.maxNodeRetriesForSystemFailures+1, c.interruptibleFailureThreshold) {
 			interruptible = false
 			c.metrics.InterruptedThresholdHit.Inc(ctx)
 		}
