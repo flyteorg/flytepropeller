@@ -634,20 +634,20 @@ func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry 
 		return nil, err
 	}
 
+	gvk, err := getPluginGvk(entry.ResourceToWatch)
+	if err != nil {
+		return nil, err
+	}
+
 	var eventWatcher EventWatcher
 	if config.GetK8sPluginConfig().SendObjectEvents {
-		eventWatcher, err = NewEventWatcher(ctx, entry.ResourceToWatch, kubeClientset)
+		eventWatcher, err = NewEventWatcher(ctx, gvk, kubeClientset)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// Construct the collector that will emit a gauge indicating current levels of the resource that this K8s plugin operates on
-	gvk, err := getPluginGvk(entry.ResourceToWatch)
-	if err != nil {
-		return nil, err
-	}
-
 	pluginInformer, err := getPluginSharedInformer(ctx, kubeClient, entry.ResourceToWatch)
 	if err != nil {
 		return nil, err

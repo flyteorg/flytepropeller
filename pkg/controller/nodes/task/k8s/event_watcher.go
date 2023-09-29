@@ -9,7 +9,7 @@ import (
 	eventsv1 "k8s.io/api/events/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
 	informerEventsv1 "k8s.io/client-go/informers/events/v1"
@@ -106,10 +106,9 @@ func (e *eventWatcher) List(objectNsName types.NamespacedName, createdAfter time
 	return result
 }
 
-func NewEventWatcher(ctx context.Context, obj runtime.Object, kubeClientset kubernetes.Interface) (EventWatcher, error) {
-	kind := obj.GetObjectKind().GroupVersionKind().Kind
+func NewEventWatcher(ctx context.Context, gvk schema.GroupVersionKind, kubeClientset kubernetes.Interface) (EventWatcher, error) {
 	objectSelector := func(opts *metav1.ListOptions) {
-		opts.FieldSelector = fields.OneTermEqualSelector("regarding.kind", kind).String()
+		opts.FieldSelector = fields.OneTermEqualSelector("regarding.kind", gvk.Kind).String()
 	}
 	eventInformer := informers.NewSharedInformerFactoryWithOptions(
 		kubeClientset, 0, informers.WithTweakListOptions(objectSelector)).Events().V1().Events()
@@ -119,7 +118,7 @@ func NewEventWatcher(ctx context.Context, obj runtime.Object, kubeClientset kube
 	eventInformer.Informer().AddEventHandler(watcher)
 
 	go eventInformer.Informer().Run(ctx.Done())
-	logger.Debugf(ctx, "Started informer for [%s] events", kind)
+	logger.Debugf(ctx, "Started informer for [%s] events", gvk.Kind)
 
 	return watcher, nil
 }
