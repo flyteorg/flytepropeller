@@ -436,7 +436,7 @@ type ExecutableNode interface {
 	GetOutputAlias() []Alias
 	GetInputBindings() []*Binding
 	GetResources() *v1.ResourceRequirements
-	GetResourceExtensions() *core.ResourceExtensions
+	GetExtendedResources() *core.ExtendedResources
 	GetConfig() *v1.ConfigMap
 	GetRetryStrategy() *RetryStrategy
 	GetExecutionDeadline() *time.Duration

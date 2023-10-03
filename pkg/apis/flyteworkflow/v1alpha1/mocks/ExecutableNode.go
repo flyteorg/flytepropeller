@@ -188,6 +188,40 @@ func (_m *ExecutableNode) GetExecutionDeadline() *time.Duration {
 	return r0
 }
 
+type ExecutableNode_GetExtendedResources struct {
+	*mock.Call
+}
+
+func (_m ExecutableNode_GetExtendedResources) Return(_a0 *core.ExtendedResources) *ExecutableNode_GetExtendedResources {
+	return &ExecutableNode_GetExtendedResources{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ExecutableNode) OnGetExtendedResources() *ExecutableNode_GetExtendedResources {
+	c_call := _m.On("GetExtendedResources")
+	return &ExecutableNode_GetExtendedResources{Call: c_call}
+}
+
+func (_m *ExecutableNode) OnGetExtendedResourcesMatch(matchers ...interface{}) *ExecutableNode_GetExtendedResources {
+	c_call := _m.On("GetExtendedResources", matchers...)
+	return &ExecutableNode_GetExtendedResources{Call: c_call}
+}
+
+// GetExtendedResources provides a mock function with given fields:
+func (_m *ExecutableNode) GetExtendedResources() *core.ExtendedResources {
+	ret := _m.Called()
+
+	var r0 *core.ExtendedResources
+	if rf, ok := ret.Get(0).(func() *core.ExtendedResources); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*core.ExtendedResources)
+		}
+	}
+
+	return r0
+}
+
 type ExecutableNode_GetGateNode struct {
 	*mock.Call
 }
@@ -380,40 +414,6 @@ func (_m *ExecutableNode) GetOutputAlias() []v1alpha1.Alias {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]v1alpha1.Alias)
-		}
-	}
-
-	return r0
-}
-
-type ExecutableNode_GetResourceExtensions struct {
-	*mock.Call
-}
-
-func (_m ExecutableNode_GetResourceExtensions) Return(_a0 *core.ResourceExtensions) *ExecutableNode_GetResourceExtensions {
-	return &ExecutableNode_GetResourceExtensions{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *ExecutableNode) OnGetResourceExtensions() *ExecutableNode_GetResourceExtensions {
-	c_call := _m.On("GetResourceExtensions")
-	return &ExecutableNode_GetResourceExtensions{Call: c_call}
-}
-
-func (_m *ExecutableNode) OnGetResourceExtensionsMatch(matchers ...interface{}) *ExecutableNode_GetResourceExtensions {
-	c_call := _m.On("GetResourceExtensions", matchers...)
-	return &ExecutableNode_GetResourceExtensions{Call: c_call}
-}
-
-// GetResourceExtensions provides a mock function with given fields:
-func (_m *ExecutableNode) GetResourceExtensions() *core.ResourceExtensions {
-	ret := _m.Called()
-
-	var r0 *core.ResourceExtensions
-	if rf, ok := ret.Get(0).(func() *core.ResourceExtensions); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*core.ResourceExtensions)
 		}
 	}
 

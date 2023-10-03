@@ -92,25 +92,25 @@ func (in *NodeMetadata) DeepCopyInto(out *NodeMetadata) {
 	// Once we figure out the autogenerate story we can replace this
 }
 
-type ResourceExtensions struct {
-	*core.ResourceExtensions
+type ExtendedResources struct {
+	*core.ExtendedResources
 }
 
-func (in *ResourceExtensions) MarshalJSON() ([]byte, error) {
+func (in *ExtendedResources) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
-	if err := marshaler.Marshal(&buf, in.ResourceExtensions); err != nil {
+	if err := marshaler.Marshal(&buf, in.ExtendedResources); err != nil {
 		return nil, err
 	}
 
 	return buf.Bytes(), nil
 }
 
-func (in *ResourceExtensions) UnmarshalJSON(b []byte) error {
-	in.ResourceExtensions = &core.ResourceExtensions{}
-	return jsonpb.Unmarshal(bytes.NewReader(b), in.ResourceExtensions)
+func (in *ExtendedResources) UnmarshalJSON(b []byte) error {
+	in.ExtendedResources = &core.ExtendedResources{}
+	return jsonpb.Unmarshal(bytes.NewReader(b), in.ExtendedResources)
 }
 
-func (in *ResourceExtensions) DeepCopyInto(out *ResourceExtensions) {
+func (in *ExtendedResources) DeepCopyInto(out *ExtendedResources) {
 	*out = *in
 	// We do not manipulate the object, so its ok
 	// Once we figure out the autogenerate story we can replace this
@@ -161,7 +161,7 @@ type NodeSpec struct {
 	// If specified, includes overrides for extended resources to allocate to the
 	// node.
 	// +optional
-	ResourceExtensions *ResourceExtensions `json:"resourceExtensions,omitempty" protobuf:"bytes,20,opt,name=resourceExtensions"`
+	ExtendedResources *ExtendedResources `json:"extendedResources,omitempty" protobuf:"bytes,20,opt,name=extendedResources"`
 	// If specified, the pod's tolerations.
 	// +optional
 	Tolerations []typesv1.Toleration `json:"tolerations,omitempty" protobuf:"bytes,22,opt,name=tolerations"`
@@ -210,11 +210,11 @@ func (in *NodeSpec) GetResources() *typesv1.ResourceRequirements {
 	return in.Resources
 }
 
-func (in *NodeSpec) GetResourceExtensions() *core.ResourceExtensions {
-	if in.ResourceExtensions == nil {
+func (in *NodeSpec) GetExtendedResources() *core.ExtendedResources {
+	if in.ExtendedResources == nil {
 		return nil
 	}
-	return in.ResourceExtensions.ResourceExtensions
+	return in.ExtendedResources.ExtendedResources
 }
 
 func (in *NodeSpec) GetOutputAlias() []Alias {
