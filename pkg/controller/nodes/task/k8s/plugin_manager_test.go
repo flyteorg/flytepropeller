@@ -303,6 +303,28 @@ func TestK8sTaskExecutor_Handle_LaunchResource(t *testing.T) {
 		assert.NoError(t, fakeClient.Delete(ctx, createdPod))
 	})
 
+	t.Run("failed to build k8s resource", func(t *testing.T) {
+		tCtx := getMockTaskContext(PluginPhaseNotStarted, PluginPhaseStarted)
+		// common setup code
+		mockResourceHandler := &pluginsk8sMock.Plugin{}
+		mockResourceHandler.OnGetProperties().Return(k8s.PluginProperties{})
+		mockResourceHandler.OnBuildResourceMatch(mock.Anything, mock.Anything).Return(nil, errors.New("failed"))
+		fakeClient := fake.NewClientBuilder().WithRuntimeObjects().Build()
+		pluginManager, err := NewPluginManager(ctx, dummySetupContext(fakeClient), k8s.PluginEntry{
+			ID:              "x",
+			ResourceToWatch: &v1.Pod{},
+			Plugin:          mockResourceHandler,
+		}, NewResourceMonitorIndex())
+		assert.NoError(t, err)
+
+		transition, err := pluginManager.Handle(ctx, tCtx)
+		assert.NoError(t, err)
+		assert.NotNil(t, transition)
+		transitionInfo := transition.Info()
+		assert.NotNil(t, transitionInfo)
+		assert.Equal(t, pluginsCore.PhasePermanentFailure, transitionInfo.Phase())
+	})
+
 	t.Run("jobAlreadyExists", func(t *testing.T) {
 		tctx := getMockTaskContext(PluginPhaseNotStarted, PluginPhaseStarted)
 		// common setup code
